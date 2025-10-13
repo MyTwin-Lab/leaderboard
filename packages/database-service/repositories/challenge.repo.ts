@@ -1,9 +1,9 @@
-import { db } from "../db/drizzle";
-import { challenges, challenge_repos, repos, contributions } from "../db/drizzle";
+import { db } from "../db/drizzle.js";
+import { challenges, challenge_repos, repos, contributions } from "../db/drizzle.js";
 import { eq } from "drizzle-orm";
-import { toDomainChallenge, toDomainRepo, toDomainContribution, toDbChallenge } from "../db/mappers";
-import type { Challenge, Repo, Contribution } from "../domain/entities";
-import { challengeSchema } from "../domain/schemas_zod";
+import { toDomainChallenge, toDomainRepo, toDomainContribution, toDbChallenge } from "../db/mappers.js";
+import type { Challenge, Repo, Contribution } from "../domain/entities.js";
+import { challengeSchema } from "../domain/schemas_zod.js";
 
 export class ChallengeRepository {
   async findAll(): Promise<Challenge[]> {

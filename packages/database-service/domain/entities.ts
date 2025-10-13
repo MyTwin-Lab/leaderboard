@@ -20,6 +20,11 @@ export interface ChallengeRepo {
   repo_id: string;      // FK -> repos.uuid
 }
 
+export interface ChallengeTeam {
+  challenge_id: string; // FK -> challenges.uuid
+  user_id: string;      // FK -> users.uuid
+}
+
 export interface Challenge {
   uuid: string;
   index: number;

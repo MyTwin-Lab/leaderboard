@@ -1,9 +1,9 @@
-import { db } from "../db/drizzle";
-import { users, contributions } from "../db/drizzle";
+import { db } from "../db/drizzle.js";
+import { users, contributions } from "../db/drizzle.js";
 import { eq } from "drizzle-orm";
-import { toDomainUser, toDomainContribution, toDbUser } from "../db/mappers";
-import type { User, Contribution } from "../domain/entities";
-import { userSchema } from "../domain/schemas_zod";
+import { toDomainUser, toDomainContribution, toDbUser } from "../db/mappers.js";
+import type { User, Contribution } from "../domain/entities.js";
+import { userSchema } from "../domain/schemas_zod.js";
 
 export class UserRepository {
   async findAll(): Promise<User[]> {

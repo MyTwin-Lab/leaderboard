@@ -1,9 +1,9 @@
-import { db } from "../db/drizzle";
-import { repos } from "../db/drizzle";
+import { db } from "../db/drizzle.js";
+import { repos } from "../db/drizzle.js";
 import { eq } from "drizzle-orm";
-import { toDomainRepo, toDbRepo } from "../db/mappers";
-import type { Repo } from "../domain/entities";
-import { repoSchema } from "../domain/schemas_zod";
+import { toDomainRepo, toDbRepo } from "../db/mappers.js";
+import type { Repo } from "../domain/entities.js";
+import { repoSchema } from "../domain/schemas_zod.js";
 
 export class RepoRepository {
   async findAll(): Promise<Repo[]> {

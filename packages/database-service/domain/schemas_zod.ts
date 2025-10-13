@@ -21,6 +21,11 @@ export const challengeRepoSchema = z.object({
   repo_id: z.string().uuid(),
 });
 
+export const challengeTeamSchema = z.object({
+  challenge_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+});
+
 export const challengeSchema = z.object({
   uuid: z.string().uuid(),
   index: z.number().int(),
@@ -39,7 +44,7 @@ export const contributionSchema = z.object({
   title: z.string(),
   type: z.string(),
   description: z.string().optional(),
-  evaluation: z.record(z.any()).optional(),
+  evaluation: z.record(z.string(), z.any()).optional(),
   tags: z.array(z.string()).optional(),
   reward: z.number().default(0),
   user_id: z.string().uuid(),

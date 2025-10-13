@@ -9,23 +9,26 @@ import {
   repos,
   challenges,
   challenge_repos,
+  challenge_teams,
   users,
   contributions,
-} from "./drizzle";
+} from "./drizzle.js";
 import type {
   Project,
   Repo,
   Challenge,
   ChallengeRepo,
+  ChallengeTeam,
   User,
   Contribution,
-} from "../domain/entities";
+} from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
 type DbProject = InferSelectModel<typeof projects>;
 type DbRepo = InferSelectModel<typeof repos>;
 type DbChallenge = InferSelectModel<typeof challenges>;
 type DbChallengeRepo = InferSelectModel<typeof challenge_repos>;
+type DbChallengeTeam = InferSelectModel<typeof challenge_teams>;
 type DbUser = InferSelectModel<typeof users>;
 type DbContribution = InferSelectModel<typeof contributions>;
 
@@ -71,6 +74,13 @@ export function toDomainChallengeRepo(row: DbChallengeRepo): ChallengeRepo {
   return {
     challenge_id: row.challenge_id ?? "",
     repo_id: row.repo_id ?? "",
+  };
+}
+
+export function toDomainChallengeTeam(row: DbChallengeTeam): ChallengeTeam {
+  return {
+    challenge_id: row.challenge_id ?? "",
+    user_id: row.user_id ?? "",
   };
 }
 

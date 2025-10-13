@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { pgTable, text, varchar, timestamp, uuid, integer, json, date } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -38,6 +41,12 @@ export const challenges = pgTable("challenges", {
 export const challenge_repos = pgTable("challenge_repos", {
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
   repo_id: uuid("repo_id").references(() => repos.uuid, { onDelete: "cascade" }),
+});
+
+// --- CHALLENGE_TEAMS ---
+export const challenge_teams = pgTable("challenge_teams", {
+  challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }),
 });
 
 // --- USERS ---
@@ -84,6 +93,7 @@ export const challengesRelations = relations(challenges, ({ one, many }) => ({
         references: [projects.uuid],
     }),
     repos: many(challenge_repos),
+    team_members: many(challenge_teams),
     contributions: many(contributions),
 }));
 
@@ -100,6 +110,7 @@ export const challengeReposRelations = relations(challenge_repos, ({ one }) => (
 
 export const usersRelations = relations(users, ({ many }) => ({
     contributions: many(contributions),
+    challenge_teams: many(challenge_teams),
 }));
 
 export const contributionsRelations = relations(contributions, ({ one }) => ({
@@ -110,6 +121,17 @@ export const contributionsRelations = relations(contributions, ({ one }) => ({
     challenge: one(challenges, {
         fields: [contributions.challenge_id],
         references: [challenges.uuid],
+    }),
+}));
+
+export const challengeTeamsRelations = relations(challenge_teams, ({ one }) => ({
+    challenge: one(challenges, {
+        fields: [challenge_teams.challenge_id],
+        references: [challenges.uuid],
+    }),
+    user: one(users, {
+        fields: [challenge_teams.user_id],
+        references: [users.uuid],
     }),
 }));
 
@@ -127,12 +149,14 @@ export const db = drizzle(pool, {
     repos,
     challenges,
     challenge_repos,
+    challenge_teams,
     users,
     contributions,
     projectsRelations,
     reposRelations,
     challengesRelations,
     challengeReposRelations,
+    challengeTeamsRelations,
     usersRelations,
     contributionsRelations,
   },

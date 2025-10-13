@@ -1,9 +1,9 @@
-import { db } from "../db/drizzle";
-import { projects, repos, challenges } from "../db/drizzle";
+import { db } from "../db/drizzle.js";
+import { projects, repos, challenges } from "../db/drizzle.js";
 import { eq } from "drizzle-orm";
-import { toDomainProject, toDomainRepo, toDomainChallenge, toDbProject } from "../db/mappers";
-import type { Project, Repo, Challenge } from "../domain/entities";
-import { projectSchema } from "../domain/schemas_zod";
+import { toDomainProject, toDomainRepo, toDomainChallenge, toDbProject } from "../db/mappers.js";
+import type { Project, Repo, Challenge } from "../domain/entities.js";
+import { projectSchema } from "../domain/schemas_zod.js";
 
 export class ProjectRepository {
   async findAll(): Promise<Project[]> {
