@@ -10,7 +10,10 @@ import {
 } from "../database-service/repositories/index.js";
 import type { Challenge, User, Contribution as DBContribution } from "../database-service/domain/entities.js";
 import { GoogleDriveConnector } from "../connectors/implementation/GD.connector.js";
-import { GitHubExternalConnector } from "../connectors/implementation/Github.connector.js";
+import { EvaluationGridRegistry } from "../evaluator/grids/index.js";
+import { ConnectorRegistry } from "../connectors/registry.js";
+import { ConnectorsOrchestrator } from "../connectors/connectors.orchestrator.js";
+import type { ExternalConnector } from "../connectors/interfaces.js";
 
 /**
  * ChallengeService
@@ -76,42 +79,95 @@ export class ChallengeService {
       redirectUri: process.env.GOOGLE_REDIRECT_URI || "http://localhost:3000/oauth/callback",
     });
 
-    // Pour l'instant, on prend le premier repo GitHub (à améliorer)
-    const githubRepo = repos.find(r => r.type === 'github');
-    if (!githubRepo) {
-      throw new Error("Aucun repository GitHub trouvé pour ce challenge");
+    // Filtrer les repos de code (tout sauf google_drive qui est utilisé uniquement pour sync)
+    const codeRepos = repos.filter(r => r.type !== 'google_drive'); //DELETE
+
+    // Créer les connecteurs via le registre (générique, supporte github, huggingface, etc.)
+    const connectors = codeRepos
+      .map(repo => ConnectorRegistry.createConnector({ repo, env: process.env }))
+      .filter((c): c is ExternalConnector => c !== null);
+
+    if (connectors.length === 0) {
+      console.warn("   ⚠️ Aucun connecteur de code disponible, sync basé uniquement sur Google Drive");
     }
 
-    const gitConnector = new GitHubExternalConnector({
-      token: process.env.GITHUB_TOKEN || "",
-      owner: process.env.GITHUB_OWNER || "",
-      repo: githubRepo.title,
-    });
+    // Initialiser l'orchestrateur pour gérer tous les connecteurs
+    const orchestrator = new ConnectorsOrchestrator(connectors, codeRepos);
+    await orchestrator.connectAll();
 
-    // 3. Récupérer les données externes
+    // 3. Récupérer les données externes - Google Drive Sync
     await gdConnector.connect();
     const folderId = process.env.GOOGLE_FOLDER_ID || "";
     const itemsGD = await gdConnector.fetchItems({ 
       folderId,
-      pageSize: 10,
+      pageSize: 10, // Plus large pour être sûr d'avoir assez de fichiers
       orderBy: "modifiedTime desc"
     });
 
+    // Filtrer les fichiers Sync (pas les dossiers, nom contient "Sync")
+    const syncFiles = itemsGD.filter(item => 
+      item.type !== 'folder' && 
+      item.name.includes('Sync')
+    );
+
     let syncPreview = "";
-    if (itemsGD.length > 0 && itemsGD[0].type !== 'folder') {
-      const content = await gdConnector.fetchItemContent(itemsGD[0].id);
+
+    if (syncFiles.length === 0) {
+      console.warn("   ⚠️ Aucun fichier Sync trouvé dans Google Drive");
+    } else {
+      // Récupérer le contenu du dernier Sync
+      const latestSync = syncFiles[0];
+      const content = await gdConnector.fetchItemContent(latestSync.id);
       syncPreview = content.content;
+      
+      console.log(`   📄 Dernier Sync: ${latestSync.name} (${latestSync.metadata?.modifiedTime})`);
     }
+
     await gdConnector.disconnect();
 
-    const itemsGit = await gitConnector.fetchItems({
-      maxCommits: 10,
-    });
+    // Déterminer la période pour les commits basée sur les 2 derniers Syncs
+    let commitOptions: any = { maxCommits: 20 };
+
+    if (syncFiles.length >= 2) {
+      // On a au moins 2 Syncs : utiliser la période entre les 2 derniers
+      const latestSyncDate = syncFiles[0].metadata?.modifiedTime;
+      const previousSyncDate = syncFiles[1].metadata?.modifiedTime;
+      
+      if (latestSyncDate && previousSyncDate) {
+        commitOptions.since = previousSyncDate;
+        commitOptions.until = latestSyncDate;
+        console.log(`   📅 Période des commits: ${previousSyncDate} → ${latestSyncDate}`);
+      }
+    } else if (syncFiles.length === 1) {
+      // Un seul Sync : prendre tous les commits depuis ce Sync
+      const latestSyncDate = syncFiles[0].metadata?.modifiedTime;
+      if (latestSyncDate) {
+        commitOptions.since = latestSyncDate;
+        console.log(`   📅 Commits depuis: ${latestSyncDate}`);
+      }
+    } else {
+      console.log(`   📅 Aucune période définie, récupération des ${commitOptions.maxCommits} derniers commits`);
+    }
+
+    // Récupérer les items de tous les connecteurs (commits, etc.)
+    const codeItems = await orchestrator.fetchAllItems(commitOptions);
+
+    // Adapter les items en "commits" pour l'evaluator
+    const commits = codeItems
+      .filter(i => i.type === "commit")
+      .map(i => ({
+        id: i.id,
+        message: i.metadata?.message || i.name,
+        author: i.metadata?.authorLogin || i.metadata?.author,
+        date: i.metadata?.date,
+        sha: i.metadata?.sha || i.id,
+        html_url: i.url,
+      }));
 
     // 4. Identifier les contributions
     const contributions = await this.evaluator.identify({
       syncPreview,
-      commits: itemsGit,
+      commits,
       users: teamMembers.map((u: User) => ({
         uuid: u.uuid,
         full_name: u.full_name,
@@ -124,8 +180,15 @@ export class ChallengeService {
     // 5. Évaluer chaque contribution
     const evaluations: Evaluation[] = [];
     for (const contribution of contributions) {
-      const snapshot = await gitConnector.fetchItemContent(contribution.commitSha);
-      const grid = this.evaluator.getGrid(contribution.type);
+      // Router vers le bon connecteur basé sur l'item ID
+      const connector = orchestrator.getConnectorForItem(contribution.commitSha);
+      if (!connector) {
+        console.warn(`   ⚠️ No connector found for item ${contribution.commitSha}, skipping evaluation`);
+        continue;
+      }
+
+      const snapshot = await connector.fetchItemContent(contribution.commitSha);
+      const grid = EvaluationGridRegistry.getGrid(contribution.type);
 
       const preparedSnapshot = await this.prepareSnapshot(snapshot);
       const evaluation = await this.evaluator.evaluate(contribution, { 
@@ -142,6 +205,9 @@ export class ChallengeService {
 
     // 6. Sauvegarder en base de données
     await this.saveEvaluations(challengeId, evaluations);
+
+    // 7. Déconnecter tous les connecteurs
+    await orchestrator.disconnectAll();
 
     return evaluations;
   }
