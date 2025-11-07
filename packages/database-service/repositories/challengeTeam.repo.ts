@@ -1,9 +1,9 @@
-import { db } from "../db/drizzle.js";
-import { challenge_teams, users } from "../db/drizzle.js";
+import { db } from "../db/drizzle";
+import { challenge_teams, users } from "../db/drizzle";
 import { eq, and } from "drizzle-orm";
-import { toDomainChallengeTeam, toDomainUser } from "../db/mappers.js";
-import type { ChallengeTeam, User } from "../domain/entities.js";
-import { challengeTeamSchema } from "../domain/schemas_zod.js";
+import { toDomainChallengeTeam, toDomainUser } from "../db/mappers";
+import type { ChallengeTeam, User } from "../domain/entities";
+import { challengeTeamSchema } from "../domain/schemas_zod";
 
 export class ChallengeTeamRepository {
   async findAll(): Promise<ChallengeTeam[]> {
