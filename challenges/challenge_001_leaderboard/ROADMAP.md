@@ -1,8 +1,7 @@
 ## Team
 
-- **Antoine** - Software Engineer
-- **Alix** - Software Engineer
-- **Capson** - Software Engineer
+- **Antoine** - Software Engineer - github:KaoDje
+- **Alix** - Software Engineer - github:Akralan
 
 ## Steps
 
@@ -22,11 +21,11 @@
   - Capson
   - Antoine
 - **2.1** Define service and package interfaces:
-    - Database
-    - External connectors (GitHub, Google Drive)
-    - Evaluator Agent
-    - Leaderboard Client
-    - Admin Dashboard
+  - Database
+  - External connectors (GitHub, Google Drive)
+  - Evaluator Agent
+  - Leaderboard Client
+  - Admin Dashboard
 
 ### **Phase 3 – Database Service**
 
@@ -50,14 +49,14 @@
   - Alix
   - Antoine
 - **5.1** Function “Contribution Identifier”
-    - Define instructions.
-    - Implement the contribution identification agent.
+  - Define instructions.
+  - Implement the contribution identification agent.
 - **5.2** Function “Contribution Scoring”
-    - Define evaluation grids for each type (weighted criteria).
-    - Define instructions.
-    - Implement the contribution scoring agent.
+  - Define evaluation grids for each type (weighted criteria).
+  - Define instructions.
+  - Implement the contribution scoring agent.
 - **5.3** Function “Compute Rewards”
-    - Implement the reward allocation function that converts scores into contribution points.
+  - Implement the reward allocation function that converts scores into contribution points.
 - **5.4** Implement the overall evaluation workflow.
 - Sync Meeting ()
 
