@@ -1,4 +1,4 @@
-d# Leaderboard Challenge Specification
+# Leaderboard Challenge Specification
 ## 1. Context & objective
 
 - **Identified problem:** Lack of clear contribution tracking within the Lab, and a need for recognition and gamification.
