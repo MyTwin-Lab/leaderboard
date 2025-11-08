@@ -64,7 +64,7 @@ export async function runEvaluateAgent(
   const workspace = snapshot.workspacePath;
 
   const criteriaDescription = grid.criteriaTemplate
-    .map(c => `- ${c.criterion} (poids: ${c.weight})`)
+    .map(c => `- ${c.criterion}`)
     .join('\n');
 
   const prompt = `
@@ -83,7 +83,7 @@ export async function runEvaluateAgent(
     Retourne un objet JSON de la forme :
     {
       "scores": [
-        {"criterion": "nom_critère", "score": 0-100, "weight": poids, "comment": "justification"},
+        {"criterion": "nom_critère", "score": 0-100, "comment": "justification"},
         ...
       ]
     }
@@ -145,7 +145,14 @@ export async function runEvaluateAgent(
 
   const text = response.output_text;
   const evaluation = JSON.parse(text) as Evaluation;
-  evaluation.globalScore = evaluation.scores.reduce(
+
+  const weightedScores = evaluation.scores.map((score) => {
+    const weight = grid.criteriaTemplate.find(c => c.criterion === score.criterion)?.weight ?? 1;
+    return { ...score, weight };
+  });
+
+  evaluation.scores = weightedScores;
+  evaluation.globalScore = weightedScores.reduce(
     (acc, s) => acc + s.score * s.weight,
     0
   );
