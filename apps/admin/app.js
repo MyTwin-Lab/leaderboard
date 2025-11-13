@@ -124,7 +124,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       case 'repos': loadRepos(); break;
       case 'users': loadUsers(); break;
       case 'contributions': loadContributions(); break;
-      case 'leaderboard': loadLeaderboard(); break;
     }
   });
 });
@@ -256,12 +255,10 @@ async function loadChallenges() {
     
     // Load challenge filter
     const challengeFilter = document.getElementById('challenge-filter');
-    const leaderboardFilter = document.getElementById('leaderboard-challenge-filter');
     const filterHTML = challenges.map(c => 
       `<option value="${c.uuid}">${c.title}</option>`
     ).join('');
     challengeFilter.innerHTML = '<option value="">Tous les challenges</option>' + filterHTML;
-    leaderboardFilter.innerHTML = '<option value="">Global</option>' + filterHTML;
     
     if (challenges.length === 0) {
       list.innerHTML = '<div class="empty-state"><h3>Aucun challenge</h3><p>Créez votre premier challenge</p></div>';
@@ -288,6 +285,7 @@ async function loadChallenges() {
           </p>
         </div>
         <div class="data-item-actions">
+          <button class="btn-primary" onclick="showTeamModal('${c.uuid}', '${c.title}')">👥 Équipe</button>
           <button class="btn-primary" onclick="selectDriveFolderForChallenge('${c.uuid}')">📁 Dossier Drive</button>
           <button class="btn-success" onclick="runSync('${c.uuid}')">🔄 Sync</button>
           <button class="btn-warning" onclick="closeChallenge('${c.uuid}')">🏆 Clôturer</button>
@@ -313,7 +311,7 @@ document.getElementById('challenge-form').addEventListener('submit', async (e) =
   
   const id = document.getElementById('challenge-id').value;
   const data = {
-    index: Date.now(),
+    // index est auto-généré par PostgreSQL
     title: document.getElementById('challenge-title').value,
     description: document.getElementById('challenge-description').value,
     status: 'active',
@@ -389,7 +387,6 @@ async function closeChallenge(id) {
     const result = await apiPost(`/api/challenges/${id}/close`, {});
     alert(`✅ ${result.count} rewards distribués !`);
     loadChallenges();
-    loadLeaderboard();
   } catch (error) {
     alert('Erreur lors de la clôture');
   }
@@ -659,63 +656,82 @@ async function loadContributions() {
 }
 
 // ============================================
-// LEADERBOARD
+// TEAM MANAGEMENT
 // ============================================
 
-async function loadLeaderboard() {
+let currentChallengeId = null;
+
+async function showTeamModal(challengeId, challengeTitle) {
+  currentChallengeId = challengeId;
+  
+  document.getElementById('team-modal-title').textContent = `👥 Équipe: ${challengeTitle}`;
+  document.getElementById('modal-overlay').classList.add('active');
+  document.getElementById('team-modal').classList.add('active');
+  
+  // Charger les membres actuels
+  await loadTeamMembers(challengeId);
+  
+  // Charger la liste des utilisateurs disponibles
   try {
-    const challengeId = document.getElementById('leaderboard-challenge-filter').value;
-    const endpoint = challengeId 
-      ? `/api/leaderboard/challenge/${challengeId}`
-      : '/api/leaderboard';
+    const users = await apiGet('/api/users');
+    const select = document.getElementById('team-user-select');
+    select.innerHTML = '<option value="">-- Sélectionner un utilisateur --</option>' +
+      users.map(u => `<option value="${u.uuid}">${u.full_name} (@${u.github_username})</option>`).join('');
+  } catch (error) {
+    console.error('Error loading users:', error);
+  }
+}
+
+async function loadTeamMembers(challengeId) {
+  try {
+    const members = await apiGet(`/api/challenges/${challengeId}/team`);
+    const container = document.getElementById('team-current-members');
     
-    const leaderboard = await apiGet(endpoint);
-    const list = document.getElementById('leaderboard-list');
-    
-    if (leaderboard.length === 0) {
-      list.innerHTML = '<div class="empty-state"><h3>Aucune donnée</h3></div>';
+    if (members.length === 0) {
+      container.innerHTML = '<p class="empty-state">Aucun membre dans l\'équipe</p>';
       return;
     }
     
-    list.innerHTML = leaderboard.map((item, index) => {
-      const rank = index + 1;
-      let rankClass = '';
-      if (rank === 1) rankClass = 'first';
-      else if (rank === 2) rankClass = 'second';
-      else if (rank === 3) rankClass = 'third';
-      
-      return `
-        <div class="leaderboard-item">
-          <div class="leaderboard-rank ${rankClass}">#${rank}</div>
-          <div class="leaderboard-info">
-            <h4>${item.title}</h4>
-            <p>${item.type} • Score: ${item.evaluation?.globalScore || 0}</p>
-          </div>
-          <div class="leaderboard-score">
-            <div class="score">${item.reward} CP</div>
-          </div>
+    container.innerHTML = members.map(m => `
+      <div class="team-member-item">
+        <div>
+          <strong>${m.full_name}</strong> (@${m.github_username})
         </div>
-      `;
-    }).join('');
-    
-    // Load stats if challenge selected
-    if (challengeId) {
-      const stats = await apiGet(`/api/leaderboard/challenge/${challengeId}/stats`);
-      const statsPanel = document.getElementById('leaderboard-stats');
-      statsPanel.innerHTML = `
-        <h3>📊 Statistiques du Challenge</h3>
-        <p><strong>Challenge:</strong> ${stats.challenge.title}</p>
-        <p><strong>Pool total:</strong> ${stats.challenge.totalPool} CP</p>
-        <p><strong>Contributions:</strong> ${stats.stats.totalContributions}</p>
-        <p><strong>CP distribués:</strong> ${stats.stats.totalRewardsDistributed} CP</p>
-        <p><strong>CP restants:</strong> ${stats.stats.remainingPool} CP</p>
-        <p><strong>Score moyen:</strong> ${stats.stats.averageScore}</p>
-      `;
-    } else {
-      document.getElementById('leaderboard-stats').innerHTML = '';
-    }
+        <button class="btn-danger btn-sm" onclick="removeTeamMember('${m.uuid}')">Retirer</button>
+      </div>
+    `).join('');
   } catch (error) {
-    console.error('Error loading leaderboard:', error);
+    console.error('Error loading team members:', error);
+  }
+}
+
+async function addTeamMember() {
+  const userId = document.getElementById('team-user-select').value;
+  
+  if (!userId) {
+    alert('Veuillez sélectionner un utilisateur');
+    return;
+  }
+  
+  try {
+    await apiPost(`/api/challenges/${currentChallengeId}/team`, { user_id: userId });
+    await loadTeamMembers(currentChallengeId);
+    document.getElementById('team-user-select').value = '';
+  } catch (error) {
+    alert('Erreur lors de l\'ajout du membre');
+    console.error(error);
+  }
+}
+
+async function removeTeamMember(userId) {
+  if (!confirm('Retirer ce membre de l\'équipe ?')) return;
+  
+  try {
+    await apiDelete(`/api/challenges/${currentChallengeId}/team/${userId}`);
+    await loadTeamMembers(currentChallengeId);
+  } catch (error) {
+    alert('Erreur lors de la suppression');
+    console.error(error);
   }
 }
 
@@ -726,6 +742,7 @@ async function loadLeaderboard() {
 function closeModals() {
   document.getElementById('modal-overlay').classList.remove('active');
   document.querySelectorAll('.modal-form').forEach(m => m.classList.remove('active'));
+  currentChallengeId = null;
 }
 
 // ============================================

@@ -46,7 +46,6 @@
       <button class="tab-btn" data-tab="repos">📦 Repos</button>
       <button class="tab-btn" data-tab="users">👥 Users</button>
       <button class="tab-btn" data-tab="contributions">💡 Contributions</button>
-      <button class="tab-btn" data-tab="leaderboard">🏆 Leaderboard</button>
     </nav>
 
     <!-- Dashboard Tab -->
@@ -119,17 +118,6 @@
       <div id="contributions-list" class="data-list"></div>
     </div>
 
-    <!-- Leaderboard Tab -->
-    <div id="leaderboard" class="tab-content">
-      <h2>🏆 Leaderboard</h2>
-      <div class="filters">
-        <select id="leaderboard-challenge-filter" onchange="loadLeaderboard()">
-          <option value="">Global</option>
-        </select>
-      </div>
-      <div id="leaderboard-list" class="data-list"></div>
-      <div id="leaderboard-stats" class="stats-panel"></div>
-    </div>
   </div>
 
   <!-- Modals (Create/Edit) -->
@@ -254,6 +242,22 @@
         <button type="submit" class="btn-primary">Enregistrer</button>
       </div>
     </form>
+  </div>
+
+  <!-- Team Modal -->
+  <div id="team-modal" class="modal-form">
+    <h3 id="team-modal-title">👥 Équipe du Challenge</h3>
+    <div id="team-current-members" class="team-members-list"></div>
+    <div class="form-group">
+      <label>Ajouter un membre</label>
+      <select id="team-user-select">
+        <option value="">-- Sélectionner un utilisateur --</option>
+      </select>
+    </div>
+    <div class="form-actions">
+      <button type="button" onclick="closeModals()">Fermer</button>
+      <button type="button" class="btn-primary" onclick="addTeamMember()">+ Ajouter</button>
+    </div>
   </div>
 
   <script src="google-config.js"></script>

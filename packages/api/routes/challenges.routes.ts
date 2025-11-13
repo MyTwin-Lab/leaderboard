@@ -1,12 +1,13 @@
 import { Router, Request, Response } from "express";
 import { ChallengeService } from "../../services/challenge.service.js";
-import { ChallengeRepository } from "../../database-service/repositories/index.js";
+import { ChallengeRepository, ChallengeTeamRepository } from "../../database-service/repositories/index.js";
 import { asyncHandler } from "../middleware/async-handler.js";
 import { requireAdmin } from "../middleware/auth.js";
 
 const router = Router();
 const service = new ChallengeService();
 const repo = new ChallengeRepository();
+const teamRepo = new ChallengeTeamRepository();
 
 // GET /api/challenges - Liste tous les challenges
 router.get("/", asyncHandler(async (req: Request, res: Response) => {
@@ -66,6 +67,31 @@ router.post("/:id/close", requireAdmin, asyncHandler(async (req: Request, res: R
     count: rewards.length,
     rewards 
   });
+}));
+
+// GET /api/challenges/:id/team - Liste les membres de l'équipe d'un challenge
+router.get("/:id/team", asyncHandler(async (req: Request, res: Response) => {
+  const members = await teamRepo.findTeamMembers(req.params.id);
+  res.json(members);
+}));
+
+// POST /api/challenges/:id/team - Ajouter un membre à l'équipe (ADMIN ONLY)
+router.post("/:id/team", requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const { user_id } = req.body;
+  if (!user_id) {
+    return res.status(400).json({ error: "user_id is required" });
+  }
+  const member = await teamRepo.create({
+    challenge_id: req.params.id,
+    user_id
+  });
+  res.status(201).json(member);
+}));
+
+// DELETE /api/challenges/:id/team/:userId - Retirer un membre de l'équipe (ADMIN ONLY)
+router.delete("/:id/team/:userId", requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  await teamRepo.delete(req.params.id, req.params.userId);
+  res.status(204).send();
 }));
 
 export default router;
