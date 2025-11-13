@@ -27,7 +27,7 @@ export interface ChallengeTeam {
 
 export interface Challenge {
   uuid: string;
-  index: number;
+  index?: number;
   title: string;
   status: string;
   start_date: Date;

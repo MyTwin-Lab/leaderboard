@@ -16,6 +16,11 @@ export class ChallengeRepoRepository {
     return rows.map(toDomainChallengeRepo);
   }
 
+  async findByRepo(repoId: string): Promise<ChallengeRepo[]> {
+    const rows = await db.select().from(challenge_repos).where(eq(challenge_repos.repo_id, repoId));
+    return rows.map(toDomainChallengeRepo);
+  }
+
   async create(entity: ChallengeRepo): Promise<ChallengeRepo> {
     const validated = challengeRepoSchema.parse(entity);
     const [inserted] = await db.insert(challenge_repos).values({

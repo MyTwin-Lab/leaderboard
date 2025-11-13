@@ -21,6 +21,11 @@ export class RepoRepository {
     return rows.map(toDomainRepo);
   }
 
+  async findByExternalId(externalRepoId: string): Promise<Repo | null> {
+    const [row] = await db.select().from(repos).where(eq(repos.external_repo_id, externalRepoId));
+    return row ? toDomainRepo(row) : null;
+  }
+
   async create(entity: Omit<Repo, "uuid">): Promise<Repo> {
     const validated = repoSchema.omit({ uuid: true }).parse(entity);
     const dbData = toDbRepo(validated);
