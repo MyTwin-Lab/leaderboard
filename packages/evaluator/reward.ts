@@ -6,17 +6,17 @@ import { Evaluation, ContributionReward } from "./types.js";
  * Convertit les scores accumulés pendant un challenge en Contribution Points (CP).
  * Le pool total de rewards est distribué proportionnellement selon les scores de chaque contribution.
  * 
- * @param evaluations - Liste des évaluations avec leurs scores globaux
+ * @param contributions - Liste des contributions avec leurs scores globaux
  * @param totalRewardPool - Pool total de CP à distribuer pour ce challenge
  * @returns Liste des rewards attribués par contribution
  */
 export function computeRewards(
-  evaluations: Evaluation[],
+  contributions: any[],
   totalRewardPool: number
-): ContributionReward[] {
+): (ContributionReward & { contributionId: string })[] {
   // Validation
-  if (evaluations.length === 0) {
-    console.warn("[computeRewards] Aucune évaluation fournie");
+  if (contributions.length === 0) {
+    console.warn("[computeRewards] Aucune contribution fournie");
     return [];
   }
 
@@ -26,31 +26,33 @@ export function computeRewards(
   }
 
   // Calculer le score total de toutes les contributions
-  const totalScore = evaluations.reduce((sum, evaluation) => {
-    return sum + (evaluation.globalScore || 0);
+  const totalScore = contributions.reduce((sum, contrib) => {
+    return sum + (contrib.evaluation?.globalScore || 0);
   }, 0);
 
   if (totalScore === 0) {
     console.warn("[computeRewards] Score total est 0, distribution égale");
     // Distribution égale si tous les scores sont à 0
-    const equalReward = totalRewardPool / evaluations.length;
-    return evaluations.map((evaluation) => ({
-      userId: evaluation.contribution?.userId || "unknown",
-      contributionTitle: evaluation.contribution?.title || "Untitled",
-      score: evaluation.globalScore || 0,
+    const equalReward = totalRewardPool / contributions.length;
+    return contributions.map((contrib) => ({
+      contributionId: contrib.uuid,
+      userId: contrib.user_id,
+      contributionTitle: contrib.title,
+      score: contrib.evaluation?.globalScore || 0,
       reward: Math.round(equalReward),
     }));
   }
 
   // Distribution proportionnelle
-  const rewards: ContributionReward[] = evaluations.map((evaluation) => {
-    const score = evaluation.globalScore || 0;
+  const rewards = contributions.map((contrib) => {
+    const score = contrib.evaluation?.globalScore || 0;
     const proportion = score / totalScore;
     const reward = Math.round(proportion * totalRewardPool);
 
     return {
-      userId: evaluation.contribution?.userId || "unknown",
-      contributionTitle: evaluation.contribution?.title || "Untitled",
+      contributionId: contrib.uuid,
+      userId: contrib.user_id,
+      contributionTitle: contrib.title,
       score,
       reward,
     };
@@ -65,7 +67,7 @@ export function computeRewards(
     rewards[rewards.length - 1].reward += difference;
   }
 
-  console.log(`[computeRewards] Distribué ${totalRewardPool} CP sur ${evaluations.length} contributions`);
+  console.log(`[computeRewards] Distribué ${totalRewardPool} CP sur ${contributions.length} contributions`);
   
   return rewards;
 }
