@@ -18,7 +18,7 @@ export const datasetGrid: EvaluationGridTemplate = {
   ],
   instructions: `
     Évalue la contribution de dataset selon les critères fournis.
-    Pour chaque critère, attribue un score entre 0 et 100.
+    Pour chaque critère, attribue un score entre 0 et 9.
     Fournis un commentaire justifiant chaque score.
   `.trim()
 };

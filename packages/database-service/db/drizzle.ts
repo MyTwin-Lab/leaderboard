@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { pgTable, text, varchar, timestamp, uuid, integer, json, date } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -26,7 +26,7 @@ export const repos = pgTable("repos", {
 // --- CHALLENGES ---
 export const challenges = pgTable("challenges", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
-  index: integer("index").notNull(),
+  index: serial("index"),
   title: varchar("title", { length: 255 }).notNull(),
   status: varchar("status", { length: 100 }).notNull(),
   start_date: date("start_date"),

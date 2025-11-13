@@ -130,7 +130,7 @@ export function toDbRepo(entity: Omit<Repo, "uuid">): typeof repos.$inferInsert 
 
 export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenges.$inferInsert {
   return {
-    index: entity.index,
+    // index est auto-généré par PostgreSQL (serial)
     title: entity.title,
     status: entity.status,
     start_date: entity.start_date.toISOString().split("T")[0], // YYYY-MM-DD

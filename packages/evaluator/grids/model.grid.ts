@@ -18,7 +18,7 @@ export const modelGrid: EvaluationGridTemplate = {
   ],
   instructions: `
     Évalue la contribution de modèle ML selon les critères fournis.
-    Pour chaque critère, attribue un score entre 0 et 100.
+    Pour chaque critère, attribue un score entre 0 et 9.
     Fournis un commentaire justifiant chaque score.
   `.trim()
 };

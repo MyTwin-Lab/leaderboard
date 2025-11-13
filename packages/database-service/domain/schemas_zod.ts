@@ -28,7 +28,7 @@ export const challengeTeamSchema = z.object({
 
 export const challengeSchema = z.object({
   uuid: z.string().uuid(),
-  index: z.number().int(),
+  index: z.number().int().optional(),
   title: z.string(),
   status: z.string(),
   start_date: z.coerce.date(),
