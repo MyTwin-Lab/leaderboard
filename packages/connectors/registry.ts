@@ -25,10 +25,22 @@ export class ConnectorRegistry {
 
     switch (repo.type) {
       case 'github':
+        // Utiliser external_repo_id qui contient "owner/repo"
+        if (!repo.external_repo_id) {
+          console.error(`[ConnectorRegistry] Missing external_repo_id for GitHub repo: ${repo.title}`);
+          return null;
+        }
+        
+        const [owner, repoName] = repo.external_repo_id.split('/');
+        if (!owner || !repoName) {
+          console.error(`[ConnectorRegistry] Invalid external_repo_id format for repo: ${repo.title}. Expected "owner/repo", got "${repo.external_repo_id}"`);
+          return null;
+        }
+        
         return new GitHubExternalConnector({
           token: env.GITHUB_TOKEN || "",
-          owner: env.GITHUB_OWNER || "",
-          repo: repo.title,
+          owner,
+          repo: repoName,
         });
 
       case 'huggingface':
