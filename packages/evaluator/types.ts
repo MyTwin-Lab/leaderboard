@@ -8,7 +8,15 @@ export interface Contribution {
     challenge_id: string;
     tags?: string[];
     userId: string;
-    commitSha: string;
+    commitShas: string[];
+}
+
+/**
+ * Une contribution identifiée par l’agent à évaluer.
+ */
+export interface ToMergeContribution {
+    contribution: Contribution,
+    oldContributionId: string;
 }
 
 /**
