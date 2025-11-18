@@ -1,6 +1,4 @@
-import dotenv from "dotenv";
-dotenv.config();
-
+import { config } from "../../config/index.js";
 import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -140,7 +138,7 @@ export const challengeTeamsRelations = relations(challenge_teams, ({ one }) => (
 // --- DATABASE CLIENT ---
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: config.database.url,
 });
 
 export const db = drizzle(pool, {
