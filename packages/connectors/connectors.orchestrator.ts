@@ -46,9 +46,9 @@ export class ConnectorsOrchestrator {
       Array.from(this.connectors.entries()).map(async ([repoId, connector]) => {
         try {
           await connector.connect();
-          console.log(`   ✅ [Orchestrator] Connected: ${connector.name} (${connector.type})`);
+          console.log(`[Orchestrator] Connected: ${connector.name} (${connector.type})`);
         } catch (error: any) {
-          console.error(`   ❌ [Orchestrator] Failed to connect ${connector.name}:`, error.message);
+          console.error(`[Orchestrator] Failed to connect ${connector.name}:`, error.message);
           throw error;
         }
       })
@@ -56,7 +56,7 @@ export class ConnectorsOrchestrator {
 
     const failures = results.filter(r => r.status === 'rejected');
     if (failures.length > 0) {
-      console.warn(`   ⚠️ [Orchestrator] ${failures.length}/${this.connectors.size} connectors failed to connect`);
+      console.warn(`[Orchestrator] ${failures.length}/${this.connectors.size} connectors failed to connect`);
     }
   }
 
@@ -73,7 +73,7 @@ export class ConnectorsOrchestrator {
       Array.from(this.connectors.entries()).map(async ([repoId, connector]) => {
         try {
           const items = await connector.fetchItems(options);
-          console.log(`   📦 [Orchestrator] Fetched ${items.length} items from ${connector.name}`);
+          console.log(`[Orchestrator] Fetched ${items.length} items from ${connector.name}`);
 
           // Indexer chaque item vers son connecteur pour le routing
           items.forEach(item => {
@@ -91,7 +91,7 @@ export class ConnectorsOrchestrator {
             },
           }));
         } catch (error: any) {
-          console.error(`   ❌ [Orchestrator] Failed to fetch from ${connector.name}:`, error.message);
+          console.error(`[Orchestrator] Failed to fetch from ${connector.name}:`, error.message);
           return [];
         }
       })
@@ -104,7 +104,7 @@ export class ConnectorsOrchestrator {
       }
     });
 
-    console.log(`   📊 [Orchestrator] Total items aggregated: ${allItems.length}`);
+    console.log(`[Orchestrator] Total items aggregated: ${allItems.length}`);
     return allItems;
   }
 
@@ -122,11 +122,23 @@ export class ConnectorsOrchestrator {
    * Déconnecte tous les connecteurs proprement
    */
   async disconnectAll(): Promise<void> {
-    await Promise.allSettled(
-      Array.from(this.connectors.values()).map(connector => 
-        connector.disconnect?.() || Promise.resolve()
-      )
+    const results = await Promise.allSettled(
+      Array.from(this.connectors.values()).map(async (connector) => {
+        try {
+          await connector.disconnect?.() || Promise.resolve();
+          console.log(`[Orchestrator] Disconnected: ${connector.name}`);
+        } catch (error: any) {
+          console.error(`[Orchestrator] Failed to disconnect ${connector.name}:`, error.message);
+          // Ne pas throw pour continuer avec les autres
+        }
+      })
     );
-    console.log(`   🔌 [Orchestrator] All connectors disconnected`);
+
+    const failures = results.filter(r => r.status === 'rejected');
+    if (failures.length > 0) {
+      console.warn(`[Orchestrator] ${failures.length}/${this.connectors.size} connectors failed to disconnect`);
+    } else {
+      console.log(`[Orchestrator] All connectors disconnected successfully`);
+    }
   }
 }
