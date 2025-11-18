@@ -1,12 +1,10 @@
-import dotenv from "dotenv";
-dotenv.config();
-
+import { config } from "../../config/index.js";
 import OpenAI from "openai";
-import { Contribution, ToMergeContribution } from "../types.js";
+import { Contribution, OldContribution, ToMergeContribution } from "../types.js";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const client = new OpenAI({ apiKey: config.openai.apiKey });
 
-export async function runMergeAgent(newContributions: Contribution[], oldContributions: any): Promise<ToMergeContribution[]> {
+export async function runMergeAgent(newContributions: Contribution[], oldContributions: OldContribution[]): Promise<ToMergeContribution[]> {
     const prompt = `
         ROLE :
         Tu es l’agent « ContributionMergeEvaluator » du système MyTwin Leaderboard.
@@ -96,5 +94,5 @@ export async function runMergeAgent(newContributions: Contribution[], oldContrib
 
     // Selon le modèle, tu peux extraire le JSON directement :
     const text = response.output_text;
-    return JSON.parse(text);
+    return JSON.parse(text) as ToMergeContribution[];
 }

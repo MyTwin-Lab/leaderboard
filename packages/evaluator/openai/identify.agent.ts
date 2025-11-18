@@ -1,12 +1,10 @@
-import dotenv from "dotenv";
-dotenv.config();
-
+import { config } from "../../config/index.js";
 import OpenAI from "openai";
-import { Contribution } from "../types.js";
+import { IdentifyContext, Contribution } from "../types.js";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const client = new OpenAI({ apiKey: config.openai.apiKey });
 
-export async function runIdentifyAgent(context: any): Promise<Contribution[]> {
+export async function runIdentifyAgent(context: IdentifyContext): Promise<Contribution[]> {
     const { roadmap, ...otherContext } = context;
     
     const prompt = `

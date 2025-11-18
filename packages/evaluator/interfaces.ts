@@ -1,4 +1,4 @@
-import {Contribution, Evaluation, ToMergeContribution} from "./types.js";
+import {Contribution, Evaluation, ToMergeContribution, OldContribution, EvaluateContext, IdentifyContext} from "./types.js";
 
 /**
  * AgentEvaluator
@@ -10,17 +10,17 @@ export interface AgentEvaluator {
     /**
      * Identifie les contributions pertinentes à partir d’un contexte donné.
      */
-    identify(context: any): Promise<Contribution[]>;
+    identify(context: IdentifyContext): Promise<Contribution[]>;
 
     /**
      * Fusionne les contributions identifiées.
      */
-    merge(newContributions: Contribution[], oldContributions: any): Promise<ToMergeContribution[]>;
+    merge(newContributions: Contribution[], oldContributions: OldContribution[]): Promise<ToMergeContribution[]>;
 
     /**
      * Évalue une contribution identifiée selon une grille interne.
      */
-    evaluate(toMerge : boolean, contributions: Contribution | any, context: any): Promise<Evaluation>;
+    evaluate(toMerge : boolean, contributions: Contribution | ToMergeContribution, context: EvaluateContext): Promise<Evaluation>;
 
     /**
      * Pipeline complet : identification, évaluation, agrégation.
