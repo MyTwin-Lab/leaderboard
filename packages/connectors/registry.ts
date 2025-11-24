@@ -1,12 +1,8 @@
 import type { Repo } from "../database-service/domain/entities.js";
 import type { ExternalConnector } from "./interfaces.js";
 import { GitHubExternalConnector } from "./implementation/Github.connector.js";
+import { config } from "../config/index.js";
 // Future: import { HuggingFaceConnector } from "./implementation/HuggingFace.connector.js";
-
-export interface ConnectorInitContext {
-  repo: Repo;
-  env: NodeJS.ProcessEnv;
-}
 
 /**
  * ConnectorRegistry
@@ -15,14 +11,15 @@ export interface ConnectorInitContext {
  * Utilise les variables d'environnement pour la configuration.
  */
 export class ConnectorRegistry {
+  // Exposed for tests to swap implementation
+  static GitHubConnectorClass = GitHubExternalConnector;
+
   /**
    * Crée un connecteur basé sur le type du repo
-   * @param ctx - Contexte contenant le repo et l'environnement
+   * @param repo - Repo contenant le type et l'external_repo_id
    * @returns ExternalConnector ou null si le type n'est pas supporté
    */
-  static createConnector(ctx: ConnectorInitContext): ExternalConnector | null {
-    const { repo, env } = ctx;
-
+  static createConnector(repo: Repo): ExternalConnector | null {
     switch (repo.type) {
       case 'github':
         // Utiliser external_repo_id qui contient "owner/repo"
@@ -37,8 +34,8 @@ export class ConnectorRegistry {
           return null;
         }
         
-        return new GitHubExternalConnector({
-          token: env.GITHUB_TOKEN || "",
+        return new this.GitHubConnectorClass({
+          token: config.github.token || "",
           owner,
           repo: repoName,
         });

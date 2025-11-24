@@ -1,3 +1,5 @@
+import { EvaluationGridTemplate, DetailedEvaluationGridTemplate } from './grids/index.js';
+
 /**
  * Une contribution identifiée par l’agent à évaluer.
  */
@@ -8,7 +10,15 @@ export interface Contribution {
     challenge_id: string;
     tags?: string[];
     userId: string;
-    commitSha: string;
+    commitShas: string[];
+}
+
+/**
+ * Une contribution identifiée par l’agent à évaluer.
+ */
+export interface ToMergeContribution {
+    contribution: Contribution,
+    oldContributionId: string;
 }
 
 /**
@@ -39,4 +49,78 @@ export interface ContributionReward {
     contributionTitle: string;
     score: number;
     reward: number; // Contribution Points (CP) attribués
+}
+
+/**
+ * Contexte pour l'identification des contributions
+ */
+export interface IdentifyContext {
+  syncPreview?: string;  // Résumé de réunion depuis Google Drive
+  commits: CommitInfo[]; // Liste des commits
+  users: UserInfo[];     // Membres de l'équipe
+  roadmap?: string;      // Roadmap du challenge
+}
+
+/**
+ * Informations sur un commit (provenant des connecteurs)
+ */
+export interface CommitInfo {
+  id: string;
+  message: string;
+  author: string;
+  date: string;
+  sha: string;
+}
+
+/**
+ * Informations sur un utilisateur (pour identification)
+ */
+export interface UserInfo {
+  uuid: string;
+  full_name: string;
+  github_username?: string;
+}
+
+/**
+ * Contribution existante (pour fusion)
+ */
+export interface OldContribution {
+  uuid: string;
+  title: string;
+  type: string;
+  description?: string;
+  tags?: string[];
+  user_id: string;
+  // Autres champs possibles : created_at, etc., mais sanitizés dans ChallengeService
+}
+
+/**
+ * Contexte pour l'évaluation
+ */
+export interface EvaluateContext {
+  snapshot: SnapshotInfo;
+  grid: EvaluationGridTemplate | DetailedEvaluationGridTemplate; // Depuis grids/index.ts
+}
+
+/**
+ * Informations sur un snapshot de code (pour évaluation)
+ */
+export interface SnapshotInfo {
+  snapshotId?: string;
+  commitSha?: string;
+  commitShas?: string[];
+  modifiedFiles: ModifiedFile[];
+  workspacePath?: string; // Ajouté par prepareSnapshot
+}
+
+/**
+ * Fichier modifié dans un commit
+ */
+export interface ModifiedFile {
+  path: string;
+  status?: string; // 'added', 'modified', etc.
+  additions?: number;
+  deletions?: number;
+  content?: string; // Contenu du fichier
+  lastSeenIn?: string; // SHA du commit où il a été vu
 }

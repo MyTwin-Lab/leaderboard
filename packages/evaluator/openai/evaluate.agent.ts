@@ -1,10 +1,11 @@
 import OpenAI from "openai";
-import { Contribution, Evaluation } from "../types.js";
+import { Contribution, Evaluation, ToMergeContribution, EvaluateContext } from "../types.js";
 import { EvaluationGridTemplate, DetailedEvaluationGridTemplate } from "../grids/index.js";
 import fs from "fs/promises";
 import path from "path";
+import { config } from "../../config/index.js";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const client = new OpenAI({ apiKey: config.openai.apiKey });
 
 // Helper pour vérifier si la réponse contient des tool calls
 function hasToolCalls(response: OpenAI.Responses.Response): boolean {
@@ -57,11 +58,12 @@ const tools: OpenAI.Responses.Tool[] = [
 ];
 
 export async function runEvaluateAgent(
-  contribution: Contribution, 
-  context: { snapshot: any; grid: EvaluationGridTemplate | DetailedEvaluationGridTemplate }
+  toMerge : boolean = false,
+  contribution: Contribution | ToMergeContribution, 
+  context: EvaluateContext
 ): Promise<Evaluation> {
   const { snapshot, grid } = context;
-  const workspace = snapshot.workspacePath;
+  const workspace = snapshot.workspacePath || "";
 
   // Détecter si c'est une grille détaillée ou simple
   const isDetailedGrid = 'categories' in grid;
@@ -114,6 +116,14 @@ export async function runEvaluateAgent(
     
     CONTRIBUTION:
     ${JSON.stringify(contribution)}
+
+    ${toMerge == true ? `
+      La contribution est une fusion d'une nouvelle contribution avec une ancienne.
+      Le titre et la description ont été mis à jour en amont et tu recois en plus l'ancienne grille d'évaluation.
+      Tu dois réévaluer la contribution à partir des nouvelles données, et **Attention** car tu n'as pas accès aux fichiers de l'ancienne 
+      contribution.
+      Tu peux faire confiance à l'ancienne notation, mais tu dois la revoir en fonction des nouvelles données.
+    ` : ''}
     
     SNAPSHOT DU CODE:
     ${typeof snapshot === "string" ? snapshot : JSON.stringify(snapshot)}
