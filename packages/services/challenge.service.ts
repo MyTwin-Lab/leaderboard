@@ -347,7 +347,7 @@ export class ChallengeService {
   /**
    * Sauvegarde les évaluations en base de données
    */
-  private async saveEvaluations(challengeId: string, evaluations: Evaluation[]): Promise<void> {
+  public async saveEvaluations(challengeId: string, evaluations: Evaluation[]): Promise<void> {
     for (const evaluation of evaluations) {
       if (!evaluation.contribution) continue;
 
@@ -377,7 +377,7 @@ export class ChallengeService {
     console.log(`[ChallengeService] ${evaluations.length} contributions sauvegardées en DB`);
   }
 
-  private async buildAggregatedSnapshot(
+  public async buildAggregatedSnapshot(
     resolveConnector: (commitSha: string) => ExternalConnector | undefined,
     commitShas: string[],
   ): Promise<SnapshotInfo | null> {
@@ -421,7 +421,7 @@ export class ChallengeService {
   /**
    * Prépare un snapshot pour l'évaluation en créant le workspace temporaire
    */
-  private async prepareSnapshot(snapshot: SnapshotInfo): Promise<SnapshotInfo> {
+  public async prepareSnapshot(snapshot: SnapshotInfo): Promise<SnapshotInfo> {
     const fs = await import("fs/promises");
     const path = await import("path");
     const os = await import("os");
