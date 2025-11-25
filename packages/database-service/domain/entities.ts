@@ -55,5 +55,14 @@ export interface User {
   role: string;
   full_name: string;
   github_username: string;
+  password_hash?: string;
+  created_at: Date;
+}
+
+export interface RefreshToken {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  expires_at: Date;
   created_at: Date;
 }
