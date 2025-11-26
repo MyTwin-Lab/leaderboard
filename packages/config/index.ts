@@ -16,12 +16,15 @@ const envSchema = z
     DATABASE_URL: z
       .string()
       .min(1, "DATABASE_URL is required"),
-    ADMIN_USERNAME: z
+    // JWT Auth (nouveau système)
+    JWT_SECRET: z
       .string()
-      .min(1, "ADMIN_USERNAME is required"),
-    ADMIN_PASSWORD: z
-      .string()
-      .min(1, "ADMIN_PASSWORD is required"),
+      .min(32, "JWT_SECRET must be at least 32 characters"),
+    JWT_ACCESS_EXPIRY: z.string().default("15m"),
+    JWT_REFRESH_EXPIRY: z.string().default("7d"),
+    // Basic Auth (deprecated, optionnel pour transition)
+    ADMIN_USERNAME: z.string().optional(),
+    ADMIN_PASSWORD: z.string().optional(),
     GITHUB_TOKEN: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
     GOOGLE_CLIENT_ID: z.string().optional(),
@@ -37,6 +40,9 @@ const envInput = {
   API_PORT: process.env.API_PORT,
   FRONTEND_URL: process.env.FRONTEND_URL,
   DATABASE_URL: process.env.DATABASE_URL,
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_ACCESS_EXPIRY: process.env.JWT_ACCESS_EXPIRY,
+  JWT_REFRESH_EXPIRY: process.env.JWT_REFRESH_EXPIRY,
   ADMIN_USERNAME: process.env.ADMIN_USERNAME,
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
   GITHUB_TOKEN: process.env.GITHUB_TOKEN,
@@ -69,6 +75,11 @@ export const config = {
   },
   database: {
     url: env.DATABASE_URL,
+  },
+  auth: {
+    jwtSecret: env.JWT_SECRET,
+    accessExpiry: env.JWT_ACCESS_EXPIRY,
+    refreshExpiry: env.JWT_REFRESH_EXPIRY,
   },
   admin: {
     username: env.ADMIN_USERNAME,
