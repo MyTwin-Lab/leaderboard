@@ -15,7 +15,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const team = await challengeTeamRepo.findByChallenge(id);
+    const team = await challengeTeamRepo.findTeamMembers(id);
     return NextResponse.json(team);
   } catch (error) {
     console.error('Error fetching team:', error);
