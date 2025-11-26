@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { RepoList } from '@/components/admin/RepoList';
 import { RepoForm } from '@/components/admin/RepoForm';
+import { RepoLinkModal } from '@/components/admin/RepoLinkModal';
 import type { Repo, Project, Challenge } from '../../../../../../packages/database-service/domain/entities';
 
 export default function ReposPage() {
@@ -12,6 +13,8 @@ export default function ReposPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState<{ id: string; title: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -69,26 +72,9 @@ export default function ReposPage() {
     }
   };
 
-  const handleLinkToChallenge = async (repoId: string) => {
-    const challengeId = prompt(
-      `Link to challenge:\n\n${challenges.map(c => `${c.title}: ${c.uuid}`).join('\n')}`
-    );
-
-    if (!challengeId) return;
-
-    try {
-      const res = await fetch('/api/repos/challenge-repos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ challenge_id: challengeId, repo_id: repoId }),
-      });
-
-      if (res.ok) {
-        alert('✅ Repo linked to challenge!');
-      }
-    } catch (error) {
-      console.error('Error linking repo:', error);
-    }
+  const handleLinkToChallenge = (repoId: string, repoTitle: string) => {
+    setSelectedRepo({ id: repoId, title: repoTitle });
+    setShowLinkModal(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -137,6 +123,17 @@ export default function ReposPage() {
             onDelete={handleDelete}
           />
         </Card>
+      )}
+
+      {showLinkModal && selectedRepo && (
+        <RepoLinkModal
+          repoId={selectedRepo.id}
+          repoTitle={selectedRepo.title}
+          onClose={() => {
+            setShowLinkModal(false);
+            setSelectedRepo(null);
+          }}
+        />
       )}
     </div>
   );

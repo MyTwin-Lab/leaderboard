@@ -104,9 +104,9 @@ export function TeamModal({ challengeId, challengeTitle, onClose }: TeamModalPro
                 <p className="text-sm text-white/50">No team members yet</p>
               ) : (
                 <div className="space-y-2">
-                  {team.map((member) => (
+                  {team.map((member, index) => (
                     <div
-                      key={member.uuid}
+                      key={index}
                       className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10"
                     >
                       <div>

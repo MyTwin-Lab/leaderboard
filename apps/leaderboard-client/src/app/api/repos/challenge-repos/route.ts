@@ -32,3 +32,28 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// DELETE /api/repos/challenge-repos - Délier un repo d'un challenge
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const challengeId = searchParams.get('challenge_id');
+    const repoId = searchParams.get('repo_id');
+
+    if (!challengeId || !repoId) {
+      return NextResponse.json(
+        { error: 'Missing challenge_id or repo_id' },
+        { status: 400 }
+      );
+    }
+
+    await challengeRepoRepo.delete(challengeId, repoId);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error unlinking repo from challenge:', error);
+    return NextResponse.json(
+      { error: 'Failed to unlink repo from challenge' },
+      { status: 500 }
+    );
+  }
+}

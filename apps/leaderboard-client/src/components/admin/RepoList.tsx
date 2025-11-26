@@ -8,7 +8,7 @@ import type { Repo, Project } from '../../../../../packages/database-service/dom
 interface RepoListProps {
   repos: Repo[];
   projects: Project[];
-  onLinkToChallenge: (repoId: string) => void;
+  onLinkToChallenge: (repoId: string, repoTitle: string) => void;
   onDelete: (id: string) => void;
 }
 
@@ -49,7 +49,7 @@ export function RepoList({ repos, projects, onLinkToChallenge, onDelete }: RepoL
       header: 'Actions',
       render: (repo: Repo) => (
         <div className="flex gap-2">
-          <Button size="sm" variant="secondary" onClick={() => onLinkToChallenge(repo.uuid)}>
+          <Button size="sm" variant="secondary" onClick={() => onLinkToChallenge(repo.uuid, repo.title)}>
             🔗 Link
           </Button>
           <Button size="sm" variant="danger" onClick={() => onDelete(repo.uuid)}>
