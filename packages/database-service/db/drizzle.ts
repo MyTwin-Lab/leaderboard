@@ -1,4 +1,5 @@
 import { config } from "../../config/index.js";
+import "dotenv/config";
 import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -152,7 +153,7 @@ export const refreshTokensRelations = relations(refresh_tokens, ({ one }) => ({
 // --- DATABASE CLIENT ---
 
 const pool = new Pool({
-  connectionString: config.database.url,
+  connectionString: process.env.DATABASE_URL!,
 });
 
 export const db = drizzle(pool, {
