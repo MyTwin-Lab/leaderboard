@@ -7,11 +7,10 @@ import type { User } from '../../../../../packages/database-service/domain/entit
 
 interface UserListProps {
   users: User[];
-  onChangeRole: (userId: string, newRole: string) => void;
   onDelete: (id: string) => void;
 }
 
-export function UserList({ users, onChangeRole, onDelete }: UserListProps) {
+export function UserList({ users, onDelete }: UserListProps) {
   const columns = [
     {
       key: 'github_username',
@@ -31,15 +30,7 @@ export function UserList({ users, onChangeRole, onDelete }: UserListProps) {
       key: 'role',
       header: 'Role',
       render: (user: User) => (
-        <select
-          value={user.role}
-          onChange={(e) => onChangeRole(user.uuid, e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
-        >
-          <option value="admin">Admin</option>
-          <option value="contributor">Contributor</option>
-          <option value="viewer">Viewer</option>
-        </select>
+        <Badge label={user.role} />
       ),
       width: '150px',
     },

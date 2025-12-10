@@ -16,7 +16,7 @@ export function ChallengeList({ challenges }: ChallengeListProps) {
   if (challenges.length === 0) {
     return (
       <div className="rounded-md bg-white/5 p-6 text-white/60">
-        Aucune contribution trouvée. Revenez plus tard après la prochaine sync.
+        No contributions yet. Please check again after the next sync.
       </div>
     );
   }

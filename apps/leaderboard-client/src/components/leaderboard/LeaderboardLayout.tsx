@@ -23,7 +23,7 @@ export function LeaderboardLayout({
       initialSearchTerm={initialSearchTerm}
       projects={projects}
     >
-      <div className="space-y-6">
+      <div className="space-y-1">
         <FiltersBar />
         <LeaderboardTable initialEntries={initialEntries} />
       </div>

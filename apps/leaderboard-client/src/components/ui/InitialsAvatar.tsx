@@ -23,7 +23,7 @@ export function InitialsAvatar({ name, size = 40 }: InitialsAvatarProps) {
 
   return (
     <div
-      className="flex items-center justify-center rounded-full bg-primary-300/20 text-primary-200 font-semibold"
+      className="flex items-center justify-center rounded-3xl bg-primary-300/20 text-primary-200 font-semibold"
       style={{ width: dimension, height: dimension }}
       aria-hidden="true"
     >
