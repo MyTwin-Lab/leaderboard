@@ -1,6 +1,5 @@
 import { LeaderboardLayout } from "@/components/leaderboard/LeaderboardLayout";
 import { fetchLeaderboard } from "@/lib/server/leaderboard";
-import { StatusBanner } from "@/components/ui/StatusBanner";
 
 type LeaderboardSearchParams = {
   projectId?: string;
@@ -23,7 +22,6 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         initialSearchTerm={initialSearchTerm}
         projects={initialData.filters.projects}
       />
-      <StatusBanner message="Données mises à jour automatiquement après chaque sync" variant="info" />
     </div>
   );
 }
