@@ -71,6 +71,25 @@ export const contributions = pgTable("contributions", {
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
 });
 
+// --- TASKS ---
+export const tasks = pgTable("tasks", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
+  parent_task_id: uuid("parent_task_id"),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  type: varchar("type", { length: 50 }).notNull(), // "solo" | "concurrent"
+  status: varchar("status", { length: 20 }).notNull().default("todo"), // "todo" | "done"
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// --- TASK_ASSIGNEES ---
+export const task_assignees = pgTable("task_assignees", {
+  task_id: uuid("task_id").references(() => tasks.uuid, { onDelete: "cascade" }),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }),
+  assigned_at: timestamp("assigned_at").defaultNow(),
+});
+
 // --- REFRESH_TOKENS ---
 export const refresh_tokens = pgTable("refresh_tokens", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -83,71 +102,97 @@ export const refresh_tokens = pgTable("refresh_tokens", {
 // --- RELATIONS ---
 
 export const projectsRelations = relations(projects, ({ many }) => ({
-    repos: many(repos),
-    challenges: many(challenges),
+  repos: many(repos),
+  challenges: many(challenges),
 }));
-  
+
 export const reposRelations = relations(repos, ({ one, many }) => ({
-    project: one(projects, {
-        fields: [repos.project_id],
-        references: [projects.uuid],
-    }),
-    challenge_links: many(challenge_repos),
+  project: one(projects, {
+    fields: [repos.project_id],
+    references: [projects.uuid],
+  }),
+  challenge_links: many(challenge_repos),
 }));
 
 export const challengesRelations = relations(challenges, ({ one, many }) => ({
-    project: one(projects, {
-        fields: [challenges.project_id],
-        references: [projects.uuid],
-    }),
-    repos: many(challenge_repos),
-    team_members: many(challenge_teams),
-    contributions: many(contributions),
+  project: one(projects, {
+    fields: [challenges.project_id],
+    references: [projects.uuid],
+  }),
+  repos: many(challenge_repos),
+  team_members: many(challenge_teams),
+  contributions: many(contributions),
+  tasks: many(tasks),
 }));
 
 export const challengeReposRelations = relations(challenge_repos, ({ one }) => ({
-    challenge: one(challenges, {
-        fields: [challenge_repos.challenge_id],
-        references: [challenges.uuid],
-    }),
-    repo: one(repos, {
-        fields: [challenge_repos.repo_id],
-        references: [repos.uuid],
-    }),
+  challenge: one(challenges, {
+    fields: [challenge_repos.challenge_id],
+    references: [challenges.uuid],
+  }),
+  repo: one(repos, {
+    fields: [challenge_repos.repo_id],
+    references: [repos.uuid],
+  }),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
-    contributions: many(contributions),
-    challenge_teams: many(challenge_teams),
+  contributions: many(contributions),
+  challenge_teams: many(challenge_teams),
 }));
 
 export const contributionsRelations = relations(contributions, ({ one }) => ({
-    user: one(users, {
-        fields: [contributions.user_id],
-        references: [users.uuid],
-    }),
-    challenge: one(challenges, {
-        fields: [contributions.challenge_id],
-        references: [challenges.uuid],
-    }),
+  user: one(users, {
+    fields: [contributions.user_id],
+    references: [users.uuid],
+  }),
+  challenge: one(challenges, {
+    fields: [contributions.challenge_id],
+    references: [challenges.uuid],
+  }),
 }));
 
 export const challengeTeamsRelations = relations(challenge_teams, ({ one }) => ({
-    challenge: one(challenges, {
-        fields: [challenge_teams.challenge_id],
-        references: [challenges.uuid],
-    }),
-    user: one(users, {
-        fields: [challenge_teams.user_id],
-        references: [users.uuid],
-    }),
+  challenge: one(challenges, {
+    fields: [challenge_teams.challenge_id],
+    references: [challenges.uuid],
+  }),
+  user: one(users, {
+    fields: [challenge_teams.user_id],
+    references: [users.uuid],
+  }),
+}));
+
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
+  challenge: one(challenges, {
+    fields: [tasks.challenge_id],
+    references: [challenges.uuid],
+  }),
+  parent_task: one(tasks, {
+    fields: [tasks.parent_task_id],
+    references: [tasks.uuid],
+    relationName: "task_hierarchy",
+  }),
+  sub_tasks: many(tasks, { relationName: "task_hierarchy" }),
+  assignees: many(task_assignees),
+}));
+
+export const taskAssigneesRelations = relations(task_assignees, ({ one }) => ({
+  task: one(tasks, {
+    fields: [task_assignees.task_id],
+    references: [tasks.uuid],
+  }),
+  user: one(users, {
+    fields: [task_assignees.user_id],
+    references: [users.uuid],
+  }),
 }));
 
 export const refreshTokensRelations = relations(refresh_tokens, ({ one }) => ({
-    user: one(users, {
-        fields: [refresh_tokens.user_id],
-        references: [users.uuid],
-    }),
+  user: one(users, {
+    fields: [refresh_tokens.user_id],
+    references: [users.uuid],
+  }),
 }));
 
 // --- DATABASE CLIENT ---
@@ -165,6 +210,8 @@ export const db = drizzle(pool, {
     challenge_teams,
     users,
     contributions,
+    tasks,
+    task_assignees,
     refresh_tokens,
     projectsRelations,
     reposRelations,
@@ -173,6 +220,8 @@ export const db = drizzle(pool, {
     challengeTeamsRelations,
     usersRelations,
     contributionsRelations,
+    tasksRelations,
+    taskAssigneesRelations,
     refreshTokensRelations,
   },
 });

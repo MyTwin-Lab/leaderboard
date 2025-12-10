@@ -13,6 +13,8 @@ import {
   users,
   contributions,
   refresh_tokens,
+  tasks,
+  task_assignees,
 } from "./drizzle.js";
 import type {
   Project,
@@ -23,6 +25,8 @@ import type {
   User,
   Contribution,
   RefreshToken,
+  Task,
+  TaskAssignee,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -34,6 +38,8 @@ type DbChallengeTeam = InferSelectModel<typeof challenge_teams>;
 type DbUser = InferSelectModel<typeof users>;
 type DbContribution = InferSelectModel<typeof contributions>;
 type DbRefreshToken = InferSelectModel<typeof refresh_tokens>;
+type DbTask = InferSelectModel<typeof tasks>;
+type DbTaskAssignee = InferSelectModel<typeof task_assignees>;
 
 /* ============================================================
  *  MAPPERS DB → DOMAIN
@@ -183,5 +189,44 @@ export function toDbRefreshToken(entity: Omit<RefreshToken, "id" | "created_at">
     user_id: entity.user_id,
     token_hash: entity.token_hash,
     expires_at: entity.expires_at,
+  };
+}
+
+export function toDomainTask(row: DbTask): Task {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challenge_id ?? "",
+    parent_task_id: row.parent_task_id ?? undefined,
+    title: row.title,
+    description: row.description ?? undefined,
+    type: row.type as "solo" | "concurrent",
+    status: (row.status as "todo" | "done") ?? "todo",
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbTask(entity: Omit<Task, "uuid" | "created_at">): typeof tasks.$inferInsert {
+  return {
+    challenge_id: entity.challenge_id || null,
+    parent_task_id: entity.parent_task_id || null,
+    title: entity.title,
+    description: entity.description || null,
+    type: entity.type,
+    status: entity.status,
+  };
+}
+
+export function toDomainTaskAssignee(row: DbTaskAssignee): TaskAssignee {
+  return {
+    task_id: row.task_id ?? "",
+    user_id: row.user_id ?? "",
+    assigned_at: new Date(row.assigned_at ?? Date.now()),
+  };
+}
+
+export function toDbTaskAssignee(entity: Omit<TaskAssignee, "assigned_at">): typeof task_assignees.$inferInsert {
+  return {
+    task_id: entity.task_id,
+    user_id: entity.user_id,
   };
 }

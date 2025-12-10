@@ -66,3 +66,20 @@ export interface RefreshToken {
   expires_at: Date;
   created_at: Date;
 }
+
+export interface Task {
+  uuid: string;
+  challenge_id: string;
+  parent_task_id?: string;
+  title: string;
+  description?: string;
+  type: "solo" | "concurrent";
+  status: "todo" | "done";
+  created_at: Date;
+}
+
+export interface TaskAssignee {
+  task_id: string;
+  user_id: string;
+  assigned_at: Date;
+}
