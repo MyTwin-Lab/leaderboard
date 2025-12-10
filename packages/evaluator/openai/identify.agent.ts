@@ -18,6 +18,8 @@ export async function runIdentifyAgent(context: IdentifyContext): Promise<Contri
         - Les contributions d'une même sous étape de la roadmap doivent être comptées comme une seule contribution.
         Attention : Il faut différencier Etape et Sous étape de la roadmap.
 
+        DANS CERTAINS CAS, ROADMAP PEUT ETRE REMPLACER PAR DES TASKS
+
         TU as obligation de relier une contribution à une seule sous étape de la roadmap, dont tu dois recopier le nom exact dans la description, en plus de la description de la contribution.
 
         Renvoie un tableau JSON de contributions bien divisées (tout type de contribution) au format :
