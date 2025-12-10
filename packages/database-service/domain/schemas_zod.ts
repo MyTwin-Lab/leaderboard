@@ -56,5 +56,14 @@ export const userSchema = z.object({
   role: z.string(),
   full_name: z.string(),
   github_username: z.string(),
+  password_hash: z.string().optional(),
+  created_at: z.coerce.date(),
+});
+
+export const refreshTokenSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  token_hash: z.string(),
+  expires_at: z.coerce.date(),
   created_at: z.coerce.date(),
 });

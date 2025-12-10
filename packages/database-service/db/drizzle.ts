@@ -1,4 +1,5 @@
 import { config } from "../../config/index.js";
+import "dotenv/config";
 import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -53,6 +54,7 @@ export const users = pgTable("users", {
   role: varchar("role", { length: 100 }).notNull(),
   full_name: varchar("full_name", { length: 255 }).notNull(),
   github_username: varchar("github_username", { length: 255 }).notNull(),
+  password_hash: text("password_hash"),
   created_at: timestamp("created_at").defaultNow(),
 });
 
@@ -69,6 +71,14 @@ export const contributions = pgTable("contributions", {
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
 });
 
+// --- REFRESH_TOKENS ---
+export const refresh_tokens = pgTable("refresh_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").notNull().references(() => users.uuid, { onDelete: "cascade" }),
+  token_hash: text("token_hash").notNull().unique(),
+  expires_at: timestamp("expires_at").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+});
 
 // --- RELATIONS ---
 
@@ -133,12 +143,17 @@ export const challengeTeamsRelations = relations(challenge_teams, ({ one }) => (
     }),
 }));
 
-
+export const refreshTokensRelations = relations(refresh_tokens, ({ one }) => ({
+    user: one(users, {
+        fields: [refresh_tokens.user_id],
+        references: [users.uuid],
+    }),
+}));
 
 // --- DATABASE CLIENT ---
 
 const pool = new Pool({
-  connectionString: config.database.url,
+  connectionString: process.env.DATABASE_URL!,
 });
 
 export const db = drizzle(pool, {
@@ -150,6 +165,7 @@ export const db = drizzle(pool, {
     challenge_teams,
     users,
     contributions,
+    refresh_tokens,
     projectsRelations,
     reposRelations,
     challengesRelations,
@@ -157,5 +173,6 @@ export const db = drizzle(pool, {
     challengeTeamsRelations,
     usersRelations,
     contributionsRelations,
+    refreshTokensRelations,
   },
 });

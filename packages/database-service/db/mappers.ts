@@ -12,6 +12,7 @@ import {
   challenge_teams,
   users,
   contributions,
+  refresh_tokens,
 } from "./drizzle.js";
 import type {
   Project,
@@ -21,6 +22,7 @@ import type {
   ChallengeTeam,
   User,
   Contribution,
+  RefreshToken,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -31,6 +33,7 @@ type DbChallengeRepo = InferSelectModel<typeof challenge_repos>;
 type DbChallengeTeam = InferSelectModel<typeof challenge_teams>;
 type DbUser = InferSelectModel<typeof users>;
 type DbContribution = InferSelectModel<typeof contributions>;
+type DbRefreshToken = InferSelectModel<typeof refresh_tokens>;
 
 /* ============================================================
  *  MAPPERS DB → DOMAIN
@@ -90,6 +93,7 @@ export function toDomainUser(row: DbUser): User {
     role: row.role,
     full_name: row.full_name,
     github_username: row.github_username,
+    password_hash: row.password_hash ?? undefined,
     created_at: new Date(row.created_at ?? Date.now()),
   };
 }
@@ -147,6 +151,7 @@ export function toDbUser(entity: Omit<User, "uuid" | "created_at">): typeof user
     role: entity.role,
     full_name: entity.full_name,
     github_username: entity.github_username,
+    password_hash: entity.password_hash ?? null,
   };
 }
 
@@ -160,5 +165,23 @@ export function toDbContribution(entity: Omit<Contribution, "uuid">): typeof con
     reward: entity.reward,
     user_id: entity.user_id || null,
     challenge_id: entity.challenge_id || null,
+  };
+}
+
+export function toDomainRefreshToken(row: DbRefreshToken): RefreshToken {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    token_hash: row.token_hash,
+    expires_at: new Date(row.expires_at),
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbRefreshToken(entity: Omit<RefreshToken, "id" | "created_at">): typeof refresh_tokens.$inferInsert {
+  return {
+    user_id: entity.user_id,
+    token_hash: entity.token_hash,
+    expires_at: entity.expires_at,
   };
 }

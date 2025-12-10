@@ -1,8 +1,8 @@
 import { db } from "../db/drizzle";
-import { challenge_repos } from "../db/drizzle";
+import { challenge_repos, challenges } from "../db/drizzle";
 import { eq, and } from "drizzle-orm";
-import { toDomainChallengeRepo } from "../db/mappers";
-import type { ChallengeRepo } from "../domain/entities";
+import { toDomainChallengeRepo, toDomainChallenge } from "../db/mappers";
+import type { ChallengeRepo, Challenge } from "../domain/entities";
 import { challengeRepoSchema } from "../domain/schemas_zod";
 
 export class ChallengeRepoRepository {
@@ -14,6 +14,21 @@ export class ChallengeRepoRepository {
   async findByChallenge(challengeId: string): Promise<ChallengeRepo[]> {
     const rows = await db.select().from(challenge_repos).where(eq(challenge_repos.challenge_id, challengeId));
     return rows.map(toDomainChallengeRepo);
+  }
+
+  /**
+   * Récupère tous les challenges liés à un repo
+   */
+  async findChallengesByRepo(repoId: string): Promise<Challenge[]> {
+    const results = await db
+      .select({
+        challenge: challenges,
+      })
+      .from(challenge_repos)
+      .leftJoin(challenges, eq(challenge_repos.challenge_id, challenges.uuid))
+      .where(eq(challenge_repos.repo_id, repoId));
+    
+    return results.filter(r => r.challenge !== null).map(r => toDomainChallenge(r.challenge!));
   }
 
   async findByRepo(repoId: string): Promise<ChallengeRepo[]> {
