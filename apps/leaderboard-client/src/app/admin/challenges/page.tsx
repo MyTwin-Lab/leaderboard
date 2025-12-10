@@ -166,6 +166,7 @@ export default function ChallengesPage() {
         ) : (
           <Card
             title="Challenges"
+            className='rounded-md'
             action={
               <Button onClick={() => setShowForm(true)}>
                 + New Challenge

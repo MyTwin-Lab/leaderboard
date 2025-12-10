@@ -53,10 +53,10 @@ export default function LoginPage() {
     <div className="mt-20 flex flex-col items-center justify-center px-4">
 
       {/* Card de login */}
-      <div className="w-full max-w-md space-y-6 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 p-8">
+      <div className="w-full max-w-md space-y-6 rounded-md bg-white/5 backdrop-blur-sm border border-white/10 p-4">
         <div className="text-center">
           <h2 className="text-2xl font-semibold text-white">
-            Admin Login
+            Login to Leaderboard
           </h2>
           <p className="mt-2 text-sm text-white/60">
             Sign in with your GitHub username
@@ -107,7 +107,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2.5 px-4 rounded-lg bg-primary-300 hover:bg-primary-200 text-white font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full mt-3 py-2.5 px-4 rounded-lg bg-brandCP/30 hover:bg-brandCP/40 text-brandCP font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Signing in...' : 'Sign in'}
           </button>

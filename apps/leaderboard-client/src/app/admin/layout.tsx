@@ -27,7 +27,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       {/* Header avec navigation */}
-      <header className="border-b border-white/10 bg-white/5 backdrop-blur-sm">
+      <header className="shadow-md rounded-md bg-white/5 backdrop-blur-sm">
         <div className="mx-auto max-w-7xl px-6">
           <div className="flex h-16 items-center justify-between">
             {/* Logo + Title */}
@@ -43,7 +43,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                       isActive
                         ? 'bg-primary-300/20 text-primary-100'
                         : 'text-white/70 hover:text-white hover:bg-white/5'
@@ -54,14 +54,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 );
               })}
             </nav>
-
-            {/* Logout */}
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium transition-colors"
-            >
-              Logout
-            </button>
           </div>
         </div>
       </header>

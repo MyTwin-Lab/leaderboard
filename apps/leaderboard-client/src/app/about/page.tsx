@@ -5,7 +5,7 @@ export const metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="space-y-8 py-6 text-white max-w-4xl mx-auto">
+    <div className="space-y-8 py-6 text-white max-w-2xl mx-auto">
       {/* Header */}
       <header className="space-y-4">
         <h1 className="text-4xl font-bold">MyTwin Lab</h1>

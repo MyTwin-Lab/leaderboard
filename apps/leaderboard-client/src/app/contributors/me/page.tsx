@@ -19,14 +19,14 @@ export default async function ContributorSelfPage() {
   }
 
   return (
-    <div className="mt-6">
+    <div className="mt-6 max-w-2xl mx-auto">
       <ContributorHeader
         displayName={profile.displayName}
         githubUsername={profile.githubUsername}
         totalCP={profile.totalCP}
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mt-6">
         {/* Left column: Profile & Challenges */}
         <div className="space-y-6">
           <ChallengeList challenges={profile.challenges} />

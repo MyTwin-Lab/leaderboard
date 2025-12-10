@@ -25,22 +25,6 @@ export default function UsersPage() {
     }
   };
 
-  const handleChangeRole = async (userId: string, newRole: string) => {
-    try {
-      const res = await fetch(`/api/users/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
-      });
-      
-      if (res.ok) {
-        await fetchUsers();
-      }
-    } catch (error) {
-      console.error('Error updating user role:', error);
-    }
-  };
-
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     
@@ -66,7 +50,6 @@ export default function UsersPage() {
       <Card title="Users">
         <UserList
           users={users}
-          onChangeRole={handleChangeRole}
           onDelete={handleDelete}
         />
       </Card>
