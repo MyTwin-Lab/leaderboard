@@ -49,6 +49,7 @@ export async function fetchProjectsWithChallenges(userId?: string | null): Promi
           title: challenge.title,
           rewardPool: challenge.contribution_points_reward ?? 0,
           contributionsCount: contributionsCountByChallenge.get(challenge.uuid) ?? 0,
+          completion: challenge.completion ?? 0,
           teamMembers: teamMembersByChallenge.get(challenge.uuid) ?? [],
           startDate: challenge.start_date.toISOString(),
           endDate: challenge.end_date.toISOString(),

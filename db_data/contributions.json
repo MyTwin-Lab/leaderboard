@@ -1,0 +1,340 @@
+[
+  {
+    "uuid": 1,
+    "title": "Data collection",
+    "description": "",
+    "user_id": 1,
+    "challenge_id": 1,
+    "reward": 2000,
+    "submitted_at": "2025-06-20T10:30:00Z"
+  },
+  {
+    "uuid": 2,
+    "title": "Data collection",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 1,
+    "reward": 2000,
+    "submitted_at": "2025-06-21T14:15:00Z"
+  },
+  {
+    "uuid": 3,
+    "title": "Data processing",
+    "description": "",
+    "user_id": 5,
+    "challenge_id": 1,
+    "reward": 2500,
+    "submitted_at": "2025-06-28T09:45:00Z"
+  },
+  {
+    "uuid": 4,
+    "title": "Model training",
+    "description": "",
+    "user_id": 5,
+    "challenge_id": 1,
+    "reward": 2000,
+    "submitted_at": "2025-07-05T16:20:00Z"
+  },
+  {
+    "uuid": 5,
+    "title": "API integration",
+    "description": "",
+    "user_id": 5,
+    "challenge_id": 1,
+    "reward": 1500,
+    "submitted_at": "2025-07-12T11:00:00Z"
+  },
+  {
+    "uuid": 6,
+    "title": "API integration",
+    "description": "",
+    "user_id": 1,
+    "challenge_id": 1,
+    "reward": 500,
+    "submitted_at": "2025-07-18T13:30:00Z"
+  },
+  {
+    "uuid": 7,
+    "title": "UI Design & MyTwin Integration",
+    "description": "",
+    "user_id": 1,
+    "challenge_id": 1,
+    "reward": 1500,
+    "submitted_at": "2025-07-25T15:45:00Z"
+  },
+
+  {
+    "uuid": 8,
+    "title": "Data collection",
+    "description": "",
+    "user_id": 1,
+    "challenge_id": 2,
+    "reward": 200,
+    "submitted_at": "2025-09-14T09:00:00Z"
+  },
+  {
+    "uuid": 9,
+    "title": "Data collection",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 2,
+    "reward": 200,
+    "submitted_at": "2025-09-15T10:30:00Z"
+  },
+  {
+    "uuid": 10,
+    "title": "Data collection",
+    "description": "",
+    "user_id": 10,
+    "challenge_id": 2,
+    "reward": 200,
+    "submitted_at": "2025-09-16T14:20:00Z"
+  },
+  {
+    "uuid": 10,
+    "title": "Data collection",
+    "description": "",
+    "user_id": 14,
+    "challenge_id": 2,
+    "reward": 200,
+    "submitted_at": "2025-09-17T11:15:00Z"
+  },
+  {
+    "uuid": 11,
+    "title": "Data exploration",
+    "description": "",
+    "user_id": 10,
+    "challenge_id": 2,
+    "reward": 800,
+    "submitted_at": "2025-09-25T16:00:00Z"
+  },
+  {
+    "uuid": 12,
+    "title": "Data exploration",
+    "description": "",
+    "user_id": 12,
+    "challenge_id": 2,
+    "reward": 600,
+    "submitted_at": "2025-09-28T10:45:00Z"
+  },
+
+  {
+    "uuid": 13,
+    "title": "Domain & Data Models",
+    "description": "",
+    "user_id": 1,
+    "challenge_id": 3,
+    "reward": 1300,
+    "submitted_at": "2025-10-11T09:30:00Z"
+  },
+  {
+    "uuid": 14,
+    "title": "Domain & Data Models",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 3,
+    "reward": 1300,
+    "submitted_at": "2025-10-12T10:15:00Z"
+  },
+  {
+    "uuid": 15,
+    "title": "Interfaces",
+    "description": "",
+    "user_id": 1,
+    "challenge_id": 3,
+    "reward": 700,
+    "submitted_at": "2025-10-14T14:00:00Z"
+  },
+  {
+    "uuid": 16,
+    "title": "Intefaces",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 3,
+    "reward": 700,
+    "submitted_at": "2025-10-15T11:30:00Z"
+  },
+  {
+    "uuid": 17,
+    "title": "Database service",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 3,
+    "reward": 1200,
+    "submitted_at": "2025-10-17T15:20:00Z"
+  },
+  {
+    "uuid": 18,
+    "title": "Connectors implementation",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 3,
+    "reward": 900,
+    "submitted_at": "2025-10-19T09:45:00Z"
+  },
+  {
+    "uuid": 19,
+    "title": "Evaluator agent",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 3,
+    "reward": 1000,
+    "submitted_at": "2025-10-20T16:30:00Z"
+  },
+  {
+    "uuid": 20,
+    "title": "UI Design",
+    "description": "",
+    "user_id": 1,
+    "challenge_id": 3,
+    "reward": 400,
+    "submitted_at": "2025-10-21T10:00:00Z"
+  },
+  {
+    "uuid": 21,
+    "title": "UI Development",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 3,
+    "reward": 500,
+    "submitted_at": "2025-10-22T13:45:00Z"
+  },
+
+  {
+    "uuid": 22,
+    "title": "Contribution process design",
+    "description": "",
+    "user_id": 1,
+    "challenge_id": 4,
+    "reward": 1000,
+    "submitted_at": "2025-10-28T10:30:00Z"
+  },
+  {
+    "uuid": 23,
+    "title": "Merge management",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 4,
+    "reward": 1000,
+    "submitted_at": "2025-11-02T14:15:00Z"
+  },
+  {
+    "uuid": 24,
+    "title": "Implement support for 'follow-up evaluations'",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 4,
+    "reward": 1000,
+    "submitted_at": "2025-11-08T11:00:00Z"
+  },
+  {
+    "uuid": 25,
+    "title": "Implement PR based trigger",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 4,
+    "reward": 1000,
+    "submitted_at": "2025-11-13T16:45:00Z"
+  },
+
+  {
+    "uuid": 26,
+    "title": "Unified application foundation",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 7,
+    "reward": 1000,
+    "submitted_at": "2025-12-03T09:30:00Z"
+  },
+  {
+    "uuid": 27,
+    "title": "Refacto API as Next.js Server",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 7,
+    "reward": 1000,
+    "submitted_at": "2025-12-05T14:20:00Z"
+  },
+  {
+    "uuid": 28,
+    "title": "Improve authentication system",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 7,
+    "reward": 1000,
+    "submitted_at": "2025-12-07T10:15:00Z"
+  },
+  {
+    "uuid": 29,
+    "title": "Data Validation & API Hardening",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 7,
+    "reward": 1000,
+    "submitted_at": "2025-12-09T15:30:00Z"
+  },
+
+  {
+    "uuid": 30,
+    "title": "Database Setup & Evaluator Integration Update",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 8,
+    "reward": 1200,
+    "submitted_at": "2025-12-02T11:00:00Z"
+  },
+  {
+    "uuid": 31,
+    "title": "Public Pages Design Mapping & UI Specifications",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 8,
+    "reward": 800,
+    "submitted_at": "2025-12-03T16:30:00Z"
+  },
+  {
+    "uuid": 32,
+    "title": "Implementation of Public Pages, Navigation & Role Guards",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 8,
+    "reward": 1800,
+    "submitted_at": "2025-12-05T09:45:00Z"
+  },
+  {
+    "uuid": 33,
+    "title": "Challenge Engagement Flow & Task Modal Integration",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 8,
+    "reward": 1200,
+    "submitted_at": "2025-12-06T14:00:00Z"
+  },
+  {
+    "uuid": 34,
+    "title": "Contributor Role Support & Global Badge Updates",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 8,
+    "reward": 600,
+    "submitted_at": "2025-12-07T10:30:00Z"
+  },
+  {
+    "uuid": 35,
+    "title": "Contributor Profile: Tasks, Activity & Evaluation Flow",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 8,
+    "reward": 1000,
+    "submitted_at": "2025-12-08T15:15:00Z"
+  },
+  {
+    "uuid": 36,
+    "title": "Admin Challenge Management: Task Creation & Editing System",
+    "description": "",
+    "user_id": 2,
+    "challenge_id": 8,
+    "reward": 1400,
+    "submitted_at": "2025-12-09T11:45:00Z"
+  }
+]

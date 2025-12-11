@@ -20,7 +20,7 @@ interface ChallengeCardProps {
   projectName: string;
   description: string | null;
   rewardPool: number;
-  progression: number; // 0-100
+  completion: number; // 0-100
   isMember?: boolean;
   teamMembers: TeamMember[];
   startDate: string;
@@ -40,7 +40,7 @@ export function ChallengeCard({
   projectName,
   description,
   rewardPool,
-  progression,
+  completion,
   isMember = false,
   teamMembers,
   startDate,
@@ -181,8 +181,19 @@ export function ChallengeCard({
 
       <div className="w-full">
         <div style={{"flexDirection": "column", justifyItems: "center"}} className="mt-2 flex items-center gap-3">
-          <span className="text-sm text-brandCP">{progression}%</span>
-          <ChallengeProgressBar value={progression / 100} />
+          {completion === 100 ? (
+            <>
+              <span className="text-sm font-medium text-brandCP flex items-center gap-1">
+                Completed <span className="text-brandCP">★</span>
+              </span>
+              <ChallengeProgressBar value={1} />
+            </>
+          ) : (
+            <>
+              <span className="text-sm text-brandCP">{completion}%</span>
+              <ChallengeProgressBar value={completion / 100} />
+            </>
+          )}
         </div>
       </div>
 

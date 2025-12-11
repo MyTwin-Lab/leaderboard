@@ -1,0 +1,102 @@
+[
+  {
+    "uuid": 1,
+    "role": "contributor",
+    "full_name": "Antoine",
+    "github_username": "kaodje"
+  },
+  {
+    "uuid": 2,
+    "role": "contributor",
+    "full_name": "Alix Chagot",
+    "github_username": "akralan"
+  },
+  {
+    "uuid": 3,
+    "role": "contributor",
+    "full_name": "Victor Xu",
+    "github_username": null
+  },
+  {
+    "uuid": 4,
+    "role": "contributor",
+    "full_name": "Samir Touinssi",
+    "github_username": null
+  },
+  {
+    "uuid": 5,
+    "role": "contributor",
+    "full_name": "Mahdi Lamriben",
+    "github_username": null
+  },
+
+
+  {
+    "uuid": 6,
+    "role": "contributor",
+    "full_name": "Camille Daverio",
+    "github_username": "Inarinokaze"
+  },
+  {
+    "uuid": 7,
+    "role": "contributor",
+    "full_name": "Fatoumata Corop Mballo",
+    "github_username": "FatoumataM-27"
+  },
+  {
+    "uuid": 8,
+    "role": "contributor",
+    "full_name": "Christyl Hodonou",
+    "github_username": "Chrishdn"
+  },
+  {
+    "uuid": 9,
+    "role": "contributor",
+    "full_name": "Mickael Andrieu",
+    "github_username": "Mickael-Ndr"
+  },
+
+  
+  {
+    "uuid": 10,
+    "role": "contributor",
+    "full_name": "Patricia Novi",
+    "github_username": "n-patricia"
+  },
+  {
+    "uuid": 11,
+    "role": "contributor",
+    "full_name": "Shriya",
+    "github_username": null
+  },
+  {
+    "uuid": 12,
+    "role": "contributor",
+    "full_name": "Asmaa Khaled",
+    "github_username": null
+  },
+  {
+    "uuid": 13,
+    "role": "contributor",
+    "full_name": "Shane",
+    "github_username": null
+  },
+  {
+    "uuid": 14,
+    "role": "contributor",
+    "full_name": "Duncan",
+    "github_username": null
+  },
+  {
+    "uuid": 15,
+    "role": "contributor",
+    "full_name": "Govind",
+    "github_username": null
+  },
+  {
+    "uuid": 16,
+    "role": "contributor",
+    "full_name": "Kunal",
+    "github_username": null
+  }
+]

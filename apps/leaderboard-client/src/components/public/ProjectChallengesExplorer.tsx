@@ -17,7 +17,7 @@ type FlatChallenge = {
   projectId: string;
   description: string | null;
   rewardPool: number;
-  progression: number;
+  completion: number;
   teamMembers: TeamMember[];
   startDate: string;
   endDate: string;
@@ -39,7 +39,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds }: Proj
         projectId: project.id,
         description: project.description, // Using project description for now
         rewardPool: challenge.rewardPool,
-        progression: 20, // TODO: Replace with actual progression data
+        completion: Math.round(challenge.completion * 100),
         teamMembers: challenge.teamMembers,
         startDate: challenge.startDate,
         endDate: challenge.endDate,
@@ -85,7 +85,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds }: Proj
               projectName={challenge.projectName}
               description={challenge.description}
               rewardPool={challenge.rewardPool}
-              progression={challenge.progression}
+              completion={challenge.completion}
               isMember={joinedSet.has(challenge.id)}
               teamMembers={challenge.teamMembers}
               startDate={challenge.startDate}

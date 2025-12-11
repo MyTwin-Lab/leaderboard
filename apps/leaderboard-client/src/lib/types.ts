@@ -58,6 +58,7 @@ export type ProjectChallengeSummary = {
   title: string;
   rewardPool: number;
   contributionsCount: number;
+  completion: number;
   teamMembers: TeamMember[];
   startDate: string;
   endDate: string;
