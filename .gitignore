@@ -1,2 +1,38 @@
-.env
-node_modules
+# Dépendances (** = récursif dans tous les sous-dossiers)
+**/node_modules/
+
+# Variables d'environnement
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Next.js
+**/.next/
+**/out/
+
+# Build
+**/dist/
+**/build/
+*.tsbuildinfo
+
+# Tests & Coverage
+**/coverage/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Package locks des sous-packages (garder celui de la racine)
+apps/**/package-lock.json
+packages/**/package-lock.json
+
+# Divers
+.vercel/
+.turbo/
