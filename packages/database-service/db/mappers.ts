@@ -75,6 +75,7 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     description: row.description ?? "",
     roadmap: row.roadmap ?? "",
     contribution_points_reward: row.contribution_points_reward ?? 0,
+    completion: row.completion ?? 0,
     project_id: row.project_id ?? "",
   };
 }

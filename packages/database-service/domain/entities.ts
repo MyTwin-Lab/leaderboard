@@ -35,6 +35,7 @@ export interface Challenge {
   description?: string;
   roadmap?: string;
   contribution_points_reward: number;
+  completion: number;
   project_id: string; // FK -> projects.uuid
 }
 
