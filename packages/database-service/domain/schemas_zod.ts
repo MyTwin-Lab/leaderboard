@@ -36,6 +36,7 @@ export const challengeSchema = z.object({
   description: z.string().optional(),
   roadmap: z.string().optional(),
   contribution_points_reward: z.number().int().nonnegative(),
+  completion: z.number().int().nonnegative().default(0),
   project_id: z.string().uuid(),
 });
 

@@ -42,7 +42,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = createTaskSchema.parse(body);
 
-    const task = await taskRepo.create(validated);
+    const task = await taskRepo.create({
+      ...validated,
+      status: 'todo',
+    });
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

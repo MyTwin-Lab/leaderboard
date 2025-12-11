@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       ...validated,
       start_date: new Date(validated.start_date),
       end_date: new Date(validated.end_date),
+      completion: 0,
     });
     
     return NextResponse.json(challenge, { status: 201 });

@@ -149,6 +149,7 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenge
     description: entity.description || null,
     roadmap: entity.roadmap || null,
     contribution_points_reward: entity.contribution_points_reward,
+    completion: entity.completion ?? 0,
     project_id: entity.project_id || null,
   };
 }
