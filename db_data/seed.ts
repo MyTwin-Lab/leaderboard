@@ -2,6 +2,8 @@ import { db, projects, users, challenges, contributions, challenge_teams } from 
 import { readFileSync } from "fs";
 import { randomUUID } from "crypto";
 
+/** npx tsx db_data/seed.ts **/
+
 // Mapping des anciens IDs vers les nouveaux UUIDs
 const projectIdMap = new Map<number, string>();
 const userIdMap = new Map<number, string>();
@@ -52,7 +54,7 @@ async function seed() {
       end_date: c.end_date,
       description: c.description,
       roadmap: c.roadmap,
-      contribution_points_reward: c.reward,
+      contribution_points_reward: c.contribution_points_reward,
       completion: c.completion ?? 0,
       project_id: projectIdMap.get(c.project_id),
     });
@@ -64,7 +66,7 @@ async function seed() {
     await db.insert(contributions).values({
       uuid: randomUUID(),
       title: c.title,
-      type: "task", // Valeur par défaut car non présent dans JSON
+      type: "code", // Valeur par défaut car non présent dans JSON
       description: c.description,
       reward: c.reward,
       user_id: userIdMap.get(c.user_id),
