@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useState, useRef, useEffect } from "react";
 
-import { ProgressBar } from "@/components/ui/ProgressBar";
+import { ChallengeProgressBar } from "@/components/ui/ChallengeProgressBar";
 import { formatCP, formatPercentage } from "@/lib/formatters";
 import type { ContributorProfile } from "@/lib/types";
 
@@ -49,61 +49,87 @@ function ChallengeCard({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onToggle();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      // Add buffer to ensure last item is fully visible
+      setContentHeight(contentRef.current.scrollHeight + 8);
     }
-  };
+  }, [isExpanded, challenge.contributions]);
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-expanded={isExpanded}
-      onClick={onToggle}
-      onKeyDown={handleKeyDown}
-      className="flex flex-col gap-3 rounded-md bg-white/5 p-4 text-white shadow-sm shadow-black/20 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-200"
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold">{challenge.title}</h3>
-          <p className="text-sm text-white/60">{challenge.projectName}</p>
-        </div>
-        <div className="flex flex-1 items-center gap-4 sm:flex-[0_0_auto]">
-          <div className="flex-1 min-w-[240px]">
-            <span className="block text-xs tracking-wide text-white/50">Contribution part</span>
-            <div className="relative mt-1">
-              <ProgressBar value={challenge.contributionShare} />
-              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-semibold text-white/80">
-                {formatPercentage(challenge.contributionShare)}
-              </span>
-            </div>
-          </div>
-          <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white">
+    <div className="rounded-md bg-white/5 shadow-md shadow-black/20 transition-colors duration-200">
+      {/* Clickable overview area */}
+      <button
+        onClick={onToggle}
+        aria-expanded={isExpanded}
+        className="w-full p-5 text-left cursor-pointer hover:bg-white/5 rounded-md transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCP/50"
+      >
+        {/* Header: Challenge title + CP */}
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-white">{challenge.title}</h3>
+          <span className="text-sm font-semibold text-white">
             {formatCP(challenge.reward)} <span className="text-brandCP">CP</span>
           </span>
         </div>
-      </div>
 
-      {isExpanded ? (
-        <div className="mt-2 space-y-4 rounded-lg bg-white/5 p-4 text-sm">
+        {/* Project name with chevron */}
+        <div className="flex w-full items-center justify-between mt-1">
+          <p className="text-sm font-medium text-white/70">Project: {challenge.projectName}</p>
+          <svg
+            className={`h-5 w-5 text-white/60 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.23 7.21a.75.75 0 011.06.02L10 10.17l3.71-2.94a.75.75 0 111.04 1.08l-4.23 3.36a.75.75 0 01-.94 0L5.21 8.29a.75.75 0 01.02-1.08z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </div>
+
+        {/* Progress bar section */}
+        <div className="w-full flex items-center justify-center">
+          <div className="w-[80%] mt-4 flex flex-col items-center gap-1">
+            <span className="text-sm text-brandCP">{formatPercentage(challenge.contributionShare)}</span>
+            <ChallengeProgressBar value={challenge.contributionShare} />
+            <span className="text-xs text-white/50 mt-1">Contribution share</span>
+          </div>
+        </div>
+      </button>
+
+      {/* Animated expanded content */}
+      <div
+        className="overflow-hidden transition-all duration-300 ease-in-out"
+        style={{
+          maxHeight: isExpanded ? `${contentHeight}px` : "0px",
+          opacity: isExpanded ? 1 : 0,
+        }}
+      >
+        <div ref={contentRef} className="mx-5 mb-5 pb-3 border-t border-white/10 pt-4">
+          <p className="mb-3 text-xs text-white/50">Contributions ({challenge.contributions.length})</p>
           {challenge.contributions.length > 0 ? (
-            challenge.contributions.map((contribution) => (
-              <div key={contribution.id} className="space-y-1">
-                <p className="font-medium text-white">{contribution.title}</p>
-                {contribution.description ? (
-                  <p className="text-white/70">{contribution.description}</p>
-                ) : (
-                  <p className="text-white/40 italic">Aucune description fournie.</p>
-                )}
-              </div>
-            ))
+            <div className="space-y-2">
+              {challenge.contributions.map((contribution) => (
+                <div
+                  key={contribution.id}
+                  className="flex items-center gap-3 py-2 px-3 rounded-md bg-white/5 hover:bg-white/10 transition-colors duration-150"
+                >
+                  <div className="w-2 h-2 rounded-full bg-brandCP flex-shrink-0" />
+                  <span className="text-sm text-white">{contribution.title}</span>
+                </div>
+              ))}
+            </div>
           ) : (
-            <p className="text-white/60">Aucune contribution détaillée.</p>
+            <p className="text-sm text-white/40">No detailed contributions.</p>
           )}
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

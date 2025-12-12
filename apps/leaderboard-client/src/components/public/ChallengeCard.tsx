@@ -162,7 +162,7 @@ export function ChallengeCard({
         className="flex w-full items-center justify-between text-left"
       >
         <p className="text-sm font-medium text-white/70">Challenge {challengeIndex} • Project: {projectName}</p>
-        <svg
+        {/* <svg
           className={`h-5 w-5 text-white/60 transition-transform ${isExpanded ? "rotate-180" : ""}`}
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
@@ -174,7 +174,7 @@ export function ChallengeCard({
             d="M5.23 7.21a.75.75 0 011.06.02L10 10.17l3.71-2.94a.75.75 0 111.04 1.08l-4.23 3.36a.75.75 0 01-.94 0L5.21 8.29a.75.75 0 01.02-1.08z"
             clipRule="evenodd"
           />
-        </svg>
+        </svg> */}
       </button>
 
       {description && (
