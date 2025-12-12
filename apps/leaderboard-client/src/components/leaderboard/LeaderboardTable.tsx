@@ -32,11 +32,13 @@ export function LeaderboardTable({ initialEntries }: LeaderboardTableProps) {
               href={`/contributors/${entry.userId}`}
               className="flex items-center gap-6 px-6 py-4 transition hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
             >
-              <span className="w-6 text-sm font-semibold text-brandCP">{entry.rank}</span>
+              <span className={`w-8 text-xl font-bold ${entry.rank <= 3 ? "text-brandCP" : "text-white"}`}>
+                {entry.rank}
+              </span>
               <InitialsAvatar name={entry.displayName} />
               <div className="flex flex-1 flex-col">
                 <span className="text-base font-medium text-white">{entry.displayName}</span>
-                <span className="text-sm text-white/50">@{entry.githubUsername}</span>
+                {entry.bio && <span className="text-sm text-white/50">{entry.bio}</span>}
               </div>
               <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white">
                 {formatCP(entry.totalCP)} <span className="text-brandCP">CP</span>

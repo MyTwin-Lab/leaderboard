@@ -1,6 +1,8 @@
 import { LeaderboardLayout } from "@/components/leaderboard/LeaderboardLayout";
 import { fetchLeaderboard } from "@/lib/server/leaderboard";
 
+export const dynamic = 'force-dynamic';
+
 type LeaderboardSearchParams = {
   projectId?: string;
   q?: string;

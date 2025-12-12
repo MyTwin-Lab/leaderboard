@@ -8,9 +8,9 @@ import type { LeaderboardResponse } from "@/lib/types";
 export async function GET(request: Request): Promise<NextResponse<LeaderboardResponse | { error: string }>> {
   try {
     const searchParams = new URL(request.url).searchParams;
-    const { projectId } = parseSearchParams(leaderboardQuerySchema, searchParams);
+    const { projectId, timePeriod } = parseSearchParams(leaderboardQuerySchema, searchParams);
 
-    const data = await fetchLeaderboard(projectId);
+    const data = await fetchLeaderboard(projectId, timePeriod);
 
     return NextResponse.json(data);
   } catch (error) {

@@ -3,7 +3,15 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "init:macos": "./scripts/macos/init.sh",
+    "init:windows": "scripts\\windows\\init.bat",
+    "start:dev": "cd apps/leaderboard-client && npm run dev",
+    "dev": "npm run start:dev",
+    "populate-db": "tsx db_data/seed.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",

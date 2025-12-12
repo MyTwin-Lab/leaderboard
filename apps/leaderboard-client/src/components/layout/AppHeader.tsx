@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import { ContributorBadge } from "@/components/contributor/ContributorBadge";
 import { fetchContributorSession } from "@/lib/contributor";
+import { Navigation } from "./Navigation";
 
 export async function AppHeader() {
   const session = await fetchContributorSession();
@@ -14,16 +15,8 @@ export async function AppHeader() {
           <Image src="/mytwinlab.svg" alt="MyTwin Lab" width={100} height={0} priority />
         </Link>
       </div>
-      <div className="flex flex-1 items-center justify-center gap-18 text-xl font-medium text-white/70">
-        <Link href="/about" className="transition hover:text-white">
-          About
-        </Link>
-        <Link href="/" className="text-xl font-semibold text-white">Leaderboard</Link>
-        <Link href="/challenges" className="transition hover:text-white">
-          Challenges
-        </Link>
-      </div>
-      <div className="flex flex-1 items-center justify-end">
+      <Navigation />
+      <div className="flex flex-1 items-center justify-end opacity-0">
         {session ? (
           <ContributorBadge fullName={session.fullName} githubUsername={session.githubUsername} role={session.role} />
         ) : (

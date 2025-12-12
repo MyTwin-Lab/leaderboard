@@ -29,22 +29,24 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds }: Proj
 
   const joinedSet = useMemo(() => new Set(joinedChallengeIds), [joinedChallengeIds]);
 
-  // Flatten all challenges from all projects
+  // Flatten all challenges from all projects and sort by start date (most recent first)
   const allChallenges = useMemo<FlatChallenge[]>(() => {
-    return projects.flatMap((project) =>
-      project.challenges.map((challenge) => ({
-        id: challenge.id,
-        title: challenge.title,
-        projectName: project.title,
-        projectId: project.id,
-        description: project.description, // Using project description for now
-        rewardPool: challenge.rewardPool,
-        completion: Math.round(challenge.completion * 100),
-        teamMembers: challenge.teamMembers,
-        startDate: challenge.startDate,
-        endDate: challenge.endDate,
-      }))
-    );
+    return projects
+      .flatMap((project) =>
+        project.challenges.map((challenge) => ({
+          id: challenge.id,
+          title: challenge.title,
+          projectName: project.title,
+          projectId: project.id,
+          description: project.description, // Using project description for now
+          rewardPool: challenge.rewardPool,
+          completion: Math.round(challenge.completion * 100),
+          teamMembers: challenge.teamMembers,
+          startDate: challenge.startDate,
+          endDate: challenge.endDate,
+        }))
+      )
+      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
   }, [projects]);
 
   // Filter challenges based on search term and selected project

@@ -1,0 +1,1 @@
+ALTER TABLE "challenges" ADD COLUMN "completion" real DEFAULT 0;

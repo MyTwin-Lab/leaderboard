@@ -16,6 +16,7 @@ interface TaskWithAssignees {
 
 interface ChallengeCardProps {
   challengeId: string;
+  challengeIndex: number;
   challengeTitle: string;
   projectName: string;
   description: string | null;
@@ -36,6 +37,7 @@ function formatDate(isoDate: string): string {
 
 export function ChallengeCard({
   challengeId,
+  challengeIndex,
   challengeTitle,
   projectName,
   description,
@@ -148,7 +150,7 @@ export function ChallengeCard({
     <div className="rounded-md bg-white/5 p-5 shadow-md shadow-black/20 hover:bg-white/10">
       {/* Header: Project name + CP */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white">{challengeTitle}</h3>
+        <h3 className="text-lg font-semibold text-white">CHLG #{challengeIndex} : {challengeTitle}</h3>
         <span className="text-sm font-semibold text-white">
           {rewardPool.toLocaleString()} <span className="text-brandCP">CP</span>
         </span>
@@ -179,12 +181,12 @@ export function ChallengeCard({
         <p className="text-sm text-white mt-2">{description}</p>
       )}
 
-      <div className="w-full">
-        <div style={{"flexDirection": "column", justifyItems: "center"}} className="mt-2 flex items-center gap-3">
+      <div className="w-full flex items-center justify-center">
+        <div style={{"flexDirection": "column", justifyItems: "center"}} className="w-[80%] mt-4 flex items-center gap-1">
           {completion === 100 ? (
             <>
               <span className="text-sm font-medium text-brandCP flex items-center gap-1">
-                Completed <span className="text-brandCP">★</span>
+                Completed 
               </span>
               <ChallengeProgressBar value={1} />
             </>
@@ -248,7 +250,7 @@ export function ChallengeCard({
       )}
 
       {/* Team avatars + Join button */}
-      <div className="mt-4 flex items-center justify-between">
+      {/* <div className="mt-4 flex items-center justify-between">
         <TeamAvatars members={teamMembers} />
 
         <div className="flex flex-col items-end gap-1">
@@ -269,7 +271,7 @@ export function ChallengeCard({
             <span className="text-xs text-red-400">{errorMessage}</span>
           )}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }
