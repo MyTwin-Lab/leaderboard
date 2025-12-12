@@ -4,7 +4,7 @@ interface BadgeProps {
 
 export function Badge({ label }: BadgeProps) {
   return (
-    <span className="rounded-full bg-primary-300/10 px-3 py-1 text-xs font-medium text-primary-200">
+    <span className="rounded-full bg-brandCP/10 px-3 py-1 text-xs font-medium text-brandCP">
       {label}
     </span>
   );

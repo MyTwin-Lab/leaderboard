@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -48,27 +49,36 @@ export const Navbar = () => {
     <>
       <nav
         className={cn(
-          "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out px-6 py-4",
-          isScrolled ? "bg-background/20 backdrop-blur-md border-b border-white/10" : "bg-transparent"
+          "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out",
+          isScrolled
+            ? "bg-backgroundDark/20 backdrop-blur-md border-b border-white/10"
+            : "bg-transparent"
         )}
       >
-        <div className="container mx-auto max-w-7xl flex items-center justify-between">
+        <div className="mx-auto w-full max-w-6xl flex items-center justify-between px-4 py-4 sm:px-6">
           {/* Logo */}
-          <Link href="/" className="text-2xl font-light tracking-tight z-50">
-            <span className="text-foreground">MyTwin</span>{" "}
-            <span className="text-primary-300">Lab</span>
+          <Link href="/" className="z-50 flex items-center">
+            <Image
+              src="/mytwinlab.svg"
+              alt="MyTwinLab"
+              width={154}
+              height={62}
+              priority
+              className="h-8 w-auto sm:h-9"
+            />
+            <span className="sr-only">MyTwinLab</span>
           </Link>
 
           {/* Desktop Navigation - Centered */}
           <div className="hidden md:flex items-center justify-center flex-1 mx-8">
-            <div className="flex items-center space-x-8">
+            <div className="flex items-center space-x-12">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   href={link.path}
                   className={cn(
-                    "text-sm font-medium transition-colors hover:text-primary-300",
-                    isActive(link.path) ? "text-primary-300" : "text-white/70"
+                    "text-xl font-medium transition-colors hover:text-brandCP",
+                    isActive(link.path) ? "text-brandCP" : "text-white/70"
                   )}
                 >
                   {link.name}
@@ -78,7 +88,7 @@ export const Navbar = () => {
           </div>
 
           {/* Desktop CTA */}
-          <div className="hidden md:block">
+          <div className="hidden md:block opacity-0">
             <Button variant="primary" size="md">
               Sign In
             </Button>
@@ -115,7 +125,7 @@ export const Navbar = () => {
         {/* Background with blur */}
         <div
           className={cn(
-            "absolute inset-0 bg-background backdrop-blur-2xl transition-opacity duration-500",
+            "absolute inset-0 bg-backgroundDark backdrop-blur-2xl transition-opacity duration-500",
             mobileMenuOpen ? "opacity-100" : "opacity-0"
           )}
         />
@@ -130,8 +140,8 @@ export const Navbar = () => {
                 href={link.path}
                 onClick={() => setMobileMenuOpen(false)}
                 className={cn(
-                  "text-3xl font-light tracking-tight transition-all duration-300 hover:text-primary-300",
-                  isActive(link.path) ? "text-primary-300" : "text-foreground",
+                  "text-3xl font-light tracking-tight transition-all duration-300 hover:text-brandCP",
+                  isActive(link.path) ? "text-brandCP" : "text-white",
                   mobileMenuOpen
                     ? "opacity-100 translate-y-0"
                     : "opacity-0 translate-y-4"
@@ -160,7 +170,7 @@ export const Navbar = () => {
             <Button
               size="lg"
               variant="primary"
-              className="text-lg px-12"
+              className="text-lg px-12 opacity-0"
               onClick={() => {
                 setMobileMenuOpen(false);
               }}

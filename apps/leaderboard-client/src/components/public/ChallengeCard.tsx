@@ -147,11 +147,11 @@ export function ChallengeCard({
   };
 
   return (
-    <div className="rounded-md bg-white/5 p-5 shadow-md shadow-black/20 hover:bg-white/10">
+    <div className="rounded-md bg-white/5 p-4 shadow-md shadow-black/20 transition hover:bg-white/10 sm:p-5">
       {/* Header: Project name + CP */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white">{challengeTitle}</h3>
-        <span className="text-sm font-semibold text-white">
+      <div className="flex items-start justify-between gap-2 sm:items-center">
+        <h3 className="text-base font-semibold text-white sm:text-lg">{challengeTitle}</h3>
+        <span className="shrink-0 text-xs font-semibold text-white sm:text-sm">
           {rewardPool.toLocaleString()} <span className="text-brandCP">CP</span>
         </span>
       </div>
@@ -161,7 +161,7 @@ export function ChallengeCard({
         //onClick={() => setIsExpanded(!isExpanded)}
         className="flex w-full items-center justify-between text-left"
       >
-        <p className="text-sm font-medium text-white/70">Challenge {challengeIndex} • Project: {projectName}</p>
+        <p className="text-xs font-medium text-white/70 sm:text-sm">Challenge {challengeIndex} • Project: {projectName}</p>
         {/* <svg
           className={`h-5 w-5 text-white/60 transition-transform ${isExpanded ? "rotate-180" : ""}`}
           xmlns="http://www.w3.org/2000/svg"
@@ -178,21 +178,21 @@ export function ChallengeCard({
       </button>
 
       {description && (
-        <p className="text-sm text-white mt-3">{description}</p>
+        <p className="mt-2 text-xs text-white sm:mt-3 sm:text-sm">{description}</p>
       )}
 
-      <div className="w-full flex items-center justify-center">
-        <div style={{"flexDirection": "column", justifyItems: "center"}} className="w-[80%] mt-4 flex items-center gap-1">
+      <div className="mt-3 flex w-full items-center justify-center sm:mt-4">
+        <div className="flex w-full flex-col items-center gap-1 sm:w-[80%]">
           {completion === 100 ? (
             <>
-              <span className="text-sm font-medium text-brandCP flex items-center gap-1">
-                Completed 
+              <span className="flex items-center gap-1 text-xs font-medium text-brandCP sm:text-sm">
+                Completed
               </span>
               <ChallengeProgressBar value={1} />
             </>
           ) : (
             <>
-              <span className="text-sm text-brandCP">{completion}%</span>
+              <span className="text-xs text-brandCP sm:text-sm">{completion}%</span>
               <ChallengeProgressBar value={completion / 100} />
             </>
           )}

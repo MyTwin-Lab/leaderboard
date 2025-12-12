@@ -19,7 +19,7 @@ export function TeamAvatars({ members, maxDisplay = 4 }: TeamAvatarsProps) {
         {displayedMembers.map((member, index) => (
           <div
             key={member.id}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary-300 to-primary-200 text-xs font-semibold text-slate-900 ring-1 ring-slate-900"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-brandCP text-xs font-semibold text-slate-900 ring-1 ring-slate-900"
             style={{ zIndex: maxDisplay - index }}
             title={member.fullName}
           >

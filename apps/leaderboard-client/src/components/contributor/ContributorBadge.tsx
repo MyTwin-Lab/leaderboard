@@ -35,7 +35,7 @@ export function ContributorBadge({ fullName, githubUsername, role }: Contributor
         onClick={() => setIsOpen((open) => !open)}
         className="cursor-pointer flex items-center gap-2 rounded-full bg-white/5 text-sm text-white shadow-md shadow-black/20 transition hover:bg-white/10"
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-300 to-primary-200 text-s font-semibold text-slate-900">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brandCP text-s font-semibold text-slate-900">
           {fullName
             .split(" ")
             .map((part) => part[0])

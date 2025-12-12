@@ -15,14 +15,14 @@ export function ChallengeList({ challenges }: ChallengeListProps) {
 
   if (challenges.length === 0) {
     return (
-      <div className="rounded-md bg-white/5 p-6 text-white/60">
+      <div className="rounded-md bg-white/5 p-4 text-sm text-white/60 sm:p-6 sm:text-base">
         No contributions yet. Please check again after the next sync.
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {challenges.map((challenge) => (
         <ChallengeCard
           key={challenge.id}
@@ -65,21 +65,21 @@ function ChallengeCard({
       <button
         onClick={onToggle}
         aria-expanded={isExpanded}
-        className="w-full p-5 text-left cursor-pointer hover:bg-white/5 rounded-md transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCP/50"
+        className="w-full cursor-pointer rounded-md p-4 text-left transition-colors duration-200 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCP/50 sm:p-5"
       >
         {/* Header: Challenge title + CP */}
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">{challenge.title}</h3>
-          <span className="text-sm font-semibold text-white">
+        <div className="flex items-start justify-between gap-2 sm:items-center">
+          <h3 className="text-base font-semibold text-white sm:text-lg">{challenge.title}</h3>
+          <span className="shrink-0 text-xs font-semibold text-white sm:text-sm">
             {formatCP(challenge.reward)} <span className="text-brandCP">CP</span>
           </span>
         </div>
 
         {/* Project name with chevron */}
-        <div className="flex w-full items-center justify-between mt-1">
-          <p className="text-sm font-medium text-white/70">Project: {challenge.projectName}</p>
+        <div className="mt-1 flex w-full items-center justify-between">
+          <p className="text-xs font-medium text-white/70 sm:text-sm">Project: {challenge.projectName}</p>
           <svg
-            className={`h-5 w-5 text-white/60 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-white/60 transition-transform duration-300 sm:h-5 sm:w-5 ${isExpanded ? "rotate-180" : ""}`}
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 20 20"
             fill="currentColor"
@@ -94,11 +94,11 @@ function ChallengeCard({
         </div>
 
         {/* Progress bar section */}
-        <div className="w-full flex items-center justify-center">
-          <div className="w-[80%] mt-4 flex flex-col items-center gap-1">
-            <span className="text-sm text-brandCP">{formatPercentage(challenge.contributionShare)}</span>
+        <div className="mt-3 flex w-full items-center justify-center sm:mt-4">
+          <div className="flex w-full flex-col items-center gap-1 sm:w-[80%]">
+            <span className="text-xs text-brandCP sm:text-sm">{formatPercentage(challenge.contributionShare)}</span>
             <ChallengeProgressBar value={challenge.contributionShare} />
-            <span className="text-xs text-white/50 mt-1">Contribution share</span>
+            <span className="mt-1 text-[10px] text-white/50 sm:text-xs">Contribution share</span>
           </div>
         </div>
       </button>
@@ -111,22 +111,22 @@ function ChallengeCard({
           opacity: isExpanded ? 1 : 0,
         }}
       >
-        <div ref={contentRef} className="mx-5 mb-5 pb-3 border-t border-white/10 pt-4">
-          <p className="mb-3 text-xs text-white/50">Contributions ({challenge.contributions.length})</p>
+        <div ref={contentRef} className="mx-4 mb-4 border-t border-white/10 pb-3 pt-3 sm:mx-5 sm:mb-5 sm:pt-4">
+          <p className="mb-2 text-[10px] text-white/50 sm:mb-3 sm:text-xs">Contributions ({challenge.contributions.length})</p>
           {challenge.contributions.length > 0 ? (
             <div className="space-y-2">
               {challenge.contributions.map((contribution) => (
                 <div
                   key={contribution.id}
-                  className="flex items-center gap-3 py-2 px-3 rounded-md bg-white/5 hover:bg-white/10 transition-colors duration-150"
+                  className="flex items-center gap-2 rounded-md bg-white/5 px-2 py-1.5 transition-colors duration-150 hover:bg-white/10 sm:gap-3 sm:px-3 sm:py-2"
                 >
-                  <div className="w-2 h-2 rounded-full bg-brandCP flex-shrink-0" />
-                  <span className="text-sm text-white">{contribution.title}</span>
+                  <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-brandCP sm:h-2 sm:w-2" />
+                  <span className="text-xs text-white sm:text-sm">{contribution.title}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-white/40">No detailed contributions.</p>
+            <p className="text-xs text-white/40 sm:text-sm">No detailed contributions.</p>
           )}
         </div>
       </div>

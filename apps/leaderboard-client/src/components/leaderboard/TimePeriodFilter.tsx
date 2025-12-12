@@ -5,10 +5,10 @@ import { useLeaderboardContext, type TimePeriod } from "@/components/leaderboard
 export function TimePeriodFilter() {
   const { timePeriod, setTimePeriod } = useLeaderboardContext();
 
-  const periods: { value: TimePeriod; label: string }[] = [
-    { value: "all", label: "All Time" },
-    { value: "month", label: "Last month" },
-    { value: "week", label: "Last week" },
+  const periods: { value: TimePeriod; label: string; shortLabel: string }[] = [
+    { value: "all", label: "All Time", shortLabel: "All" },
+    { value: "month", label: "Last month", shortLabel: "Month" },
+    { value: "week", label: "Last week", shortLabel: "Week" },
   ];
 
   return (
@@ -17,13 +17,14 @@ export function TimePeriodFilter() {
         <button
           key={period.value}
           onClick={() => setTimePeriod(period.value)}
-          className={`flex-1 rounded-sm px-6 py-2 text-sm font-medium transition-all ${
+          className={`flex-1 rounded-sm px-3 py-1.5 text-xs font-medium transition-all sm:px-6 sm:py-2 sm:text-sm ${
             timePeriod === period.value
               ? "bg-white/10 text-white"
               : "text-white/60 hover:text-white"
           }`}
         >
-          {period.label}
+          <span className="sm:hidden">{period.shortLabel}</span>
+          <span className="hidden sm:inline">{period.label}</span>
         </button>
       ))}
     </div>

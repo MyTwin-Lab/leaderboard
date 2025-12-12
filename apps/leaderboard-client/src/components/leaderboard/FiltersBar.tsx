@@ -6,27 +6,27 @@ export function FiltersBar() {
   const { projectId, searchTerm, setProjectId, setSearchTerm, projects, isLoading } = useLeaderboardContext();
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex-1 max-w-[300px]">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="w-full sm:flex-1 sm:max-w-[300px]">
         <label className="flex flex-col text-sm text-white/60">
           <input
             type="search"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Search contributors..."
-            className="w-full rounded-md border border-white/10 bg-white/2 px-4 py-2 text-base text-white placeholder:text-white/80 focus:border-primary-200 focus:outline-none"
+            className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/50 focus:border-brandCP focus:outline-none sm:px-4 sm:text-base"
             disabled={isLoading}
           />
         </label>
       </div>
 
-      <div className="flex flex-1 gap-4 max-w-[200px]">
-        <label className="flex flex-1 flex-col text-sm text-white/60">
+      <div className="w-full sm:w-auto sm:max-w-[200px]">
+        <label className="flex flex-col text-sm text-white/60">
           <div className="relative">
             <select
               value={projectId}
               onChange={(event) => setProjectId(event.target.value)}
-              className="w-full appearance-none rounded-md border border-white/10 bg-white/10 px-4 py-2 text-base text-white shadow-sm transition focus:border-primary-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full appearance-none rounded-md border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white shadow-sm transition focus:border-brandCP focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:text-base"
               disabled={isLoading}
             >
               {projects.map((project) => (
@@ -56,10 +56,3 @@ export function FiltersBar() {
     </div>
   );
 }
-
-<style jsx>{`
-  select option {
-    background-color: rgba(8, 47, 73, 0.95);
-    color: #f8fbff;
-  }
-`}</style>

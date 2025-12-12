@@ -78,9 +78,9 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds }: Proj
       />
 
       {filteredChallenges.length === 0 ? (
-        <p className="text-white/50">No challenge is currently available.</p>
+        <p className="text-sm text-white/50 sm:text-base">No challenge is currently available.</p>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
           {filteredChallenges.map((challenge) => (
             <ChallengeCard
               key={challenge.id}

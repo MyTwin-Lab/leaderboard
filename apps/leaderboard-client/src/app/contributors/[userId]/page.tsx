@@ -19,7 +19,7 @@ export default async function ContributorPage({ params }: ContributorPageProps) 
   }
 
   return (
-    <div className="mt-6 space-y-6 max-w-2xl mx-auto">
+    <div className="mx-auto mt-4 max-w-2xl space-y-4 sm:mt-6 sm:space-y-6">
       <ContributorHeader
         displayName={profile.displayName}
         githubUsername={profile.githubUsername}
