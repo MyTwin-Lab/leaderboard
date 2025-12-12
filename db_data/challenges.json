@@ -61,7 +61,7 @@
     "description": "Integrate OAuth for the Leaderboard project",
     "roadmap": "",
     "contribution_points_reward": 3000,
-    "completion": 0.0,
+    "completion": 0.05,
     "project_id": 1
   },
   {
@@ -74,7 +74,7 @@
     "description": "Update the evaluator for the Leaderboard project",
     "roadmap": "",
     "contribution_points_reward": 12000,
-    "completion": 0.0,
+    "completion": 0.05,
     "project_id": 1
   },
   {

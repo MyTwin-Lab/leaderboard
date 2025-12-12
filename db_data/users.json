@@ -3,100 +3,114 @@
     "uuid": 1,
     "role": "contributor",
     "full_name": "Antoine",
+    "bio": "Software Engineer",
     "github_username": "kaodje"
   },
   {
     "uuid": 2,
     "role": "contributor",
     "full_name": "Alix Chagot",
+    "bio": "Software Engineer",
     "github_username": "akralan"
   },
   {
     "uuid": 3,
     "role": "contributor",
     "full_name": "Victor Xu",
+    "bio": "Business Developer",
     "github_username": null
   },
   {
     "uuid": 4,
     "role": "contributor",
     "full_name": "Samir Touinssi",
+    "bio": "Community Manager",
     "github_username": null
   },
   {
     "uuid": 5,
     "role": "contributor",
     "full_name": "Mahdi Lamriben",
+    "bio": "Fullstack, Data & AI Engineer",
     "github_username": null
   },
-
 
   {
     "uuid": 6,
     "role": "contributor",
     "full_name": "Camille Daverio",
+    "bio": "Fullstack Developer",
     "github_username": "Inarinokaze"
   },
   {
     "uuid": 7,
     "role": "contributor",
     "full_name": "Fatoumata Corop Mballo",
+    "bio": "Fullstack Developer",
     "github_username": "FatoumataM-27"
   },
   {
     "uuid": 8,
     "role": "contributor",
     "full_name": "Christyl Hodonou",
+    "bio": "Software & Machine Learning Engineer",
     "github_username": "Chrishdn"
   },
   {
     "uuid": 9,
     "role": "contributor",
     "full_name": "Mickael Andrieu",
+    "bio": "Data & AI Engineer",
     "github_username": "Mickael-Ndr"
   },
 
-  
   {
     "uuid": 10,
     "role": "contributor",
     "full_name": "Patricia Novi",
+    "bio": "Software & Machine Learning Engineer",
     "github_username": "n-patricia"
   },
   {
     "uuid": 11,
     "role": "contributor",
     "full_name": "Shriya",
+    "bio": "Machine Learning Engineer",
     "github_username": null
   },
   {
     "uuid": 12,
     "role": "contributor",
     "full_name": "Asmaa Khaled",
+    "bio": "Biomedical & Software Engineer",
     "github_username": null
   },
   {
     "uuid": 13,
     "role": "contributor",
     "full_name": "Shane",
+    "bio": "Associate Professor",
     "github_username": null
   },
   {
     "uuid": 14,
     "role": "contributor",
     "full_name": "Duncan",
+    "bio": "Machine Learning Engineer",
     "github_username": null
   },
   {
     "uuid": 15,
     "role": "contributor",
     "full_name": "Govind",
+    "bio": "Biomedical Engineer",
     "github_username": null
   },
   {
     "uuid": 16,
     "role": "contributor",
     "full_name": "Kunal",
+    "bio": "Data Scientist",
     "github_username": null
   }
 ]

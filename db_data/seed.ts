@@ -9,7 +9,31 @@ const projectIdMap = new Map<number, string>();
 const userIdMap = new Map<number, string>();
 const challengeIdMap = new Map<number, string>();
 
+async function resetDatabase() {
+  console.log("🗑️  Resetting database...");
+
+  // Supprimer les données dans l'ordre inverse des dépendances
+  await db.delete(challenge_teams);
+  console.log("  ✓ challenge_teams cleared");
+
+  await db.delete(contributions);
+  console.log("  ✓ contributions cleared");
+
+  await db.delete(challenges);
+  console.log("  ✓ challenges cleared");
+
+  await db.delete(users);
+  console.log("  ✓ users cleared");
+
+  await db.delete(projects);
+  console.log("  ✓ projects cleared");
+
+  console.log("✅ Database reset complete!\n");
+}
+
 async function seed() {
+  // Reset de la base de données avant de peupler
+  await resetDatabase();
   // 1. Charger les JSON
   const projectsData = JSON.parse(readFileSync("./db_data/projects.json", "utf-8"));
   const usersData = JSON.parse(readFileSync("./db_data/users.json", "utf-8"));
@@ -37,6 +61,7 @@ async function seed() {
       role: u.role,
       full_name: u.full_name,
       github_username: u.github_username || "unknown",
+      bio: u.bio,
     });
   }
   console.log(`✓ ${usersData.length} users insérés`);
@@ -71,6 +96,7 @@ async function seed() {
       reward: c.reward,
       user_id: userIdMap.get(c.user_id),
       challenge_id: challengeIdMap.get(c.challenge_id),
+      submitted_at: c.submitted_at ? new Date(c.submitted_at) : new Date(),
     });
   }
   console.log(`✓ ${contributionsData.length} contributions insérées`);
