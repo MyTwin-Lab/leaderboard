@@ -11,7 +11,10 @@ export class ProjectNotFoundError extends Error {
   }
 }
 
-export async function fetchLeaderboard(projectId?: string): Promise<LeaderboardResponse> {
+export async function fetchLeaderboard(
+  projectId?: string,
+  timePeriod?: "all" | "month" | "week"
+): Promise<LeaderboardResponse> {
   const [projects, contributions, challenges, users] = await Promise.all([
     repositories.project.findAll(),
     repositories.contribution.findAll(),
@@ -33,6 +36,7 @@ export async function fetchLeaderboard(projectId?: string): Promise<LeaderboardR
     challenges,
     users,
     projectId: selectedProjectId,
+    timePeriod: timePeriod ?? "all",
   });
 
   return {

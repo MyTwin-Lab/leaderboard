@@ -3,6 +3,7 @@ export type LeaderboardEntry = {
   userId: string;
   displayName: string;
   githubUsername: string;
+  bio?: string;
   totalCP: number;
 };
 

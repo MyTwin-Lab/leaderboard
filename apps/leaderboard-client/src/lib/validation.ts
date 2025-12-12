@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const leaderboardQuerySchema = z.object({
   projectId: z.union([z.string().uuid(), z.literal("all"), z.undefined()]).default("all"),
+  timePeriod: z.enum(["all", "month", "week"]).optional().default("all"),
 });
 
 export const contributorsQuerySchema = z.object({

@@ -53,8 +53,7 @@ export async function fetchProjectsWithChallenges(userId?: string | null): Promi
           teamMembers: teamMembersByChallenge.get(challenge.uuid) ?? [],
           startDate: challenge.start_date.toISOString(),
           endDate: challenge.end_date.toISOString(),
-        }))
-        .sort((a, b) => a.title.localeCompare(b.title));
+        }));
 
       return {
         id: project.uuid,
@@ -62,8 +61,7 @@ export async function fetchProjectsWithChallenges(userId?: string | null): Promi
         description: project.description ?? null,
         challenges: projectChallenges,
       } satisfies ProjectWithChallenges;
-    })
-    .sort((a, b) => a.title.localeCompare(b.title));
+    });
 
   return {
     projects: projectsData,
