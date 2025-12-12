@@ -46,6 +46,7 @@ export async function fetchProjectsWithChallenges(userId?: string | null): Promi
         .filter((challenge) => challenge.project_id === project.uuid)
         .map((challenge) => ({
           id: challenge.uuid,
+          index: challenge.index,
           title: challenge.title,
           rewardPool: challenge.contribution_points_reward ?? 0,
           contributionsCount: contributionsCountByChallenge.get(challenge.uuid) ?? 0,

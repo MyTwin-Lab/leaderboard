@@ -56,6 +56,7 @@ export type TeamMember = {
 
 export type ProjectChallengeSummary = {
   id: string;
+  index: number;
   title: string;
   rewardPool: number;
   contributionsCount: number;

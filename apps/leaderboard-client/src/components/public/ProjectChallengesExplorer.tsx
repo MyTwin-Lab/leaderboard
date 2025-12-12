@@ -12,6 +12,7 @@ interface ProjectChallengesExplorerProps {
 
 type FlatChallenge = {
   id: string;
+  index: number;
   title: string;
   projectName: string;
   projectId: string;
@@ -35,6 +36,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds }: Proj
       .flatMap((project) =>
         project.challenges.map((challenge) => ({
           id: challenge.id,
+          index: challenge.index,
           title: challenge.title,
           projectName: project.title,
           projectId: project.id,
@@ -83,6 +85,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds }: Proj
             <ChallengeCard
               key={challenge.id}
               challengeId={challenge.id}
+              challengeIndex={challenge.index}
               challengeTitle={challenge.title}
               projectName={challenge.projectName}
               description={challenge.description}
