@@ -35,9 +35,9 @@ export function LeaderboardTable({ initialEntries }: LeaderboardTableProps) {
               <span className={`w-6 text-base font-bold sm:w-8 sm:text-xl ${entry.rank <= 3 ? "text-brandCP" : "text-white"}`}>
                 {entry.rank}
               </span>
-              <div className="shrink-0">
+              {/* <div className="shrink-0">
                 <InitialsAvatar name={entry.displayName} />
-              </div>
+              </div> */}
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-sm font-medium text-white sm:text-base">{entry.displayName}</span>
                 {entry.bio && <span className="hidden text-sm text-white/50 sm:block">{entry.bio}</span>}
