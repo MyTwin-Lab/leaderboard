@@ -6,8 +6,8 @@ export function FiltersBar() {
   const { projectId, searchTerm, setProjectId, setSearchTerm, projects, isLoading } = useLeaderboardContext();
 
   return (
-    <div className="flex flex-col gap-130 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex-1">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex-1 max-w-[300px]">
         <label className="flex flex-col text-sm text-white/60">
           <input
             type="search"
@@ -20,7 +20,7 @@ export function FiltersBar() {
         </label>
       </div>
 
-      <div className="flex flex-1 gap-4">
+      <div className="flex flex-1 gap-4 max-w-[200px]">
         <label className="flex flex-1 flex-col text-sm text-white/60">
           <div className="relative">
             <select

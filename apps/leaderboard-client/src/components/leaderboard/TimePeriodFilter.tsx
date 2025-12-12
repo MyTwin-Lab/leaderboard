@@ -17,7 +17,7 @@ export function TimePeriodFilter() {
         <button
           key={period.value}
           onClick={() => setTimePeriod(period.value)}
-          className={`flex-1 rounded-md px-6 py-2 text-sm font-medium transition-all ${
+          className={`flex-1 rounded-sm px-6 py-2 text-sm font-medium transition-all ${
             timePeriod === period.value
               ? "bg-white/10 text-white"
               : "text-white/60 hover:text-white"
