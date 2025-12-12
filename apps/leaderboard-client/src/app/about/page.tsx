@@ -8,8 +8,8 @@ export default function AboutPage() {
     <div className="space-y-8 py-6 text-white max-w-2xl mx-auto">
       {/* Header */}
       <header className="space-y-4">
-        <h1 className="text-4xl font-bold">MyTwin Lab</h1>
-        <h2 className="text-2xl font-semibold text-primary-300">A global movement to reinvent health. Together.</h2>
+        {/* <h1 className="text-4xl font-bold">MyTwin <span className="text-brandCP">Lab</span></h1> */}
+        <h2 className="text-2xl font-semibold text-white">A global movement to reinvent health. Together.</h2>
       </header>
 
       {/* Intro */}
@@ -23,7 +23,7 @@ export default function AboutPage() {
         <p>A digital twin capable of understanding your biology, detecting early signals, analyzing medical imaging, optimizing prevention, guiding longevity…</p>
         <p>A technology that brings precision health to every human on Earth.</p>
         <p>Not in 10 years. Not when institutions decide it's time. But <strong className="text-white">now.</strong></p>
-        <p className="text-primary-300 font-semibold">#WeAreNotWaiting</p>
+        <p className="text-brandCP font-semibold">#WeAreNotWaiting</p>
       </section>
 
       <hr className="border-white/10" />
@@ -73,7 +73,7 @@ export default function AboutPage() {
         <p className="text-white/80">Because the world needs breakthroughs — and fast.</p>
         <p className="text-white/80">And because <strong className="text-white">no single company, university, or hospital can solve this alone</strong>.</p>
         <p className="text-white/80">But a united global community can.</p>
-        <blockquote className="border-l-4 border-primary-300 pl-4 italic text-white/70 my-4">
+        <blockquote className="border-l-4 border-brandCP rounded-sm py-1 pl-4 italic text-white/70 my-4">
           Alone, innovation is fragile. Together, it becomes unstoppable.
         </blockquote>
       </section>
@@ -106,7 +106,7 @@ export default function AboutPage() {
         <p className="text-white/80 mt-4">No gatekeepers. No bureaucracy. No invisible work.</p>
         <p className="text-white font-semibold">If you contribute, you exist. If you build, you shine.</p>
         <p className="text-white/80">The Leaderboard turns the entire Lab into a self-organizing, merit-driven innovation engine — where action is amplified and impact becomes visible.</p>
-        <blockquote className="border-l-4 border-primary-300 pl-4 italic text-white/70 my-4">
+        <blockquote className="border-l-4 border-brandCP rounded-sm py-1 pl-4 italic text-white/70 my-4">
           The Leaderboard is not a ranking. It is <strong>a map of collective intelligence</strong>.
         </blockquote>
       </section>
@@ -169,7 +169,7 @@ export default function AboutPage() {
       <hr className="border-white/10" />
 
       {/* Partners */}
-      <section className="space-y-3">
+      {/* <section className="space-y-3">
         <h2 className="text-2xl font-semibold">Partners &amp; Allies</h2>
         <p className="text-white/80">MyTwin Lab thrives with the support of leading institutions, innovators, and pioneers:</p>
         <ul className="list-disc list-inside text-white/80 space-y-1 ml-4">
@@ -187,7 +187,7 @@ export default function AboutPage() {
         <p className="text-white/80 mt-4">These partners provide medical expertise, infrastructure, data access opportunities, and real-world testing environments.</p>
       </section>
 
-      <hr className="border-white/10" />
+      <hr className="border-white/10" /> */}
 
       {/* Values */}
       <section className="space-y-4">
@@ -214,7 +214,7 @@ export default function AboutPage() {
             <p className="text-white/80 text-sm">If something should exist, build it.</p>
           </div>
           <div>
-            <h3 className="font-semibold text-primary-300">#WeAreNotWaiting</h3>
+            <h3 className="font-semibold text-brandCP">#WeAreNotWaiting</h3>
             <p className="text-white/80 text-sm">Because lives depend on what we build.</p>
           </div>
         </div>
@@ -231,10 +231,10 @@ export default function AboutPage() {
         <p className="text-white/80">You don't need a title to contribute.</p>
         <p className="text-white/80">You don't need expertise to begin.</p>
         <p className="text-white/80">You just need to care.</p>
-        <blockquote className="border-l-4 border-primary-300 pl-4 text-white/70 my-6">
+        <blockquote className="border-l-4 border-brandCP rounded-sm py-1 pl-4 text-white/70 my-6">
           <p className="italic">Welcome to MyTwin Lab.</p>
           <p className="italic">Unite to build what matters.</p>
-          <p className="font-semibold text-primary-300 mt-2">#WeAreNotWaiting</p>
+          <p className="font-semibold text-brandCP mt-2">#WeAreNotWaiting</p>
         </blockquote>
       </section>
     </div>
