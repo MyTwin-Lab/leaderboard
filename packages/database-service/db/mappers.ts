@@ -100,6 +100,7 @@ export function toDomainUser(row: DbUser): User {
     role: row.role,
     full_name: row.full_name,
     github_username: row.github_username,
+    bio: row.bio ?? undefined,
     password_hash: row.password_hash ?? undefined,
     created_at: new Date(row.created_at ?? Date.now()),
   };
@@ -116,6 +117,7 @@ export function toDomainContribution(row: DbContribution): Contribution {
     reward: row.reward ?? 0,
     user_id: row.user_id ?? "",
     challenge_id: row.challenge_id ?? "",
+    submitted_at: new Date(row.submitted_at),
   };
 }
 
@@ -159,6 +161,7 @@ export function toDbUser(entity: Omit<User, "uuid" | "created_at">): typeof user
     role: entity.role,
     full_name: entity.full_name,
     github_username: entity.github_username,
+    bio: entity.bio ?? null,
     password_hash: entity.password_hash ?? null,
   };
 }
@@ -173,6 +176,7 @@ export function toDbContribution(entity: Omit<Contribution, "uuid">): typeof con
     reward: entity.reward,
     user_id: entity.user_id || null,
     challenge_id: entity.challenge_id || null,
+    submitted_at: entity.submitted_at,
   };
 }
 

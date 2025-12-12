@@ -49,6 +49,7 @@ export interface Contribution {
   reward: number;
   user_id: string;      // FK -> users.uuid
   challenge_id: string; // FK -> challenges.uuid
+  submitted_at: Date;
 }
 
 export interface User {
@@ -56,6 +57,7 @@ export interface User {
   role: string;
   full_name: string;
   github_username: string;
+  bio?: string;
   password_hash?: string;
   created_at: Date;
 }

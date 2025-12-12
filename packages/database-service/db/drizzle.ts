@@ -55,6 +55,7 @@ export const users = pgTable("users", {
   role: varchar("role", { length: 100 }).notNull(),
   full_name: varchar("full_name", { length: 255 }).notNull(),
   github_username: varchar("github_username", { length: 255 }).notNull(),
+  bio: text("bio"),
   password_hash: text("password_hash"),
   created_at: timestamp("created_at").defaultNow(),
 });
@@ -70,6 +71,7 @@ export const contributions = pgTable("contributions", {
   reward: integer("reward").default(0),
   user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }),
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
+  submitted_at: timestamp("submitted_at").defaultNow().notNull(),
 });
 
 // --- TASKS ---

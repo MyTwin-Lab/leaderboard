@@ -50,6 +50,7 @@ export const contributionSchema = z.object({
   reward: z.number().default(0),
   user_id: z.string().uuid(),
   challenge_id: z.string().uuid(),
+  submitted_at: z.coerce.date(),
 });
 
 export const userSchema = z.object({
@@ -57,6 +58,7 @@ export const userSchema = z.object({
   role: z.string(),
   full_name: z.string(),
   github_username: z.string(),
+  bio: z.string().optional(),
   password_hash: z.string().optional(),
   created_at: z.coerce.date(),
 });
