@@ -150,7 +150,7 @@ export function ChallengeCard({
     <div className="rounded-md bg-white/5 p-5 shadow-md shadow-black/20 hover:bg-white/10">
       {/* Header: Project name + CP */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white">CHLG #{challengeIndex} : {challengeTitle}</h3>
+        <h3 className="text-lg font-semibold text-white">{challengeTitle}</h3>
         <span className="text-sm font-semibold text-white">
           {rewardPool.toLocaleString()} <span className="text-brandCP">CP</span>
         </span>
@@ -159,9 +159,9 @@ export function ChallengeCard({
       {/* Challenge title with chevron */}
       <button
         //onClick={() => setIsExpanded(!isExpanded)}
-        className="mt-1 flex w-full items-center justify-between text-left"
+        className="flex w-full items-center justify-between text-left"
       >
-        <p className="text-sm font-medium text-white/70">{projectName}</p>
+        <p className="text-sm font-medium text-white/70">Challenge {challengeIndex} • Project: {projectName}</p>
         <svg
           className={`h-5 w-5 text-white/60 transition-transform ${isExpanded ? "rotate-180" : ""}`}
           xmlns="http://www.w3.org/2000/svg"
@@ -178,7 +178,7 @@ export function ChallengeCard({
       </button>
 
       {description && (
-        <p className="text-sm text-white mt-2">{description}</p>
+        <p className="text-sm text-white mt-3">{description}</p>
       )}
 
       <div className="w-full flex items-center justify-center">
