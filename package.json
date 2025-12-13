@@ -11,7 +11,14 @@
     "populate-db": "tsx db_data/seed.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "prod": "bash ./scripts/prod.sh",
+    "prod:build": "cd apps/leaderboard-client && npm run build",
+    "prod:status": "pm2 status",
+    "prod:logs": "pm2 logs leaderboard-client",
+    "prod:restart": "pm2 restart leaderboard-client --update-env",
+    "prod:stop": "pm2 stop leaderboard-client",
+    "prod:delete": "pm2 delete leaderboard-client"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",

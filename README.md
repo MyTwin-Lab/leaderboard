@@ -102,6 +102,59 @@ npm run dev
 
 The app is a Next.js project in `apps/leaderboard-client`.
 
+## Deployment (production)
+
+This repo includes production scripts to build and run the Next.js app using **PM2**.
+
+### Prerequisites
+
+- A `.env` file at the **repo root** (same one used by Drizzle/seed)
+- PM2 is installed **globally on the VPS** (commands use `pm2`)
+
+### Build + run with PM2
+
+From the repo root:
+
+```bash
+npm run prod
+```
+
+Defaults:
+
+- **Port**: `3014` (override with `PORT=xxxx npm run prod`)
+- **App name (PM2)**: `leaderboard-client`
+
+### Useful PM2 commands
+
+```bash
+npm run prod:status
+npm run prod:logs
+npm run prod:restart
+npm run prod:stop
+npm run prod:delete
+```
+
+### Nginx reverse-proxy (example)
+
+Point your subdomain (e.g. `lab.my-twin.io`) to the VPS, then proxy to the local Next.js server:
+
+```nginx
+server {
+  server_name lab.my-twin.io;
+
+  location / {
+    proxy_pass http://127.0.0.1:3014;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+  }
+}
+```
+
 ## Troubleshooting
 
 - **“Invalid environment configuration: JWT_SECRET …”**: set `JWT_SECRET` to **32+ characters** (see `packages/config/index.ts`).
