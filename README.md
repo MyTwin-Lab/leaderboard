@@ -111,12 +111,28 @@ This repo includes production scripts to build and run the Next.js app using **P
 - A `.env` file at the **repo root** (same one used by Drizzle/seed)
 - PM2 is installed **globally on the VPS** (commands use `pm2`)
 
+### Two production run modes (recommended)
+
+This repo contains optional “backend integrations” (evaluator via OpenAI + connectors via GitHub/Google Drive).
+They are executed **inside the Next.js server runtime** (API routes / server code), not as separate daemons.
+
+So in production you can choose between:
+
+- **Full prod**: everything enabled → requires real API keys in `.env`
+- **Minimal prod**: client + DB only → does **not** require API keys (the script sets placeholders so `next build` won’t crash)
+
 ### Build + run with PM2
 
 From the repo root:
 
 ```bash
-npm run prod
+npm run prod:full
+```
+
+Minimal mode (useful when you only need the UI + DB access):
+
+```bash
+npm run prod:min
 ```
 
 Defaults:
@@ -160,6 +176,7 @@ server {
 - **“Invalid environment configuration: JWT_SECRET …”**: set `JWT_SECRET` to **32+ characters** (see `packages/config/index.ts`).
 - **Drizzle / seed can’t connect**: check `DATABASE_URL`, that Postgres is running, and the DB/user exist.
 - **App starts but API calls fail**: ensure you copied `.env` to `apps/leaderboard-client/.env.local` so Next.js can read it.
+- **`next build` fails with “Missing credentials … OPENAI_API_KEY”**: use `npm run prod:min` (or set `OPENAI_API_KEY` in `.env`).
 
 ## More documentation
 
