@@ -46,7 +46,9 @@ export async function fetchProjectsWithChallenges(userId?: string | null): Promi
         .filter((challenge) => challenge.project_id === project.uuid)
         .map((challenge) => ({
           id: challenge.uuid,
-          index: challenge.index,
+          // DB column is NOT NULL (serial), but shared domain types mark it optional.
+          // Normalize here so UI types can rely on `index: number`.
+          index: challenge.index ?? 0,
           title: challenge.title,
           rewardPool: challenge.contribution_points_reward ?? 0,
           contributionsCount: contributionsCountByChallenge.get(challenge.uuid) ?? 0,

@@ -381,6 +381,7 @@ export class ChallengeService {
           reward: 0, // Sera calculé à la fin du challenge
           user_id: contrib.userId,
           challenge_id: challengeId,
+          submitted_at: new Date(),
         });
       } catch (error) {
         console.error(`[ChallengeService] Erreur lors de la sauvegarde de la contribution ${contrib.title}:`, error);
