@@ -98,13 +98,15 @@ export async function middleware(request: NextRequest) {
     if (isProtectedApiRoute) {
       const method = request.method;
       
-      // Routes accessibles aux contributeurs (self-assign/unassign)
-      const isTaskAssignRoute = pathname.startsWith('/api/tasks/') && pathname.endsWith('/assign');
+      // Routes accessibles aux contributeurs (self-assign/unassign/complete)
+      const isTaskSelfServiceRoute =
+        pathname.startsWith('/api/tasks/') &&
+        (pathname.endsWith('/assign') || pathname.endsWith('/complete'));
       
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
         // Permettre aux contributeurs de s'assigner/désassigner des tâches
-        if (!isTaskAssignRoute) {
+        if (!isTaskSelfServiceRoute) {
           return NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }
