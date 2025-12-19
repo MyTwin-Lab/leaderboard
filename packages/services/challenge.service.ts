@@ -4,7 +4,8 @@ import { computeRewards } from "../evaluator/reward.js";
 import { 
   ChallengeRepository, 
   ContributionRepository, 
-  ChallengeTeamRepository
+  ChallengeTeamRepository,
+  TaskRepository
 } from "../database-service/repositories/index.js";
 import type { User } from "../database-service/domain/entities.js";
 import { GoogleDriveConnector } from "../connectors/implementation/GD.connector.js";
@@ -35,12 +36,14 @@ export class ChallengeService {
   private challengeRepo: ChallengeRepository;
   private contributionRepo: ContributionRepository;
   private challengeTeamRepo: ChallengeTeamRepository;
+  private taskRepo: TaskRepository;
 
   constructor() {
     this.evaluator = new OpenAIAgentEvaluator();
     this.challengeRepo = new ChallengeRepository();
     this.contributionRepo = new ContributionRepository();
     this.challengeTeamRepo = new ChallengeTeamRepository();
+    this.taskRepo = new TaskRepository();
   }
 
   /**
@@ -169,6 +172,10 @@ export class ChallengeService {
         html_url: i.url,
       }));
 
+    // Récupérer les tâches du challenge
+    const tasks = await this.taskRepo.findByChallenge(challengeId);
+    console.log(`   - Tasks: ${tasks.length}`);
+
     const context: IdentifyContext = {
       syncPreview,
       commits: commits.map(c => ({ ...c })), // Assure que ça match CommitInfo
@@ -177,7 +184,14 @@ export class ChallengeService {
         full_name: u.full_name,
         github_username: u.github_username
       })),
-      roadmap: challenge.roadmap
+      roadmap: challenge.roadmap,
+      tasks: tasks.map(t => ({
+        uuid: t.uuid,
+        title: t.title,
+        description: t.description,
+        type: t.type,
+        status: t.status
+      }))
     };
 
     const contributions = await this.evaluator.identify(context);
@@ -367,6 +381,7 @@ export class ChallengeService {
           reward: 0, // Sera calculé à la fin du challenge
           user_id: contrib.userId,
           challenge_id: challengeId,
+          submitted_at: new Date(),
         });
       } catch (error) {
         console.error(`[ChallengeService] Erreur lors de la sauvegarde de la contribution ${contrib.title}:`, error);

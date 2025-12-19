@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import type { Challenge, Project } from '../../../../../packages/database-service/domain/entities';
+import { TaskList } from './TaskList';
+import { TaskForm } from './TaskForm';
+import type { Challenge, Project, Task } from '../../../../../packages/database-service/domain/entities';
 
 interface ChallengeFormProps {
   challenge?: Challenge;
@@ -22,6 +24,85 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     contribution_points_reward: challenge?.contribution_points_reward || 0,
     project_id: challenge?.project_id || '',
   });
+
+  // Task management state (only for existing challenges)
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | undefined>();
+
+  useEffect(() => {
+    if (challenge?.uuid) {
+      fetchTasks();
+    }
+  }, [challenge?.uuid]);
+
+  const fetchTasks = async () => {
+    if (!challenge?.uuid) return;
+    try {
+      const res = await fetch(`/api/tasks?challenge_id=${challenge.uuid}`);
+      const data = await res.json();
+      setTasks(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      setTasks([]);
+    }
+  };
+
+  const handleCreateTask = async (data: any) => {
+    try {
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        await fetchTasks();
+        setShowTaskForm(false);
+      }
+    } catch (error) {
+      console.error('Error creating task:', error);
+    }
+  };
+
+  const handleUpdateTask = async (data: any) => {
+    if (!editingTask) return;
+    try {
+      const res = await fetch(`/api/tasks/${editingTask.uuid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        await fetchTasks();
+        setShowTaskForm(false);
+        setEditingTask(undefined);
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
+  const handleDeleteTask = async (id: string) => {
+    if (!confirm('Delete this task?')) return;
+    try {
+      const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await fetchTasks();
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setShowTaskForm(true);
+  };
+
+  const handleCancelTaskForm = () => {
+    setShowTaskForm(false);
+    setEditingTask(undefined);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,6 +213,43 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
           className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary-300"
         />
       </div>
+
+      {/* Tasks section - only shown when editing an existing challenge */}
+      {challenge?.uuid && (
+        <div className="border-t border-white/10 pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <label className="block text-sm font-medium text-white/80">
+              Tasks
+            </label>
+            {!showTaskForm && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setShowTaskForm(true)}
+              >
+                + Add Task
+              </Button>
+            )}
+          </div>
+
+          {showTaskForm ? (
+            <TaskForm
+              task={editingTask}
+              challengeId={challenge.uuid}
+              availableParentTasks={tasks.filter(t => !t.parent_task_id)}
+              onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
+              onCancel={handleCancelTaskForm}
+            />
+          ) : (
+            <TaskList
+              tasks={tasks}
+              onEdit={handleEditTask}
+              onDelete={handleDeleteTask}
+            />
+          )}
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-white/80 mb-1.5">

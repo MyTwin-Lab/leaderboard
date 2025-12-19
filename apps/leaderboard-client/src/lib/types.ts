@@ -3,6 +3,7 @@ export type LeaderboardEntry = {
   userId: string;
   displayName: string;
   githubUsername: string;
+  bio?: string;
   totalCP: number;
 };
 
@@ -38,3 +39,36 @@ export type ContributorProfile = {
 };
 
 export type ProjectFilter = LeaderboardResponse["filters"]["projects"][number];
+
+export type SessionUser = {
+  id: string;
+  fullName: string;
+  githubUsername: string;
+  role: string;
+};
+
+export type ContributorSession = SessionUser;
+
+export type TeamMember = {
+  id: string;
+  fullName: string;
+};
+
+export type ProjectChallengeSummary = {
+  id: string;
+  index: number;
+  title: string;
+  rewardPool: number;
+  contributionsCount: number;
+  completion: number;
+  teamMembers: TeamMember[];
+  startDate: string;
+  endDate: string;
+};
+
+export type ProjectWithChallenges = {
+  id: string;
+  title: string;
+  description: string | null;
+  challenges: ProjectChallengeSummary[];
+};

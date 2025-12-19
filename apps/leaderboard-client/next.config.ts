@@ -2,11 +2,8 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
-  // Utiliser webpack au lieu de Turbopack pour compatibilité monorepo
-  // Turbopack ne supporte pas bien les imports relatifs complexes
-  experimental: {
-    // Forcer webpack
-  },
+  // Config turbopack vide pour permettre l'utilisation de --webpack
+  turbopack: {},
   
   // Configuration webpack pour résoudre les imports du monorepo
   webpack: (config, { isServer }) => {

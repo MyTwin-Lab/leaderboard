@@ -35,11 +35,12 @@ export class UserRepository {
 
   async update(uuid: string, entity: Partial<Omit<User, "uuid" | "created_at">>): Promise<User> {
     const validated = userSchema.omit({ uuid: true, created_at: true }).partial().parse(entity);
-    const dbData = validated.role || validated.full_name || validated.github_username 
+    const dbData = validated.role || validated.full_name || validated.github_username || validated.bio
       ? {
           ...(validated.role && { role: validated.role }),
           ...(validated.full_name && { full_name: validated.full_name }),
           ...(validated.github_username && { github_username: validated.github_username }),
+          ...(validated.bio !== undefined && { bio: validated.bio }),
         }
       : {};
     const [updated] = await db.update(users)

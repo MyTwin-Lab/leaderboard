@@ -35,6 +35,7 @@ export interface Challenge {
   description?: string;
   roadmap?: string;
   contribution_points_reward: number;
+  completion: number;
   project_id: string; // FK -> projects.uuid
 }
 
@@ -48,6 +49,7 @@ export interface Contribution {
   reward: number;
   user_id: string;      // FK -> users.uuid
   challenge_id: string; // FK -> challenges.uuid
+  submitted_at: Date;
 }
 
 export interface User {
@@ -55,6 +57,7 @@ export interface User {
   role: string;
   full_name: string;
   github_username: string;
+  bio?: string;
   password_hash?: string;
   created_at: Date;
 }
@@ -65,4 +68,21 @@ export interface RefreshToken {
   token_hash: string;
   expires_at: Date;
   created_at: Date;
+}
+
+export interface Task {
+  uuid: string;
+  challenge_id: string;
+  parent_task_id?: string;
+  title: string;
+  description?: string;
+  type: "solo" | "concurrent";
+  status: "todo" | "done";
+  created_at: Date;
+}
+
+export interface TaskAssignee {
+  task_id: string;
+  user_id: string;
+  assigned_at: Date;
 }

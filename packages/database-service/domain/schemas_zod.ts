@@ -36,6 +36,7 @@ export const challengeSchema = z.object({
   description: z.string().optional(),
   roadmap: z.string().optional(),
   contribution_points_reward: z.number().int().nonnegative(),
+  completion: z.number().int().nonnegative().default(0),
   project_id: z.string().uuid(),
 });
 
@@ -49,6 +50,7 @@ export const contributionSchema = z.object({
   reward: z.number().default(0),
   user_id: z.string().uuid(),
   challenge_id: z.string().uuid(),
+  submitted_at: z.coerce.date(),
 });
 
 export const userSchema = z.object({
@@ -56,6 +58,7 @@ export const userSchema = z.object({
   role: z.string(),
   full_name: z.string(),
   github_username: z.string(),
+  bio: z.string().optional(),
   password_hash: z.string().optional(),
   created_at: z.coerce.date(),
 });
@@ -66,4 +69,21 @@ export const refreshTokenSchema = z.object({
   token_hash: z.string(),
   expires_at: z.coerce.date(),
   created_at: z.coerce.date(),
+});
+
+export const taskSchema = z.object({
+  uuid: z.string().uuid(),
+  challenge_id: z.string().uuid(),
+  parent_task_id: z.string().uuid().optional(),
+  title: z.string().min(1),
+  description: z.string().optional(),
+  type: z.enum(["solo", "concurrent"]),
+  status: z.enum(["todo", "done"]),
+  created_at: z.coerce.date(),
+});
+
+export const taskAssigneeSchema = z.object({
+  task_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  assigned_at: z.coerce.date(),
 });

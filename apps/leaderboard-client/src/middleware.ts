@@ -2,8 +2,13 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
-// Routes qui nécessitent une authentification
-const protectedRoutes = ['/admin'];
+type UserRole = 'admin' | 'contributor';
+type ProtectedPage = { prefix: string; roles: readonly UserRole[] };
+
+const protectedPages: ProtectedPage[] = [
+  { prefix: '/admin', roles: ['admin'] },
+  { prefix: '/contributors/me', roles: ['admin', 'contributor'] },
+];
 
 // Routes API qui nécessitent une authentification (sauf auth)
 const protectedApiRoutes = [
@@ -12,6 +17,8 @@ const protectedApiRoutes = [
   '/api/users',
   '/api/repos',
   '/api/contributions',
+  '/api/contributors/me',
+  '/api/tasks',
 ];
 
 // Routes publiques d'authentification
@@ -33,9 +40,7 @@ async function verifyTokenEdge(token: string): Promise<{ userId: string; role: s
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
-  // Vérifier si c'est une route protégée
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  const matchedProtectedPage = protectedPages.find((route) => pathname.startsWith(route.prefix));
   const isProtectedApiRoute = protectedApiRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
   
@@ -45,7 +50,7 @@ export async function middleware(request: NextRequest) {
   }
   
   // Si c'est une route protégée, vérifier le token
-  if (isProtectedRoute || isProtectedApiRoute) {
+  if (matchedProtectedPage || isProtectedApiRoute) {
     const token = request.cookies.get('access_token')?.value;
     
     if (!token) {
@@ -79,24 +84,34 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
     
-    // Vérifier le rôle pour les routes admin
-    if (isProtectedRoute && payload.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Insufficient permissions' },
-        { status: 403 }
-      );
+    if (matchedProtectedPage) {
+      const allowedRoles = matchedProtectedPage.roles;
+      if (!allowedRoles.includes(payload.role as typeof allowedRoles[number])) {
+        return NextResponse.json(
+          { error: 'Insufficient permissions' },
+          { status: 403 }
+        );
+      }
     }
     
     // Pour les routes API protégées, vérifier les permissions selon la méthode
     if (isProtectedApiRoute) {
       const method = request.method;
       
-      // Les méthodes de modification nécessitent le rôle admin
+      // Routes accessibles aux contributeurs (self-assign/unassign/complete)
+      const isTaskSelfServiceRoute =
+        pathname.startsWith('/api/tasks/') &&
+        (pathname.endsWith('/assign') || pathname.endsWith('/complete'));
+      
+      // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        return NextResponse.json(
-          { error: 'Admin role required for this action' },
-          { status: 403 }
-        );
+        // Permettre aux contributeurs de s'assigner/désassigner des tâches
+        if (!isTaskSelfServiceRoute) {
+          return NextResponse.json(
+            { error: 'Admin role required for this action' },
+            { status: 403 }
+          );
+        }
       }
     }
   }
@@ -107,11 +122,14 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/admin/:path*',
+    '/contributors/me',
     '/api/challenges/:path*',
     '/api/projects/:path*',
     '/api/users/:path*',
     '/api/repos/:path*',
     '/api/contributions/:path*',
+    '/api/contributors/:path*',
+    '/api/tasks/:path*',
     '/api/auth/:path*',
   ],
 };

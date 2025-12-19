@@ -2,11 +2,13 @@
 
 :root {
   --background: #ffffff;
+  --background-dark: #030208;
   --foreground: #171717;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-backgroundDark: var(--background-dark);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

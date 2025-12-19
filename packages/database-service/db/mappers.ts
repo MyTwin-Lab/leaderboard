@@ -13,6 +13,8 @@ import {
   users,
   contributions,
   refresh_tokens,
+  tasks,
+  task_assignees,
 } from "./drizzle.js";
 import type {
   Project,
@@ -23,6 +25,8 @@ import type {
   User,
   Contribution,
   RefreshToken,
+  Task,
+  TaskAssignee,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -34,6 +38,8 @@ type DbChallengeTeam = InferSelectModel<typeof challenge_teams>;
 type DbUser = InferSelectModel<typeof users>;
 type DbContribution = InferSelectModel<typeof contributions>;
 type DbRefreshToken = InferSelectModel<typeof refresh_tokens>;
+type DbTask = InferSelectModel<typeof tasks>;
+type DbTaskAssignee = InferSelectModel<typeof task_assignees>;
 
 /* ============================================================
  *  MAPPERS DB → DOMAIN
@@ -69,6 +75,7 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     description: row.description ?? "",
     roadmap: row.roadmap ?? "",
     contribution_points_reward: row.contribution_points_reward ?? 0,
+    completion: row.completion ?? 0,
     project_id: row.project_id ?? "",
   };
 }
@@ -93,6 +100,7 @@ export function toDomainUser(row: DbUser): User {
     role: row.role,
     full_name: row.full_name,
     github_username: row.github_username,
+    bio: row.bio ?? undefined,
     password_hash: row.password_hash ?? undefined,
     created_at: new Date(row.created_at ?? Date.now()),
   };
@@ -109,6 +117,7 @@ export function toDomainContribution(row: DbContribution): Contribution {
     reward: row.reward ?? 0,
     user_id: row.user_id ?? "",
     challenge_id: row.challenge_id ?? "",
+    submitted_at: new Date(row.submitted_at),
   };
 }
 
@@ -142,6 +151,7 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenge
     description: entity.description || null,
     roadmap: entity.roadmap || null,
     contribution_points_reward: entity.contribution_points_reward,
+    completion: entity.completion ?? 0,
     project_id: entity.project_id || null,
   };
 }
@@ -151,6 +161,7 @@ export function toDbUser(entity: Omit<User, "uuid" | "created_at">): typeof user
     role: entity.role,
     full_name: entity.full_name,
     github_username: entity.github_username,
+    bio: entity.bio ?? null,
     password_hash: entity.password_hash ?? null,
   };
 }
@@ -165,6 +176,7 @@ export function toDbContribution(entity: Omit<Contribution, "uuid">): typeof con
     reward: entity.reward,
     user_id: entity.user_id || null,
     challenge_id: entity.challenge_id || null,
+    submitted_at: entity.submitted_at,
   };
 }
 
@@ -183,5 +195,44 @@ export function toDbRefreshToken(entity: Omit<RefreshToken, "id" | "created_at">
     user_id: entity.user_id,
     token_hash: entity.token_hash,
     expires_at: entity.expires_at,
+  };
+}
+
+export function toDomainTask(row: DbTask): Task {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challenge_id ?? "",
+    parent_task_id: row.parent_task_id ?? undefined,
+    title: row.title,
+    description: row.description ?? undefined,
+    type: row.type as "solo" | "concurrent",
+    status: (row.status as "todo" | "done") ?? "todo",
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbTask(entity: Omit<Task, "uuid" | "created_at">): typeof tasks.$inferInsert {
+  return {
+    challenge_id: entity.challenge_id || null,
+    parent_task_id: entity.parent_task_id || null,
+    title: entity.title,
+    description: entity.description || null,
+    type: entity.type,
+    status: entity.status,
+  };
+}
+
+export function toDomainTaskAssignee(row: DbTaskAssignee): TaskAssignee {
+  return {
+    task_id: row.task_id ?? "",
+    user_id: row.user_id ?? "",
+    assigned_at: new Date(row.assigned_at ?? Date.now()),
+  };
+}
+
+export function toDbTaskAssignee(entity: Omit<TaskAssignee, "assigned_at">): typeof task_assignees.$inferInsert {
+  return {
+    task_id: entity.task_id,
+    user_id: entity.user_id,
   };
 }

@@ -6,3 +6,5 @@ export { ChallengeTeamRepository } from "./challengeTeam.repo";
 export { UserRepository } from "./user.repo";
 export { ContributionRepository } from "./contribution.repo";
 export { RefreshTokenRepository } from "./refresh-token.repo";
+export { TaskRepository } from "./task.repo";
+export { TaskAssigneeRepository } from "./taskAssignee.repo";

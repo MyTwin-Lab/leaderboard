@@ -1,13 +1,14 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { Menu, X } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -27,26 +28,26 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       {/* Header avec navigation */}
-      <header className="border-b border-white/10 bg-white/5 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex h-16 items-center justify-between">
+      <header className="rounded-md bg-white/5 shadow-md backdrop-blur-sm">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="flex h-14 items-center justify-between sm:h-16">
             {/* Logo + Title */}
-            <div className="flex items-center gap-6">
-              <h1 className="text-lg font-semibold text-white">Admin Dashboard</h1>
+            <div className="flex items-center gap-4 sm:gap-6">
+              <h1 className="text-base font-semibold text-white sm:text-lg">Admin Dashboard</h1>
             </div>
 
-            {/* Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
+            {/* Desktop Navigation */}
+            <nav className="hidden items-center gap-1 md:flex">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors lg:px-4 lg:py-2 ${
                       isActive
-                        ? 'bg-primary-300/20 text-primary-100'
-                        : 'text-white/70 hover:text-white hover:bg-white/5'
+                        ? 'bg-brandCP/20 text-brandCP'
+                        : 'text-white/70 hover:bg-white/5 hover:text-white'
                     }`}
                   >
                     {item.label}
@@ -55,19 +56,45 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               })}
             </nav>
 
-            {/* Logout */}
+            {/* Mobile menu button */}
             <button
-              onClick={handleLogout}
-              className="px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium transition-colors"
+              className="rounded-md p-2 text-white/70 hover:bg-white/5 hover:text-white md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              Logout
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <span className="sr-only">Toggle menu</span>
             </button>
           </div>
+
+          {/* Mobile Navigation */}
+          {mobileMenuOpen && (
+            <nav className="border-t border-white/10 pb-3 pt-2 md:hidden">
+              <div className="flex flex-wrap gap-1">
+                {navItems.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-brandCP/20 text-brandCP'
+                          : 'text-white/70 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </nav>
+          )}
         </div>
       </header>
 
       {/* Main content */}
-      <main className="mx-auto max-w-7xl px-6 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         {children}
       </main>
     </div>

@@ -6,6 +6,7 @@ import { UserRepository } from '../../../../packages/database-service/repositori
 import type { User } from '../../../../packages/database-service/domain/entities';
 import * as bcrypt from 'bcryptjs';
 import { config } from '../../../../packages/config';
+import type { SessionUser } from '@/lib/types';
 
 const refreshTokenRepo = new RefreshTokenRepository();
 const userRepo = new UserRepository();
@@ -120,6 +121,21 @@ export async function verifyRequestToken(request: NextRequest): Promise<JWTPaylo
   const token = getTokenFromRequest(request);
   if (!token) return null;
   return verifyToken(token);
+}
+
+export async function getSessionUser(): Promise<SessionUser | null> {
+  const token = await getTokenFromCookies();
+  if (!token) return null;
+  const payload = await verifyToken(token);
+  if (!payload) return null;
+  const user = await userRepo.findById(payload.userId);
+  if (!user) return null;
+  return {
+    id: user.uuid,
+    fullName: user.full_name,
+    githubUsername: user.github_username,
+    role: user.role,
+  } satisfies SessionUser;
 }
 
 /**

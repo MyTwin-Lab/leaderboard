@@ -59,6 +59,18 @@ export interface IdentifyContext {
   commits: CommitInfo[]; // Liste des commits
   users: UserInfo[];     // Membres de l'équipe
   roadmap?: string;      // Roadmap du challenge
+  tasks?: TaskInfo[];    // Tâches du challenge
+}
+
+/**
+ * Informations sur une tâche (pour identification)
+ */
+export interface TaskInfo {
+  uuid: string;
+  title: string;
+  description?: string;
+  type: "solo" | "concurrent";
+  status: "todo" | "done";
 }
 
 /**

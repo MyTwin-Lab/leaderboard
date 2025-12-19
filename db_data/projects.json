@@ -1,0 +1,17 @@
+[
+    {
+        "uuid": 1,
+        "title": "Leaderboard",
+        "description": "AI agent that tracks each contribution, evaluates the quality of work, and automatically distributes rewards ($CP)"
+    },
+    {
+        "uuid": 2,
+        "title": "Medical Imaging AI",
+        "description": "Multimodal AI for medical imaging analysis"
+    },
+    {
+        "uuid": 3,
+        "title": "Injury Prediction",
+        "description": "Prediction of sports injuries"
+    }
+]
