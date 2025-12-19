@@ -8,8 +8,9 @@
 - 0.3 Définir les KPIs et vues essentielles de l’historique (statut, durée, # contributions).
 
 ### **Phase 1 – Modèle de données & instrumentation backend**
+- 1.0 Refactoriser ChallengeService en plusieurs fichiers pour séparer les responsabilités (contexte, enregistrement, pipeline Evaluator, logging)
 - 1.1 Ajouter les tables `evaluation_runs` et `evaluation_run_contributions` dans `packages/database-service`.
-- 1.2 Étendre ChallengeService / Evaluator pour créer un enregistrement de run dès le lancement et l’enrichir au fil du pipeline (timestamps, statut, payload, erreurs).
+- 1.2 Étendre ChallengeService pour créer un enregistrement de run dès le lancement et l’enrichir au fil du pipeline (timestamps, statut, payload, erreurs).
 - 1.3 Persister pour chaque contribution trouvée : UUID DB, challenge, fenêtre temporelle, source.
 
 ### **Phase 2 – API & services de consultation**
