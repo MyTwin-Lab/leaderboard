@@ -15,6 +15,7 @@ import {
   refresh_tokens,
   tasks,
   task_assignees,
+  task_workspaces,
   evaluation_runs,
   evaluation_run_contributions,
   evaluation_grids,
@@ -32,6 +33,9 @@ import type {
   RefreshToken,
   Task,
   TaskAssignee,
+  TaskWorkspace,
+  WorkspaceStatus,
+  WorkspaceMeta,
   EvaluationRun,
   EvaluationRunContribution,
   EvaluationRunTriggerType,
@@ -55,6 +59,7 @@ type DbContribution = InferSelectModel<typeof contributions>;
 type DbRefreshToken = InferSelectModel<typeof refresh_tokens>;
 type DbTask = InferSelectModel<typeof tasks>;
 type DbTaskAssignee = InferSelectModel<typeof task_assignees>;
+type DbTaskWorkspace = InferSelectModel<typeof task_workspaces>;
 type DbEvaluationRun = InferSelectModel<typeof evaluation_runs>;
 type DbEvaluationRunContribution = InferSelectModel<typeof evaluation_run_contributions>;
 type DbEvaluationGrid = InferSelectModel<typeof evaluation_grids>;
@@ -104,6 +109,11 @@ export function toDomainChallengeRepo(row: DbChallengeRepo): ChallengeRepo {
   return {
     challenge_id: row.challenge_id ?? "",
     repo_id: row.repo_id ?? "",
+    workspace_provider: row.workspace_provider ?? undefined,
+    workspace_ref: row.workspace_ref ?? undefined,
+    workspace_url: row.workspace_url ?? undefined,
+    workspace_status: (row.workspace_status as WorkspaceStatus) ?? undefined,
+    workspace_meta: (row.workspace_meta as WorkspaceMeta) ?? undefined,
   };
 }
 
@@ -254,6 +264,30 @@ export function toDbTaskAssignee(entity: Omit<TaskAssignee, "assigned_at">): typ
   return {
     task_id: entity.task_id,
     user_id: entity.user_id,
+  };
+}
+
+export function toDomainTaskWorkspace(row: DbTaskWorkspace): TaskWorkspace {
+  return {
+    task_id: row.task_id ?? "",
+    repo_id: row.repo_id ?? "",
+    workspace_provider: row.workspace_provider ?? undefined,
+    workspace_ref: row.workspace_ref ?? undefined,
+    workspace_url: row.workspace_url ?? undefined,
+    workspace_status: (row.workspace_status as WorkspaceStatus) ?? undefined,
+    workspace_meta: (row.workspace_meta as WorkspaceMeta) ?? undefined,
+  };
+}
+
+export function toDbTaskWorkspace(entity: TaskWorkspace): typeof task_workspaces.$inferInsert {
+  return {
+    task_id: entity.task_id,
+    repo_id: entity.repo_id,
+    workspace_provider: entity.workspace_provider ?? null,
+    workspace_ref: entity.workspace_ref ?? null,
+    workspace_url: entity.workspace_url ?? null,
+    workspace_status: entity.workspace_status ?? null,
+    workspace_meta: entity.workspace_meta ?? null,
   };
 }
 

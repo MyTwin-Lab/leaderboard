@@ -15,9 +15,28 @@ export interface Repo {
   project_id: string; // FK -> projects.uuid
 }
 
+// --- WORKSPACE TYPES ---
+
+export type WorkspaceStatus = 'pending' | 'ready' | 'failed';
+
+export interface WorkspaceMeta {
+  baseBranch?: string;
+  sha?: string;
+  createdAt?: string;
+  error?: string;
+  alreadyExisted?: boolean;
+  [key: string]: unknown;
+}
+
 export interface ChallengeRepo {
   challenge_id: string; // FK -> challenges.uuid
   repo_id: string;      // FK -> repos.uuid
+  // Workspace provisioning fields
+  workspace_provider?: string;
+  workspace_ref?: string;
+  workspace_url?: string;
+  workspace_status?: WorkspaceStatus;
+  workspace_meta?: WorkspaceMeta;
 }
 
 export interface ChallengeTeam {
@@ -85,6 +104,17 @@ export interface TaskAssignee {
   task_id: string;
   user_id: string;
   assigned_at: Date;
+}
+
+export interface TaskWorkspace {
+  task_id: string;
+  repo_id: string;
+  // Workspace provisioning fields
+  workspace_provider?: string;
+  workspace_ref?: string;
+  workspace_url?: string;
+  workspace_status?: WorkspaceStatus;
+  workspace_meta?: WorkspaceMeta;
 }
 
 // --- EVALUATION RUNS ---

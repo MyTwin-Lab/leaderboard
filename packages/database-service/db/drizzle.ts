@@ -41,6 +41,12 @@ export const challenges = pgTable("challenges", {
 export const challenge_repos = pgTable("challenge_repos", {
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
   repo_id: uuid("repo_id").references(() => repos.uuid, { onDelete: "cascade" }),
+  // Workspace provisioning fields
+  workspace_provider: varchar("workspace_provider", { length: 32 }), // github, huggingface, figma...
+  workspace_ref: varchar("workspace_ref", { length: 200 }), // ex: refs/heads/challenge/007-admin-experience
+  workspace_url: text("workspace_url"), // ex: https://github.com/owner/repo/tree/challenge/007
+  workspace_status: varchar("workspace_status", { length: 20 }).default("pending"), // pending | ready | failed
+  workspace_meta: json("workspace_meta"), // { baseBranch, createdAt, error, sha... }
 });
 
 // --- CHALLENGE_TEAMS ---
@@ -91,6 +97,18 @@ export const task_assignees = pgTable("task_assignees", {
   task_id: uuid("task_id").references(() => tasks.uuid, { onDelete: "cascade" }),
   user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }),
   assigned_at: timestamp("assigned_at").defaultNow(),
+});
+
+// --- TASK_WORKSPACES ---
+export const task_workspaces = pgTable("task_workspaces", {
+  task_id: uuid("task_id").references(() => tasks.uuid, { onDelete: "cascade" }),
+  repo_id: uuid("repo_id").references(() => repos.uuid, { onDelete: "cascade" }),
+  // Workspace provisioning fields
+  workspace_provider: varchar("workspace_provider", { length: 32 }), // github, huggingface, figma...
+  workspace_ref: varchar("workspace_ref", { length: 200 }), // ex: refs/heads/task/007-setup-environment
+  workspace_url: text("workspace_url"), // ex: https://github.com/owner/repo/tree/task/007-setup
+  workspace_status: varchar("workspace_status", { length: 20 }).default("pending"), // pending | ready | failed
+  workspace_meta: json("workspace_meta"), // { baseBranch, createdAt, error, sha... }
 });
 
 // --- REFRESH_TOKENS ---
@@ -297,6 +315,17 @@ export const evaluationGridSubcriteriaRelations = relations(evaluation_grid_subc
   }),
 }));
 
+export const taskWorkspacesRelations = relations(task_workspaces, ({ one }) => ({
+  task: one(tasks, {
+    fields: [task_workspaces.task_id],
+    references: [tasks.uuid],
+  }),
+  repo: one(repos, {
+    fields: [task_workspaces.repo_id],
+    references: [repos.uuid],
+  }),
+}));
+
 // --- DATABASE CLIENT ---
 
 const pool = new Pool({
@@ -320,6 +349,7 @@ export const db = drizzle(pool, {
     evaluation_grids,
     evaluation_grid_categories,
     evaluation_grid_subcriteria,
+    task_workspaces,
     projectsRelations,
     reposRelations,
     challengesRelations,
@@ -333,5 +363,6 @@ export const db = drizzle(pool, {
     evaluationGridsRelations,
     evaluationGridCategoriesRelations,
     evaluationGridSubcriteriaRelations,
+    taskWorkspacesRelations,
   },
 });
