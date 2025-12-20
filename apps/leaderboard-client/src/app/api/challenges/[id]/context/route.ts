@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ChallengeService } from '../../../../../../../../packages/services/challenge.service';
+import { ChallengeService } from '../../../../../../../../packages/services/challenge/index';
 
 const challengeService = new ChallengeService();
 
