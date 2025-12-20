@@ -41,6 +41,12 @@ export const challenges = pgTable("challenges", {
 export const challenge_repos = pgTable("challenge_repos", {
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
   repo_id: uuid("repo_id").references(() => repos.uuid, { onDelete: "cascade" }),
+  // Workspace provisioning fields
+  workspace_provider: varchar("workspace_provider", { length: 32 }), // github, huggingface, figma...
+  workspace_ref: varchar("workspace_ref", { length: 200 }), // ex: refs/heads/challenge/007-admin-experience
+  workspace_url: text("workspace_url"), // ex: https://github.com/owner/repo/tree/challenge/007
+  workspace_status: varchar("workspace_status", { length: 20 }).default("pending"), // pending | ready | failed
+  workspace_meta: json("workspace_meta"), // { baseBranch, createdAt, error, sha... }
 });
 
 // --- CHALLENGE_TEAMS ---
@@ -95,15 +101,48 @@ export const task_assignees = pgTable("task_assignees", {
 
 // --- REFRESH_TOKENS ---
 export const refresh_tokens = pgTable("refresh_tokens", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  uuid: uuid("id").primaryKey().defaultRandom(),
   user_id: uuid("user_id").notNull().references(() => users.uuid, { onDelete: "cascade" }),
   token_hash: text("token_hash").notNull().unique(),
   expires_at: timestamp("expires_at").notNull(),
   created_at: timestamp("created_at").defaultNow(),
 });
 
-// --- RELATIONS ---
+// --- EVALUATION RUN ---
 
+export const evaluation_runs = pgTable('evaluation_runs', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  challengeId: uuid('challenge_id')
+    .notNull()
+    .references(() => challenges.uuid, { onDelete: 'cascade' }),
+  triggerType: varchar('trigger_type', { length: 50 }).notNull(), // 'manual' | 'sync' | 'github_pr'
+  triggerPayload: json('trigger_payload'), // exemple: { prNumber, mergedBy }
+  windowStart: timestamp('window_start').notNull(),
+  windowEnd: timestamp('window_end').notNull(),
+  status: varchar('status', { length: 20 }).notNull(), // pending | running | succeeded | failed | canceled
+  startedAt: timestamp('started_at').defaultNow(),
+  finishedAt: timestamp('finished_at'),
+  errorCode: varchar('error_code', { length: 100 }),
+  errorMessage: text('error_message'),
+  createdBy: uuid('created_by').references(() => users.uuid),
+  meta: json('meta') // { contributionCount, durationMs, evaluatorVersion }
+});
+
+// --- EVALUATION RUN CONTRIBUTION ---
+export const evaluation_run_contributions = pgTable('evaluation_run_contributions', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  runId: uuid('run_id')
+    .notNull()
+    .references(() => evaluation_runs.uuid, { onDelete: 'cascade' }),
+  contributionId: uuid('contribution_id')
+    .notNull()
+    .references(() => contributions.uuid, { onDelete: 'cascade' }),
+  status: varchar('status', { length: 20 }).notNull(), // identified | merged | evaluated | skipped
+  notes: json('notes'), // raison skip, warnings evaluator
+  createdAt: timestamp('created_at').defaultNow()
+});
+
+// --- RELATIONS ---
 export const projectsRelations = relations(projects, ({ many }) => ({
   repos: many(repos),
   challenges: many(challenges),
@@ -198,6 +237,8 @@ export const refreshTokensRelations = relations(refresh_tokens, ({ one }) => ({
   }),
 }));
 
+
+
 // --- DATABASE CLIENT ---
 
 const pool = new Pool({
@@ -216,6 +257,8 @@ export const db = drizzle(pool, {
     tasks,
     task_assignees,
     refresh_tokens,
+    evaluation_runs,
+    evaluation_run_contributions,
     projectsRelations,
     reposRelations,
     challengesRelations,

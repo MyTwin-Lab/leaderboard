@@ -86,3 +86,58 @@ export interface TaskAssignee {
   user_id: string;
   assigned_at: Date;
 }
+
+export interface TaskWorkspace {
+  task_id: string;
+  repo_id: string;
+}
+
+// --- EVALUATION RUNS ---
+
+export type EvaluationRunTriggerType = 'manual' | 'sync' | 'github_pr';
+export type EvaluationRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'canceled';
+
+export interface EvaluationRunMeta {
+  contributionCount?: number;
+  durationMs?: number;
+  evaluatorVersion?: string;
+  gridVersion?: number;
+  [key: string]: unknown;
+}
+
+export interface EvaluationRun {
+  uuid: string;
+  challenge_id: string;
+  trigger_type: EvaluationRunTriggerType;
+  trigger_payload?: Record<string, unknown>;
+  window_start: Date;
+  window_end: Date;
+  status: EvaluationRunStatus;
+  started_at?: Date;
+  finished_at?: Date;
+  error_code?: string;
+  error_message?: string;
+  created_by?: string;
+  retry_of_run_id?: string;
+  meta?: EvaluationRunMeta;
+}
+
+// --- EVALUATION RUN CONTRIBUTIONS ---
+
+export type EvaluationRunContributionStatus = 'identified' | 'merged' | 'evaluated' | 'skipped';
+
+export interface EvaluationRunContributionNotes {
+  skipReason?: string;
+  warnings?: string[];
+  [key: string]: unknown;
+}
+
+export interface EvaluationRunContribution {
+  uuid: string;
+  run_id: string;
+  contribution_id: string;
+  status: EvaluationRunContributionStatus;
+  notes?: EvaluationRunContributionNotes;
+  created_at: Date;
+}
+

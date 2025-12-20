@@ -15,6 +15,8 @@ import {
   refresh_tokens,
   tasks,
   task_assignees,
+  evaluation_runs,
+  evaluation_run_contributions,
 } from "./drizzle.js";
 import type {
   Project,
@@ -27,6 +29,12 @@ import type {
   RefreshToken,
   Task,
   TaskAssignee,
+  TaskWorkspace,
+  EvaluationRun,
+  EvaluationRunContribution,
+  EvaluationRunTriggerType,
+  EvaluationRunStatus,
+  EvaluationRunContributionStatus,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -40,6 +48,9 @@ type DbContribution = InferSelectModel<typeof contributions>;
 type DbRefreshToken = InferSelectModel<typeof refresh_tokens>;
 type DbTask = InferSelectModel<typeof tasks>;
 type DbTaskAssignee = InferSelectModel<typeof task_assignees>;
+type DbEvaluationRun = InferSelectModel<typeof evaluation_runs>;
+type DbEvaluationRunContribution = InferSelectModel<typeof evaluation_run_contributions>;
+
 
 /* ============================================================
  *  MAPPERS DB → DOMAIN
@@ -182,7 +193,7 @@ export function toDbContribution(entity: Omit<Contribution, "uuid">): typeof con
 
 export function toDomainRefreshToken(row: DbRefreshToken): RefreshToken {
   return {
-    id: row.id,
+    id: row.uuid,
     user_id: row.user_id,
     token_hash: row.token_hash,
     expires_at: new Date(row.expires_at),
@@ -234,5 +245,74 @@ export function toDbTaskAssignee(entity: Omit<TaskAssignee, "assigned_at">): typ
   return {
     task_id: entity.task_id,
     user_id: entity.user_id,
+  };
+}
+
+
+
+/* ============================================================
+ *  EVALUATION RUNS MAPPERS
+ * ============================================================ */
+
+export function toDomainEvaluationRun(row: DbEvaluationRun): EvaluationRun {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challengeId,
+    trigger_type: row.triggerType as EvaluationRunTriggerType,
+    trigger_payload: (row.triggerPayload as Record<string, unknown>) ?? undefined,
+    window_start: new Date(row.windowStart),
+    window_end: new Date(row.windowEnd),
+    status: row.status as EvaluationRunStatus,
+    started_at: row.startedAt ? new Date(row.startedAt) : undefined,
+    finished_at: row.finishedAt ? new Date(row.finishedAt) : undefined,
+    error_code: row.errorCode ?? undefined,
+    error_message: row.errorMessage ?? undefined,
+    created_by: row.createdBy ?? undefined,
+    meta: (row.meta as EvaluationRun['meta']) ?? undefined,
+  };
+}
+
+export function toDbEvaluationRun(
+  entity: Omit<EvaluationRun, 'uuid'>
+): typeof evaluation_runs.$inferInsert {
+  return {
+    challengeId: entity.challenge_id,
+    triggerType: entity.trigger_type,
+    triggerPayload: entity.trigger_payload ?? null,
+    windowStart: entity.window_start,
+    windowEnd: entity.window_end,
+    status: entity.status,
+    startedAt: entity.started_at ?? null,
+    finishedAt: entity.finished_at ?? null,
+    errorCode: entity.error_code ?? null,
+    errorMessage: entity.error_message ?? null,
+    createdBy: entity.created_by ?? null,
+    meta: entity.meta ?? null,
+  };
+}
+
+/* ============================================================
+ *  EVALUATION RUN CONTRIBUTIONS MAPPERS
+ * ============================================================ */
+
+export function toDomainEvaluationRunContribution(row: DbEvaluationRunContribution): EvaluationRunContribution {
+  return {
+    uuid: row.uuid,
+    run_id: row.runId,
+    contribution_id: row.contributionId,
+    status: row.status as EvaluationRunContributionStatus,
+    notes: (row.notes as EvaluationRunContribution['notes']) ?? undefined,
+    created_at: new Date(row.createdAt ?? Date.now()),
+  };
+}
+
+export function toDbEvaluationRunContribution(
+  entity: Omit<EvaluationRunContribution, 'uuid' | 'created_at'>
+): typeof evaluation_run_contributions.$inferInsert {
+  return {
+    runId: entity.run_id,
+    contributionId: entity.contribution_id,
+    status: entity.status,
+    notes: entity.notes ?? null,
   };
 }

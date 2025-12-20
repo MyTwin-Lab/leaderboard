@@ -87,3 +87,51 @@ export const taskAssigneeSchema = z.object({
   user_id: z.string().uuid(),
   assigned_at: z.coerce.date(),
 });
+
+// --- EVALUATION RUNS ---
+
+export const evaluationRunTriggerTypeSchema = z.enum(['manual', 'sync', 'github_pr']);
+export const evaluationRunStatusSchema = z.enum(['pending', 'running', 'succeeded', 'failed', 'canceled']);
+
+export const evaluationRunMetaSchema = z.object({
+  contributionCount: z.number().int().nonnegative().optional(),
+  durationMs: z.number().int().nonnegative().optional(),
+  evaluatorVersion: z.string().optional(),
+  gridVersion: z.number().int().optional(),
+}).passthrough();
+
+export const evaluationRunSchema = z.object({
+  uuid: z.string().uuid(),
+  challenge_id: z.string().uuid(),
+  trigger_type: evaluationRunTriggerTypeSchema,
+  trigger_payload: z.record(z.string(), z.unknown()).optional(),
+  window_start: z.coerce.date(),
+  window_end: z.coerce.date(),
+  status: evaluationRunStatusSchema,
+  started_at: z.coerce.date().optional(),
+  finished_at: z.coerce.date().optional(),
+  error_code: z.string().max(100).optional(),
+  error_message: z.string().max(1000).optional(),
+  created_by: z.string().uuid().optional(),
+  retry_of_run_id: z.string().uuid().optional(),
+  meta: evaluationRunMetaSchema.optional(),
+});
+
+// --- EVALUATION RUN CONTRIBUTIONS ---
+
+export const evaluationRunContributionStatusSchema = z.enum(['identified', 'merged', 'evaluated', 'skipped']);
+
+export const evaluationRunContributionNotesSchema = z.object({
+  skipReason: z.string().optional(),
+  warnings: z.array(z.string()).optional(),
+}).passthrough();
+
+export const evaluationRunContributionSchema = z.object({
+  uuid: z.string().uuid(),
+  run_id: z.string().uuid(),
+  contribution_id: z.string().uuid(),
+  status: evaluationRunContributionStatusSchema,
+  notes: evaluationRunContributionNotesSchema.optional(),
+  created_at: z.coerce.date(),
+});
+
