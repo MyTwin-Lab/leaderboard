@@ -41,12 +41,6 @@ export const challenges = pgTable("challenges", {
 export const challenge_repos = pgTable("challenge_repos", {
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
   repo_id: uuid("repo_id").references(() => repos.uuid, { onDelete: "cascade" }),
-  // Workspace provisioning fields
-  workspace_provider: varchar("workspace_provider", { length: 32 }), // github, huggingface, figma...
-  workspace_ref: varchar("workspace_ref", { length: 200 }), // ex: refs/heads/challenge/007-admin-experience
-  workspace_url: text("workspace_url"), // ex: https://github.com/owner/repo/tree/challenge/007
-  workspace_status: varchar("workspace_status", { length: 20 }).default("pending"), // pending | ready | failed
-  workspace_meta: json("workspace_meta"), // { baseBranch, createdAt, error, sha... }
 });
 
 // --- CHALLENGE_TEAMS ---
@@ -140,6 +134,49 @@ export const evaluation_run_contributions = pgTable('evaluation_run_contribution
   status: varchar('status', { length: 20 }).notNull(), // identified | merged | evaluated | skipped
   notes: json('notes'), // raison skip, warnings evaluator
   createdAt: timestamp('created_at').defaultNow()
+});
+
+// --- EVALUATION GRIDS ---
+export const evaluation_grids = pgTable('evaluation_grids', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  slug: varchar('slug', { length: 64 }).notNull().unique(), // ex: "code", "model", "dataset"
+  name: varchar('name', { length: 120 }).notNull(),
+  description: text('description'),
+  version: integer('version').notNull().default(1),
+  status: varchar('status', { length: 20 }).notNull().default('draft'), // draft | published | archived
+  instructions: text('instructions'), // Instructions pour l'agent IA
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+  published_at: timestamp('published_at'),
+  created_by: uuid('created_by').references(() => users.uuid),
+});
+
+export const evaluation_grid_categories = pgTable('evaluation_grid_categories', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  grid_id: uuid('grid_id')
+    .notNull()
+    .references(() => evaluation_grids.uuid, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 120 }).notNull(), // ex: "Qualité technique mesurable"
+  weight: real('weight').notNull(), // ex: 0.25
+  type: varchar('type', { length: 20 }).notNull(), // objective | mixed | subjective | contextual
+  position: integer('position').notNull().default(0),
+});
+
+export const evaluation_grid_subcriteria = pgTable('evaluation_grid_subcriteria', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  category_id: uuid('category_id')
+    .notNull()
+    .references(() => evaluation_grid_categories.uuid, { onDelete: 'cascade' }),
+  criterion: varchar('criterion', { length: 120 }).notNull(), // ex: "Complexité du code"
+  description: text('description'),
+  weight: real('weight'), // Poids optionnel au sein de la catégorie
+  metrics: json('metrics'), // string[] - métriques mesurables
+  indicators: json('indicators'), // string[] - indicateurs qualitatifs
+  scoring_excellent: text('scoring_excellent'), // Guide: 8-9
+  scoring_good: text('scoring_good'), // Guide: 5-7
+  scoring_average: text('scoring_average'), // Guide: 2-4
+  scoring_poor: text('scoring_poor'), // Guide: 0-1
+  position: integer('position').notNull().default(0),
 });
 
 // --- RELATIONS ---
@@ -237,7 +274,28 @@ export const refreshTokensRelations = relations(refresh_tokens, ({ one }) => ({
   }),
 }));
 
+export const evaluationGridsRelations = relations(evaluation_grids, ({ one, many }) => ({
+  categories: many(evaluation_grid_categories),
+  created_by_user: one(users, {
+    fields: [evaluation_grids.created_by],
+    references: [users.uuid],
+  }),
+}));
 
+export const evaluationGridCategoriesRelations = relations(evaluation_grid_categories, ({ one, many }) => ({
+  grid: one(evaluation_grids, {
+    fields: [evaluation_grid_categories.grid_id],
+    references: [evaluation_grids.uuid],
+  }),
+  subcriteria: many(evaluation_grid_subcriteria),
+}));
+
+export const evaluationGridSubcriteriaRelations = relations(evaluation_grid_subcriteria, ({ one }) => ({
+  category: one(evaluation_grid_categories, {
+    fields: [evaluation_grid_subcriteria.category_id],
+    references: [evaluation_grid_categories.uuid],
+  }),
+}));
 
 // --- DATABASE CLIENT ---
 
@@ -259,6 +317,9 @@ export const db = drizzle(pool, {
     refresh_tokens,
     evaluation_runs,
     evaluation_run_contributions,
+    evaluation_grids,
+    evaluation_grid_categories,
+    evaluation_grid_subcriteria,
     projectsRelations,
     reposRelations,
     challengesRelations,
@@ -269,5 +330,8 @@ export const db = drizzle(pool, {
     tasksRelations,
     taskAssigneesRelations,
     refreshTokensRelations,
+    evaluationGridsRelations,
+    evaluationGridCategoriesRelations,
+    evaluationGridSubcriteriaRelations,
   },
 });

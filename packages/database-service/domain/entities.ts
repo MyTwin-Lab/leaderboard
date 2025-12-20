@@ -87,11 +87,6 @@ export interface TaskAssignee {
   assigned_at: Date;
 }
 
-export interface TaskWorkspace {
-  task_id: string;
-  repo_id: string;
-}
-
 // --- EVALUATION RUNS ---
 
 export type EvaluationRunTriggerType = 'manual' | 'sync' | 'github_pr';
@@ -141,3 +136,52 @@ export interface EvaluationRunContribution {
   created_at: Date;
 }
 
+// --- EVALUATION GRIDS ---
+
+export type EvaluationGridStatus = 'draft' | 'published' | 'archived';
+export type EvaluationGridCategoryType = 'objective' | 'mixed' | 'subjective' | 'contextual';
+
+export interface EvaluationGrid {
+  uuid: string;
+  slug: string;
+  name: string;
+  description?: string;
+  version: number;
+  status: EvaluationGridStatus;
+  instructions?: string;
+  created_at: Date;
+  updated_at: Date;
+  published_at?: Date;
+  created_by?: string;
+}
+
+export interface EvaluationGridCategory {
+  uuid: string;
+  grid_id: string;
+  name: string;
+  weight: number;
+  type: EvaluationGridCategoryType;
+  position: number;
+}
+
+export interface EvaluationGridSubcriterion {
+  uuid: string;
+  category_id: string;
+  criterion: string;
+  description?: string;
+  weight?: number;
+  metrics?: string[];
+  indicators?: string[];
+  scoring_excellent?: string;
+  scoring_good?: string;
+  scoring_average?: string;
+  scoring_poor?: string;
+  position: number;
+}
+
+// Full grid with nested categories and subcriteria
+export interface EvaluationGridFull extends EvaluationGrid {
+  categories: (EvaluationGridCategory & {
+    subcriteria: EvaluationGridSubcriterion[];
+  })[];
+}

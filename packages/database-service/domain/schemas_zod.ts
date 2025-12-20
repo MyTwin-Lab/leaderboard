@@ -135,3 +135,45 @@ export const evaluationRunContributionSchema = z.object({
   created_at: z.coerce.date(),
 });
 
+// --- EVALUATION GRIDS ---
+
+export const evaluationGridStatusSchema = z.enum(['draft', 'published', 'archived']);
+export const evaluationGridCategoryTypeSchema = z.enum(['objective', 'mixed', 'subjective', 'contextual']);
+
+export const evaluationGridSchema = z.object({
+  uuid: z.string().uuid(),
+  slug: z.string().min(1).max(64),
+  name: z.string().min(1).max(120),
+  description: z.string().optional(),
+  version: z.number().int().positive(),
+  status: evaluationGridStatusSchema,
+  instructions: z.string().optional(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  published_at: z.coerce.date().optional(),
+  created_by: z.string().uuid().optional(),
+});
+
+export const evaluationGridCategorySchema = z.object({
+  uuid: z.string().uuid(),
+  grid_id: z.string().uuid(),
+  name: z.string().min(1).max(120),
+  weight: z.number().min(0).max(1),
+  type: evaluationGridCategoryTypeSchema,
+  position: z.number().int().nonnegative(),
+});
+
+export const evaluationGridSubcriterionSchema = z.object({
+  uuid: z.string().uuid(),
+  category_id: z.string().uuid(),
+  criterion: z.string().min(1).max(120),
+  description: z.string().optional(),
+  weight: z.number().min(0).max(1).optional(),
+  metrics: z.array(z.string()).optional(),
+  indicators: z.array(z.string()).optional(),
+  scoring_excellent: z.string().optional(),
+  scoring_good: z.string().optional(),
+  scoring_average: z.string().optional(),
+  scoring_poor: z.string().optional(),
+  position: z.number().int().nonnegative(),
+});
