@@ -82,6 +82,23 @@ CREATE TABLE "users" (
 	"password_hash" text,
 	"created_at" timestamp DEFAULT now()
 );
+
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "accounts" (
+	"user_id" uuid NOT NULL, -- Foreign Key, renvoie ID users 
+	"type" text NOT NULL, -- type de fournisseur (oauth, etc)
+	"provider" text NOT NULL, -- nom du fournisseur (github, google, etc)
+	"providerAccountId" text NOT NULL, -- ID du compte chez le fournisseur
+	"refresh_token" text, -- token d'actualisation OAuth
+	"access_token" text, -- token d'accès OAuth
+	"expires_at" integer, -- timestamp d'expiration du token
+	"token_type" text, -- type de token (Bearer, etc)
+	"scope" text, -- permission accordées
+	"id_token" text, -- ID token OAuth (contient souvent nom, photo, email vérifié)
+	"session_state" text, -- état de la session OAuth
+	CONSTRAINT "accounts_provider-providerAccountId_pk" PRIMARY KEY ("provider", "providerAccountId") -- paire de clés primaires
+);
+
 --> statement-breakpoint
 ALTER TABLE "challenge_repos" ADD CONSTRAINT "challenge_repos_challenge_id_challenges_uuid_fk" FOREIGN KEY ("challenge_id") REFERENCES "public"."challenges"("uuid") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "challenge_repos" ADD CONSTRAINT "challenge_repos_repo_id_repos_uuid_fk" FOREIGN KEY ("repo_id") REFERENCES "public"."repos"("uuid") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
