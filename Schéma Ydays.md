@@ -19,6 +19,10 @@ erDiagram
     %% Le Flux de conversation
     CONVERSATION ||--|{ MESSAGE : contient
     DISCORD_ACCOUNT ||--o{ MESSAGE : envoie
+
+    %% Le service back end
+    API ||--|{ Conversation : parse
+    API ||--|{ EVALUATION : envoie de données
     
     %% Le Trigger
     MESSAGE ||--o| TRIGGER : declenche
@@ -32,5 +36,6 @@ erDiagram
     USER ||--|| DISCORD_ACCOUNT : own
     USER ||--o{ SCORE : recoit
 ```
+
 
 
