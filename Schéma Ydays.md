@@ -22,7 +22,7 @@ erDiagram
 
     %% Le service back end
     API ||--|{ CONVERSATION : parse
-    API ||--|{ EVALUATION : envoie de données
+    API ||--|{ EVALUATION : envoie_data
     
     %% Le Trigger
     MESSAGE ||--o| TRIGGER : declenche
@@ -36,6 +36,7 @@ erDiagram
     USER ||--|| DISCORD_ACCOUNT : own
     USER ||--o{ SCORE : recoit
 ```
+
 
 
 
