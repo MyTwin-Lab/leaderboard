@@ -29,7 +29,8 @@ erDiagram
     EVALUATION ||--|| SCORE : calcule
 
     %% La liaison finale et stockage
-    USER ||--|| DISCORD_ACCOUNT : lie
+    USER ||--|| DISCORD_ACCOUNT : own
     USER ||--o{ SCORE : recoit
 ```
+
 
