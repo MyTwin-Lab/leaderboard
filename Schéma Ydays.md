@@ -1,4 +1,4 @@
-erDiagram
+
 USER ||--|| DISCORD_ACCOUNT : lie
 USER ||--o{ CONTRIBUTION : recoit
 USER ||--|| SCORE : possede
@@ -17,6 +17,7 @@ TRIGGER ||--|| EVALUATION : lance
 
 EVALUATION }o--|| AGENT : realise
 EVALUATION ||--|| SCORE : attribue
+
 
 
 SCORE }o--|| USER : appartient_a
