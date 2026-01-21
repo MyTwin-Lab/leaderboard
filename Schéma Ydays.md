@@ -21,7 +21,7 @@ erDiagram
     DISCORD_ACCOUNT ||--o{ MESSAGE : envoie
 
     %% Le service back end
-    API ||--> CONVERSATION : parse
+    API ||--|{ CONVERSATION : parse
     API ||--|{ EVALUATION : envoie de données
     
     %% Le Trigger
@@ -36,6 +36,7 @@ erDiagram
     USER ||--|| DISCORD_ACCOUNT : own
     USER ||--o{ SCORE : recoit
 ```
+
 
 
 
