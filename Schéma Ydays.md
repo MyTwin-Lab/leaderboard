@@ -1,16 +1,17 @@
 erDiagram
     USER ||--|| DISCORD_ACCOUNT : lie
-    USER ||--o{ CONTRIBUTION : recoit
-    USER ||--|| SCORE : possede
-
+    USER ||--o{ CONTRIBUTION : historique
+    
     DISCORD_ACCOUNT ||--o{ MESSAGE : envoie
-    DISCORD_ACCOUNT ||--o{ CONVERSATION : participe
-
-    CONVERSATION ||--o{ MESSAGE : contient
-
-    MESSAGE }o--|| TRIGGER : declenche
-    TRIGGER ||--|| EVALUATION : lance
-
-    EVALUATION }o--|| AGENT : realise
-    EVALUATION ||--|| SCORE : attribue
-
+    
+    MESSAGE ||--|| TRIGGER : declenche
+    
+    TRIGGER ||--|| EVALUATION : initie
+    
+    EVALUATION }o--|| AGENT : utilise
+    EVALUATION ||--|| CONTRIBUTION : genere
+    
+    CONTRIBUTION {
+        int score
+        string raison
+    }
