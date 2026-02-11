@@ -4,9 +4,12 @@ import {
   TaskAssigneeRepository, 
   ChallengeRepository,
   ChallengeRepoRepository,
-  TaskWorkspaceRepository 
+  ChallengeTeamRepository,
+  TaskWorkspaceRepository,
+  UserRepository 
 } from '../../../../../../../../packages/database-service/repositories';
-import { provisionTaskWorkspace } from '../../../../../../../../packages/provisioner/src/index.js';
+import { provisionTaskWorkspace, ProvisionerRegistry } from '../../../../../../../../packages/provisioner/src/index.js';
+import { mapRepoTypeToWorkspaceType } from '../../../../../../../../packages/provisioner/src/utils.js';
 import { jwtVerify } from 'jose';
 
 const taskRepo = new TaskRepository();
@@ -14,6 +17,8 @@ const taskAssigneeRepo = new TaskAssigneeRepository();
 const challengeRepo = new ChallengeRepository();
 const challengeRepoRepo = new ChallengeRepoRepository();
 const taskWorkspaceRepo = new TaskWorkspaceRepository();
+const challengeTeamRepo = new ChallengeTeamRepository();
+const userRepo = new UserRepository();
 
 // Extraire l'userId du token JWT
 async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
@@ -72,6 +77,14 @@ export async function POST(
           { status: 400 }
         );
       }
+    }
+
+    // S'assurer que l'utilisateur fait partie du challenge_team
+    const teamMembers = await challengeTeamRepo.findByChallenge(task.challenge_id);
+    const isInTeam = teamMembers.some(m => m.user_id === userId);
+    if (!isInTeam) {
+      await challengeTeamRepo.create({ challenge_id: task.challenge_id, user_id: userId });
+      console.log(`[task-assign] User ${userId} added to challenge_team for challenge ${task.challenge_id}`);
     }
 
     // Assigner l'utilisateur
@@ -136,6 +149,22 @@ export async function POST(
             status: result.status,
             result,
           });
+
+          // Protéger le workspace (restreindre l'accès à l'assignee)
+          if (result.status === 'ready' && result.ref) {
+            try {
+              const workspaceType = mapRepoTypeToWorkspaceType(cr.repo_type);
+              const provider = ProvisionerRegistry.getProvider(workspaceType);
+              if (provider.protect) {
+                const user = await userRepo.findById(userId);
+                if (user?.github_username) {
+                  await provider.protect(cr.repo_external_id, result.ref, [user.github_username]);
+                }
+              }
+            } catch (protectError) {
+              console.warn(`[task-assign] Workspace protection failed for repo ${cr.repo_id}:`, protectError);
+            }
+          }
 
           if (result.error) {
             console.warn(`[task-assign] Provisioning warning for repo ${cr.repo_id}: ${result.error}`);
