@@ -8,6 +8,7 @@ type ProtectedPage = { prefix: string; roles: readonly UserRole[] };
 const protectedPages: ProtectedPage[] = [
   { prefix: '/admin', roles: ['admin'] },
   { prefix: '/contributors/me', roles: ['admin', 'contributor'] },
+  { prefix: '/challenges/', roles: ['admin', 'contributor'] },
 ];
 
 // Routes API qui nécessitent une authentification (sauf auth)
@@ -21,13 +22,8 @@ const protectedApiRoutes = [
   '/api/tasks',
 ];
 
-// Routes API admin (nécessitent le rôle admin)
-const adminApiRoutes = [
-  '/api/admin',
-];
-
 // Routes publiques d'authentification
-const authRoutes = ['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'];
+const authRoutes = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/auth/logout'];
 
 // Fonction de vérification JWT simplifiée pour Edge Runtime
 async function verifyTokenEdge(token: string): Promise<{ userId: string; role: string } | null> {
@@ -47,7 +43,6 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const matchedProtectedPage = protectedPages.find((route) => pathname.startsWith(route.prefix));
   const isProtectedApiRoute = protectedApiRoutes.some(route => pathname.startsWith(route));
-  const isAdminApiRoute = adminApiRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
   
   // Les routes d'auth sont toujours accessibles
@@ -56,12 +51,12 @@ export async function middleware(request: NextRequest) {
   }
   
   // Si c'est une route protégée, vérifier le token
-  if (matchedProtectedPage || isProtectedApiRoute || isAdminApiRoute) {
+  if (matchedProtectedPage || isProtectedApiRoute) {
     const token = request.cookies.get('access_token')?.value;
     
     if (!token) {
       // Rediriger vers /login pour les pages, 401 pour les API
-      if (isProtectedApiRoute || isAdminApiRoute) {
+      if (isProtectedApiRoute) {
         return NextResponse.json(
           { error: 'Authentication required' },
           { status: 401 }
@@ -78,7 +73,7 @@ export async function middleware(request: NextRequest) {
     
     if (!payload) {
       // Token invalide ou expiré
-      if (isProtectedApiRoute || isAdminApiRoute) {
+      if (isProtectedApiRoute) {
         return NextResponse.json(
           { error: 'Invalid or expired token' },
           { status: 401 }
@@ -98,14 +93,6 @@ export async function middleware(request: NextRequest) {
           { status: 403 }
         );
       }
-    }
-    
-    // Vérifier le rôle admin pour les routes API admin
-    if (isAdminApiRoute && payload.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Admin role required' },
-        { status: 403 }
-      );
     }
     
     // Pour les routes API protégées, vérifier les permissions selon la méthode
@@ -137,6 +124,7 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/contributors/me',
+    '/challenges/:path*',
     '/api/challenges/:path*',
     '/api/projects/:path*',
     '/api/users/:path*',
@@ -145,6 +133,5 @@ export const config = {
     '/api/contributors/:path*',
     '/api/tasks/:path*',
     '/api/auth/:path*',
-    '/api/admin/:path*',
   ],
 };
