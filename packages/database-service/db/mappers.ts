@@ -15,6 +15,12 @@ import {
   refresh_tokens,
   tasks,
   task_assignees,
+  task_workspaces,
+  evaluation_runs,
+  evaluation_run_contributions,
+  evaluation_grids,
+  evaluation_grid_categories,
+  evaluation_grid_subcriteria,
 } from "./drizzle.js";
 import type {
   Project,
@@ -27,6 +33,19 @@ import type {
   RefreshToken,
   Task,
   TaskAssignee,
+  TaskWorkspace,
+  WorkspaceStatus,
+  WorkspaceMeta,
+  EvaluationRun,
+  EvaluationRunContribution,
+  EvaluationRunTriggerType,
+  EvaluationRunStatus,
+  EvaluationRunContributionStatus,
+  EvaluationGrid,
+  EvaluationGridCategory,
+  EvaluationGridSubcriterion,
+  EvaluationGridStatus,
+  EvaluationGridCategoryType,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -40,6 +59,12 @@ type DbContribution = InferSelectModel<typeof contributions>;
 type DbRefreshToken = InferSelectModel<typeof refresh_tokens>;
 type DbTask = InferSelectModel<typeof tasks>;
 type DbTaskAssignee = InferSelectModel<typeof task_assignees>;
+type DbTaskWorkspace = InferSelectModel<typeof task_workspaces>;
+type DbEvaluationRun = InferSelectModel<typeof evaluation_runs>;
+type DbEvaluationRunContribution = InferSelectModel<typeof evaluation_run_contributions>;
+type DbEvaluationGrid = InferSelectModel<typeof evaluation_grids>;
+type DbEvaluationGridCategory = InferSelectModel<typeof evaluation_grid_categories>;
+type DbEvaluationGridSubcriterion = InferSelectModel<typeof evaluation_grid_subcriteria>;
 
 /* ============================================================
  *  MAPPERS DB → DOMAIN
@@ -84,6 +109,11 @@ export function toDomainChallengeRepo(row: DbChallengeRepo): ChallengeRepo {
   return {
     challenge_id: row.challenge_id ?? "",
     repo_id: row.repo_id ?? "",
+    workspace_provider: row.workspace_provider ?? undefined,
+    workspace_ref: row.workspace_ref ?? undefined,
+    workspace_url: row.workspace_url ?? undefined,
+    workspace_status: (row.workspace_status as WorkspaceStatus) ?? undefined,
+    workspace_meta: (row.workspace_meta as WorkspaceMeta) ?? undefined,
   };
 }
 
@@ -182,7 +212,7 @@ export function toDbContribution(entity: Omit<Contribution, "uuid">): typeof con
 
 export function toDomainRefreshToken(row: DbRefreshToken): RefreshToken {
   return {
-    id: row.id,
+    id: row.uuid,
     user_id: row.user_id,
     token_hash: row.token_hash,
     expires_at: new Date(row.expires_at),
@@ -234,5 +264,189 @@ export function toDbTaskAssignee(entity: Omit<TaskAssignee, "assigned_at">): typ
   return {
     task_id: entity.task_id,
     user_id: entity.user_id,
+  };
+}
+
+export function toDomainTaskWorkspace(row: DbTaskWorkspace): TaskWorkspace {
+  return {
+    task_id: row.task_id ?? "",
+    repo_id: row.repo_id ?? "",
+    workspace_provider: row.workspace_provider ?? undefined,
+    workspace_ref: row.workspace_ref ?? undefined,
+    workspace_url: row.workspace_url ?? undefined,
+    workspace_status: (row.workspace_status as WorkspaceStatus) ?? undefined,
+    workspace_meta: (row.workspace_meta as WorkspaceMeta) ?? undefined,
+  };
+}
+
+export function toDbTaskWorkspace(entity: TaskWorkspace): typeof task_workspaces.$inferInsert {
+  return {
+    task_id: entity.task_id,
+    repo_id: entity.repo_id,
+    workspace_provider: entity.workspace_provider ?? null,
+    workspace_ref: entity.workspace_ref ?? null,
+    workspace_url: entity.workspace_url ?? null,
+    workspace_status: entity.workspace_status ?? null,
+    workspace_meta: entity.workspace_meta ?? null,
+  };
+}
+
+/* ============================================================
+ *  EVALUATION RUNS MAPPERS
+ * ============================================================ */
+
+export function toDomainEvaluationRun(row: DbEvaluationRun): EvaluationRun {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challengeId,
+    trigger_type: row.triggerType as EvaluationRunTriggerType,
+    trigger_payload: (row.triggerPayload as Record<string, unknown>) ?? undefined,
+    window_start: new Date(row.windowStart),
+    window_end: new Date(row.windowEnd),
+    status: row.status as EvaluationRunStatus,
+    started_at: row.startedAt ? new Date(row.startedAt) : undefined,
+    finished_at: row.finishedAt ? new Date(row.finishedAt) : undefined,
+    error_code: row.errorCode ?? undefined,
+    error_message: row.errorMessage ?? undefined,
+    created_by: row.createdBy ?? undefined,
+    meta: (row.meta as EvaluationRun['meta']) ?? undefined,
+  };
+}
+
+export function toDbEvaluationRun(
+  entity: Omit<EvaluationRun, 'uuid'>
+): typeof evaluation_runs.$inferInsert {
+  return {
+    challengeId: entity.challenge_id,
+    triggerType: entity.trigger_type,
+    triggerPayload: entity.trigger_payload ?? null,
+    windowStart: entity.window_start,
+    windowEnd: entity.window_end,
+    status: entity.status,
+    startedAt: entity.started_at ?? null,
+    finishedAt: entity.finished_at ?? null,
+    errorCode: entity.error_code ?? null,
+    errorMessage: entity.error_message ?? null,
+    createdBy: entity.created_by ?? null,
+    meta: entity.meta ?? null,
+  };
+}
+
+/* ============================================================
+ *  EVALUATION RUN CONTRIBUTIONS MAPPERS
+ * ============================================================ */
+
+export function toDomainEvaluationRunContribution(row: DbEvaluationRunContribution): EvaluationRunContribution {
+  return {
+    uuid: row.uuid,
+    run_id: row.runId,
+    contribution_id: row.contributionId,
+    status: row.status as EvaluationRunContributionStatus,
+    notes: (row.notes as EvaluationRunContribution['notes']) ?? undefined,
+    created_at: new Date(row.createdAt ?? Date.now()),
+  };
+}
+
+export function toDbEvaluationRunContribution(
+  entity: Omit<EvaluationRunContribution, 'uuid' | 'created_at'>
+): typeof evaluation_run_contributions.$inferInsert {
+  return {
+    runId: entity.run_id,
+    contributionId: entity.contribution_id,
+    status: entity.status,
+    notes: entity.notes ?? null,
+  };
+}
+
+/* ============================================================
+ *  EVALUATION GRIDS MAPPERS
+ * ============================================================ */
+
+export function toDomainEvaluationGrid(row: DbEvaluationGrid): EvaluationGrid {
+  return {
+    uuid: row.uuid,
+    slug: row.slug,
+    name: row.name,
+    description: row.description ?? undefined,
+    version: row.version,
+    status: row.status as EvaluationGridStatus,
+    instructions: row.instructions ?? undefined,
+    created_at: new Date(row.created_at ?? Date.now()),
+    updated_at: new Date(row.updated_at ?? Date.now()),
+    published_at: row.published_at ? new Date(row.published_at) : undefined,
+    created_by: row.created_by ?? undefined,
+  };
+}
+
+export function toDbEvaluationGrid(
+  entity: Omit<EvaluationGrid, 'uuid' | 'created_at' | 'updated_at'>
+): typeof evaluation_grids.$inferInsert {
+  return {
+    slug: entity.slug,
+    name: entity.name,
+    description: entity.description ?? null,
+    version: entity.version,
+    status: entity.status,
+    instructions: entity.instructions ?? null,
+    published_at: entity.published_at ?? null,
+    created_by: entity.created_by ?? null,
+  };
+}
+
+export function toDomainEvaluationGridCategory(row: DbEvaluationGridCategory): EvaluationGridCategory {
+  return {
+    uuid: row.uuid,
+    grid_id: row.grid_id,
+    name: row.name,
+    weight: row.weight,
+    type: row.type as EvaluationGridCategoryType,
+    position: row.position,
+  };
+}
+
+export function toDbEvaluationGridCategory(
+  entity: Omit<EvaluationGridCategory, 'uuid'>
+): typeof evaluation_grid_categories.$inferInsert {
+  return {
+    grid_id: entity.grid_id,
+    name: entity.name,
+    weight: entity.weight,
+    type: entity.type,
+    position: entity.position,
+  };
+}
+
+export function toDomainEvaluationGridSubcriterion(row: DbEvaluationGridSubcriterion): EvaluationGridSubcriterion {
+  return {
+    uuid: row.uuid,
+    category_id: row.category_id,
+    criterion: row.criterion,
+    description: row.description ?? undefined,
+    weight: row.weight ?? undefined,
+    metrics: (row.metrics as string[]) ?? undefined,
+    indicators: (row.indicators as string[]) ?? undefined,
+    scoring_excellent: row.scoring_excellent ?? undefined,
+    scoring_good: row.scoring_good ?? undefined,
+    scoring_average: row.scoring_average ?? undefined,
+    scoring_poor: row.scoring_poor ?? undefined,
+    position: row.position,
+  };
+}
+
+export function toDbEvaluationGridSubcriterion(
+  entity: Omit<EvaluationGridSubcriterion, 'uuid'>
+): typeof evaluation_grid_subcriteria.$inferInsert {
+  return {
+    category_id: entity.category_id,
+    criterion: entity.criterion,
+    description: entity.description ?? null,
+    weight: entity.weight ?? null,
+    metrics: entity.metrics ?? null,
+    indicators: entity.indicators ?? null,
+    scoring_excellent: entity.scoring_excellent ?? null,
+    scoring_good: entity.scoring_good ?? null,
+    scoring_average: entity.scoring_average ?? null,
+    scoring_poor: entity.scoring_poor ?? null,
+    position: entity.position,
   };
 }

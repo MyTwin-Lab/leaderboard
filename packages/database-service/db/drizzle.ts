@@ -41,6 +41,12 @@ export const challenges = pgTable("challenges", {
 export const challenge_repos = pgTable("challenge_repos", {
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
   repo_id: uuid("repo_id").references(() => repos.uuid, { onDelete: "cascade" }),
+  // Workspace provisioning fields
+  workspace_provider: varchar("workspace_provider", { length: 32 }), // github, huggingface, figma...
+  workspace_ref: varchar("workspace_ref", { length: 200 }), // ex: refs/heads/challenge/007-admin-experience
+  workspace_url: text("workspace_url"), // ex: https://github.com/owner/repo/tree/challenge/007
+  workspace_status: varchar("workspace_status", { length: 20 }).default("pending"), // pending | ready | failed
+  workspace_meta: json("workspace_meta"), // { baseBranch, createdAt, error, sha... }
 });
 
 // --- CHALLENGE_TEAMS ---
@@ -93,17 +99,105 @@ export const task_assignees = pgTable("task_assignees", {
   assigned_at: timestamp("assigned_at").defaultNow(),
 });
 
+// --- TASK_WORKSPACES ---
+export const task_workspaces = pgTable("task_workspaces", {
+  task_id: uuid("task_id").references(() => tasks.uuid, { onDelete: "cascade" }),
+  repo_id: uuid("repo_id").references(() => repos.uuid, { onDelete: "cascade" }),
+  // Workspace provisioning fields
+  workspace_provider: varchar("workspace_provider", { length: 32 }), // github, huggingface, figma...
+  workspace_ref: varchar("workspace_ref", { length: 200 }), // ex: refs/heads/task/007-setup-environment
+  workspace_url: text("workspace_url"), // ex: https://github.com/owner/repo/tree/task/007-setup
+  workspace_status: varchar("workspace_status", { length: 20 }).default("pending"), // pending | ready | failed
+  workspace_meta: json("workspace_meta"), // { baseBranch, createdAt, error, sha... }
+});
+
 // --- REFRESH_TOKENS ---
 export const refresh_tokens = pgTable("refresh_tokens", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  uuid: uuid("id").primaryKey().defaultRandom(),
   user_id: uuid("user_id").notNull().references(() => users.uuid, { onDelete: "cascade" }),
   token_hash: text("token_hash").notNull().unique(),
   expires_at: timestamp("expires_at").notNull(),
   created_at: timestamp("created_at").defaultNow(),
 });
 
-// --- RELATIONS ---
+// --- EVALUATION RUN ---
 
+export const evaluation_runs = pgTable('evaluation_runs', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  challengeId: uuid('challenge_id')
+    .notNull()
+    .references(() => challenges.uuid, { onDelete: 'cascade' }),
+  triggerType: varchar('trigger_type', { length: 50 }).notNull(), // 'manual' | 'sync' | 'github_pr'
+  triggerPayload: json('trigger_payload'), // exemple: { prNumber, mergedBy }
+  windowStart: timestamp('window_start').notNull(),
+  windowEnd: timestamp('window_end').notNull(),
+  status: varchar('status', { length: 20 }).notNull(), // pending | running | succeeded | failed | canceled
+  startedAt: timestamp('started_at').defaultNow(),
+  finishedAt: timestamp('finished_at'),
+  errorCode: varchar('error_code', { length: 100 }),
+  errorMessage: text('error_message'),
+  createdBy: uuid('created_by').references(() => users.uuid),
+  meta: json('meta') // { contributionCount, durationMs, evaluatorVersion }
+});
+
+// --- EVALUATION RUN CONTRIBUTION ---
+export const evaluation_run_contributions = pgTable('evaluation_run_contributions', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  runId: uuid('run_id')
+    .notNull()
+    .references(() => evaluation_runs.uuid, { onDelete: 'cascade' }),
+  contributionId: uuid('contribution_id')
+    .notNull()
+    .references(() => contributions.uuid, { onDelete: 'cascade' }),
+  status: varchar('status', { length: 20 }).notNull(), // identified | merged | evaluated | skipped
+  notes: json('notes'), // raison skip, warnings evaluator
+  createdAt: timestamp('created_at').defaultNow()
+});
+
+// --- EVALUATION GRIDS ---
+export const evaluation_grids = pgTable('evaluation_grids', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  slug: varchar('slug', { length: 64 }).notNull().unique(), // ex: "code", "model", "dataset"
+  name: varchar('name', { length: 120 }).notNull(),
+  description: text('description'),
+  version: integer('version').notNull().default(1),
+  status: varchar('status', { length: 20 }).notNull().default('draft'), // draft | published | archived
+  instructions: text('instructions'), // Instructions pour l'agent IA
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+  published_at: timestamp('published_at'),
+  created_by: uuid('created_by').references(() => users.uuid),
+});
+
+export const evaluation_grid_categories = pgTable('evaluation_grid_categories', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  grid_id: uuid('grid_id')
+    .notNull()
+    .references(() => evaluation_grids.uuid, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 120 }).notNull(), // ex: "Qualité technique mesurable"
+  weight: real('weight').notNull(), // ex: 0.25
+  type: varchar('type', { length: 20 }).notNull(), // objective | mixed | subjective | contextual
+  position: integer('position').notNull().default(0),
+});
+
+export const evaluation_grid_subcriteria = pgTable('evaluation_grid_subcriteria', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  category_id: uuid('category_id')
+    .notNull()
+    .references(() => evaluation_grid_categories.uuid, { onDelete: 'cascade' }),
+  criterion: varchar('criterion', { length: 120 }).notNull(), // ex: "Complexité du code"
+  description: text('description'),
+  weight: real('weight'), // Poids optionnel au sein de la catégorie
+  metrics: json('metrics'), // string[] - métriques mesurables
+  indicators: json('indicators'), // string[] - indicateurs qualitatifs
+  scoring_excellent: text('scoring_excellent'), // Guide: 8-9
+  scoring_good: text('scoring_good'), // Guide: 5-7
+  scoring_average: text('scoring_average'), // Guide: 2-4
+  scoring_poor: text('scoring_poor'), // Guide: 0-1
+  position: integer('position').notNull().default(0),
+});
+
+// --- RELATIONS ---
 export const projectsRelations = relations(projects, ({ many }) => ({
   repos: many(repos),
   challenges: many(challenges),
@@ -198,6 +292,40 @@ export const refreshTokensRelations = relations(refresh_tokens, ({ one }) => ({
   }),
 }));
 
+export const evaluationGridsRelations = relations(evaluation_grids, ({ one, many }) => ({
+  categories: many(evaluation_grid_categories),
+  created_by_user: one(users, {
+    fields: [evaluation_grids.created_by],
+    references: [users.uuid],
+  }),
+}));
+
+export const evaluationGridCategoriesRelations = relations(evaluation_grid_categories, ({ one, many }) => ({
+  grid: one(evaluation_grids, {
+    fields: [evaluation_grid_categories.grid_id],
+    references: [evaluation_grids.uuid],
+  }),
+  subcriteria: many(evaluation_grid_subcriteria),
+}));
+
+export const evaluationGridSubcriteriaRelations = relations(evaluation_grid_subcriteria, ({ one }) => ({
+  category: one(evaluation_grid_categories, {
+    fields: [evaluation_grid_subcriteria.category_id],
+    references: [evaluation_grid_categories.uuid],
+  }),
+}));
+
+export const taskWorkspacesRelations = relations(task_workspaces, ({ one }) => ({
+  task: one(tasks, {
+    fields: [task_workspaces.task_id],
+    references: [tasks.uuid],
+  }),
+  repo: one(repos, {
+    fields: [task_workspaces.repo_id],
+    references: [repos.uuid],
+  }),
+}));
+
 // --- DATABASE CLIENT ---
 
 const pool = new Pool({
@@ -216,6 +344,12 @@ export const db = drizzle(pool, {
     tasks,
     task_assignees,
     refresh_tokens,
+    evaluation_runs,
+    evaluation_run_contributions,
+    evaluation_grids,
+    evaluation_grid_categories,
+    evaluation_grid_subcriteria,
+    task_workspaces,
     projectsRelations,
     reposRelations,
     challengesRelations,
@@ -226,5 +360,9 @@ export const db = drizzle(pool, {
     tasksRelations,
     taskAssigneesRelations,
     refreshTokensRelations,
+    evaluationGridsRelations,
+    evaluationGridCategoriesRelations,
+    evaluationGridSubcriteriaRelations,
+    taskWorkspacesRelations,
   },
 });

@@ -87,3 +87,93 @@ export const taskAssigneeSchema = z.object({
   user_id: z.string().uuid(),
   assigned_at: z.coerce.date(),
 });
+
+// --- EVALUATION RUNS ---
+
+export const evaluationRunTriggerTypeSchema = z.enum(['manual', 'sync', 'github_pr']);
+export const evaluationRunStatusSchema = z.enum(['pending', 'running', 'succeeded', 'failed', 'canceled']);
+
+export const evaluationRunMetaSchema = z.object({
+  contributionCount: z.number().int().nonnegative().optional(),
+  durationMs: z.number().int().nonnegative().optional(),
+  evaluatorVersion: z.string().optional(),
+  gridVersion: z.number().int().optional(),
+}).passthrough();
+
+export const evaluationRunSchema = z.object({
+  uuid: z.string().uuid(),
+  challenge_id: z.string().uuid(),
+  trigger_type: evaluationRunTriggerTypeSchema,
+  trigger_payload: z.record(z.string(), z.unknown()).optional(),
+  window_start: z.coerce.date(),
+  window_end: z.coerce.date(),
+  status: evaluationRunStatusSchema,
+  started_at: z.coerce.date().optional(),
+  finished_at: z.coerce.date().optional(),
+  error_code: z.string().max(100).optional(),
+  error_message: z.string().max(1000).optional(),
+  created_by: z.string().uuid().optional(),
+  retry_of_run_id: z.string().uuid().optional(),
+  meta: evaluationRunMetaSchema.optional(),
+});
+
+// --- EVALUATION RUN CONTRIBUTIONS ---
+
+export const evaluationRunContributionStatusSchema = z.enum(['identified', 'merged', 'evaluated', 'skipped']);
+
+export const evaluationRunContributionNotesSchema = z.object({
+  skipReason: z.string().optional(),
+  warnings: z.array(z.string()).optional(),
+}).passthrough();
+
+export const evaluationRunContributionSchema = z.object({
+  uuid: z.string().uuid(),
+  run_id: z.string().uuid(),
+  contribution_id: z.string().uuid(),
+  status: evaluationRunContributionStatusSchema,
+  notes: evaluationRunContributionNotesSchema.optional(),
+  created_at: z.coerce.date(),
+});
+
+// --- EVALUATION GRIDS ---
+
+export const evaluationGridStatusSchema = z.enum(['draft', 'published', 'archived']);
+export const evaluationGridCategoryTypeSchema = z.enum(['objective', 'mixed', 'subjective', 'contextual']);
+
+export const evaluationGridSchema = z.object({
+  uuid: z.string().uuid(),
+  slug: z.string().min(1).max(64),
+  name: z.string().min(1).max(120),
+  description: z.string().optional(),
+  version: z.number().int().positive(),
+  status: evaluationGridStatusSchema,
+  instructions: z.string().optional(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  published_at: z.coerce.date().optional(),
+  created_by: z.string().uuid().optional(),
+});
+
+export const evaluationGridCategorySchema = z.object({
+  uuid: z.string().uuid(),
+  grid_id: z.string().uuid(),
+  name: z.string().min(1).max(120),
+  weight: z.number().min(0).max(1),
+  type: evaluationGridCategoryTypeSchema,
+  position: z.number().int().nonnegative(),
+});
+
+export const evaluationGridSubcriterionSchema = z.object({
+  uuid: z.string().uuid(),
+  category_id: z.string().uuid(),
+  criterion: z.string().min(1).max(120),
+  description: z.string().optional(),
+  weight: z.number().min(0).max(1).optional(),
+  metrics: z.array(z.string()).optional(),
+  indicators: z.array(z.string()).optional(),
+  scoring_excellent: z.string().optional(),
+  scoring_good: z.string().optional(),
+  scoring_average: z.string().optional(),
+  scoring_poor: z.string().optional(),
+  position: z.number().int().nonnegative(),
+});

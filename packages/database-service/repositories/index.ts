@@ -8,3 +8,7 @@ export { ContributionRepository } from "./contribution.repo";
 export { RefreshTokenRepository } from "./refresh-token.repo";
 export { TaskRepository } from "./task.repo";
 export { TaskAssigneeRepository } from "./taskAssignee.repo";
+export { EvaluationRunsRepository } from "./evaluationRuns.repo.js";
+export { EvaluationRunContributionsRepository } from "./evaluationRunContributions.repo.js";
+export { EvaluationGridsRepository } from "./evaluationGrids.repo.js";
+export { TaskWorkspaceRepository } from "./taskWorkspace.repo.js";

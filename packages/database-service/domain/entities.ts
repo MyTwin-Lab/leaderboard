@@ -15,9 +15,28 @@ export interface Repo {
   project_id: string; // FK -> projects.uuid
 }
 
+// --- WORKSPACE TYPES ---
+
+export type WorkspaceStatus = 'pending' | 'ready' | 'failed';
+
+export interface WorkspaceMeta {
+  baseBranch?: string;
+  sha?: string;
+  createdAt?: string;
+  error?: string;
+  alreadyExisted?: boolean;
+  [key: string]: unknown;
+}
+
 export interface ChallengeRepo {
   challenge_id: string; // FK -> challenges.uuid
   repo_id: string;      // FK -> repos.uuid
+  // Workspace provisioning fields
+  workspace_provider?: string;
+  workspace_ref?: string;
+  workspace_url?: string;
+  workspace_status?: WorkspaceStatus;
+  workspace_meta?: WorkspaceMeta;
 }
 
 export interface ChallengeTeam {
@@ -85,4 +104,114 @@ export interface TaskAssignee {
   task_id: string;
   user_id: string;
   assigned_at: Date;
+}
+
+export interface TaskWorkspace {
+  task_id: string;
+  repo_id: string;
+  // Workspace provisioning fields
+  workspace_provider?: string;
+  workspace_ref?: string;
+  workspace_url?: string;
+  workspace_status?: WorkspaceStatus;
+  workspace_meta?: WorkspaceMeta;
+}
+
+// --- EVALUATION RUNS ---
+
+export type EvaluationRunTriggerType = 'manual' | 'sync' | 'github_pr';
+export type EvaluationRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'canceled';
+
+export interface EvaluationRunMeta {
+  contributionCount?: number;
+  durationMs?: number;
+  evaluatorVersion?: string;
+  gridVersion?: number;
+  [key: string]: unknown;
+}
+
+export interface EvaluationRun {
+  uuid: string;
+  challenge_id: string;
+  trigger_type: EvaluationRunTriggerType;
+  trigger_payload?: Record<string, unknown>;
+  window_start: Date;
+  window_end: Date;
+  status: EvaluationRunStatus;
+  started_at?: Date;
+  finished_at?: Date;
+  error_code?: string;
+  error_message?: string;
+  created_by?: string;
+  retry_of_run_id?: string;
+  meta?: EvaluationRunMeta;
+}
+
+// --- EVALUATION RUN CONTRIBUTIONS ---
+
+export type EvaluationRunContributionStatus = 'identified' | 'merged' | 'evaluated' | 'skipped';
+
+export interface EvaluationRunContributionNotes {
+  skipReason?: string;
+  warnings?: string[];
+  [key: string]: unknown;
+}
+
+export interface EvaluationRunContribution {
+  uuid: string;
+  run_id: string;
+  contribution_id: string;
+  status: EvaluationRunContributionStatus;
+  notes?: EvaluationRunContributionNotes;
+  created_at: Date;
+}
+
+// --- EVALUATION GRIDS ---
+
+export type EvaluationGridStatus = 'draft' | 'published' | 'archived';
+export type EvaluationGridCategoryType = 'objective' | 'mixed' | 'subjective' | 'contextual';
+
+export interface EvaluationGrid {
+  uuid: string;
+  slug: string;
+  name: string;
+  description?: string;
+  version: number;
+  status: EvaluationGridStatus;
+  instructions?: string;
+  created_at: Date;
+  updated_at: Date;
+  published_at?: Date;
+  created_by?: string;
+}
+
+export interface EvaluationGridCategory {
+  uuid: string;
+  grid_id: string;
+  name: string;
+  weight: number;
+  type: EvaluationGridCategoryType;
+  position: number;
+}
+
+export interface EvaluationGridSubcriterion {
+  uuid: string;
+  category_id: string;
+  criterion: string;
+  description?: string;
+  weight?: number;
+  metrics?: string[];
+  indicators?: string[];
+  scoring_excellent?: string;
+  scoring_good?: string;
+  scoring_average?: string;
+  scoring_poor?: string;
+  position: number;
+}
+
+// Full grid with nested categories and subcriteria
+export interface EvaluationGridFull extends EvaluationGrid {
+  categories: (EvaluationGridCategory & {
+    subcriteria: EvaluationGridSubcriterion[];
+  })[];
 }

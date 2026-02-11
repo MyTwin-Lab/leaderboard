@@ -21,6 +21,11 @@ const protectedApiRoutes = [
   '/api/tasks',
 ];
 
+// Routes API admin (nécessitent le rôle admin)
+const adminApiRoutes = [
+  '/api/admin',
+];
+
 // Routes publiques d'authentification
 const authRoutes = ['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'];
 
@@ -42,6 +47,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const matchedProtectedPage = protectedPages.find((route) => pathname.startsWith(route.prefix));
   const isProtectedApiRoute = protectedApiRoutes.some(route => pathname.startsWith(route));
+  const isAdminApiRoute = adminApiRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
   
   // Les routes d'auth sont toujours accessibles
@@ -50,12 +56,12 @@ export async function middleware(request: NextRequest) {
   }
   
   // Si c'est une route protégée, vérifier le token
-  if (matchedProtectedPage || isProtectedApiRoute) {
+  if (matchedProtectedPage || isProtectedApiRoute || isAdminApiRoute) {
     const token = request.cookies.get('access_token')?.value;
     
     if (!token) {
       // Rediriger vers /login pour les pages, 401 pour les API
-      if (isProtectedApiRoute) {
+      if (isProtectedApiRoute || isAdminApiRoute) {
         return NextResponse.json(
           { error: 'Authentication required' },
           { status: 401 }
@@ -72,7 +78,7 @@ export async function middleware(request: NextRequest) {
     
     if (!payload) {
       // Token invalide ou expiré
-      if (isProtectedApiRoute) {
+      if (isProtectedApiRoute || isAdminApiRoute) {
         return NextResponse.json(
           { error: 'Invalid or expired token' },
           { status: 401 }
@@ -92,6 +98,14 @@ export async function middleware(request: NextRequest) {
           { status: 403 }
         );
       }
+    }
+    
+    // Vérifier le rôle admin pour les routes API admin
+    if (isAdminApiRoute && payload.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Admin role required' },
+        { status: 403 }
+      );
     }
     
     // Pour les routes API protégées, vérifier les permissions selon la méthode
@@ -131,5 +145,6 @@ export const config = {
     '/api/contributors/:path*',
     '/api/tasks/:path*',
     '/api/auth/:path*',
+    '/api/admin/:path*',
   ],
 };
