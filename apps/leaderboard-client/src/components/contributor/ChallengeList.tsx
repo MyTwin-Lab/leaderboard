@@ -15,8 +15,8 @@ export function ChallengeList({ challenges }: ChallengeListProps) {
 
   if (challenges.length === 0) {
     return (
-      <div className="rounded-md bg-white/5 p-4 text-sm text-white/60 sm:p-6 sm:text-base">
-        No contributions yet. Please check again after the next sync.
+      <div className="flex items-center justify-center rounded-md bg-white/5 p-4 text-sm text-white/60 sm:p-6 sm:text-base">
+        No contributions yet.
       </div>
     );
   }

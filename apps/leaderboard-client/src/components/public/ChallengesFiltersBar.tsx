@@ -34,7 +34,7 @@ export function ChallengesFiltersBar({
   const projectOptions = [{ id: "all", name: "All Projects" }, ...projects];
 
   return (
-    <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+    <div className="flex flex-col gap-3 pb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div className="w-full sm:flex-1 sm:max-w-[300px]">
         <label className="flex flex-col text-sm text-white/60">
           <input
