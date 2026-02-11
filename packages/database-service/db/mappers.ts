@@ -121,6 +121,11 @@ export function toDomainChallengeRepo(row: DbChallengeRepo): ChallengeRepo {
   return {
     challenge_id: row.challenge_id ?? "",
     repo_id: row.repo_id ?? "",
+    workspace_provider: row.workspace_provider ?? undefined,
+    workspace_ref: row.workspace_ref ?? undefined,
+    workspace_url: row.workspace_url ?? undefined,
+    workspace_status: (row.workspace_status as WorkspaceStatus) ?? undefined,
+    workspace_meta: (row.workspace_meta as WorkspaceMeta) ?? undefined,
   };
 }
 

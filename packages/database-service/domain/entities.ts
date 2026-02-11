@@ -18,6 +18,11 @@ export interface Repo {
 export interface ChallengeRepo {
   challenge_id: string; // FK -> challenges.uuid
   repo_id: string;      // FK -> repos.uuid
+  workspace_provider?: string;
+  workspace_ref?: string;
+  workspace_url?: string;
+  workspace_status?: WorkspaceStatus;
+  workspace_meta?: WorkspaceMeta;
 }
 
 export interface ChallengeTeam {
