@@ -12,3 +12,4 @@ export { DiscordAccountRepository } from "./discordAccount.repo";
 export { DiscordConversationRepository } from "./discordConversation.repo";
 export { DiscordMessageRepository } from "./discordMessage.repo";
 export { DiscordTriggerRepository } from "./discordTrigger.repo";
+export { DiscordEvaluationRepository } from "./discordEvaluation.repo";

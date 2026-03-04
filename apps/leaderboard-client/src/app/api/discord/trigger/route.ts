@@ -4,11 +4,13 @@ import { DiscordAccountRepository } from "../../../../../../../../packages/datab
 import { DiscordConversationRepository } from "../../../../../../../../packages/database-service/repositories";
 import { DiscordMessageRepository } from "../../../../../../../../packages/database-service/repositories";
 import { DiscordTriggerRepository } from "../../../../../../../../packages/database-service/repositories";
+import { DiscordService } from "../../../../../../../../packages/services/discord.service";
 
 const accountRepo = new DiscordAccountRepository();
 const conversationRepo = new DiscordConversationRepository();
 const messageRepo = new DiscordMessageRepository();
 const triggerRepo = new DiscordTriggerRepository();
+const discordService = new DiscordService();
 
 const triggerSchema = z.object({
   trigger_type: z.enum(["HELP_REQUEST", "GRATITUDE"]),
@@ -100,6 +102,9 @@ export async function POST(request: NextRequest) {
         keyword_detected: data.keyword_detected,
         language: data.language,
       });
+
+      // 7. Initier l'évaluation LLM (statut pending — le LLM viendra lire GET /conversations/:id)
+      await discordService.initEvaluation(conversation.uuid);
 
       return NextResponse.json({ conversation_id: conversation.uuid, message_id: message.uuid }, { status: 201 });
     }
