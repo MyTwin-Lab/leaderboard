@@ -102,6 +102,122 @@ export const refresh_tokens = pgTable("refresh_tokens", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
+<<<<<<< Updated upstream
+=======
+// --- EVALUATION RUN ---
+
+export const evaluation_runs = pgTable('evaluation_runs', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  challengeId: uuid('challenge_id')
+    .references(() => challenges.uuid, { onDelete: 'cascade' }), // nullable pour les évaluations Discord
+  triggerType: varchar('trigger_type', { length: 50 }).notNull(), // 'manual' | 'sync' | 'github_pr' | 'discord_gratitude'
+  triggerPayload: json('trigger_payload'), // exemple: { prNumber, mergedBy }
+  windowStart: timestamp('window_start').notNull(),
+  windowEnd: timestamp('window_end').notNull(),
+  status: varchar('status', { length: 20 }).notNull(), // pending | running | succeeded | failed | canceled
+  startedAt: timestamp('started_at').defaultNow(),
+  finishedAt: timestamp('finished_at'),
+  errorCode: varchar('error_code', { length: 100 }),
+  errorMessage: text('error_message'),
+  createdBy: uuid('created_by').references(() => users.uuid),
+  meta: json('meta') // { contributionCount, durationMs, evaluatorVersion }
+});
+
+// --- EVALUATION RUN CONTRIBUTION ---
+export const evaluation_run_contributions = pgTable('evaluation_run_contributions', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  runId: uuid('run_id')
+    .notNull()
+    .references(() => evaluation_runs.uuid, { onDelete: 'cascade' }),
+  contributionId: uuid('contribution_id')
+    .notNull()
+    .references(() => contributions.uuid, { onDelete: 'cascade' }),
+  status: varchar('status', { length: 20 }).notNull(), // identified | merged | evaluated | skipped
+  notes: json('notes'), // raison skip, warnings evaluator
+  createdAt: timestamp('created_at').defaultNow()
+});
+
+// --- EVALUATION GRIDS ---
+export const evaluation_grids = pgTable('evaluation_grids', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  slug: varchar('slug', { length: 64 }).notNull().unique(), // ex: "code", "model", "dataset"
+  name: varchar('name', { length: 120 }).notNull(),
+  description: text('description'),
+  version: integer('version').notNull().default(1),
+  status: varchar('status', { length: 20 }).notNull().default('draft'), // draft | published | archived
+  instructions: text('instructions'), // Instructions pour l'agent IA
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+  published_at: timestamp('published_at'),
+  created_by: uuid('created_by').references(() => users.uuid),
+});
+
+export const evaluation_grid_categories = pgTable('evaluation_grid_categories', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  grid_id: uuid('grid_id')
+    .notNull()
+    .references(() => evaluation_grids.uuid, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 120 }).notNull(), // ex: "Qualité technique mesurable"
+  weight: real('weight').notNull(), // ex: 0.25
+  type: varchar('type', { length: 20 }).notNull(), // objective | mixed | subjective | contextual
+  position: integer('position').notNull().default(0),
+});
+
+export const evaluation_grid_subcriteria = pgTable('evaluation_grid_subcriteria', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  category_id: uuid('category_id')
+    .notNull()
+    .references(() => evaluation_grid_categories.uuid, { onDelete: 'cascade' }),
+  criterion: varchar('criterion', { length: 120 }).notNull(), // ex: "Complexité du code"
+  description: text('description'),
+  weight: real('weight'), // Poids optionnel au sein de la catégorie
+  metrics: json('metrics'), // string[] - métriques mesurables
+  indicators: json('indicators'), // string[] - indicateurs qualitatifs
+  scoring_excellent: text('scoring_excellent'), // Guide: 8-9
+  scoring_good: text('scoring_good'), // Guide: 5-7
+  scoring_average: text('scoring_average'), // Guide: 2-4
+  scoring_poor: text('scoring_poor'), // Guide: 0-1
+  position: integer('position').notNull().default(0),
+});
+
+// --- DISCORD_ACCOUNTS ---
+export const discord_accounts = pgTable("discord_accounts", {
+  discord_id: varchar("discord_id", { length: 32 }).primaryKey(),
+  username: varchar("username", { length: 255 }).notNull(),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "set null" }),
+});
+
+// --- DISCORD_CONVERSATIONS ---
+export const discord_conversations = pgTable("discord_conversations", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  channel_id: varchar("channel_id", { length: 32 }).notNull(),
+  helper_discord_id: varchar("helper_discord_id", { length: 32 }).references(() => discord_accounts.discord_id, { onDelete: "set null" }),
+  beneficiary_discord_id: varchar("beneficiary_discord_id", { length: 32 }).references(() => discord_accounts.discord_id, { onDelete: "set null" }),
+  start_message_id: uuid("start_message_id"), // référence discord_messages.uuid après insertion
+  end_message_id: uuid("end_message_id"),     // null tant que la conversation n'est pas clôturée
+  started_at: timestamp("started_at").defaultNow(),
+});
+
+// --- DISCORD_MESSAGES ---
+export const discord_messages = pgTable("discord_messages", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  discord_message_id: varchar("discord_message_id", { length: 32 }).notNull().unique(), // snowflake Discord
+  conversation_id: uuid("conversation_id").references(() => discord_conversations.uuid, { onDelete: "cascade" }),
+  author_discord_id: varchar("author_discord_id", { length: 32 }).references(() => discord_accounts.discord_id, { onDelete: "set null" }),
+  content: text("content").notNull(),
+  sent_at: timestamp("sent_at").notNull(),
+});
+
+// --- DISCORD_TRIGGERS ---
+export const discord_triggers = pgTable("discord_triggers", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  message_id: uuid("message_id").references(() => discord_messages.uuid, { onDelete: "cascade" }),
+  trigger_type: varchar("trigger_type", { length: 20 }).notNull(), // GRATITUDE | HELP_REQUEST
+  keyword_detected: varchar("keyword_detected", { length: 255 }).notNull(),
+  language: varchar("language", { length: 2 }).notNull(), // FR | EN
+});
+
+>>>>>>> Stashed changes
 // --- RELATIONS ---
 
 export const projectsRelations = relations(projects, ({ many }) => ({
@@ -139,9 +255,13 @@ export const challengeReposRelations = relations(challenge_repos, ({ one }) => (
   }),
 }));
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
   contributions: many(contributions),
   challenge_teams: many(challenge_teams),
+  discord_account: one(discord_accounts, {
+    fields: [users.uuid],
+    references: [discord_accounts.user_id],
+  }),
 }));
 
 export const contributionsRelations = relations(contributions, ({ one }) => ({
@@ -198,6 +318,89 @@ export const refreshTokensRelations = relations(refresh_tokens, ({ one }) => ({
   }),
 }));
 
+<<<<<<< Updated upstream
+=======
+export const evaluationGridsRelations = relations(evaluation_grids, ({ one, many }) => ({
+  categories: many(evaluation_grid_categories),
+  created_by_user: one(users, {
+    fields: [evaluation_grids.created_by],
+    references: [users.uuid],
+  }),
+}));
+
+export const evaluationGridCategoriesRelations = relations(evaluation_grid_categories, ({ one, many }) => ({
+  grid: one(evaluation_grids, {
+    fields: [evaluation_grid_categories.grid_id],
+    references: [evaluation_grids.uuid],
+  }),
+  subcriteria: many(evaluation_grid_subcriteria),
+}));
+
+export const evaluationGridSubcriteriaRelations = relations(evaluation_grid_subcriteria, ({ one }) => ({
+  category: one(evaluation_grid_categories, {
+    fields: [evaluation_grid_subcriteria.category_id],
+    references: [evaluation_grid_categories.uuid],
+  }),
+}));
+
+export const taskWorkspacesRelations = relations(task_workspaces, ({ one }) => ({
+  task: one(tasks, {
+    fields: [task_workspaces.task_id],
+    references: [tasks.uuid],
+  }),
+  repo: one(repos, {
+    fields: [task_workspaces.repo_id],
+    references: [repos.uuid],
+  }),
+}));
+
+export const discordAccountsRelations = relations(discord_accounts, ({ one, many }) => ({
+  user: one(users, {
+    fields: [discord_accounts.user_id],
+    references: [users.uuid],
+  }),
+  messages: many(discord_messages),
+  conversations_as_helper: many(discord_conversations, { relationName: "helper" }),
+  conversations_as_beneficiary: many(discord_conversations, { relationName: "beneficiary" }),
+}));
+
+export const discordConversationsRelations = relations(discord_conversations, ({ one, many }) => ({
+  helper: one(discord_accounts, {
+    fields: [discord_conversations.helper_discord_id],
+    references: [discord_accounts.discord_id],
+    relationName: "helper",
+  }),
+  beneficiary: one(discord_accounts, {
+    fields: [discord_conversations.beneficiary_discord_id],
+    references: [discord_accounts.discord_id],
+    relationName: "beneficiary",
+  }),
+  messages: many(discord_messages),
+}));
+
+export const discordMessagesRelations = relations(discord_messages, ({ one }) => ({
+  conversation: one(discord_conversations, {
+    fields: [discord_messages.conversation_id],
+    references: [discord_conversations.uuid],
+  }),
+  author: one(discord_accounts, {
+    fields: [discord_messages.author_discord_id],
+    references: [discord_accounts.discord_id],
+  }),
+  trigger: one(discord_triggers, {
+    fields: [discord_messages.uuid],
+    references: [discord_triggers.message_id],
+  }),
+}));
+
+export const discordTriggersRelations = relations(discord_triggers, ({ one }) => ({
+  message: one(discord_messages, {
+    fields: [discord_triggers.message_id],
+    references: [discord_messages.uuid],
+  }),
+}));
+
+>>>>>>> Stashed changes
 // --- DATABASE CLIENT ---
 
 const pool = new Pool({
@@ -216,6 +419,19 @@ export const db = drizzle(pool, {
     tasks,
     task_assignees,
     refresh_tokens,
+<<<<<<< Updated upstream
+=======
+    evaluation_runs,
+    evaluation_run_contributions,
+    evaluation_grids,
+    evaluation_grid_categories,
+    evaluation_grid_subcriteria,
+    task_workspaces,
+    discord_accounts,
+    discord_conversations,
+    discord_messages,
+    discord_triggers,
+>>>>>>> Stashed changes
     projectsRelations,
     reposRelations,
     challengesRelations,
@@ -226,5 +442,16 @@ export const db = drizzle(pool, {
     tasksRelations,
     taskAssigneesRelations,
     refreshTokensRelations,
+<<<<<<< Updated upstream
+=======
+    evaluationGridsRelations,
+    evaluationGridCategoriesRelations,
+    evaluationGridSubcriteriaRelations,
+    taskWorkspacesRelations,
+    discordAccountsRelations,
+    discordConversationsRelations,
+    discordMessagesRelations,
+    discordTriggersRelations,
+>>>>>>> Stashed changes
   },
 });
