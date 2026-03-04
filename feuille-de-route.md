@@ -18,7 +18,7 @@
 - [x] **1.3** — Ajouter la table **`discord_messages`** (`message_id`, `discord_message_id`, `conversation_id FK`, `author_discord_id FK`, `content`, `sent_at`) *(Dev)*
 - [x] **1.4** — Ajouter la table **`discord_triggers`** (`trigger_id`, `message_id FK`, `trigger_type`, `keyword_detected`, `language`) *(Dev)*
 - [x] **1.5** — Vérifier la réutilisation des tables **`evaluation_runs`** et **`evaluation_grids`** → décision : `evaluation_grids` réutilisable, `evaluation_runs` retirée par main *(Dev)*
-- [ ] **1.6** — Ajouter la table **`evaluation_run_discord_conversations`** liée à `evaluation_runs` et `discord_conversations` *(Dev)*
+- [x] **1.6** — Ajouter la table **`discord_evaluations`** (`conversation_id FK`, `status`, `score`, `notes`, `evaluated_at`) — `evaluation_runs` retirée par main, table autonome *(Dev)*
 - [ ] **1.7** — Générer la **migration Drizzle** et la documenter *(Dev)*
 - [ ] **1.8** — Écrire les **repositories** pour chaque nouvelle table (pattern existant dans `packages/database-service/repositories/`) *(Dev)*
 

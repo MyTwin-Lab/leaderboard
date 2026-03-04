@@ -8,3 +8,7 @@ export { ContributionRepository } from "./contribution.repo";
 export { RefreshTokenRepository } from "./refresh-token.repo";
 export { TaskRepository } from "./task.repo";
 export { TaskAssigneeRepository } from "./taskAssignee.repo";
+export { DiscordAccountRepository } from "./discordAccount.repo";
+export { DiscordConversationRepository } from "./discordConversation.repo";
+export { DiscordMessageRepository } from "./discordMessage.repo";
+export { DiscordTriggerRepository } from "./discordTrigger.repo";

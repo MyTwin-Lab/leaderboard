@@ -102,6 +102,17 @@ export const refresh_tokens = pgTable("refresh_tokens", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
+// --- DISCORD_EVALUATIONS ---
+export const discord_evaluations = pgTable("discord_evaluations", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  conversation_id: uuid("conversation_id").notNull().references(() => discord_conversations.uuid, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending | running | evaluated | skipped
+  score: integer("score"),
+  notes: json("notes"),
+  evaluated_at: timestamp("evaluated_at"),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
 // --- DISCORD_ACCOUNTS ---
 export const discord_accounts = pgTable("discord_accounts", {
   discord_id: varchar("discord_id", { length: 32 }).primaryKey(),
@@ -261,6 +272,10 @@ export const discordConversationsRelations = relations(discord_conversations, ({
     relationName: "beneficiary",
   }),
   messages: many(discord_messages),
+  evaluation: one(discord_evaluations, {
+    fields: [discord_conversations.uuid],
+    references: [discord_evaluations.conversation_id],
+  }),
 }));
 
 export const discordMessagesRelations = relations(discord_messages, ({ one }) => ({
@@ -282,6 +297,13 @@ export const discordTriggersRelations = relations(discord_triggers, ({ one }) =>
   message: one(discord_messages, {
     fields: [discord_triggers.message_id],
     references: [discord_messages.uuid],
+  }),
+}));
+
+export const discordEvaluationsRelations = relations(discord_evaluations, ({ one }) => ({
+  conversation: one(discord_conversations, {
+    fields: [discord_evaluations.conversation_id],
+    references: [discord_conversations.uuid],
   }),
 }));
 
@@ -307,6 +329,7 @@ export const db = drizzle(pool, {
     discord_conversations,
     discord_messages,
     discord_triggers,
+    discord_evaluations,
     projectsRelations,
     reposRelations,
     challengesRelations,
@@ -321,5 +344,6 @@ export const db = drizzle(pool, {
     discordConversationsRelations,
     discordMessagesRelations,
     discordTriggersRelations,
+    discordEvaluationsRelations,
   },
 });
