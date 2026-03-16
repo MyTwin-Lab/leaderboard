@@ -50,6 +50,7 @@ export const contributionSchema = z.object({
   reward: z.number().default(0),
   user_id: z.string().uuid(),
   challenge_id: z.string().uuid(),
+  task_id: z.string().uuid().optional(),
   submitted_at: z.coerce.date(),
 });
 
@@ -176,4 +177,101 @@ export const evaluationGridSubcriterionSchema = z.object({
   scoring_average: z.string().optional(),
   scoring_poor: z.string().optional(),
   position: z.number().int().nonnegative(),
+});
+
+// --- SYNC MEETINGS ---
+
+export const googleAccountSchema = z.object({
+  uuid: z.string().uuid(),
+  user_id: z.string().uuid(),
+  google_user_id: z.string().min(1),
+  display_name: z.string().min(1),
+  email: z.string().email().optional(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+});
+
+export const syncMeetingStatusSchema = z.enum(['scheduled', 'in_progress', 'completed', 'processed', 'cancelled']);
+
+export const syncMeetingSchema = z.object({
+  uuid: z.string().uuid(),
+  title: z.string().min(1),
+  description: z.string().optional(),
+  challenge_id: z.string().uuid(),
+  start_time: z.coerce.date(),
+  end_time: z.coerce.date(),
+  meet_link: z.string().optional(),
+  calendar_event_id: z.string().optional(),
+  conference_id: z.string().optional(),
+  conference_record_id: z.string().optional(),
+  status: syncMeetingStatusSchema,
+  created_by: z.string().uuid(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+});
+
+export const meetingParticipantSchema = z.object({
+  uuid: z.string().uuid(),
+  sync_meeting_id: z.string().uuid(),
+  user_id: z.string().uuid().optional(),
+  google_user_id: z.string().min(1),
+  display_name: z.string().min(1),
+});
+
+export const meetingAnalysisStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed']);
+
+export const decisionSchema = z.object({
+  description: z.string(),
+  context: z.string().optional(),
+  mentioned_by: z.array(z.string()).optional(),
+});
+
+export const actionSchema = z.object({
+  description: z.string(),
+  assignee: z.string().optional(),
+  deadline: z.string().optional(),
+  priority: z.enum(['high', 'medium', 'low']).optional(),
+});
+
+export const contributionSignalSchema = z.object({
+  user_id: z.string().optional(),
+  display_name: z.string(),
+  signal_type: z.enum(['coordination', 'technical_leadership', 'problem_solving', 'knowledge_sharing']),
+  weight: z.number().min(0).max(1),
+  description: z.string().optional(),
+});
+
+export const meetingAnalysisSchema = z.object({
+  uuid: z.string().uuid(),
+  sync_meeting_id: z.string().uuid(),
+  summary: z.string().optional(),
+  decisions: z.array(decisionSchema).optional(),
+  actions: z.array(actionSchema).optional(),
+  contribution_signals: z.array(contributionSignalSchema).optional(),
+  status: meetingAnalysisStatusSchema,
+  processed_at: z.coerce.date().optional(),
+  error_message: z.string().optional(),
+  created_at: z.coerce.date(),
+});
+
+// --- ONBOARDING PROGRESS ---
+
+export const onboardingStepSchema = z.enum([
+  'clicked_challenge',
+  'assigned_task',
+  'evaluated_contribution',
+  'validated_task',
+  'joined_meeting',
+]);
+
+export const onboardingProgressSchema = z.object({
+  user_id: z.string().uuid(),
+  clicked_challenge: z.boolean(),
+  assigned_task: z.boolean(),
+  evaluated_contribution: z.boolean(),
+  validated_task: z.boolean(),
+  joined_meeting: z.boolean(),
+  completed_at: z.coerce.date().optional(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
 });

@@ -20,6 +20,18 @@ export default function AdminPage() {
       href: '/admin/users',
       icon: '👥',
     },
+    {
+      title: 'Evaluation Grids',
+      description: 'Create and manage evaluation grids and criteria',
+      href: '/admin/evaluation-grids',
+      icon: '📊',
+    },
+    {
+      title: 'Meetings',
+      description: 'Schedule and manage sync meetings',
+      href: '/admin/meetings',
+      icon: '📅',
+    },
   ];
 
   return (

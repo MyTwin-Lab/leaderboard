@@ -46,6 +46,16 @@ export class TaskRepository {
     return results.filter(r => r.user !== null).map(r => toDomainUser(r.user!));
   }
 
+  async findByChallengeWithAssignees(challengeId: string): Promise<(Task & { assignees: User[] })[]> {
+    const taskList = await this.findByChallenge(challengeId);
+    return Promise.all(
+      taskList.map(async (task) => ({
+        ...task,
+        assignees: await this.findAssignees(task.uuid),
+      }))
+    );
+  }
+
   async completeTask(taskId: string): Promise<Task> {
     const task = await this.findById(taskId);
     if (!task) throw new Error("Task not found");

@@ -15,23 +15,9 @@ export interface Repo {
   project_id: string; // FK -> projects.uuid
 }
 
-// --- WORKSPACE TYPES ---
-
-export type WorkspaceStatus = 'pending' | 'ready' | 'failed';
-
-export interface WorkspaceMeta {
-  baseBranch?: string;
-  sha?: string;
-  createdAt?: string;
-  error?: string;
-  alreadyExisted?: boolean;
-  [key: string]: unknown;
-}
-
 export interface ChallengeRepo {
   challenge_id: string; // FK -> challenges.uuid
   repo_id: string;      // FK -> repos.uuid
-  // Workspace provisioning fields
   workspace_provider?: string;
   workspace_ref?: string;
   workspace_url?: string;
@@ -68,6 +54,7 @@ export interface Contribution {
   reward: number;
   user_id: string;      // FK -> users.uuid
   challenge_id: string; // FK -> challenges.uuid
+  task_id?: string;     // FK -> tasks.uuid
   submitted_at: Date;
 }
 
@@ -104,6 +91,18 @@ export interface TaskAssignee {
   task_id: string;
   user_id: string;
   assigned_at: Date;
+}
+
+// --- WORKSPACE TYPES ---
+
+export type WorkspaceStatus = 'pending' | 'ready' | 'failed';
+
+export interface WorkspaceMeta {
+  baseBranch?: string;
+  createdAt?: string;
+  error?: string;
+  sha?: string;
+  [key: string]: unknown;
 }
 
 export interface TaskWorkspace {
@@ -214,4 +213,95 @@ export interface EvaluationGridFull extends EvaluationGrid {
   categories: (EvaluationGridCategory & {
     subcriteria: EvaluationGridSubcriterion[];
   })[];
+}
+
+// --- SYNC MEETINGS ---
+
+export interface GoogleAccount {
+  uuid: string;
+  user_id: string;
+  google_user_id: string;
+  display_name: string;
+  email?: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export type SyncMeetingStatus = 'scheduled' | 'in_progress' | 'completed' | 'processed' | 'cancelled';
+
+export interface SyncMeeting {
+  uuid: string;
+  title: string;
+  description?: string;
+  challenge_id: string;
+  start_time: Date;
+  end_time: Date;
+  meet_link?: string;
+  calendar_event_id?: string;
+  conference_id?: string;
+  conference_record_id?: string;
+  status: SyncMeetingStatus;
+  created_by: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface MeetingParticipant {
+  uuid: string;
+  sync_meeting_id: string;
+  user_id?: string;
+  google_user_id: string;
+  display_name: string;
+}
+
+export type MeetingAnalysisStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface Decision {
+  description: string;
+  context?: string;
+  mentioned_by?: string[];
+}
+
+export interface Action {
+  description: string;
+  assignee?: string;
+  deadline?: string;
+  priority?: 'high' | 'medium' | 'low';
+}
+
+export interface ContributionSignal {
+  user_id?: string;
+  display_name: string;
+  signal_type: 'coordination' | 'technical_leadership' | 'problem_solving' | 'knowledge_sharing';
+  weight: number;
+  description?: string;
+}
+
+export interface MeetingAnalysis {
+  uuid: string;
+  sync_meeting_id: string;
+  summary?: string;
+  decisions?: Decision[];
+  actions?: Action[];
+  contribution_signals?: ContributionSignal[];
+  status: MeetingAnalysisStatus;
+  processed_at?: Date;
+  error_message?: string;
+  created_at: Date;
+}
+
+// --- ONBOARDING PROGRESS ---
+
+export type OnboardingStep = 'clicked_challenge' | 'assigned_task' | 'evaluated_contribution' | 'validated_task' | 'joined_meeting';
+
+export interface OnboardingProgress {
+  user_id: string;
+  clicked_challenge: boolean;
+  assigned_task: boolean;
+  evaluated_contribution: boolean;
+  validated_task: boolean;
+  joined_meeting: boolean;
+  completed_at?: Date;
+  created_at: Date;
+  updated_at: Date;
 }

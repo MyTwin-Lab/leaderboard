@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/Badge';
+import { trackOnboardingStep } from '@/lib/onboarding-track';
 
 interface TaskWithChallenge {
   uuid: string;
@@ -37,6 +38,7 @@ export function MyTasks() {
   const handleEvaluate = (taskId: string) => {
     // Placeholder pour l'évaluation future
     console.log('Evaluate task:', taskId);
+    trackOnboardingStep('evaluated_contribution');
   };
 
   if (loading) {
@@ -73,7 +75,7 @@ export function MyTasks() {
                   <Badge label={task.type} />
                   <button
                     onClick={() => handleEvaluate(task.uuid)}
-                    className="rounded-full bg-white/10 px-4 py-1.5 shadow-md text-sm font-medium text-white hover:bg-white/20 transition"
+                    className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition"
                   >
                     Evaluate
                   </button>

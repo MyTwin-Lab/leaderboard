@@ -21,6 +21,11 @@ import {
   evaluation_grids,
   evaluation_grid_categories,
   evaluation_grid_subcriteria,
+  google_accounts,
+  sync_meetings,
+  meeting_participants,
+  meeting_analyses,
+  onboarding_progress,
 } from "./drizzle.js";
 import type {
   Project,
@@ -46,6 +51,13 @@ import type {
   EvaluationGridSubcriterion,
   EvaluationGridStatus,
   EvaluationGridCategoryType,
+  GoogleAccount,
+  SyncMeeting,
+  SyncMeetingStatus,
+  MeetingParticipant,
+  MeetingAnalysis,
+  MeetingAnalysisStatus,
+  OnboardingProgress,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -147,6 +159,7 @@ export function toDomainContribution(row: DbContribution): Contribution {
     reward: row.reward ?? 0,
     user_id: row.user_id ?? "",
     challenge_id: row.challenge_id ?? "",
+    task_id: row.task_id ?? undefined,
     submitted_at: new Date(row.submitted_at),
   };
 }
@@ -206,13 +219,14 @@ export function toDbContribution(entity: Omit<Contribution, "uuid">): typeof con
     reward: entity.reward,
     user_id: entity.user_id || null,
     challenge_id: entity.challenge_id || null,
+    task_id: entity.task_id || null,
     submitted_at: entity.submitted_at,
   };
 }
 
 export function toDomainRefreshToken(row: DbRefreshToken): RefreshToken {
   return {
-    id: row.uuid,
+    id: row.id,
     user_id: row.user_id,
     token_hash: row.token_hash,
     expires_at: new Date(row.expires_at),
@@ -448,5 +462,141 @@ export function toDbEvaluationGridSubcriterion(
     scoring_average: entity.scoring_average ?? null,
     scoring_poor: entity.scoring_poor ?? null,
     position: entity.position,
+  };
+}
+
+// ============================================================
+// SYNC MEETINGS MAPPERS
+// ============================================================
+
+type DbGoogleAccount = InferSelectModel<typeof google_accounts>;
+type DbSyncMeeting = InferSelectModel<typeof sync_meetings>;
+type DbMeetingParticipant = InferSelectModel<typeof meeting_participants>;
+type DbMeetingAnalysis = InferSelectModel<typeof meeting_analyses>;
+
+// --- GoogleAccount ---
+export function toDomainGoogleAccount(row: DbGoogleAccount): GoogleAccount {
+  return {
+    uuid: row.uuid,
+    user_id: row.user_id,
+    google_user_id: row.google_user_id,
+    display_name: row.display_name,
+    email: row.email ?? undefined,
+    created_at: row.created_at!,
+    updated_at: row.updated_at!,
+  };
+}
+
+export function toDbGoogleAccount(entity: Omit<GoogleAccount, "uuid" | "created_at" | "updated_at">) {
+  return {
+    user_id: entity.user_id,
+    google_user_id: entity.google_user_id,
+    display_name: entity.display_name,
+    email: entity.email ?? null,
+  };
+}
+
+// --- SyncMeeting ---
+export function toDomainSyncMeeting(row: DbSyncMeeting): SyncMeeting {
+  return {
+    uuid: row.uuid,
+    title: row.title,
+    description: row.description ?? undefined,
+    challenge_id: row.challenge_id,
+    start_time: row.start_time,
+    end_time: row.end_time,
+    meet_link: row.meet_link ?? undefined,
+    calendar_event_id: row.calendar_event_id ?? undefined,
+    conference_id: row.conference_id ?? undefined,
+    conference_record_id: row.conference_record_id ?? undefined,
+    status: row.status as SyncMeetingStatus,
+    created_by: row.created_by,
+    created_at: row.created_at!,
+    updated_at: row.updated_at!,
+  };
+}
+
+export function toDbSyncMeeting(entity: Omit<SyncMeeting, "uuid" | "created_at" | "updated_at">) {
+  return {
+    title: entity.title,
+    description: entity.description ?? null,
+    challenge_id: entity.challenge_id,
+    start_time: entity.start_time,
+    end_time: entity.end_time,
+    meet_link: entity.meet_link ?? null,
+    calendar_event_id: entity.calendar_event_id ?? null,
+    conference_id: entity.conference_id ?? null,
+    conference_record_id: entity.conference_record_id ?? null,
+    status: entity.status,
+    created_by: entity.created_by,
+  };
+}
+
+// --- MeetingParticipant ---
+export function toDomainMeetingParticipant(row: DbMeetingParticipant): MeetingParticipant {
+  return {
+    uuid: row.uuid,
+    sync_meeting_id: row.sync_meeting_id,
+    user_id: row.user_id ?? undefined,
+    google_user_id: row.google_user_id,
+    display_name: row.display_name,
+  };
+}
+
+export function toDbMeetingParticipant(entity: Omit<MeetingParticipant, "uuid">) {
+  return {
+    sync_meeting_id: entity.sync_meeting_id,
+    user_id: entity.user_id ?? null,
+    google_user_id: entity.google_user_id,
+    display_name: entity.display_name,
+  };
+}
+
+// --- MeetingAnalysis ---
+export function toDomainMeetingAnalysis(row: DbMeetingAnalysis): MeetingAnalysis {
+  return {
+    uuid: row.uuid,
+    sync_meeting_id: row.sync_meeting_id,
+    summary: row.summary ?? undefined,
+    decisions: row.decisions as any[] | undefined,
+    actions: row.actions as any[] | undefined,
+    contribution_signals: row.contribution_signals as any[] | undefined,
+    status: row.status as MeetingAnalysisStatus,
+    processed_at: row.processed_at ?? undefined,
+    error_message: row.error_message ?? undefined,
+    created_at: row.created_at!,
+  };
+}
+
+export function toDbMeetingAnalysis(entity: Omit<MeetingAnalysis, "uuid" | "created_at">) {
+  return {
+    sync_meeting_id: entity.sync_meeting_id,
+    summary: entity.summary ?? null,
+    decisions: entity.decisions ?? null,
+    actions: entity.actions ?? null,
+    contribution_signals: entity.contribution_signals ?? null,
+    status: entity.status,
+    processed_at: entity.processed_at ?? null,
+    error_message: entity.error_message ?? null,
+  };
+}
+
+// ============================================================
+// ONBOARDING PROGRESS MAPPERS
+// ============================================================
+
+type DbOnboardingProgress = InferSelectModel<typeof onboarding_progress>;
+
+export function toDomainOnboardingProgress(row: DbOnboardingProgress): OnboardingProgress {
+  return {
+    user_id: row.user_id,
+    clicked_challenge: row.clicked_challenge,
+    assigned_task: row.assigned_task,
+    evaluated_contribution: row.evaluated_contribution,
+    validated_task: row.validated_task,
+    joined_meeting: row.joined_meeting,
+    completed_at: row.completed_at ?? undefined,
+    created_at: row.created_at!,
+    updated_at: row.updated_at!,
   };
 }

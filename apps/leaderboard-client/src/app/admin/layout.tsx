@@ -19,12 +19,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const navItems = [
     { href: '/admin', label: 'Overview' },
     { href: '/admin/challenges', label: 'Challenges' },
-    { href: '/admin/evaluations', label: 'Evaluations' },
-    { href: '/admin/evaluation-grids', label: 'Grids' },
     { href: '/admin/projects', label: 'Projects' },
     { href: '/admin/repos', label: 'Repos' },
     { href: '/admin/users', label: 'Users' },
     { href: '/admin/contributions', label: 'Contributions' },
+    { href: '/admin/evaluation-grids', label: 'Grids' },
+    { href: '/admin/meetings', label: 'Meetings' },
   ];
 
   return (

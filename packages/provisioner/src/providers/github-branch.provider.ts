@@ -161,6 +161,43 @@ export class GitHubBranchProvider implements WorkspaceProvider {
   }
 
   /**
+   * Restreint les push sur une branche aux utilisateurs spécifiés.
+   * Les admins du repo conservent toujours l'accès (enforce_admins: false).
+   */
+  async protect(parentRef: string, ref: string, allowedUsers: string[]): Promise<void> {
+    const [owner, repo] = parentRef.split('/');
+    if (!owner || !repo) {
+      throw new ParentResourceNotFoundError(parentRef);
+    }
+
+    const branchName = ref.replace('refs/heads/', '');
+
+    try {
+      await this.octokit.rest.repos.updateBranchProtection({
+        owner,
+        repo,
+        branch: branchName,
+        required_status_checks: null,
+        enforce_admins: false,
+        required_pull_request_reviews: null,
+        restrictions: {
+          users: allowedUsers,
+          teams: [],
+        },
+      });
+
+      console.log(`[GitHubBranchProvider] Branch protected: ${branchName} (allowed: ${allowedUsers.join(', ')})`);
+    } catch (error: any) {
+      if (error.status === 404) {
+        console.warn(`[GitHubBranchProvider] Branch ${branchName} not found for protection, skipping`);
+        return;
+      }
+      console.error(`[GitHubBranchProvider] Error protecting branch ${branchName}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Supprime une branche
    */
   async deprovision(parentRef: string, ref: string): Promise<void> {

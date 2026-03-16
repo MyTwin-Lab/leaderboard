@@ -4,9 +4,14 @@ import { ContributorHeader } from "@/components/contributor/ContributorHeader";
 import { ChallengeList } from "@/components/contributor/ChallengeList";
 import { MyTasks } from "@/components/contributor/MyTasks";
 import { fetchContributorProfile, fetchContributorSession } from "@/lib/contributor";
+import Link from "next/link";
 
 export default async function ContributorSelfPage() {
   const session = await fetchContributorSession();
+
+  const openSyncMeetings = () => {
+    redirect("/sync-meetings");
+  };
 
   if (!session) {
     redirect("/login?from=/contributors/me");
@@ -31,9 +36,18 @@ export default async function ContributorSelfPage() {
         <ChallengeList challenges={profile.challenges} />
 
         {/* My Tasks */}
-        <div className="hidden">
+        <div>
           <MyTasks />
         </div>
+      </div>
+
+      <div className="flex items-center mt-8 justify-center gap-10">
+        <Link
+          href="/settings/google-account"
+          className="rounded-full bg-white/10 px-4 py-2 text-m font-medium text-white/90 shadow-md shadow-black/20 transition hover:bg-white/20"
+        >
+          Connect Google
+        </Link>
       </div>
     </div>
   );

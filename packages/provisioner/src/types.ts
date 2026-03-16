@@ -83,6 +83,11 @@ export interface WorkspaceProvider {
   getStatus(parentRef: string, ref: string): Promise<WorkspaceStatus>;
   
   /**
+   * Restreint l'accès à un workspace aux utilisateurs spécifiés (optionnel)
+   */
+  protect?(parentRef: string, ref: string, allowedUsers: string[]): Promise<void>;
+  
+  /**
    * Supprime un workspace (optionnel)
    */
   deprovision?(parentRef: string, ref: string): Promise<void>;

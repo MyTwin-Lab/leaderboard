@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ChallengeProgressBar } from "../ui/ChallengeProgressBar";
 import { TeamAvatars } from "../ui/TeamAvatars";
 import type { TeamMember } from "@/lib/types";
@@ -48,6 +49,7 @@ export function ChallengeCard({
   startDate,
   endDate,
 }: ChallengeCardProps) {
+  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [joinState, setJoinState] = useState<'idle' | 'loading' | 'success' | 'error'>(
     isMember ? 'success' : 'idle'
@@ -147,7 +149,10 @@ export function ChallengeCard({
   };
 
   return (
-    <div className="rounded-md bg-white/5 p-4 shadow-md shadow-black/20 transition hover:bg-white/10 sm:p-5">
+    <div 
+      onClick={() => router.push(`/challenges/${challengeId}`)}
+      className="rounded-md bg-white/5 p-4 shadow-md shadow-black/20 transition hover:bg-white/10 sm:p-5 cursor-pointer"
+    >
       {/* Header: Project name + CP */}
       <div className="flex items-start justify-between gap-2 sm:items-center">
         <h3 className="text-base font-semibold text-white sm:text-lg">{challengeTitle}</h3>

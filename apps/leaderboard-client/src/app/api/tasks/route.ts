@@ -12,17 +12,23 @@ const createTaskSchema = z.object({
   type: z.enum(['solo', 'concurrent']),
 });
 
-// GET /api/tasks?challenge_id=xxx - Liste les tâches d'un challenge
+// GET /api/tasks?challenge_id=xxx&include=assignees - Liste les tâches d'un challenge
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const challengeId = searchParams.get('challenge_id');
+    const include = searchParams.get('include');
 
     if (!challengeId) {
       return NextResponse.json(
         { error: 'challenge_id is required' },
         { status: 400 }
       );
+    }
+
+    if (include === 'assignees') {
+      const tasksWithAssignees = await taskRepo.findByChallengeWithAssignees(challengeId);
+      return NextResponse.json(tasksWithAssignees);
     }
 
     const tasks = await taskRepo.findByChallenge(challengeId);
