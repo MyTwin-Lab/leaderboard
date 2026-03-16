@@ -6,6 +6,7 @@ const taskRepo = new TaskRepository();
 
 const createTaskSchema = z.object({
   challenge_id: z.string().uuid(),
+  repo_id: z.string().uuid().optional(),
   parent_task_id: z.string().uuid().optional(),
   title: z.string().min(1),
   description: z.string().optional(),

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserRepository } from '../../../../../../../packages/database-service/repositories';
-import { hashPassword } from '@/lib/auth';
 import { z } from 'zod';
 
 const userRepo = new UserRepository();
@@ -8,8 +7,8 @@ const userRepo = new UserRepository();
 const updateUserSchema = z.object({
   github_username: z.string().min(1).optional(),
   full_name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
   role: z.string().optional(),
-  password: z.string().min(8).optional(),
 });
 
 // GET /api/users/[id] - Récupérer un utilisateur
@@ -28,8 +27,7 @@ export async function GET(
       );
     }
     
-    const { password_hash, ...sanitizedUser } = user;
-    return NextResponse.json(sanitizedUser);
+    return NextResponse.json(user);
   } catch (error) {
     console.error('Error fetching user:', error);
     return NextResponse.json(
@@ -49,16 +47,9 @@ export async function PUT(
     const body = await request.json();
     const validated = updateUserSchema.parse(body);
     
-    const updateData: any = { ...validated };
-    if (validated.password) {
-      updateData.password_hash = await hashPassword(validated.password);
-      delete updateData.password;
-    }
+    const user = await userRepo.update(id, validated);
     
-    const user = await userRepo.update(id, updateData);
-    const { password_hash, ...sanitizedUser } = user;
-    
-    return NextResponse.json(sanitizedUser);
+    return NextResponse.json(user);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
