@@ -23,6 +23,7 @@
     "prod:delete": "pm2 delete leaderboard-client"
   },
   "dependencies": {
+    "@scalar/nextjs-api-reference": "^0.9.18",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
     "buffer": "^6.0.3",
@@ -38,6 +39,7 @@
     "server-destroy": "^1.0.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
+    "yaml": "^2.8.2",
     "zod": "^4.1.11"
   },
   "devDependencies": {
