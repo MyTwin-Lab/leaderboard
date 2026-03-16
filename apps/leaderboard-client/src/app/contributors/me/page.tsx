@@ -4,7 +4,8 @@ import { ContributorHeader } from "@/components/contributor/ContributorHeader";
 import { ChallengeList } from "@/components/contributor/ChallengeList";
 import { MyTasks } from "@/components/contributor/MyTasks";
 import { fetchContributorProfile, fetchContributorSession } from "@/lib/contributor";
-import Link from "next/link";
+import { LogoutButton } from "@/components/contributor/LogoutButton";
+import { CheckCircle2, ClipboardList } from "lucide-react";
 
 export default async function ContributorSelfPage() {
   const session = await fetchContributorSession();
@@ -14,7 +15,7 @@ export default async function ContributorSelfPage() {
   };
 
   if (!session) {
-    redirect("/login?from=/contributors/me");
+    redirect("/api/google-auth/authorize?from=/contributors/me");
   }
 
   const profile = await fetchContributorProfile(session.id);
@@ -25,30 +26,34 @@ export default async function ContributorSelfPage() {
 
   return (
     <div className="mx-auto mt-4 max-w-2xl sm:mt-6">
-      <ContributorHeader
-        displayName={profile.displayName}
-        githubUsername={profile.githubUsername}
-        totalCP={profile.totalCP}
-      />
-
+      <div className="flex items-center justify-between">
+        <ContributorHeader
+          displayName={profile.displayName}
+          githubUsername={profile.githubUsername}
+          totalCP={profile.totalCP}
+        />
+        <LogoutButton />
+      </div>
+      
       <div className="mt-4 space-y-4 sm:mt-6 sm:space-y-6">
-        {/* Profile & Challenges */}
-        <ChallengeList challenges={profile.challenges} />
-
         {/* My Tasks */}
         <div>
+          <div className="flex items-center gap-2 mb-4">
+            <ClipboardList className="h-5 w-5 text-brandCP" />
+            <h2 className="text-base font-semibold text-white sm:text-lg">My Tasks</h2>
+          </div>
           <MyTasks />
         </div>
-      </div>
 
-      <div className="flex items-center mt-8 justify-center gap-10">
-        <Link
-          href="/settings/google-account"
-          className="rounded-full bg-white/10 px-4 py-2 text-m font-medium text-white/90 shadow-md shadow-black/20 transition hover:bg-white/20"
-        >
-          Connect Google
-        </Link>
-      </div>
+        {/* Profile & Challenges */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <CheckCircle2 className="h-5 w-5 text-brandCP" />
+            <h2 className="text-base font-semibold text-white sm:text-lg">My Contributions</h2>
+          </div>
+          <ChallengeList challenges={profile.challenges} />
+          </div>
+        </div>
     </div>
   );
 }
