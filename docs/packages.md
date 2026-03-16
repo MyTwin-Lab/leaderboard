@@ -12,7 +12,7 @@ This monorepo is organized into one app and several packages. Packages are share
 Key responsibilities:
 - Renders all pages: leaderboard, challenges, contributor profiles, admin panel, onboarding
 - Implements all API endpoints under `src/app/api/`
-- Handles authentication (JWT cookies, middleware protection)
+- Handles authentication (Google OAuth login, JWT cookies, middleware protection)
 - Integrates with all packages at runtime
 
 ---
@@ -28,7 +28,8 @@ Variables it validates:
 - `JWT_ACCESS_EXPIRY` / `JWT_REFRESH_EXPIRY` — optional (defaults: `15m` / `7d`)
 - `OPENAI_API_KEY` — required in full prod mode
 - `GITHUB_TOKEN`, `GITHUB_WEBHOOK_SECRET` — optional
-- `GOOGLE_*` — various Google integration credentials (optional)
+- `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` / `GOOGLE_OAUTH_REDIRECT_URI` — required (used for login via Google OAuth)
+- Other `GOOGLE_*` — Google Workspace / Drive credentials (optional, for sync meetings and connectors)
 - `OTEL_*` — observability config (optional)
 
 **Key file:** `packages/config/index.ts`
@@ -56,20 +57,20 @@ Repositories available:
 ## `packages/evaluator`
 
 **Optional** — requires `OPENAI_API_KEY`
-**Purpose:** AI-powered pipeline that identifies contributions from raw context, merges them with existing records, and scores them using structured grids.
+**Purpose:** AI scoring engine. Takes a contribution (metadata + code snapshot) and a grid, and returns a structured evaluation with per-criterion scores and a global score (0–100).
 
-Three-step pipeline:
-1. **Identify** (`openai/identify.agent.ts`) — takes challenge context (commits, meeting notes, etc.) and extracts individual contributions
-2. **Merge** (`openai/merge.agent.ts`) — compares new contributions with existing ones to decide whether to create or update
-3. **Evaluate** (`openai/evaluate.agent.ts`) — scores each contribution against a grid (0–9 per criterion, aggregated to 0–100)
+The evaluator exposes one active agent:
+- **Evaluate** (`openai/evaluate.agent.ts`) — scores a contribution against a grid (0–9 per criterion, aggregated to 0–100)
 
 Scoring grids (in `grids/`):
-- `code.grid.ts` — code quality: technical quality, architecture, impact, documentation, security, maintainability
+- `code.grid.ts` — technical quality, architecture, security, maintainability, documentation, impact
 - `model.grid.ts` — ML model contributions
 - `dataset.grid.ts` — dataset contributions
 - `docs.grid.ts` — documentation contributions
 
-Each agent call is wrapped with 3-retry logic with 1-second backoff.
+Each agent call is wrapped with 3-retry logic (1-second backoff).
+
+> The package also contains `openai/identify.agent.ts` and `openai/merge.agent.ts` from the old challenge-level pipeline — these are **no longer used**.
 
 **Key file:** `packages/evaluator/evaluator.ts` (`OpenAIAgentEvaluator` class)
 
@@ -96,16 +97,18 @@ Interface methods: `connect()`, `testConnection()`, `fetchItems()`, `fetchItemCo
 **Purpose:** Business logic and orchestration that combines database access, connectors, and the evaluator. The app calls these services from Route Handlers rather than calling the lower-level packages directly.
 
 Key services:
+- **`task_evaluation/task-evaluation.service.ts`** — main evaluation pipeline: task context → commits → snapshot → score → upsert contribution
+- **`task_evaluation/task-context.service.ts`** — loads the task, its parent challenge, assignees, and workspace branches
 - **`challenge.service.ts`** — challenge CRUD and state transitions
-- **`challenge-context.service.ts`** — assembles the full context (commits, notes) for evaluation
-- **`sync-evaluation.service.ts`** — triggers the full identify → merge → evaluate pipeline
 - **`rewards.service.ts`** — distributes CP across contributors based on evaluation scores
-- **`google-auth.service.ts`** — manages Google OAuth2 tokens
+- **`google-auth.service.ts`** — manages Google OAuth2 tokens (used for login and Google integrations)
 - **`google-calendar.service.ts`** — creates and manages Google Calendar events
 - **`google-meet.service.ts`** — provisions Google Meet links
 - **`evaluation-grid.service.ts`** — CRUD for evaluation grids stored in the DB
 - **`webhook.service.ts`** — handles incoming GitHub webhooks
 - **`sync-meeting/`** — full sync meeting lifecycle (creation → polling → ingestion → analysis)
+
+> `challenge-context.service.ts` and `sync-evaluation.service.ts` are still in the codebase but are **no longer used** — they belonged to the old challenge-level identify/merge/evaluate pipeline.
 
 ---
 

@@ -17,7 +17,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`project-structure.md`](./project-structure.md) | Annotated directory tree — where everything lives |
 | [`packages.md`](./packages.md) | What each package does, its role, and key files |
 | [`database.md`](./database.md) | PostgreSQL schema, tables, migrations, and seeding |
-| [`auth.md`](./auth.md) | JWT authentication, roles, and protected routes |
+| [`auth.md`](./auth.md) | Google OAuth login, JWT cookies, roles, and protected routes |
 | [`api.md`](./api.md) | High-level overview of all API routes |
 
 ## Feature docs

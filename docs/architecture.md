@@ -43,34 +43,45 @@ flowchart LR
 **Required at runtime:** `config` + `database-service`
 **Optional (need API keys):** `evaluator`, `connectors`, `services`, `provisioner`, `sync-meeting-agent`
 
-## Data flow — full evaluation pipeline
+## Data flow — task evaluation pipeline
 
-When evaluation is enabled, the flow from challenge sync to leaderboard update looks like this:
+Evaluation is **task-scoped**: one contributor, one task, one evaluation run. The contributor and task are already known so there is no identification or deduplication step.
 
 ```mermaid
 flowchart TD
-  A["Admin triggers /api/challenges/:id/sync"] --> B["services: challenge-context.service"]
-  B --> C["connectors: fetch commits + Drive files"]
-  C --> D["evaluator: identify contributions"]
-  D --> E["evaluator: merge with existing contributions"]
-  E --> F["evaluator: score each contribution via grid"]
-  F --> G["database-service: store evaluation + reward"]
-  G --> H["leaderboard UI updated"]
+  A["POST /api/tasks/:id/evaluate"] --> B["TaskEvaluationService"]
+  B --> C["TaskContextService: load task + challenge + workspace branches"]
+  C --> D["ConnectorsOrchestrator: connect to GitHub branch(es)"]
+  D --> E["fetch commits (up to 100)"]
+  E --> F["SnapshotService: build aggregated code snapshot"]
+  F --> G["EvaluationGridRegistry: load grid for task type"]
+  G --> H["OpenAIAgentEvaluator: score against grid"]
+  H --> I["ContributionRepository: upsert contribution + score"]
+  I --> J["RunLogger: log evaluation run"]
+  I --> K["leaderboard UI updated"]
 ```
+
+> The codebase still contains `sync-evaluation.service.ts` and the `identify` / `merge` agents from the old challenge-level pipeline — these are **no longer used**.
 
 ## Authentication flow
 
+Login is via **Google OAuth** — there is no password login. After Google verifies the user, the app issues its own JWT cookies for all subsequent requests.
+
 ```mermaid
 sequenceDiagram
-  Browser->>+API: POST /api/auth/login (github_username + password)
-  API->>DB: lookup user, verify password hash
-  DB-->>API: user record
+  Browser->>+API: GET /api/google-auth/authorize
+  API-->>-Browser: redirect to Google consent screen
+  Browser->>+Google: user authenticates
+  Google-->>-Browser: redirect to /api/google-auth/callback?code=...
+  Browser->>+API: GET /api/google-auth/callback
+  API->>Google: exchange code for tokens + fetch user info
+  API->>DB: find or create user by google_user_id / email
   API-->>-Browser: Set-Cookie: access_token + refresh_token (HTTP-only)
   Browser->>+API: any protected request (cookie auto-sent)
   API->>API: middleware verifies JWT
   API-->>-Browser: response
   Browser->>+API: POST /api/auth/refresh (when access_token expired)
-  API->>DB: verify refresh_token hash
+  API->>DB: verify + rotate refresh_token
   API-->>-Browser: new access_token cookie
 ```
 

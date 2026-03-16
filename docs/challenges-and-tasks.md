@@ -67,9 +67,9 @@ Workspace provisioning is handled by `packages/provisioner`.
 3. **Add team members** — assign contributors to the challenge.
 4. **Create tasks** — break down the work into individual tasks with clear descriptions and types.
 5. **Assign tasks** — assign tasks to specific contributors.
-6. **(Optional) Provision workspaces** — create GitHub branches for tasks so contributors have a dedicated workspace.
+6. **Provision workspaces** — create a GitHub branch per task so each contributor has a dedicated workspace.
 7. **Monitor progress** — track task statuses as contributors work.
-8. **Trigger evaluation** — once work is done, trigger `POST /api/challenges/:id/sync` to run the AI evaluation pipeline.
+8. **Trigger evaluation** — once work is done on a task, call `POST /api/tasks/:id/evaluate`. This scores the contributor's work on that task's branch and creates or updates their contribution record. See [`evaluation.md`](./evaluation.md).
 9. **Close the challenge** — finalize and distribute rewards.
 
 ---

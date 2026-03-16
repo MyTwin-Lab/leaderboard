@@ -59,6 +59,14 @@ All request bodies are JSON. All responses are JSON. Authentication is via HTTP-
 |--------|------|-------------|------|
 | `GET` | `/api/tasks` | List all tasks (optionally filtered by challenge). | Public |
 | `POST` | `/api/tasks` | Create a task. | Admin |
+| `GET` | `/api/tasks/:id` | Get a task by ID. | Public |
+| `PUT` | `/api/tasks/:id` | Update a task. | Admin |
+| `DELETE` | `/api/tasks/:id` | Delete a task. | Admin |
+| `GET` | `/api/tasks/:id/details` | Get full task details including assignees and workspaces. | Public |
+| `POST` | `/api/tasks/:id/assign` | Assign a contributor to a task. | Admin |
+| `GET` | `/api/tasks/:id/assignees` | List assignees for a task. | Public |
+| `POST` | `/api/tasks/:id/complete` | Mark a task as complete. | Admin or assignee |
+| `POST` | `/api/tasks/:id/evaluate` | Trigger AI evaluation for the task. Scores the contributor's work on the task's workspace branch and upserts a contribution record. See [`evaluation.md`](./evaluation.md). | Admin or assignee |
 
 ---
 

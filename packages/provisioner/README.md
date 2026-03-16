@@ -1,45 +1,26 @@
-# 📦 Provisioner Package
+# provisioner
 
-Package générique pour provisionner des workspaces (branches GitHub, espaces HuggingFace, projets Figma, etc.) lors de la création de challenges et tasks.
+Creates workspaces (GitHub branches) for challenges and tasks. Uses a Registry + Provider pattern so new platform types can be added without changing the calling code.
 
-## 🎯 Vue d'ensemble
-
-Ce package fournit une interface unifiée pour créer automatiquement des espaces de travail sur différentes plateformes. Il utilise un pattern **Registry + Providers** pour être facilement extensible.
-
-## 🏗️ Architecture
+## Structure
 
 ```
-packages/provisioner/
-├── src/
-│   ├── index.ts                    # Façade principale + exports
-│   ├── types.ts                    # Interfaces & types
-│   ├── registry.ts                 # Registry des providers
-│   ├── utils.ts                    # Utilitaires (slugify, génération noms)
-│   ├── errors.ts                   # Erreurs normalisées
-│   └── providers/
-│       └── github-branch.provider.ts  # Provider GitHub
+provisioner/src/
+├── index.ts                       # Main entry point + exports
+├── types.ts                       # WorkspaceProvider interface + shared types
+├── registry.ts                    # ProvisionerRegistry
+├── utils.ts                       # Branch name generation (slugify, zero-padding)
+├── errors.ts                      # Typed error classes
+└── providers/
+    └── github-branch.provider.ts  # GitHub branch provider
 ```
 
-## 🔌 Providers disponibles
+## Usage
 
-### GitHub Branch Provider
-
-Crée des branches sur un repository GitHub.
-
-**Configuration requise :**
-- Variable d'environnement `GITHUB_TOKEN` avec le scope `repo`
-
-**Fonctionnalités :**
-- Création de branches depuis une branche de base
-- Détection des branches existantes (retourne `ready` sans erreur)
-- Gestion des erreurs d'authentification
-
-## 📖 Utilisation
-
-### Provisionner un workspace pour un challenge
+### Provision a workspace for a challenge
 
 ```typescript
-import { provisionChallengeWorkspace } from 'packages/provisioner/src/index.js';
+import { provisionChallengeWorkspace } from '../../provisioner/src/index.js';
 
 const result = await provisionChallengeWorkspace({
   challengeIndex: 7,
@@ -48,7 +29,7 @@ const result = await provisionChallengeWorkspace({
   repoType: 'github',
 });
 
-// Résultat:
+// result:
 // {
 //   provider: 'GitHub Branch',
 //   workspaceType: 'git_branch',
@@ -59,112 +40,94 @@ const result = await provisionChallengeWorkspace({
 // }
 ```
 
-### Provisionner un workspace pour une task
+### Provision a workspace for a task
 
 ```typescript
-import { provisionTaskWorkspace } from 'packages/provisioner/src/index.js';
+import { provisionTaskWorkspace } from '../../provisioner/src/index.js';
 
 const result = await provisionTaskWorkspace({
   challengeIndex: 7,
   taskTitle: 'Setup Environment',
   repoExternalId: 'MyTwin-Lab/leaderboard',
   repoType: 'github',
-  challengeBranchRef: 'refs/heads/challenge/007-admin-experience-update', // optionnel
+  challengeBranchRef: 'refs/heads/challenge/007-admin-experience-update', // optional base branch
 });
 
-// Résultat:
+// result:
 // {
-//   provider: 'GitHub Branch',
-//   workspaceType: 'git_branch',
 //   ref: 'refs/heads/task/007-setup-environment',
 //   url: 'https://github.com/MyTwin-Lab/leaderboard/tree/task/007-setup-environment',
 //   status: 'ready',
-//   meta: { baseBranch: 'challenge/007-admin-experience-update', ... }
+//   ...
 // }
 ```
 
-## 🔧 Convention de nommage des branches
+## Branch naming conventions
 
-| Type | Format | Exemple |
+| Type | Format | Example |
 |------|--------|---------|
 | Challenge | `challenge/{index}-{slug}` | `challenge/007-admin-experience-update` |
 | Task | `task/{challenge-index}-{slug}` | `task/007-setup-environment` |
 
-L'index est padé sur 3 chiffres (ex: `007`).
+Index is zero-padded to 3 digits. Titles are slugified (lowercase, hyphens).
 
-## 🚀 Ajouter un nouveau provider
+## Where results are stored
 
-1. Créer un fichier dans `src/providers/` implémentant `WorkspaceProvider`:
+Provisioning results are written to the database by the calling API route, not by the provisioner itself:
+
+- **Challenge workspaces** → `challenge_repos` table (`workspace_ref`, `workspace_url`, `workspace_status`, `workspace_meta`)
+- **Task workspaces** → `task_workspaces` table (same fields)
+
+The `workspace_ref` (e.g. `refs/heads/task/007-setup-environment`) is later read by `TaskContextService` to locate the branch when running evaluation.
+
+## When provisioning is triggered
+
+| Action | API route | What is created |
+|--------|-----------|-----------------|
+| Link a repo to a challenge | `POST /api/challenges/:id/repos` | Challenge branch on the repo |
+| Assign a contributor to a task | `POST /api/tasks/:id/assign` | Task branch based on the challenge branch |
+
+## Error types
+
+| Error | Cause |
+|-------|-------|
+| `ProviderNotFoundError` | No provider registered for the given `repoType` |
+| `MissingConfigurationError` | Required env var (e.g. `GITHUB_TOKEN`) is missing |
+| `ProviderAuthenticationError` | Token is invalid or lacks required scopes |
+| `ParentResourceNotFoundError` | The repo or parent branch doesn't exist |
+| `WorkspaceAlreadyExistsError` | Branch already exists — not blocking, returns `ready` |
+
+## Adding a new provider
+
+1. Create a class in `src/providers/` implementing `WorkspaceProvider`:
 
 ```typescript
-import type { WorkspaceProvider, ProvisionRequest, ProvisionResult } from '../types.js';
-
-export class FigmaProjectProvider implements WorkspaceProvider {
-  readonly type = 'figma_project';
-  readonly name = 'Figma Project';
+export class HuggingFaceProvider implements WorkspaceProvider {
+  readonly type = 'huggingface';
+  readonly name = 'HuggingFace';
 
   async provision(request: ProvisionRequest): Promise<ProvisionResult> {
-    // Implémenter la logique de création
+    // create the HuggingFace space/dataset
   }
 
   async getStatus(parentRef: string, ref: string): Promise<WorkspaceStatus> {
-    // Vérifier si le workspace existe
+    // check if it already exists
   }
 }
 ```
 
-2. Enregistrer le provider dans `src/index.ts`:
+2. Register it in `src/index.ts`:
 
 ```typescript
-import { FigmaProjectProvider } from './providers/figma-project.provider.js';
-
-// Dans initializeProviders():
-if (process.env.FIGMA_TOKEN) {
-  ProvisionerRegistry.register(new FigmaProjectProvider());
+if (process.env.HUGGINGFACE_TOKEN) {
+  ProvisionerRegistry.register(new HuggingFaceProvider());
 }
 ```
 
-3. Ajouter le mapping dans `src/utils.ts`:
+3. Add a type mapping in `src/utils.ts` if needed.
 
-```typescript
-const mapping: Record<string, string> = {
-  'github': 'git_branch',
-  'figma': 'figma_project',  // Nouveau
-};
-```
+## Environment variables
 
-## 📊 Stockage en base de données
-
-Les résultats du provisioning sont stockés dans :
-
-- **`challenge_repos`** : pour les workspaces de challenges
-  - `workspace_provider`, `workspace_ref`, `workspace_url`, `workspace_status`, `workspace_meta`
-
-- **`task_workspaces`** : pour les workspaces de tasks
-  - Mêmes champs que `challenge_repos`
-
-## ⚠️ Gestion des erreurs
-
-| Erreur | Description |
-|--------|-------------|
-| `ProviderNotFoundError` | Aucun provider enregistré pour ce type |
-| `MissingConfigurationError` | Token/credentials manquants |
-| `ProviderAuthenticationError` | Échec d'authentification |
-| `ParentResourceNotFoundError` | Repo/projet parent introuvable |
-| `WorkspaceAlreadyExistsError` | Le workspace existe déjà (non bloquant) |
-
-## 🔐 Variables d'environnement
-
-| Variable | Description | Requis pour |
-|----------|-------------|-------------|
-| `GITHUB_TOKEN` | Personal Access Token GitHub | GitHub provider |
-
-## 📝 Intégration dans les APIs
-
-Le provisioning est déclenché automatiquement :
-
-1. **Création challenge-repo** (`POST /api/repos/challenge-repos`)
-   - Crée la branche du challenge sur le repo associé
-
-2. **Assignation à une task** (`POST /api/tasks/[id]/assign`)
-   - Crée la branche de la task basée sur la branche du challenge parent
+| Variable | Required for |
+|----------|-------------|
+| `GITHUB_TOKEN` | GitHub branch provider (needs `repo` scope) |

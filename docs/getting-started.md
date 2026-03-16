@@ -38,6 +38,11 @@ Create a `.env` file at the **repo root**:
 DATABASE_URL=postgresql://leaderboard_user:leaderboard_password@localhost:5432/mytwin_leaderboard
 JWT_SECRET=replace-with-a-32+character-secret-at-least
 
+# Required — Google OAuth (used for login)
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/api/google-auth/callback
+
 # Optional — only needed for AI evaluation
 OPENAI_API_KEY=
 
@@ -55,9 +60,6 @@ GOOGLE_FOLDER_ID=
 GOOGLE_WORKSPACE_SERVICE_ACCOUNT_EMAIL=
 GOOGLE_WORKSPACE_SERVICE_ACCOUNT_KEY=
 GOOGLE_WORKSPACE_ADMIN_EMAIL=
-GOOGLE_OAUTH_CLIENT_ID=
-GOOGLE_OAUTH_CLIENT_SECRET=
-GOOGLE_OAUTH_REDIRECT_URI=
 
 # Optional — observability (Grafana Cloud)
 OTEL_EXPORTER_OTLP_ENDPOINT=

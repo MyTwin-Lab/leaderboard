@@ -21,7 +21,7 @@ leaderboard/
 │       │   │   │   ├── repos/
 │       │   │   │   └── users/
 │       │   │   ├── api/               # Next.js Route Handlers (server-side)
-│       │   │   │   ├── auth/          # login, refresh, logout
+│       │   │   │   ├── auth/          # refresh, logout (login is handled by google-auth/)
 │       │   │   │   ├── challenges/    # CRUD + sync + team management
 │       │   │   │   ├── contributions/ # CRUD by challenge
 │       │   │   │   ├── contributors/  # current user profile + tasks

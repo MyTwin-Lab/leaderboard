@@ -31,7 +31,7 @@ MyTwin Leaderboard is an internal platform for **MyTwin Lab** that tracks contri
 | **Frontend & API routes** | Next.js 16 (App Router), React 19, TypeScript |
 | **Styling** | Tailwind CSS 4 |
 | **Database** | PostgreSQL 14+, Drizzle ORM |
-| **Authentication** | JWT (jose library), HTTP-only cookies, bcryptjs |
+| **Authentication** | Google OAuth (identity provider) + JWT (jose library), HTTP-only cookies |
 | **AI / Evaluation** | OpenAI API (Agents) |
 | **Google integrations** | Google Workspace (Calendar, Meet), Google Drive (OAuth2) |
 | **GitHub integration** | Octokit (commits, repos, branch provisioning) |

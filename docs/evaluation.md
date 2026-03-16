@@ -1,93 +1,77 @@
 # Evaluation
 
-The evaluation system uses OpenAI agents to automatically assess the quality of contributions and compute Contribution Point (CP) rewards.
+The evaluation system uses OpenAI agents to automatically score a contributor's work on a task and compute their Contribution Point (CP) reward.
 
-**Package:** `packages/evaluator`
-**Requires:** `OPENAI_API_KEY`
+**Package:** `packages/services/task_evaluation` + `packages/evaluator`
+**Requires:** `OPENAI_API_KEY` + `GITHUB_TOKEN`
 
 ---
 
 ## Overview
 
-When an admin triggers a challenge sync (`POST /api/challenges/:id/sync`), the evaluation pipeline runs in three sequential steps:
+Evaluation is **task-scoped** — one evaluation per contributor per task. Since the contributor and task are already known, there is no identification or deduplication step. The pipeline goes directly from context to score.
+
+Triggered via: `POST /api/tasks/:id/evaluate`
+
+Can be called by an admin or the contributor assigned to the task.
+
+---
+
+## Pipeline
 
 ```
-1. Identify  →  2. Merge  →  3. Evaluate
+POST /api/tasks/:id/evaluate
+        ↓
+TaskEvaluationService.evaluateTask({ taskId, userId })
+        ↓
+1. TaskContextService     → load task, parent challenge, workspace branches
+        ↓
+2. ConnectorsOrchestrator → connect to each workspace (e.g. GitHub branch)
+        ↓
+3. fetch commits          → up to 100 commits across all workspaces
+        ↓
+4. SnapshotService        → build aggregated code snapshot from commits
+        ↓
+5. EvaluationGridRegistry → load the grid matching the task type
+        ↓
+6. OpenAIAgentEvaluator   → score the contribution against the grid
+        ↓
+7. ContributionRepository → upsert: create contribution or update existing one
+        ↓
+8. RunLogger              → log the evaluation run result
 ```
 
-Each step is an OpenAI agent call, wrapped with 3-retry logic (1-second backoff between attempts).
+**Upsert logic:** if a contribution already exists for `(task_id, user_id)`, it is updated with the new evaluation. Otherwise a new contribution record is created. This means running evaluation multiple times on the same task is safe — it just refreshes the score.
 
 ---
 
-## Step 1: Identify
+## What the evaluator scores
 
-**Agent:** `packages/evaluator/openai/identify.agent.ts`
+The `OpenAIAgentEvaluator.evaluate()` method takes:
+- The contribution metadata (title, type, description, commit SHAs)
+- A code snapshot (the actual diff/file contents from the branch commits)
+- The evaluation grid for the task type
 
-Takes the full challenge context (GitHub commits, Google Drive files, meeting notes assembled by `challenge-context.service.ts`) and extracts a list of individual contributions.
-
-Each identified contribution includes:
-- Title and description
-- Type (`code`, `docs`, `model`, `dataset`)
-- Attributed contributor(s)
-- Supporting evidence (commit hashes, file references)
-
----
-
-## Step 2: Merge
-
-**Agent:** `packages/evaluator/openai/merge.agent.ts`
-
-Compares newly identified contributions with existing contributions already stored in the database. Decides for each new contribution whether to:
-- **Create** it as a new record
-- **Update** an existing record it corresponds to
-
-This prevents duplicate contributions from being created when a challenge is synced multiple times.
-
----
-
-## Step 3: Evaluate
-
-**Agent:** `packages/evaluator/openai/evaluate.agent.ts`
-
-Scores each contribution against the appropriate **evaluation grid** based on its type. Produces an `Evaluation` object with:
-- A score per criterion (0–9)
-- A final aggregated score (0–100)
-- Justification text for each criterion
-
-Results are stored in `contributions.evaluation` (JSON) and `contributions.reward` (computed CP).
+It produces an `Evaluation` object with:
+- `scores` — per-criterion scores (0–9 each)
+- `globalScore` — final weighted score (0–100)
 
 ---
 
 ## Evaluation grids
 
-Grids define the scoring criteria. Each grid is structured into weighted categories, each with subcriteria that have explicit scoring guides.
+Grids define the scoring criteria. The grid used is selected automatically based on `task.type`.
 
-There are four built-in grid types:
+| Task type | Grid |
+|-----------|------|
+| `code` | Technical quality, architecture, security, maintainability, documentation, impact |
+| `model` | Model architecture, training quality, performance metrics, reproducibility |
+| `dataset` | Data quality, coverage, labeling accuracy, documentation |
+| `docs` | Completeness, clarity, accuracy, structure |
 
-### `code` — Code contributions
+Grids can also be defined and stored in the database via the admin panel (`/admin/evaluation-grids`), and are loaded at runtime by `DatabaseGridProvider`.
 
-| Category | Weight |
-|----------|--------|
-| Technical quality (cyclomatic complexity, duplication, test coverage) | 25% |
-| Architecture & design (SRP, modularity, error handling, performance) | 18% |
-| Business impact (problem resolution, functional scope) | 12% |
-| Documentation & clarity (readability, docstrings) | 12% |
-| Security & robustness (input validation, secrets management) | 12% |
-| Maintainability (technical debt, ease of evolution) | 18% |
-| Documentation | 3% |
-
-### `model` — ML model contributions
-Evaluates model architecture, training quality, performance metrics, and reproducibility.
-
-### `dataset` — Dataset contributions
-Evaluates data quality, coverage, labeling accuracy, and documentation.
-
-### `docs` — Documentation contributions
-Evaluates completeness, clarity, accuracy, and structure.
-
----
-
-## Scoring scale
+### Scoring scale
 
 Each criterion is scored 0–9:
 
@@ -95,30 +79,20 @@ Each criterion is scored 0–9:
 |-------|---------|
 | 8–9 | Exceptional — reference quality |
 | 5–7 | Good — production-ready with minor improvements |
-| 2–4 | Acceptable — needs revision before merge |
-| 0–1 | Problematic — major refactoring needed |
+| 2–4 | Acceptable — needs revision |
+| 0–1 | Problematic — major issues |
 
-The final score (0–100) is a weighted average across all criteria.
-
----
-
-## Custom grids in the database
-
-In addition to the built-in code grids, evaluation grids can be defined and stored in the database via the admin panel (`/admin/evaluation-grids`). The `packages/services/evaluation-grid.service.ts` handles CRUD and versioning of these DB-stored grids.
-
-The `database-grid-provider.ts` in services retrieves the appropriate active grid from the DB for a given contribution type.
+The `globalScore` (0–100) is a weighted average across all criteria.
 
 ---
 
 ## Reward distribution
 
-After evaluation, CP rewards are distributed by `packages/evaluator/reward.ts` based on:
-- Each contributor's evaluation score relative to the challenge total
-- The challenge's total reward pool (CP)
+After evaluation, CP rewards are computed from the contribution score and the challenge's reward pool. Distribution logic lives in `packages/evaluator/reward.ts`.
 
-Formula: `contributor_reward = (contributor_score / total_scores) × reward_pool`
+Formula: `contributor_reward = (contributor_score / total_challenge_scores) × reward_pool`
 
-Results are written to `contributions.reward`.
+The result is written to `contributions.reward`.
 
 ---
 
@@ -126,11 +100,16 @@ Results are written to `contributions.reward`.
 
 | File | Purpose |
 |------|---------|
-| `packages/evaluator/evaluator.ts` | `OpenAIAgentEvaluator` class — orchestrates the 3 agents |
-| `packages/evaluator/openai/identify.agent.ts` | Contribution identification agent |
-| `packages/evaluator/openai/merge.agent.ts` | Merge / dedup agent |
-| `packages/evaluator/openai/evaluate.agent.ts` | Scoring agent |
-| `packages/evaluator/grids/code.grid.ts` | Code evaluation grid definition |
+| `packages/services/task_evaluation/task-evaluation.service.ts` | Main pipeline — orchestrates context, snapshot, evaluation, upsert |
+| `packages/services/task_evaluation/task-context.service.ts` | Loads task, challenge, assignees, and workspace branches |
+| `packages/evaluator/evaluator.ts` | `OpenAIAgentEvaluator` — calls the OpenAI scoring agent |
+| `packages/evaluator/openai/evaluate.agent.ts` | The OpenAI agent that produces scores |
+| `packages/evaluator/grids/` | Built-in grid definitions (code, model, dataset, docs) |
 | `packages/evaluator/reward.ts` | CP reward distribution logic |
-| `packages/services/sync-evaluation.service.ts` | Wires context + evaluator together |
-| `packages/services/challenge-context.service.ts` | Assembles context for evaluation |
+| `packages/services/evaluation-grid.service.ts` | CRUD for database-stored grids |
+| `packages/services/database-grid-provider.ts` | Fetches the active grid from the DB at runtime |
+| `apps/leaderboard-client/src/app/api/tasks/[id]/evaluate/route.ts` | API endpoint that triggers evaluation |
+
+---
+
+> **Note on the old challenge-level pipeline:** The codebase still contains `packages/services/challenge/sync-evaluation.service.ts` and `packages/evaluator/openai/identify.agent.ts` / `merge.agent.ts`. These are **no longer used** — the challenge-level identify/merge/evaluate flow has been replaced by task-level evaluation via `TaskEvaluationService`.
