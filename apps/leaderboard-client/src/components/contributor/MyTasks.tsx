@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/Badge';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
 
@@ -51,37 +52,40 @@ export function MyTasks() {
   }
 
   return (
-    <div className="rounded-lg shadow-md bg-white/5 p-4">
-      <h2 className="text-lg font-semibold text-white mb-4">My Tasks</h2>
+    <div>
       
       {tasks.length === 0 ? (
         <p className="text-white/40">No tasks assigned yet</p>
       ) : (
         <div className="space-y-3">
           {tasks.map((task) => (
-            <div
+            <Link
               key={task.uuid}
-              className="rounded-lg bg-white/5 p-4"
+              href={`/tasks/${task.uuid}`}
+              className="block rounded-lg bg-white/5 p-4 transition hover:bg-white/10"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <h3 className="font-medium text-white">{task.title}</h3>
                   <p className="text-sm text-brandCP mt-1">{task.challenge_title}</p>
                   {task.description && (
-                    <p className="text-sm text-white/50 mt-2">{task.description}</p>
+                    <p className="text-sm text-white/50 mt-2 line-clamp-2">{task.description}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge label={task.type} />
                   <button
-                    onClick={() => handleEvaluate(task.uuid)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleEvaluate(task.uuid);
+                    }}
                     className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition"
                   >
                     Evaluate
                   </button>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

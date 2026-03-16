@@ -29,10 +29,12 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
+  const [challengeRepos, setChallengeRepos] = useState<{ repo_id: string; repo_type: string; repo_external_id?: string; challenge_id: string }[]>([]);
 
   useEffect(() => {
     if (challenge?.uuid) {
       fetchTasks();
+      fetchChallengeRepos();
     }
   }, [challenge?.uuid]);
 
@@ -45,6 +47,18 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     } catch (error) {
       console.error('Error fetching tasks:', error);
       setTasks([]);
+    }
+  };
+
+  const fetchChallengeRepos = async () => {
+    if (!challenge?.uuid) return;
+    try {
+      const res = await fetch(`/api/challenges/${challenge.uuid}/repos`);
+      const data = await res.json();
+      setChallengeRepos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching challenge repos:', error);
+      setChallengeRepos([]);
     }
   };
 
@@ -238,6 +252,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
               task={editingTask}
               challengeId={challenge.uuid}
               availableParentTasks={tasks.filter(t => !t.parent_task_id)}
+              availableRepos={challengeRepos}
               onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
               onCancel={handleCancelTaskForm}
             />

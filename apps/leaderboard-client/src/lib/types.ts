@@ -44,6 +44,7 @@ export type SessionUser = {
   id: string;
   fullName: string;
   githubUsername: string;
+  email: string;
   role: string;
 };
 

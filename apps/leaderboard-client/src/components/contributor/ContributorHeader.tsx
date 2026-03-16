@@ -11,19 +11,12 @@ export function ContributorHeader({ displayName, githubUsername, totalCP }: Cont
   return (
     <div className="mb-6 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-center sm:gap-4">
       <div className="flex items-center gap-3 sm:block">
-        <div className="sm:hidden">
-          <InitialsAvatar name={displayName} size={56} />
-        </div>
-        <div className="hidden sm:block">
+        <div className="sm:block">
           <InitialsAvatar name={displayName} size={72} />
-        </div>
-        <div className="flex flex-col gap-1 sm:hidden">
-          <h1 className="text-lg font-semibold text-white">{displayName}</h1>
-          <span className="text-xs text-white/60">@{githubUsername}</span>
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-1">
-        <div className="hidden flex-wrap items-center gap-2 sm:flex">
+        <div className="flex-wrap items-center gap-2 sm:flex">
           <h1 className="text-xl font-semibold text-white">{displayName}</h1>
           <span className="text-xs text-white/60">(@{githubUsername})</span>
         </div>

@@ -4,25 +4,35 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import type { Task } from '../../../../../packages/database-service/domain/entities';
 
+interface ChallengeRepoInfo {
+  repo_id: string;
+  repo_type: string;
+  repo_external_id?: string;
+  challenge_id: string;
+}
+
 interface TaskFormProps {
   task?: Task;
   challengeId: string;
   availableParentTasks: Task[];
+  availableRepos: ChallengeRepoInfo[];
   onSubmit: (data: {
     title: string;
     description?: string;
     type: 'solo' | 'concurrent';
+    repo_id?: string;
     parent_task_id?: string;
     challenge_id: string;
   }) => void;
   onCancel: () => void;
 }
 
-export function TaskForm({ task, challengeId, availableParentTasks, onSubmit, onCancel }: TaskFormProps) {
+export function TaskForm({ task, challengeId, availableParentTasks, availableRepos, onSubmit, onCancel }: TaskFormProps) {
   const [formData, setFormData] = useState({
     title: task?.title || '',
     description: task?.description || '',
     type: task?.type || 'solo' as 'solo' | 'concurrent',
+    repo_id: task?.repo_id || '',
     parent_task_id: task?.parent_task_id || '',
   });
 
@@ -32,6 +42,7 @@ export function TaskForm({ task, challengeId, availableParentTasks, onSubmit, on
       title: formData.title,
       description: formData.description || undefined,
       type: formData.type,
+      repo_id: formData.repo_id || undefined,
       parent_task_id: formData.parent_task_id || undefined,
       challenge_id: challengeId,
     });
@@ -68,6 +79,24 @@ export function TaskForm({ task, challengeId, availableParentTasks, onSubmit, on
             <option value="concurrent">Concurrent</option>
           </select>
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white/80 mb-1.5">
+          Repository
+        </label>
+        <select
+          value={formData.repo_id}
+          onChange={(e) => setFormData({ ...formData, repo_id: e.target.value })}
+          className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+        >
+          <option value="">No specific repo</option>
+          {availableRepos.map((r) => (
+            <option key={r.repo_id} value={r.repo_id}>
+              {r.repo_external_id || r.repo_id} ({r.repo_type})
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
