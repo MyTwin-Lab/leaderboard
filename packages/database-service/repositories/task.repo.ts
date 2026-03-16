@@ -93,6 +93,7 @@ export class TaskRepository {
     const validated = taskSchema.omit({ uuid: true, created_at: true }).partial().parse(entity);
     const dbData: any = {};
     if (validated.challenge_id !== undefined) dbData.challenge_id = validated.challenge_id || null;
+    if (validated.repo_id !== undefined) dbData.repo_id = validated.repo_id || null;
     if (validated.parent_task_id !== undefined) dbData.parent_task_id = validated.parent_task_id || null;
     if (validated.title) dbData.title = validated.title;
     if (validated.description !== undefined) dbData.description = validated.description || null;

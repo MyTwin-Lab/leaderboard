@@ -62,9 +62,10 @@ export interface User {
   uuid: string;
   role: string;
   full_name: string;
-  github_username: string;
+  github_username?: string;
+  email?: string;
+  google_user_id?: string;
   bio?: string;
-  password_hash?: string;
   created_at: Date;
 }
 
@@ -79,6 +80,7 @@ export interface RefreshToken {
 export interface Task {
   uuid: string;
   challenge_id: string;
+  repo_id?: string;
   parent_task_id?: string;
   title: string;
   description?: string;
@@ -216,16 +218,6 @@ export interface EvaluationGridFull extends EvaluationGrid {
 }
 
 // --- SYNC MEETINGS ---
-
-export interface GoogleAccount {
-  uuid: string;
-  user_id: string;
-  google_user_id: string;
-  display_name: string;
-  email?: string;
-  created_at: Date;
-  updated_at: Date;
-}
 
 export type SyncMeetingStatus = 'scheduled' | 'in_progress' | 'completed' | 'processed' | 'cancelled';
 
