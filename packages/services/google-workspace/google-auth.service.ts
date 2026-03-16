@@ -26,6 +26,7 @@ export class GoogleAuthService {
       access_type: 'offline',
       scope: scopes,
       state: state,
+      prompt: 'select_account',
     });
   }
 
