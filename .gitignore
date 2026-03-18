@@ -36,3 +36,6 @@ packages/**/package-lock.json
 # Divers
 .vercel/
 .turbo/
+
+scalingo*
+scalingo

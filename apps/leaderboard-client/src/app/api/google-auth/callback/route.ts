@@ -78,7 +78,6 @@ export async function GET(request: NextRequest) {
     await storeRefreshToken(user.uuid, refreshToken);
 
     // Redirect with cookies
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
     const safePath = from?.startsWith('/') ? from : '/';
     const redirectUrl = new URL(safePath, baseUrl);
     const response = NextResponse.redirect(redirectUrl);
