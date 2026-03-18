@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(authUrl);
   } catch (error) {
     console.error('[GoogleAuth] Error generating auth URL:', error);
-    return NextResponse.redirect(new URL('/?error=oauth_init_failed', request.url));
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+    return NextResponse.redirect(new URL('/?error=oauth_init_failed', baseUrl));
   }
 }

@@ -63,14 +63,15 @@ export async function proxy(request: NextRequest) {
         );
       }
       
-      const oauthUrl = new URL('/api/google-auth/authorize', request.url);
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+      const oauthUrl = new URL('/api/google-auth/authorize', baseUrl);
       oauthUrl.searchParams.set('from', pathname);
       return NextResponse.redirect(oauthUrl);
     }
-    
+
     // Vérifier la validité du token
     const payload = await verifyTokenEdge(token);
-    
+
     if (!payload) {
       // Token invalide ou expiré
       if (isProtectedApiRoute) {
@@ -79,8 +80,9 @@ export async function proxy(request: NextRequest) {
           { status: 401 }
         );
       }
-      
-      const oauthUrl = new URL('/api/google-auth/authorize', request.url);
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+      const oauthUrl = new URL('/api/google-auth/authorize', baseUrl);
       oauthUrl.searchParams.set('from', pathname);
       return NextResponse.redirect(oauthUrl);
     }

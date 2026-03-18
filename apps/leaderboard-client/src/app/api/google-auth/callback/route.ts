@@ -12,13 +12,15 @@ const userRepo = new UserRepository();
 const onboardingRepo = new OnboardingProgressRepository();
 
 export async function GET(request: NextRequest) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
     const stateParam = searchParams.get('state');
 
     if (!code) {
-      return NextResponse.redirect(new URL('/?error=missing_code', request.url));
+      return NextResponse.redirect(new URL('/?error=missing_code', baseUrl));
     }
 
     const { from } = stateParam ? JSON.parse(stateParam) : { from: '/' };
@@ -27,7 +29,7 @@ export async function GET(request: NextRequest) {
     const tokens = await googleAuthService.getTokensFromCode(code);
 
     if (!tokens.access_token) {
-      return NextResponse.redirect(new URL('/?error=no_token', request.url));
+      return NextResponse.redirect(new URL('/?error=no_token', baseUrl));
     }
 
     const userInfo = await googleAuthService.getUserInfo(tokens.access_token);
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!user) {
-      return NextResponse.redirect(new URL('/?error=user_creation_failed', request.url));
+      return NextResponse.redirect(new URL('/?error=user_creation_failed', baseUrl));
     }
 
     // Generate JWT tokens
@@ -76,7 +78,9 @@ export async function GET(request: NextRequest) {
     await storeRefreshToken(user.uuid, refreshToken);
 
     // Redirect with cookies
-    const redirectUrl = new URL(from || '/', request.url);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+    const safePath = from?.startsWith('/') ? from : '/';
+    const redirectUrl = new URL(safePath, baseUrl);
     const response = NextResponse.redirect(redirectUrl);
 
     response.cookies.set('access_token', accessToken, {
@@ -98,6 +102,6 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('[GoogleAuth] Callback error:', error);
-    return NextResponse.redirect(new URL('/?error=callback_failed', request.url));
+    return NextResponse.redirect(new URL('/?error=callback_failed', baseUrl));
   }
 }
