@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskRepository, TaskAssigneeRepository } from '../../../../../../../../packages/database-service/repositories';
-import { TaskEvaluationService } from '../../../../../../../../packages/services/task_evaluation/task-evaluation.service';
 import { jwtVerify } from 'jose';
 
 const taskRepo = new TaskRepository();
 const taskAssigneeRepo = new TaskAssigneeRepository();
-const taskEvaluationService = new TaskEvaluationService();
+
+async function getTaskEvaluationService() {
+  const { TaskEvaluationService } = await import('../../../../../../../../packages/services/task_evaluation/task-evaluation.service');
+  return new TaskEvaluationService();
+}
 
 type SessionPayload = {
   userId: string;
@@ -60,6 +63,7 @@ export async function POST(
       );
     }
 
+    const taskEvaluationService = await getTaskEvaluationService();
     const result = await taskEvaluationService.evaluateTask({
       userId: session.userId,
       taskId,

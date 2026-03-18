@@ -12,6 +12,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.211.0",
     "@opentelemetry/instrumentation-fetch": "^0.211.0",
@@ -31,18 +32,17 @@
     "react-dom": "19.2.0",
     "supertest": "^7.1.4",
     "tailwind-merge": "latest",
+    "tailwindcss": "^4",
     "vitest": "^4.0.6",
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "baseline-browser-mapping": "^2.9.19",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
-    "tailwindcss": "^4",
     "typescript": "^5"
   }
 }

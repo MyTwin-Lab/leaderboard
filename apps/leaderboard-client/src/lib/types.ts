@@ -2,7 +2,7 @@ export type LeaderboardEntry = {
   rank: number;
   userId: string;
   displayName: string;
-  githubUsername: string;
+  githubUsername?: string;
   bio?: string;
   totalCP: number;
 };
@@ -33,7 +33,7 @@ export type ContributorChallenge = {
 export type ContributorProfile = {
   userId: string;
   displayName: string;
-  githubUsername: string;
+  githubUsername?: string;
   totalCP: number;
   challenges: ContributorChallenge[];
 };

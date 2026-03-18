@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ChallengeService } from '../../../../../../../../packages/services/challenge.service';
 
-const challengeService = new ChallengeService();
+async function getChallengeService() {
+  const { ChallengeService } = await import('../../../../../../../../packages/services/challenge/challenge.service');
+  return new ChallengeService();
+}
 
 // POST /api/challenges/[id]/close - Clôturer un challenge et distribuer les rewards
 export async function POST(
@@ -10,11 +12,12 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+    const challengeService = await getChallengeService();
     const rewards = await challengeService.computeChallengeRewards(id);
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       count: rewards.length,
-      rewards 
+      rewards
     });
   } catch (error) {
     console.error('Error closing challenge:', error);

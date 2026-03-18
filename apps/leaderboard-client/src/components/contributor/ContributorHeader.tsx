@@ -3,7 +3,7 @@ import Image from "next/image";
 
 interface ContributorHeaderProps {
   displayName: string;
-  githubUsername: string;
+  githubUsername?: string;
   totalCP: number;
 }
 
@@ -18,7 +18,7 @@ export function ContributorHeader({ displayName, githubUsername, totalCP }: Cont
       <div className="flex flex-1 flex-col gap-1">
         <div className="flex-wrap items-center gap-2 sm:flex">
           <h1 className="text-xl font-semibold text-white">{displayName}</h1>
-          <span className="text-xs text-white/60">(@{githubUsername})</span>
+          {githubUsername && <span className="text-xs text-white/60">(@{githubUsername})</span>}
         </div>
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white sm:px-3 sm:py-1 sm:text-sm">

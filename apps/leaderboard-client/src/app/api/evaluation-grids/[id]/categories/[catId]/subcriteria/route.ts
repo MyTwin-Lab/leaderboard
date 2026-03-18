@@ -29,7 +29,7 @@ export async function GET(
     }
 
     const { catId } = await params;
-    const subcriteria = await gridRepo.findSubcriteria(catId);
+    const subcriteria = await gridRepo.findSubcriteriaByCategory(catId);
     return NextResponse.json(subcriteria);
   } catch (error) {
     console.error('[Subcriteria] GET error:', error);
