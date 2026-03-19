@@ -118,8 +118,9 @@ export class TaskEvaluationService {
       // 6. Préparer le snapshot (écriture fichiers temporaires)
       const preparedSnapshot = await this.snapshotService.prepareSnapshot(aggregatedSnapshot);
 
-      // 7. Charger la grille d'évaluation
-      const grid = await EvaluationGridRegistry.getGridAsync(task.type);
+      // 7. Charger la grille d'évaluation en déduisant le type depuis le repo
+      const gridSlug = this.resolveGridSlug(workspaces);
+      const grid = await EvaluationGridRegistry.getGridAsync(gridSlug);
 
       // 8. Vérifier si une contribution existe déjà (upsert)
       const existingContribution = await this.contributionRepo.findByTaskAndUser(taskId, userId);
@@ -128,7 +129,7 @@ export class TaskEvaluationService {
       // 9. Construire la contribution pour l'évaluateur
       const evalContribution: EvalContribution = {
         title: task.title,
-        type: task.type,
+        type: gridSlug,
         description: task.description,
         challenge_id: challenge.uuid,
         userId,
@@ -186,6 +187,29 @@ export class TaskEvaluationService {
     } finally {
       await orchestrator.disconnectAll();
     }
+  }
+
+  private static readonly REPO_TYPE_TO_GRID: Record<string, string> = {
+    github: 'code',
+    huggingface: 'model',
+  };
+
+  /**
+   * Déduit le slug de grille d'évaluation depuis le type de repo des workspaces.
+   * Utilise le premier workspace disponible.
+   */
+  private resolveGridSlug(workspaces: TaskWorkspaceInfo[]): string {
+    const repoType = workspaces[0]?.repo.type;
+    if (!repoType) {
+      throw new Error('[TaskEvaluationService] Cannot resolve grid slug: no workspace with a repo');
+    }
+
+    const gridSlug = TaskEvaluationService.REPO_TYPE_TO_GRID[repoType];
+    if (!gridSlug) {
+      throw new Error(`[TaskEvaluationService] No evaluation grid mapping for repo type: "${repoType}"`);
+    }
+
+    return gridSlug;
   }
 
   /**
