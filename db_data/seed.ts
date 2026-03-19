@@ -48,15 +48,28 @@ async function seed() {
   }
   console.log(`✓ Projects: ${projectsInserted} inserted, ${projectsData.length - projectsInserted} already exist`);
 
-  // --- Users (deduplicate by full_name) ---
-  // Users from seed have no email/google_id — they won't conflict with OAuth users.
-  // We match by full_name to avoid duplicates on re-run.
+  // --- Users (deduplicate by github_username first, then full_name) ---
+  // OAuth users may already exist with the same github_username but a different full_name.
   let usersInserted = 0;
+  let usersLinked = 0;
   for (const u of usersData) {
-    const existing = await db.select({ uuid: users.uuid })
-      .from(users)
-      .where(eq(users.full_name, u.full_name))
-      .limit(1);
+    // 1. Try matching by github_username (unique index — most reliable)
+    let existing: { uuid: string }[] = [];
+    if (u.github_username) {
+      existing = await db.select({ uuid: users.uuid })
+        .from(users)
+        .where(eq(users.github_username, u.github_username))
+        .limit(1);
+      if (existing.length > 0) usersLinked++;
+    }
+
+    // 2. Fallback: match by full_name
+    if (existing.length === 0) {
+      existing = await db.select({ uuid: users.uuid })
+        .from(users)
+        .where(eq(users.full_name, u.full_name))
+        .limit(1);
+    }
 
     if (existing.length > 0) {
       userIdMap.set(u.uuid, existing[0].uuid);
@@ -73,7 +86,7 @@ async function seed() {
       usersInserted++;
     }
   }
-  console.log(`✓ Users: ${usersInserted} inserted, ${usersData.length - usersInserted} already exist`);
+  console.log(`✓ Users: ${usersInserted} inserted, ${usersLinked} linked to existing OAuth users, ${usersData.length - usersInserted - usersLinked} already exist`);
 
   // --- Challenges (deduplicate by index) ---
   let challengesInserted = 0;
