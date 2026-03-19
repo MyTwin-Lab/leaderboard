@@ -4,7 +4,9 @@ import { getBaseUrl } from '@/lib/url';
 
 export async function GET(request: NextRequest) {
   try {
-    const from = request.nextUrl.searchParams.get('from') || '/';
+    const rawFrom = request.nextUrl.searchParams.get('from') || '/';
+    // Strict validation: only allow internal paths (no protocol-relative URLs, no special chars)
+    const from = (rawFrom && /^\/[a-zA-Z0-9\-_\/]*$/.test(rawFrom)) ? rawFrom : '/';
 
     const googleAuthService = new GoogleAuthService();
     const state = JSON.stringify({ from });

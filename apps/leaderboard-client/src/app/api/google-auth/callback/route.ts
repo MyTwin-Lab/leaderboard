@@ -78,8 +78,8 @@ export async function GET(request: NextRequest) {
     const refreshToken = await generateRefreshToken(jwtPayload);
     await storeRefreshToken(user.uuid, refreshToken);
 
-    // Redirect with cookies
-    const safePath = from?.startsWith('/') ? from : '/';
+    // Redirect with cookies — strict path validation to prevent open redirect
+    const safePath = (from && /^\/[a-zA-Z0-9\-_\/]*$/.test(from)) ? from : '/';
     const redirectUrl = new URL(safePath, baseUrl);
     const response = NextResponse.redirect(redirectUrl);
 
