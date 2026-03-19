@@ -7,12 +7,13 @@ import {
   generateRefreshToken,
   storeRefreshToken,
 } from '@/lib/auth';
+import { getBaseUrl } from '@/lib/url';
 
 const userRepo = new UserRepository();
 const onboardingRepo = new OnboardingProgressRepository();
 
 export async function GET(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+  const baseUrl = getBaseUrl(request);
 
   try {
     const searchParams = request.nextUrl.searchParams;

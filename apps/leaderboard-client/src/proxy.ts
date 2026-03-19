@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import { getBaseUrl } from '@/lib/url';
 
 type UserRole = 'admin' | 'contributor';
 type ProtectedPage = { prefix: string; roles: readonly UserRole[] };
@@ -63,7 +64,7 @@ export async function proxy(request: NextRequest) {
         );
       }
       
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+      const baseUrl = getBaseUrl(request);
       const oauthUrl = new URL('/api/google-auth/authorize', baseUrl);
       oauthUrl.searchParams.set('from', pathname);
       return NextResponse.redirect(oauthUrl);
@@ -81,7 +82,7 @@ export async function proxy(request: NextRequest) {
         );
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+      const baseUrl = getBaseUrl(request);
       const oauthUrl = new URL('/api/google-auth/authorize', baseUrl);
       oauthUrl.searchParams.set('from', pathname);
       return NextResponse.redirect(oauthUrl);

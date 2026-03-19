@@ -110,6 +110,7 @@ This repo includes production scripts to build and run the Next.js app using **P
 
 - A `.env` file at the **repo root** (same one used by Drizzle/seed)
 - PM2 is installed **globally on the VPS** (commands use `pm2`)
+- `NEXT_PUBLIC_APP_URL` set to the public URL of the app (e.g. `https://your-app.osc-fr1.scalingo.io`). Required so that post-login redirects go to the correct host instead of the container's internal address.
 
 ### Two production run modes (recommended)
 

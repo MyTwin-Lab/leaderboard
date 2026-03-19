@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleAuthService } from '../../../../../../../packages/services/google-workspace/google-auth.service.js';
+import { getBaseUrl } from '@/lib/url';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(authUrl);
   } catch (error) {
     console.error('[GoogleAuth] Error generating auth URL:', error);
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+    const baseUrl = getBaseUrl(request);
     return NextResponse.redirect(new URL('/?error=oauth_init_failed', baseUrl));
   }
 }

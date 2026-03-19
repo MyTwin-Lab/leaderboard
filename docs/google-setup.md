@@ -284,6 +284,7 @@ CRON_SECRET=a-random-secret-string
 When deploying to production (e.g. Scalingo, Heroku, Vercel):
 
 - [ ] Set all environment variables listed in [Section 9](#9-configure-environment-variables) in your hosting provider's dashboard
+- [ ] Set `NEXT_PUBLIC_APP_URL` to your production URL (e.g. `https://your-app.osc-fr1.scalingo.io`). This is used for post-login redirects — without it, the app may redirect to the container's internal host (e.g. `localhost:29069`) instead of the public URL.
 - [ ] Update `GOOGLE_OAUTH_REDIRECT_URI` to your production URL (e.g. `https://your-app.osc-fr1.scalingo.io/api/google-auth/callback`)
 - [ ] Add the production URL to **Authorized JavaScript origins** and **Authorized redirect URIs** in the [Google Cloud OAuth credentials](#4-create-oauth-20-credentials-user-login)
 - [ ] If using an "External" consent screen, submit for Google verification if you expect more than 100 users
