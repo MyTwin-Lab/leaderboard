@@ -1,6 +1,7 @@
 import { db, projects, users, challenges, contributions, challenge_teams } from "../packages/database-service/db/drizzle.js";
 import { readFileSync } from "fs";
 import { randomUUID } from "crypto";
+import { count } from "drizzle-orm";
 
 /** npx tsx db_data/seed.ts **/
 
@@ -9,31 +10,21 @@ const projectIdMap = new Map<number, string>();
 const userIdMap = new Map<number, string>();
 const challengeIdMap = new Map<number, string>();
 
-async function resetDatabase() {
-  console.log("🗑️  Resetting database...");
-
-  // Supprimer les données dans l'ordre inverse des dépendances
-  await db.delete(challenge_teams);
-  console.log("  ✓ challenge_teams cleared");
-
-  await db.delete(contributions);
-  console.log("  ✓ contributions cleared");
-
-  await db.delete(challenges);
-  console.log("  ✓ challenges cleared");
-
-  await db.delete(users);
-  console.log("  ✓ users cleared");
-
-  await db.delete(projects);
-  console.log("  ✓ projects cleared");
-
-  console.log("✅ Database reset complete!\n");
+async function isDatabaseSeeded(): Promise<boolean> {
+  const [result] = await db.select({ value: count() }).from(users);
+  return result.value > 0;
 }
 
 async function seed() {
-  // Reset de la base de données avant de peupler
-  await resetDatabase();
+  // Vérifier si la DB a déjà été peuplée
+  const alreadySeeded = await isDatabaseSeeded();
+  if (alreadySeeded) {
+    console.log("ℹ️  Database already seeded — skipping. Use --force to reset and re-seed.");
+    process.exit(0);
+  }
+
+  console.log("🌱 Seeding database...\n");
+
   // 1. Charger les JSON
   const projectsData = JSON.parse(readFileSync("./db_data/projects.json", "utf-8"));
   const usersData = JSON.parse(readFileSync("./db_data/users.json", "utf-8"));
@@ -91,7 +82,7 @@ async function seed() {
     await db.insert(contributions).values({
       uuid: randomUUID(),
       title: c.title,
-      type: "code", // Valeur par défaut car non présent dans JSON
+      type: "code",
       description: c.description,
       reward: c.reward,
       user_id: userIdMap.get(c.user_id),
@@ -101,17 +92,17 @@ async function seed() {
   }
   console.log(`✓ ${contributionsData.length} contributions insérées`);
 
-    // 6. Insérer les challenge_teams (déduits des contributions)
+  // 6. Insérer les challenge_teams (déduits des contributions)
   const teamSet = new Set<string>();
   for (const c of contributionsData) {
     const challengeUuid = challengeIdMap.get(c.challenge_id);
     const userUuid = userIdMap.get(c.user_id);
     if (!challengeUuid || !userUuid) continue;
-    
+
     const key = `${challengeUuid}-${userUuid}`;
-    if (teamSet.has(key)) continue; // Éviter les doublons
+    if (teamSet.has(key)) continue;
     teamSet.add(key);
-    
+
     await db.insert(challenge_teams).values({
       challenge_id: challengeUuid,
       user_id: userUuid,
@@ -123,7 +114,35 @@ async function seed() {
   process.exit(0);
 }
 
-seed().catch((err) => {
+// Support --force flag pour reset + re-seed
+async function resetAndSeed() {
+  console.log("🗑️  Resetting database...");
+
+  await db.delete(challenge_teams);
+  console.log("  ✓ challenge_teams cleared");
+  await db.delete(contributions);
+  console.log("  ✓ contributions cleared");
+  await db.delete(challenges);
+  console.log("  ✓ challenges cleared");
+  await db.delete(users);
+  console.log("  ✓ users cleared");
+  await db.delete(projects);
+  console.log("  ✓ projects cleared");
+
+  console.log("✅ Database reset complete!\n");
+}
+
+async function main() {
+  const force = process.argv.includes("--force");
+
+  if (force) {
+    await resetAndSeed();
+  }
+
+  await seed();
+}
+
+main().catch((err) => {
   console.error("Erreur:", err);
   process.exit(1);
 });
