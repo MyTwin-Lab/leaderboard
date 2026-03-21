@@ -3,6 +3,7 @@
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Eye, Link2, Trash2 } from 'lucide-react';
 import type { Repo, Project } from '../../../../../packages/database-service/domain/entities';
 
 interface RepoListProps {
@@ -17,11 +18,11 @@ export function RepoList({ repos, projects, onLinkToChallenge, onDelete, onViewD
   const columns = [
     {
       key: 'title',
-      header: 'Title',
+      header: 'Repository',
       render: (repo: Repo) => (
         <div>
-          <div className="font-medium">{repo.title}</div>
-          <div className="text-xs text-white/50">
+          <div className="font-medium text-white">{repo.title}</div>
+          <div className="mt-0.5">
             <Badge label={repo.type} />
           </div>
         </div>
@@ -31,7 +32,7 @@ export function RepoList({ repos, projects, onLinkToChallenge, onDelete, onViewD
       key: 'external_repo_id',
       header: 'External ID',
       render: (repo: Repo) => (
-        <div className="text-sm text-white/70">{repo.external_repo_id || '—'}</div>
+        <div className="text-sm text-white/50 font-mono">{repo.external_repo_id || <span className="italic text-white/25">—</span>}</div>
       ),
     },
     {
@@ -40,30 +41,30 @@ export function RepoList({ repos, projects, onLinkToChallenge, onDelete, onViewD
       render: (repo: Repo) => {
         const project = projects.find(p => p.uuid === repo.project_id);
         return (
-          <div className="text-sm text-white/70">{project?.title || 'Unknown'}</div>
+          <div className="text-sm text-white/60">{project?.title ?? <span className="text-white/25 italic">Unknown</span>}</div>
         );
       },
-      width: '200px',
+      width: '180px',
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: '',
       render: (repo: Repo) => (
-        <div className="flex gap-2">
-          <Button size="sm" variant="secondary" onClick={() => onViewDetail(repo.uuid, repo.title)}>
-            Detail
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="ghost" onClick={() => onViewDetail(repo.uuid, repo.title)} title="View detail">
+            <Eye className="h-3.5 w-3.5" />
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => onLinkToChallenge(repo.uuid, repo.title)}>
-            🔗 Link
+          <Button size="sm" variant="secondary" onClick={() => onLinkToChallenge(repo.uuid, repo.title)} title="Link to challenge">
+            <Link2 className="h-3.5 w-3.5" />
           </Button>
-          <Button size="sm" variant="danger" onClick={() => onDelete(repo.uuid)}>
-            Delete
+          <Button size="sm" variant="danger" onClick={() => onDelete(repo.uuid)} title="Delete">
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       ),
-      width: '180px',
+      width: '110px',
     },
   ];
 
-  return <Table data={repos} columns={columns} emptyMessage="No repositories found" />;
+  return <Table data={repos} columns={columns} emptyMessage="No repositories yet" />;
 }

@@ -7,6 +7,8 @@ import { RepoList } from '@/components/admin/RepoList';
 import { RepoForm } from '@/components/admin/RepoForm';
 import { RepoLinkModal } from '@/components/admin/RepoLinkModal';
 import { RepoDetail } from '@/components/admin/RepoDetail';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import type { Repo, Project, Challenge } from '../../../../../../packages/database-service/domain/entities';
 
 export default function ReposPage() {
@@ -19,6 +21,9 @@ export default function ReposPage() {
   const [selectedRepo, setSelectedRepo] = useState<{ id: string; title: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const toast = useToast();
+  const confirm = useConfirm();
+
   useEffect(() => {
     fetchRepos();
     fetchProjects();
@@ -30,8 +35,8 @@ export default function ReposPage() {
       const res = await fetch('/api/repos');
       const data = await res.json();
       setRepos(data);
-    } catch (error) {
-      console.error('Error fetching repos:', error);
+    } catch {
+      toast('Failed to load repositories', 'error');
     } finally {
       setLoading(false);
     }
@@ -42,8 +47,8 @@ export default function ReposPage() {
       const res = await fetch('/api/projects');
       const data = await res.json();
       setProjects(data);
-    } catch (error) {
-      console.error('Error fetching projects:', error);
+    } catch {
+      console.error('Error fetching projects');
     }
   };
 
@@ -52,8 +57,8 @@ export default function ReposPage() {
       const res = await fetch('/api/challenges');
       const data = await res.json();
       setChallenges(data);
-    } catch (error) {
-      console.error('Error fetching challenges:', error);
+    } catch {
+      console.error('Error fetching challenges');
     }
   };
 
@@ -68,9 +73,12 @@ export default function ReposPage() {
       if (res.ok) {
         await fetchRepos();
         setShowForm(false);
+        toast('Repository created', 'success');
+      } else {
+        toast('Failed to create repository', 'error');
       }
-    } catch (error) {
-      console.error('Error creating repo:', error);
+    } catch {
+      toast('Failed to create repository', 'error');
     }
   };
 
@@ -85,23 +93,29 @@ export default function ReposPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this repository?')) return;
+    const ok = await confirm({
+      title: 'Delete Repository',
+      message: 'This will permanently delete the repository. Are you sure?',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
 
     try {
-      const res = await fetch(`/api/repos/${id}`, {
-        method: 'DELETE',
-      });
-
+      const res = await fetch(`/api/repos/${id}`, { method: 'DELETE' });
       if (res.ok) {
         await fetchRepos();
+        toast('Repository deleted', 'success');
+      } else {
+        toast('Failed to delete repository', 'error');
       }
-    } catch (error) {
-      console.error('Error deleting repo:', error);
+    } catch {
+      toast('Failed to delete repository', 'error');
     }
   };
 
   if (loading) {
-    return <div className="text-white/60">Loading...</div>;
+    return <PageSkeleton />;
   }
 
   return (
@@ -117,10 +131,9 @@ export default function ReposPage() {
       ) : (
         <Card
           title="Repositories"
+          count={repos.length}
           action={
-            <Button onClick={() => setShowForm(true)}>
-              + New Repository
-            </Button>
+            <Button onClick={() => setShowForm(true)}>+ New Repository</Button>
           }
         >
           <RepoList
@@ -154,6 +167,17 @@ export default function ReposPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function PageSkeleton() {
+  return (
+    <div className="space-y-3 animate-pulse">
+      <div className="h-12 rounded-md bg-white/5" />
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="h-14 rounded-md bg-white/5" />
+      ))}
     </div>
   );
 }

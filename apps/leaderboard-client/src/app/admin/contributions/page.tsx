@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ContributionList } from '@/components/admin/ContributionList';
 import { ContributionForm } from '@/components/admin/ContributionForm';
+import { useToast } from '@/components/ui/Toast';
 import type { Contribution, User, Challenge } from '../../../../../../packages/database-service/domain/entities';
 
 export default function ContributionsPage() {
@@ -14,6 +15,8 @@ export default function ContributionsPage() {
   const [selectedChallengeId, setSelectedChallengeId] = useState('');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+
+  const toast = useToast();
 
   useEffect(() => {
     fetchUsers();
@@ -29,12 +32,11 @@ export default function ContributionsPage() {
       const endpoint = selectedChallengeId
         ? `/api/contributions/challenge/${selectedChallengeId}`
         : '/api/contributions';
-
       const res = await fetch(endpoint);
       const data = await res.json();
       setContributions(data);
-    } catch (error) {
-      console.error('Error fetching contributions:', error);
+    } catch {
+      toast('Failed to load contributions', 'error');
     } finally {
       setLoading(false);
     }
@@ -45,8 +47,8 @@ export default function ContributionsPage() {
       const res = await fetch('/api/users');
       const data = await res.json();
       setUsers(data);
-    } catch (error) {
-      console.error('Error fetching users:', error);
+    } catch {
+      console.error('Error fetching users');
     }
   };
 
@@ -55,8 +57,8 @@ export default function ContributionsPage() {
       const res = await fetch('/api/challenges');
       const data = await res.json();
       setChallenges(data);
-    } catch (error) {
-      console.error('Error fetching challenges:', error);
+    } catch {
+      console.error('Error fetching challenges');
     }
   };
 
@@ -64,9 +66,7 @@ export default function ContributionsPage() {
     try {
       const res = await fetch('/api/contributions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(contribution),
       });
 
@@ -76,34 +76,30 @@ export default function ContributionsPage() {
       }
 
       const newContribution = await res.json();
-      setContributions(prev => [newContribution, ...prev]);
+      setContributions((prev) => [newContribution, ...prev]);
       setShowForm(false);
+      toast('Contribution created', 'success');
     } catch (error) {
-      console.error('Error creating contribution:', error);
-      alert('Failed to create contribution: ' + (error as Error).message);
+      toast('Failed to create contribution: ' + (error as Error).message, 'error');
     }
   };
 
   if (loading) {
-    return <div className="text-white/60">Loading...</div>;
+    return <PageSkeleton />;
   }
 
   return (
     <div className="space-y-6">
       <Card
         title="Contributions"
+        count={contributions.length}
         action={
           <div className="flex items-center space-x-3">
-            <Button
-              onClick={() => setShowForm(true)}
-              className="bg-brandCP hover:bg-brandCP/80 text-black"
-            >
-              Add Contribution
-            </Button>
+            <Button onClick={() => setShowForm(true)}>Add Contribution</Button>
             <select
               value={selectedChallengeId}
               onChange={(e) => setSelectedChallengeId(e.target.value)}
-              className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brandCP"
             >
               <option value="">All Challenges</option>
               {challenges.map((challenge) => (
@@ -123,13 +119,26 @@ export default function ContributionsPage() {
       </Card>
 
       {showForm && (
-        <ContributionForm
-          users={users}
-          challenges={challenges}
-          onSubmit={handleCreateContribution}
-          onCancel={() => setShowForm(false)}
-        />
+        <Card title="New Contribution">
+          <ContributionForm
+            users={users}
+            challenges={challenges}
+            onSubmit={handleCreateContribution}
+            onCancel={() => setShowForm(false)}
+          />
+        </Card>
       )}
+    </div>
+  );
+}
+
+function PageSkeleton() {
+  return (
+    <div className="space-y-3 animate-pulse">
+      <div className="h-12 rounded-md bg-white/5" />
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="h-14 rounded-md bg-white/5" />
+      ))}
     </div>
   );
 }

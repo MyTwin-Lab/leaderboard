@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { MeetingList } from '@/components/admin/MeetingList';
 import { MeetingForm } from '@/components/admin/MeetingForm';
 import { ParticipantsModal } from '@/components/admin/ParticipantsModal';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 import type { SyncMeeting, Challenge } from '../../../../../../packages/database-service/domain/entities';
 
 export default function MeetingsPage() {
@@ -14,6 +16,9 @@ export default function MeetingsPage() {
   const [showForm, setShowForm] = useState(false);
   const [participantsMeeting, setParticipantsMeeting] = useState<SyncMeeting | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const toast = useToast();
+  const confirm = useConfirm();
 
   useEffect(() => {
     fetchMeetings();
@@ -25,8 +30,8 @@ export default function MeetingsPage() {
       const res = await fetch('/api/sync-meetings');
       const data = await res.json();
       setMeetings(data.meetings ?? []);
-    } catch (error) {
-      console.error('Error fetching meetings:', error);
+    } catch {
+      toast('Failed to load meetings', 'error');
     } finally {
       setLoading(false);
     }
@@ -37,8 +42,8 @@ export default function MeetingsPage() {
       const res = await fetch('/api/challenges');
       const data = await res.json();
       setChallenges(data);
-    } catch (error) {
-      console.error('Error fetching challenges:', error);
+    } catch {
+      console.error('Error fetching challenges');
     }
   };
 
@@ -59,30 +64,39 @@ export default function MeetingsPage() {
       if (res.ok) {
         await fetchMeetings();
         setShowForm(false);
+        toast('Meeting created', 'success');
+      } else {
+        toast('Failed to create meeting', 'error');
       }
-    } catch (error) {
-      console.error('Error creating meeting:', error);
+    } catch {
+      toast('Failed to create meeting', 'error');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to cancel this meeting?')) return;
+    const ok = await confirm({
+      title: 'Cancel Meeting',
+      message: 'This will permanently cancel this meeting. Are you sure?',
+      confirmLabel: 'Cancel Meeting',
+      variant: 'danger',
+    });
+    if (!ok) return;
 
     try {
-      const res = await fetch(`/api/sync-meetings/${id}`, {
-        method: 'DELETE',
-      });
-
+      const res = await fetch(`/api/sync-meetings/${id}`, { method: 'DELETE' });
       if (res.ok) {
         await fetchMeetings();
+        toast('Meeting cancelled', 'success');
+      } else {
+        toast('Failed to cancel meeting', 'error');
       }
-    } catch (error) {
-      console.error('Error cancelling meeting:', error);
+    } catch {
+      toast('Failed to cancel meeting', 'error');
     }
   };
 
   if (loading) {
-    return <div className="text-white/60">Loading...</div>;
+    return <PageSkeleton />;
   }
 
   return (
@@ -99,11 +113,10 @@ export default function MeetingsPage() {
         ) : (
           <Card
             title="Sync Meetings"
+            count={meetings.length}
             className="rounded-md"
             action={
-              <Button onClick={() => setShowForm(true)}>
-                + New Meeting
-              </Button>
+              <Button onClick={() => setShowForm(true)}>+ New Meeting</Button>
             }
           >
             <MeetingList
@@ -123,5 +136,16 @@ export default function MeetingsPage() {
         />
       )}
     </>
+  );
+}
+
+function PageSkeleton() {
+  return (
+    <div className="space-y-3 animate-pulse">
+      <div className="h-12 rounded-md bg-white/5" />
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="h-14 rounded-md bg-white/5" />
+      ))}
+    </div>
   );
 }

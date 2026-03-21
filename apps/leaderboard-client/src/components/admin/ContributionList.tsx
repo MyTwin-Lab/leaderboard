@@ -14,11 +14,11 @@ export function ContributionList({ contributions, users, challenges }: Contribut
   const columns = [
     {
       key: 'title',
-      header: 'Title',
+      header: 'Contribution',
       render: (contrib: Contribution) => (
         <div>
-          <div className="font-medium">{contrib.title}</div>
-          <div className="text-xs text-white/50">
+          <div className="font-medium text-white">{contrib.title}</div>
+          <div className="mt-0.5">
             <Badge label={contrib.type} />
           </div>
         </div>
@@ -30,12 +30,13 @@ export function ContributionList({ contributions, users, challenges }: Contribut
       render: (contrib: Contribution) => {
         const user = users.find(u => u.uuid === contrib.user_id);
         return (
-          <div className="text-sm text-white/70">
-            {user ? `${user.full_name} (@${user.github_username})` : 'Unknown'}
+          <div className="text-sm">
+            <div className="text-white/70">{user?.full_name ?? <span className="text-white/30 italic">Unknown</span>}</div>
+            {user && <div className="text-xs text-white/40">@{user.github_username}</div>}
           </div>
         );
       },
-      width: '200px',
+      width: '180px',
     },
     {
       key: 'challenge',
@@ -43,21 +44,23 @@ export function ContributionList({ contributions, users, challenges }: Contribut
       render: (contrib: Contribution) => {
         const challenge = challenges.find(c => c.uuid === contrib.challenge_id);
         return (
-          <div className="text-sm text-white/70">{challenge?.title || 'Unknown'}</div>
+          <div className="text-sm text-white/60">{challenge?.title ?? <span className="text-white/30 italic">—</span>}</div>
         );
       },
-      width: '200px',
+      width: '180px',
     },
     {
       key: 'score',
       header: 'Score',
       render: (contrib: Contribution) => {
-        const score = (contrib.evaluation as any)?.globalScore || 0;
+        const score = (contrib.evaluation as any)?.globalScore ?? null;
         return (
-          <div className="text-sm font-medium text-primary-100">{score.toFixed(1)}</div>
+          <div className="text-sm font-medium text-primary-100">
+            {score !== null ? score.toFixed(1) : <span className="text-white/30">—</span>}
+          </div>
         );
       },
-      width: '80px',
+      width: '70px',
     },
     {
       key: 'reward',
@@ -65,7 +68,7 @@ export function ContributionList({ contributions, users, challenges }: Contribut
       render: (contrib: Contribution) => (
         <div className="text-sm font-medium text-brandCP">{contrib.reward} CP</div>
       ),
-      width: '100px',
+      width: '90px',
     },
   ];
 

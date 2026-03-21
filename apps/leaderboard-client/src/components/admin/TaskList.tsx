@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { Task } from '../../../../../packages/database-service/domain/entities';
 
 interface TaskListProps {
@@ -11,61 +12,58 @@ interface TaskListProps {
 }
 
 export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
-  // Séparer les tâches principales des sous-tâches
-  const mainTasks = tasks.filter(t => !t.parent_task_id);
-  const getSubTasks = (parentId: string) => tasks.filter(t => t.parent_task_id === parentId);
+  const mainTasks = tasks.filter((t) => !t.parent_task_id);
+  const getSubTasks = (parentId: string) => tasks.filter((t) => t.parent_task_id === parentId);
 
   if (tasks.length === 0) {
-    return <div className="text-white/50 text-sm py-4">No tasks yet</div>;
+    return <p className="py-4 text-sm text-white/30 italic">No tasks yet</p>;
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {mainTasks.map((task) => (
         <div key={task.uuid}>
-          {/* Tâche principale */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
-            <div className="flex items-center gap-3">
-              <div>
-                <div className="font-medium text-white">{task.title}</div>
+          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="min-w-0">
+                <div className="font-medium text-white text-sm truncate">{task.title}</div>
                 {task.description && (
-                  <div className="text-xs text-white/50 mt-0.5">{task.description}</div>
+                  <div className="text-xs text-white/40 mt-0.5 truncate">{task.description}</div>
                 )}
               </div>
               <Badge label={task.type} />
             </div>
-            <div className="flex gap-1">
-              <Button size="sm" variant="ghost" onClick={() => onEdit(task)}>
-                ✏️
+            <div className="flex gap-1 shrink-0 ml-2">
+              <Button size="sm" variant="ghost" onClick={() => onEdit(task)} title="Edit">
+                <Pencil className="h-3.5 w-3.5" />
               </Button>
-              <Button size="sm" variant="danger" onClick={() => onDelete(task.uuid)}>
-                🗑️
+              <Button size="sm" variant="danger" onClick={() => onDelete(task.uuid)} title="Delete">
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
 
-          {/* Sous-tâches */}
-          {getSubTasks(task.uuid).map((subTask) => (
+          {getSubTasks(task.uuid).map((sub) => (
             <div
-              key={subTask.uuid}
-              className="flex items-center justify-between p-2 ml-6 mt-1 rounded-lg bg-white/3 border border-white/5"
+              key={sub.uuid}
+              className="ml-6 mt-1 flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
             >
-              <div className="flex items-center gap-3">
-                <div className="text-white/60 text-sm">↳</div>
-                <div>
-                  <div className="text-sm text-white">{subTask.title}</div>
-                  {subTask.description && (
-                    <div className="text-xs text-white/40">{subTask.description}</div>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-white/30 text-sm shrink-0">↳</span>
+                <div className="min-w-0">
+                  <div className="text-sm text-white truncate">{sub.title}</div>
+                  {sub.description && (
+                    <div className="text-xs text-white/40 truncate">{sub.description}</div>
                   )}
                 </div>
-                <Badge label={subTask.type} />
+                <Badge label={sub.type} />
               </div>
-              <div className="flex gap-1">
-                <Button size="sm" variant="ghost" onClick={() => onEdit(subTask)}>
-                  ✏️
+              <div className="flex gap-1 shrink-0 ml-2">
+                <Button size="sm" variant="ghost" onClick={() => onEdit(sub)} title="Edit">
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
-                <Button size="sm" variant="danger" onClick={() => onDelete(subTask.uuid)}>
-                  🗑️
+                <Button size="sm" variant="danger" onClick={() => onDelete(sub.uuid)} title="Delete">
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>

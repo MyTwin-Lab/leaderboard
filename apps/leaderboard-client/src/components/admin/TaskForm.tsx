@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/Button';
+import { FormField, FormFooter, inputClass, selectClass } from '@/components/ui/FormField';
 import type { Task } from '../../../../../packages/database-service/domain/entities';
 
 interface ChallengeRepoInfo {
@@ -29,11 +29,11 @@ interface TaskFormProps {
 
 export function TaskForm({ task, challengeId, availableParentTasks, availableRepos, onSubmit, onCancel }: TaskFormProps) {
   const [formData, setFormData] = useState({
-    title: task?.title || '',
-    description: task?.description || '',
-    type: task?.type || 'solo' as 'solo' | 'concurrent',
-    repo_id: task?.repo_id || '',
-    parent_task_id: task?.parent_task_id || '',
+    title: task?.title ?? '',
+    description: task?.description ?? '',
+    type: (task?.type ?? 'solo') as 'solo' | 'concurrent',
+    repo_id: task?.repo_id ?? '',
+    parent_task_id: task?.parent_task_id ?? '',
   });
 
   const handleSubmit = () => {
@@ -48,97 +48,86 @@ export function TaskForm({ task, challengeId, availableParentTasks, availableRep
     });
   };
 
+  const set = (field: keyof typeof formData) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setFormData((p) => ({ ...p, [field]: e.target.value }));
+
   return (
-    <div className="space-y-4 p-4 rounded-lg bg-white/5 border border-white/10">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">
-            Title *
-          </label>
+    <div className="space-y-4 rounded-lg border border-white/10 bg-white/[0.03] p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-white/25">
+        {task ? 'Edit Task' : 'New Task'}
+      </p>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <FormField label="Title" required>
           <input
             type="text"
             required
             value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary-300"
+            onChange={set('title')}
+            className={inputClass}
             placeholder="Task title"
+            autoFocus
           />
-        </div>
+        </FormField>
 
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">
-            Type *
-          </label>
-          <select
-            required
-            value={formData.type}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value as 'solo' | 'concurrent' })}
-            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
-          >
+        <FormField label="Type" required>
+          <select value={formData.type} onChange={set('type')} className={selectClass}>
             <option value="solo">Solo</option>
             <option value="concurrent">Concurrent</option>
           </select>
-        </div>
+        </FormField>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-1.5">
-          Repository
-        </label>
-        <select
-          value={formData.repo_id}
-          onChange={(e) => setFormData({ ...formData, repo_id: e.target.value })}
-          className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
-        >
-          <option value="">No specific repo</option>
-          {availableRepos.map((r) => (
-            <option key={r.repo_id} value={r.repo_id}>
-              {r.repo_external_id || r.repo_id} ({r.repo_type})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-1.5">
-          Parent Task (optional)
-        </label>
-        <select
-          value={formData.parent_task_id}
-          onChange={(e) => setFormData({ ...formData, parent_task_id: e.target.value })}
-          className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
-        >
-          <option value="">No parent (main task)</option>
-          {availableParentTasks
-            .filter(t => t.uuid !== task?.uuid) // Ne pas permettre de se sélectionner soi-même
-            .map((t) => (
-              <option key={t.uuid} value={t.uuid}>
-                {t.title}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <FormField label="Repository">
+          <select value={formData.repo_id} onChange={set('repo_id')} className={selectClass}>
+            <option value="">No specific repo</option>
+            {availableRepos.map((r) => (
+              <option key={r.repo_id} value={r.repo_id}>
+                {r.repo_external_id || r.repo_id} ({r.repo_type})
               </option>
             ))}
-        </select>
+          </select>
+        </FormField>
+
+        <FormField label="Parent Task">
+          <select value={formData.parent_task_id} onChange={set('parent_task_id')} className={selectClass}>
+            <option value="">No parent (main task)</option>
+            {availableParentTasks
+              .filter((t) => t.uuid !== task?.uuid)
+              .map((t) => (
+                <option key={t.uuid} value={t.uuid}>{t.title}</option>
+              ))}
+          </select>
+        </FormField>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-1.5">
-          Description
-        </label>
+      <FormField label="Description">
         <textarea
           rows={2}
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary-300"
+          onChange={set('description')}
+          className={inputClass}
           placeholder="Task description (optional)"
         />
-      </div>
+      </FormField>
 
-      <div className="flex gap-3 justify-end">
-        <Button type="button" variant="secondary" onClick={onCancel}>
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg bg-white/10 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/15"
+        >
           Cancel
-        </Button>
-        <Button type="button" variant="primary" onClick={handleSubmit}>
-          {task ? 'Update' : 'Add'} Task
-        </Button>
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className="rounded-lg bg-brandCP px-3 py-1.5 text-sm font-semibold text-black hover:bg-brandCP/80"
+        >
+          {task ? 'Update Task' : 'Add Task'}
+        </button>
       </div>
     </div>
   );

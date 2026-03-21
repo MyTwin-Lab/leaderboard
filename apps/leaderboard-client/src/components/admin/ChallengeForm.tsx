@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/Button';
+import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/components/ui/FormField';
 import { TaskList } from './TaskList';
 import { TaskForm } from './TaskForm';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { Plus } from 'lucide-react';
 import type { Challenge, Project, Task } from '../../../../../packages/database-service/domain/entities';
 
 interface ChallengeFormProps {
@@ -15,21 +17,24 @@ interface ChallengeFormProps {
 
 export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: ChallengeFormProps) {
   const [formData, setFormData] = useState({
-    title: challenge?.title || '',
-    status: challenge?.status || 'draft',
+    title: challenge?.title ?? '',
+    status: challenge?.status ?? 'draft',
     start_date: challenge?.start_date ? new Date(challenge.start_date).toISOString().split('T')[0] : '',
     end_date: challenge?.end_date ? new Date(challenge.end_date).toISOString().split('T')[0] : '',
-    description: challenge?.description || '',
-    roadmap: challenge?.roadmap || '',
-    contribution_points_reward: challenge?.contribution_points_reward || 0,
-    project_id: challenge?.project_id || '',
+    description: challenge?.description ?? '',
+    roadmap: challenge?.roadmap ?? '',
+    contribution_points_reward: challenge?.contribution_points_reward ?? 0,
+    project_id: challenge?.project_id ?? '',
   });
 
-  // Task management state (only for existing challenges)
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
-  const [challengeRepos, setChallengeRepos] = useState<{ repo_id: string; repo_type: string; repo_external_id?: string; challenge_id: string }[]>([]);
+  const [challengeRepos, setChallengeRepos] = useState<
+    { repo_id: string; repo_type: string; repo_external_id?: string; challenge_id: string }[]
+  >([]);
+
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (challenge?.uuid) {
@@ -44,8 +49,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       const res = await fetch(`/api/tasks?challenge_id=${challenge.uuid}`);
       const data = await res.json();
       setTasks(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
+    } catch {
       setTasks([]);
     }
   };
@@ -56,8 +60,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       const res = await fetch(`/api/challenges/${challenge.uuid}/repos`);
       const data = await res.json();
       setChallengeRepos(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Error fetching challenge repos:', error);
+    } catch {
       setChallengeRepos([]);
     }
   };
@@ -69,13 +72,8 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (res.ok) {
-        await fetchTasks();
-        setShowTaskForm(false);
-      }
-    } catch (error) {
-      console.error('Error creating task:', error);
-    }
+      if (res.ok) { await fetchTasks(); setShowTaskForm(false); }
+    } catch { /* noop */ }
   };
 
   const handleUpdateTask = async (data: any) => {
@@ -86,26 +84,22 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (res.ok) {
-        await fetchTasks();
-        setShowTaskForm(false);
-        setEditingTask(undefined);
-      }
-    } catch (error) {
-      console.error('Error updating task:', error);
-    }
+      if (res.ok) { await fetchTasks(); setShowTaskForm(false); setEditingTask(undefined); }
+    } catch { /* noop */ }
   };
 
   const handleDeleteTask = async (id: string) => {
-    if (!confirm('Delete this task?')) return;
+    const ok = await confirm({
+      title: 'Delete Task',
+      message: 'Are you sure you want to delete this task?',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        await fetchTasks();
-      }
-    } catch (error) {
-      console.error('Error deleting task:', error);
-    }
+      if (res.ok) await fetchTasks();
+    } catch { /* noop */ }
   };
 
   const handleEditTask = (task: Task) => {
@@ -123,169 +117,139 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     onSubmit(formData);
   };
 
+  const set = (field: keyof typeof formData) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setFormData((p) => ({
+        ...p,
+        [field]: field === 'contribution_points_reward' ? parseInt(e.target.value) || 0 : e.target.value,
+      }));
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">
-            Title *
-          </label>
-          <input
-            type="text"
-            required
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary-300"
+    <form onSubmit={handleSubmit} className="space-y-6 p-4">
+      {/* Section: Identité */}
+      <FormSection title="General">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField label="Title" required>
+            <input
+              type="text"
+              required
+              value={formData.title}
+              onChange={set('title')}
+              className={inputClass}
+              placeholder="Challenge title"
+              autoFocus
+            />
+          </FormField>
+
+          <FormField label="Status" required>
+            <select required value={formData.status} onChange={set('status')} className={selectClass}>
+              <option value="draft">Draft</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+              <option value="archived">Archived</option>
+            </select>
+          </FormField>
+
+          <FormField label="Project" required>
+            <select required value={formData.project_id} onChange={set('project_id')} className={selectClass}>
+              <option value="">Select a project</option>
+              {projects.map((p) => (
+                <option key={p.uuid} value={p.uuid}>{p.title}</option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField label="CP Reward" required>
+            <input
+              type="number"
+              required
+              min={0}
+              value={formData.contribution_points_reward}
+              onChange={set('contribution_points_reward')}
+              className={inputClass}
+              placeholder="0"
+            />
+          </FormField>
+        </div>
+
+        <FormField label="Description">
+          <textarea
+            rows={3}
+            value={formData.description}
+            onChange={set('description')}
+            className={inputClass}
+            placeholder="What is this challenge about?"
           />
+        </FormField>
+      </FormSection>
+
+      {/* Section: Planning */}
+      <FormSection title="Planning">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField label="Start Date" required>
+            <input
+              type="date"
+              required
+              value={formData.start_date}
+              onChange={set('start_date')}
+              className={inputClass}
+            />
+          </FormField>
+
+          <FormField label="End Date" required>
+            <input
+              type="date"
+              required
+              value={formData.end_date}
+              onChange={set('end_date')}
+              className={inputClass}
+            />
+          </FormField>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">
-            Status *
-          </label>
-          <select
-            required
-            value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
-          >
-            <option value="draft">Draft</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-            <option value="archived">Archived</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">
-            Start Date *
-          </label>
-          <input
-            type="date"
-            required
-            value={formData.start_date}
-            onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+        <FormField label="Roadmap">
+          <textarea
+            rows={4}
+            value={formData.roadmap}
+            onChange={set('roadmap')}
+            className={inputClass}
+            placeholder="Roadmap, milestones, objectives…"
           />
-        </div>
+        </FormField>
+      </FormSection>
 
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">
-            End Date *
-          </label>
-          <input
-            type="date"
-            required
-            value={formData.end_date}
-            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">
-            CP Reward *
-          </label>
-          <input
-            type="number"
-            required
-            min="0"
-            value={formData.contribution_points_reward}
-            onChange={(e) => setFormData({ ...formData, contribution_points_reward: parseInt(e.target.value) })}
-            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">
-            Project *
-          </label>
-          <select
-            required
-            value={formData.project_id}
-            onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
-          >
-            <option value="">Select a project</option>
-            {projects.map((project) => (
-              <option key={project.uuid} value={project.uuid}>
-                {project.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-1.5">
-          Description
-        </label>
-        <textarea
-          rows={3}
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary-300"
-        />
-      </div>
-
-      {/* Tasks section - only shown when editing an existing challenge */}
+      {/* Section: Tasks — seulement en mode édition */}
       {challenge?.uuid && (
-        <div className="border-t border-white/10 pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <label className="block text-sm font-medium text-white/80">
-              Tasks
-            </label>
-            {!showTaskForm && (
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => setShowTaskForm(true)}
-              >
-                + Add Task
-              </Button>
-            )}
-          </div>
-
+        <FormSection title="Tasks">
           {showTaskForm ? (
             <TaskForm
               task={editingTask}
               challengeId={challenge.uuid}
-              availableParentTasks={tasks.filter(t => !t.parent_task_id)}
+              availableParentTasks={tasks.filter((t) => !t.parent_task_id)}
               availableRepos={challengeRepos}
               onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
               onCancel={handleCancelTaskForm}
             />
           ) : (
-            <TaskList
-              tasks={tasks}
-              onEdit={handleEditTask}
-              onDelete={handleDeleteTask}
-            />
+            <>
+              <TaskList tasks={tasks} onEdit={handleEditTask} onDelete={handleDeleteTask} />
+              <button
+                type="button"
+                onClick={() => setShowTaskForm(true)}
+                className="mt-2 flex items-center gap-1.5 rounded-lg border border-dashed border-white/20 px-3 py-2 text-sm text-white/40 transition-colors hover:border-white/40 hover:text-white/60"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Task
+              </button>
+            </>
           )}
-        </div>
+        </FormSection>
       )}
 
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-1.5">
-          Roadmap
-        </label>
-        <textarea
-          rows={4}
-          value={formData.roadmap}
-          onChange={(e) => setFormData({ ...formData, roadmap: e.target.value })}
-          className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary-300"
-        />
-      </div>
-
-      <div className="flex gap-3 justify-end">
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" variant="primary">
-          {challenge ? 'Update' : 'Create'} Challenge
-        </Button>
-      </div>
+      <FormFooter
+        onCancel={onCancel}
+        submitLabel={challenge ? 'Update Challenge' : 'Create Challenge'}
+      />
     </form>
   );
 }
