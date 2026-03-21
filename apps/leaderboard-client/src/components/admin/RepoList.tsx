@@ -10,9 +10,10 @@ interface RepoListProps {
   projects: Project[];
   onLinkToChallenge: (repoId: string, repoTitle: string) => void;
   onDelete: (id: string) => void;
+  onViewDetail: (repoId: string, repoTitle: string) => void;
 }
 
-export function RepoList({ repos, projects, onLinkToChallenge, onDelete }: RepoListProps) {
+export function RepoList({ repos, projects, onLinkToChallenge, onDelete, onViewDetail }: RepoListProps) {
   const columns = [
     {
       key: 'title',
@@ -49,6 +50,9 @@ export function RepoList({ repos, projects, onLinkToChallenge, onDelete }: RepoL
       header: 'Actions',
       render: (repo: Repo) => (
         <div className="flex gap-2">
+          <Button size="sm" variant="secondary" onClick={() => onViewDetail(repo.uuid, repo.title)}>
+            Detail
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => onLinkToChallenge(repo.uuid, repo.title)}>
             🔗 Link
           </Button>

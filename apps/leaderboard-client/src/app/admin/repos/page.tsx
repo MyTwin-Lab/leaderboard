@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { RepoList } from '@/components/admin/RepoList';
 import { RepoForm } from '@/components/admin/RepoForm';
 import { RepoLinkModal } from '@/components/admin/RepoLinkModal';
+import { RepoDetail } from '@/components/admin/RepoDetail';
 import type { Repo, Project, Challenge } from '../../../../../../packages/database-service/domain/entities';
 
 export default function ReposPage() {
@@ -14,6 +15,7 @@ export default function ReposPage() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState<{ id: string; title: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -77,6 +79,11 @@ export default function ReposPage() {
     setShowLinkModal(true);
   };
 
+  const handleViewDetail = (repoId: string, repoTitle: string) => {
+    setSelectedRepo({ id: repoId, title: repoTitle });
+    setShowDetail(true);
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this repository?')) return;
 
@@ -121,6 +128,7 @@ export default function ReposPage() {
             projects={projects}
             onLinkToChallenge={handleLinkToChallenge}
             onDelete={handleDelete}
+            onViewDetail={handleViewDetail}
           />
         </Card>
       )}
@@ -131,6 +139,17 @@ export default function ReposPage() {
           repoTitle={selectedRepo.title}
           onClose={() => {
             setShowLinkModal(false);
+            setSelectedRepo(null);
+          }}
+        />
+      )}
+
+      {showDetail && selectedRepo && (
+        <RepoDetail
+          repoId={selectedRepo.id}
+          repoTitle={selectedRepo.title}
+          onClose={() => {
+            setShowDetail(false);
             setSelectedRepo(null);
           }}
         />
