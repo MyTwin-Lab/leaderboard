@@ -142,8 +142,8 @@ export default function ChallengeDetailPage() {
         method: 'POST',
       });
       if (res.ok) {
-        await fetchTasks();
         trackOnboardingStep('assigned_task');
+        router.push(`/tasks/${taskId}`);
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to assign');

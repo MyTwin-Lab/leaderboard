@@ -12,7 +12,6 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.211.0",
     "@opentelemetry/instrumentation-fetch": "^0.211.0",
@@ -22,27 +21,28 @@
     "@opentelemetry/sdk-node": "^0.211.0",
     "@opentelemetry/sdk-trace-node": "^2.5.0",
     "@opentelemetry/semantic-conventions": "^1.39.0",
+    "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
-    "@vitest/ui": "^4.0.6",
     "clsx": "latest",
     "lucide-react": "latest",
-    "next": "16.0.1",
+    "next": "^16.2.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "supertest": "^7.1.4",
     "tailwind-merge": "latest",
     "tailwindcss": "^4",
-    "vitest": "^4.0.6",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/ui": "^4.0.18",
     "baseline-browser-mapping": "^2.9.19",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   }
 }

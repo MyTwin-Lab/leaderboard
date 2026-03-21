@@ -82,7 +82,7 @@ export function MyTasks() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <h3 className="font-medium text-white">{task.title}</h3>
-                  <p className="text-sm text-brandCP mt-1">{task.challenge_title}</p>
+                  <p className="text-sm text-white/70 mt-1">Challenge: {task.challenge_title}</p>
                   {task.description && (
                     <p className="text-sm text-white/50 mt-2 line-clamp-2">{task.description}</p>
                   )}
