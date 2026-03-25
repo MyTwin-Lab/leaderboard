@@ -26,6 +26,12 @@ const triggerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const secret = process.env.DISCORD_TRIGGER_SECRET;
+    const authHeader = request.headers.get("authorization");
+    if (!secret || authHeader !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const data = triggerSchema.parse(body);
 
