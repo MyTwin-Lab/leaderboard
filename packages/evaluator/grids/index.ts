@@ -82,7 +82,9 @@ export class EvaluationGridRegistry {
 import { evaluationGrid as codeGrid } from './code.grid.js';
 import { modelGrid } from './model.grid.js';
 import { datasetGrid } from './dataset.grid.js';
+import { discordHelpGrid } from './discord_help.grid.js';
 
 EvaluationGridRegistry.register(codeGrid);
 EvaluationGridRegistry.register(modelGrid);
 EvaluationGridRegistry.register(datasetGrid);
+EvaluationGridRegistry.register(discordHelpGrid);

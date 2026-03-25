@@ -102,17 +102,6 @@ export const refresh_tokens = pgTable("refresh_tokens", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
-// --- DISCORD_EVALUATIONS ---
-export const discord_evaluations = pgTable("discord_evaluations", {
-  uuid: uuid("uuid").primaryKey().defaultRandom(),
-  conversation_id: uuid("conversation_id").notNull().references(() => discord_conversations.uuid, { onDelete: "cascade" }),
-  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending | running | evaluated | skipped
-  score: integer("score"),
-  notes: json("notes"),
-  evaluated_at: timestamp("evaluated_at"),
-  created_at: timestamp("created_at").defaultNow(),
-});
-
 // --- DISCORD_ACCOUNTS ---
 export const discord_accounts = pgTable("discord_accounts", {
   discord_id: varchar("discord_id", { length: 32 }).primaryKey(),
@@ -120,34 +109,21 @@ export const discord_accounts = pgTable("discord_accounts", {
   user_id: uuid("user_id").references(() => users.uuid, { onDelete: "set null" }),
 });
 
-// --- DISCORD_CONVERSATIONS ---
-export const discord_conversations = pgTable("discord_conversations", {
+// --- DISCORD_EVALUATIONS ---
+// Enregistrement central : une réaction emoji = une évaluation.
+// Les messages sont stockés dans notes.context (fetchés via Discord connector, jamais persistés).
+export const discord_evaluations = pgTable("discord_evaluations", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   channel_id: varchar("channel_id", { length: 32 }).notNull(),
+  trigger_message_id: varchar("trigger_message_id", { length: 32 }).notNull(), // snowflake du message ayant reçu l'emoji
+  emoji: varchar("emoji", { length: 64 }).notNull(),
   helper_discord_id: varchar("helper_discord_id", { length: 32 }).references(() => discord_accounts.discord_id, { onDelete: "set null" }),
   beneficiary_discord_id: varchar("beneficiary_discord_id", { length: 32 }).references(() => discord_accounts.discord_id, { onDelete: "set null" }),
-  start_message_id: uuid("start_message_id"), // référence discord_messages.uuid après insertion
-  end_message_id: uuid("end_message_id"),     // null tant que la conversation n'est pas clôturée
-  started_at: timestamp("started_at").defaultNow(),
-});
-
-// --- DISCORD_MESSAGES ---
-export const discord_messages = pgTable("discord_messages", {
-  uuid: uuid("uuid").primaryKey().defaultRandom(),
-  discord_message_id: varchar("discord_message_id", { length: 32 }).notNull().unique(), // snowflake Discord
-  conversation_id: uuid("conversation_id").references(() => discord_conversations.uuid, { onDelete: "cascade" }),
-  author_discord_id: varchar("author_discord_id", { length: 32 }).references(() => discord_accounts.discord_id, { onDelete: "set null" }),
-  content: text("content").notNull(),
-  sent_at: timestamp("sent_at").notNull(),
-});
-
-// --- DISCORD_TRIGGERS ---
-export const discord_triggers = pgTable("discord_triggers", {
-  uuid: uuid("uuid").primaryKey().defaultRandom(),
-  message_id: uuid("message_id").references(() => discord_messages.uuid, { onDelete: "cascade" }),
-  trigger_type: varchar("trigger_type", { length: 20 }).notNull(), // GRATITUDE | HELP_REQUEST
-  keyword_detected: varchar("keyword_detected", { length: 255 }).notNull(),
-  language: varchar("language", { length: 2 }).notNull(), // FR | EN
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending | running | evaluated | skipped
+  score: integer("score"),
+  notes: json("notes"), // { context: DiscordMessageItem[], justification?: string, criteria?: [...] }
+  evaluated_at: timestamp("evaluated_at"),
+  created_at: timestamp("created_at").defaultNow(),
 });
 
 // --- RELATIONS ---
@@ -255,55 +231,20 @@ export const discordAccountsRelations = relations(discord_accounts, ({ one, many
     fields: [discord_accounts.user_id],
     references: [users.uuid],
   }),
-  messages: many(discord_messages),
-  conversations_as_helper: many(discord_conversations, { relationName: "helper" }),
-  conversations_as_beneficiary: many(discord_conversations, { relationName: "beneficiary" }),
+  evaluations_as_helper: many(discord_evaluations, { relationName: "helper" }),
+  evaluations_as_beneficiary: many(discord_evaluations, { relationName: "beneficiary" }),
 }));
 
-export const discordConversationsRelations = relations(discord_conversations, ({ one, many }) => ({
+export const discordEvaluationsRelations = relations(discord_evaluations, ({ one }) => ({
   helper: one(discord_accounts, {
-    fields: [discord_conversations.helper_discord_id],
+    fields: [discord_evaluations.helper_discord_id],
     references: [discord_accounts.discord_id],
     relationName: "helper",
   }),
   beneficiary: one(discord_accounts, {
-    fields: [discord_conversations.beneficiary_discord_id],
+    fields: [discord_evaluations.beneficiary_discord_id],
     references: [discord_accounts.discord_id],
     relationName: "beneficiary",
-  }),
-  messages: many(discord_messages),
-  evaluation: one(discord_evaluations, {
-    fields: [discord_conversations.uuid],
-    references: [discord_evaluations.conversation_id],
-  }),
-}));
-
-export const discordMessagesRelations = relations(discord_messages, ({ one }) => ({
-  conversation: one(discord_conversations, {
-    fields: [discord_messages.conversation_id],
-    references: [discord_conversations.uuid],
-  }),
-  author: one(discord_accounts, {
-    fields: [discord_messages.author_discord_id],
-    references: [discord_accounts.discord_id],
-  }),
-  trigger: one(discord_triggers, {
-    fields: [discord_messages.uuid],
-    references: [discord_triggers.message_id],
-  }),
-}));
-
-export const discordTriggersRelations = relations(discord_triggers, ({ one }) => ({
-  message: one(discord_messages, {
-    fields: [discord_triggers.message_id],
-    references: [discord_messages.uuid],
-  }),
-}));
-
-export const discordEvaluationsRelations = relations(discord_evaluations, ({ one }) => ({
-  conversation: one(discord_conversations, {
-    fields: [discord_evaluations.conversation_id],
-    references: [discord_conversations.uuid],
   }),
 }));
 
@@ -326,9 +267,6 @@ export const db = drizzle(pool, {
     task_assignees,
     refresh_tokens,
     discord_accounts,
-    discord_conversations,
-    discord_messages,
-    discord_triggers,
     discord_evaluations,
     projectsRelations,
     reposRelations,
@@ -341,9 +279,6 @@ export const db = drizzle(pool, {
     taskAssigneesRelations,
     refreshTokensRelations,
     discordAccountsRelations,
-    discordConversationsRelations,
-    discordMessagesRelations,
-    discordTriggersRelations,
     discordEvaluationsRelations,
   },
 });

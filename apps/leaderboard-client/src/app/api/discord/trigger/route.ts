@@ -1,34 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { DiscordAccountRepository } from "../../../../../../../../packages/database-service/repositories";
-import { DiscordConversationRepository } from "../../../../../../../../packages/database-service/repositories";
-import { DiscordMessageRepository } from "../../../../../../../../packages/database-service/repositories";
-import { DiscordTriggerRepository } from "../../../../../../../../packages/database-service/repositories";
+import { DiscordEvaluationRepository } from "../../../../../../../../packages/database-service/repositories";
 import { DiscordService } from "../../../../../../../../packages/services/discord.service";
+import { DiscordConnector } from "../../../../../../../../packages/connectors/implementation/Discord.connector";
+import { evaluateDiscordHelp } from "../../../../../../../../packages/evaluator/discord/discord.evaluator";
 
 const accountRepo = new DiscordAccountRepository();
-const conversationRepo = new DiscordConversationRepository();
-const messageRepo = new DiscordMessageRepository();
-const triggerRepo = new DiscordTriggerRepository();
+const evaluationRepo = new DiscordEvaluationRepository();
 const discordService = new DiscordService();
 
 const triggerSchema = z.object({
-  trigger_type: z.enum(["HELP_REQUEST", "GRATITUDE"]),
-  keyword_detected: z.string().min(1),
-  language: z.enum(["FR", "EN"]),
   channel_id: z.string().min(1),
-  discord_message_id: z.string().min(1),
-  content: z.string().min(1),
-  sent_at: z.string().datetime(),
-  author: z.object({
+  trigger_message_id: z.string().min(1),
+  emoji: z.string().min(1),
+  helper: z.object({
     discord_id: z.string().min(1),
     username: z.string().min(1),
   }),
-  // Présent uniquement pour HELP_REQUEST (celui qui pose la question)
   beneficiary: z.object({
     discord_id: z.string().min(1),
     username: z.string().min(1),
-  }).optional(),
+  }),
 });
 
 export async function POST(request: NextRequest) {
@@ -36,78 +29,62 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = triggerSchema.parse(body);
 
-    // 1. Upsert le compte Discord de l'auteur du message
-    await accountRepo.upsert({ discord_id: data.author.discord_id, username: data.author.username });
+    // 1. Upsert les comptes Discord des deux participants
+    await Promise.all([
+      accountRepo.upsert({ discord_id: data.helper.discord_id, username: data.helper.username }),
+      accountRepo.upsert({ discord_id: data.beneficiary.discord_id, username: data.beneficiary.username }),
+    ]);
 
-    if (data.trigger_type === "HELP_REQUEST") {
-      // 2a. Upsert le beneficiary (celui qui demande de l'aide)
-      // L'auteur du message HELP_REQUEST est le beneficiary
-      const conversation = await conversationRepo.create({
-        channel_id: data.channel_id,
-        beneficiary_discord_id: data.author.discord_id,
-      });
-
-      // 3. Insérer le message
-      const message = await messageRepo.create({
-        discord_message_id: data.discord_message_id,
-        conversation_id: conversation.uuid,
-        author_discord_id: data.author.discord_id,
-        content: data.content,
-        sent_at: new Date(data.sent_at),
-      });
-
-      // 4. Lier le message de départ à la conversation
-      await conversationRepo.setStartMessage(conversation.uuid, message.uuid);
-
-      // 5. Créer le trigger
-      await triggerRepo.create({
-        message_id: message.uuid,
-        trigger_type: data.trigger_type,
-        keyword_detected: data.keyword_detected,
-        language: data.language,
-      });
-
-      return NextResponse.json({ conversation_id: conversation.uuid, message_id: message.uuid }, { status: 201 });
+    // 2. Fetch l'historique de la conversation via le connecteur Discord
+    const botToken = process.env.DISCORD_BOT_TOKEN;
+    if (!botToken) {
+      console.error("[POST /api/discord/trigger] DISCORD_BOT_TOKEN not set");
+      return NextResponse.json({ error: "Bot token not configured" }, { status: 500 });
     }
 
-    if (data.trigger_type === "GRATITUDE") {
-      // 2b. Trouver la conversation ouverte dans ce channel
-      const conversation = await conversationRepo.findOpenByChannel(data.channel_id);
-      if (!conversation) {
-        return NextResponse.json({ error: "No open conversation found in this channel" }, { status: 404 });
-      }
+    const connector = new DiscordConnector(botToken);
+    const messages = await connector.fetchMessagesBefore(
+      data.channel_id,
+      data.trigger_message_id,
+      20
+    );
 
-      // 3. L'auteur du remerciement est le beneficiary → le helper est l'autre participant
-      // Le helper est défini dans le body si le bot l'identifie
-      if (data.beneficiary) {
-        await accountRepo.upsert({ discord_id: data.beneficiary.discord_id, username: data.beneficiary.username });
-      }
+    // 3. Appel synchrone à l'orchestrateur LLM (implémenté par les Data IA — tâche 4.2)
+    const evalResult = await evaluateDiscordHelp({
+      messages,
+      helper: data.helper,
+      beneficiary: data.beneficiary,
+    });
 
-      // 4. Insérer le message de remerciement
-      const message = await messageRepo.create({
-        discord_message_id: data.discord_message_id,
-        conversation_id: conversation.uuid,
-        author_discord_id: data.author.discord_id,
-        content: data.content,
-        sent_at: new Date(data.sent_at),
-      });
+    // 4. Enregistrer l'évaluation (audit trail)
+    const evaluation = await evaluationRepo.create({
+      channel_id: data.channel_id,
+      trigger_message_id: data.trigger_message_id,
+      emoji: data.emoji,
+      helper_discord_id: data.helper.discord_id,
+      beneficiary_discord_id: data.beneficiary.discord_id,
+      score: evalResult.skipped ? null : evalResult.evaluation.globalScore,
+      status: evalResult.skipped ? "skipped" : "evaluated",
+      notes: evalResult.skipped
+        ? { skip_reason: evalResult.skip_reason }
+        : { justification: evalResult.justification, criteria: evalResult.criteria },
+    });
 
-      // 5. Clore la conversation
-      await conversationRepo.close(conversation.uuid, message.uuid);
-
-      // 6. Créer le trigger
-      await triggerRepo.create({
-        message_id: message.uuid,
-        trigger_type: data.trigger_type,
-        keyword_detected: data.keyword_detected,
-        language: data.language,
-      });
-
-      // 7. Initier l'évaluation LLM (statut pending — le LLM viendra lire GET /conversations/:id)
-      await discordService.initEvaluation(conversation.uuid);
-
-      return NextResponse.json({ conversation_id: conversation.uuid, message_id: message.uuid }, { status: 201 });
+    if (evalResult.skipped) {
+      return NextResponse.json({ evaluation_id: evaluation.uuid, skipped: true }, { status: 200 });
     }
+
+    // 5. Attribuer les points au helper (crée la contribution discord_help)
+    const contribution = await discordService.awardPoints(
+      evaluation.uuid,
+      evalResult,
+      messages
+    );
+
+    return NextResponse.json(
+      { evaluation_id: evaluation.uuid, contribution_id: contribution?.uuid ?? null },
+      { status: 201 }
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation error", details: error.issues }, { status: 400 });
