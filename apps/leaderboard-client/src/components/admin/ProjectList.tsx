@@ -2,6 +2,7 @@
 
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { Project } from '../../../../../packages/database-service/domain/entities';
 
 interface ProjectListProps {
@@ -14,17 +15,17 @@ export function ProjectList({ projects, onEdit, onDelete }: ProjectListProps) {
   const columns = [
     {
       key: 'title',
-      header: 'Title',
+      header: 'Project',
       render: (project: Project) => (
-        <div className="font-medium">{project.title}</div>
+        <div className="font-medium text-white">{project.title}</div>
       ),
     },
     {
       key: 'description',
       header: 'Description',
       render: (project: Project) => (
-        <div className="text-sm text-white/70 line-clamp-2">
-          {project.description || '—'}
+        <div className="text-sm text-white/50 line-clamp-1">
+          {project.description || <span className="text-white/25 italic">No description</span>}
         </div>
       ),
     },
@@ -32,28 +33,28 @@ export function ProjectList({ projects, onEdit, onDelete }: ProjectListProps) {
       key: 'created_at',
       header: 'Created',
       render: (project: Project) => (
-        <div className="text-sm text-white/60">
-          {new Date(project.created_at).toLocaleDateString()}
+        <div className="text-sm text-white/50">
+          {new Date(project.created_at).toLocaleDateString('fr-FR')}
         </div>
       ),
-      width: '120px',
+      width: '110px',
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: '',
       render: (project: Project) => (
-        <div className="flex gap-2">
-          <Button size="sm" variant="ghost" onClick={() => onEdit(project)}>
-            Edit
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="ghost" onClick={() => onEdit(project)} title="Edit">
+            <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button size="sm" variant="danger" onClick={() => onDelete(project.uuid)}>
-            Delete
+          <Button size="sm" variant="danger" onClick={() => onDelete(project.uuid)} title="Delete">
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       ),
-      width: '150px',
+      width: '80px',
     },
   ];
 
-  return <Table data={projects} columns={columns} emptyMessage="No projects found" />;
+  return <Table data={projects} columns={columns} emptyMessage="No projects yet" />;
 }

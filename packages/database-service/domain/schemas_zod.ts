@@ -58,9 +58,10 @@ export const userSchema = z.object({
   uuid: z.string().uuid(),
   role: z.string(),
   full_name: z.string(),
-  github_username: z.string(),
+  github_username: z.string().optional(),
+  email: z.string().email().optional(),
+  google_user_id: z.string().optional(),
   bio: z.string().optional(),
-  password_hash: z.string().optional(),
   created_at: z.coerce.date(),
 });
 
@@ -75,6 +76,7 @@ export const refreshTokenSchema = z.object({
 export const taskSchema = z.object({
   uuid: z.string().uuid(),
   challenge_id: z.string().uuid(),
+  repo_id: z.string().uuid().optional(),
   parent_task_id: z.string().uuid().optional(),
   title: z.string().min(1),
   description: z.string().optional(),
@@ -180,16 +182,6 @@ export const evaluationGridSubcriterionSchema = z.object({
 });
 
 // --- SYNC MEETINGS ---
-
-export const googleAccountSchema = z.object({
-  uuid: z.string().uuid(),
-  user_id: z.string().uuid(),
-  google_user_id: z.string().min(1),
-  display_name: z.string().min(1),
-  email: z.string().email().optional(),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date(),
-});
 
 export const syncMeetingStatusSchema = z.enum(['scheduled', 'in_progress', 'completed', 'processed', 'cancelled']);
 

@@ -55,68 +55,6 @@ export function ChallengeCard({
     isMember ? 'success' : 'idle'
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<TaskWithAssignees[]>([]);
-  const [tasksLoading, setTasksLoading] = useState(false);
-  const [assigningTaskId, setAssigningTaskId] = useState<string | null>(null);
-
-  // Charger les tâches quand la modale s'ouvre
-  useEffect(() => {
-    if (isExpanded) {
-      fetchTasks();
-    }
-  }, [isExpanded]);
-
-  const fetchTasks = async () => {
-    setTasksLoading(true);
-    try {
-      const res = await fetch(`/api/tasks?challenge_id=${challengeId}`);
-      if (res.ok) {
-        const tasksData = await res.json();
-        // Charger les assignés pour chaque tâche
-        const tasksWithAssignees = await Promise.all(
-          (Array.isArray(tasksData) ? tasksData : []).map(async (task: any) => {
-            try {
-              const assigneesRes = await fetch(`/api/tasks/${task.uuid}/assignees`);
-              const assignees = assigneesRes.ok ? await assigneesRes.json() : [];
-              return {
-                ...task,
-                assignees: Array.isArray(assignees) ? assignees.map((a: any) => ({
-                  id: a.uuid,
-                  fullName: a.full_name,
-                })) : [],
-              };
-            } catch {
-              return { ...task, assignees: [] };
-            }
-          })
-        );
-        setTasks(tasksWithAssignees);
-      }
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-    } finally {
-      setTasksLoading(false);
-    }
-  };
-
-  const handleAssignTask = async (taskId: string) => {
-    setAssigningTaskId(taskId);
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/assign`, {
-        method: 'POST',
-      });
-      if (res.ok) {
-        await fetchTasks(); // Recharger les tâches
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to assign');
-      }
-    } catch (error) {
-      alert('Network error');
-    } finally {
-      setAssigningTaskId(null);
-    }
-  };
 
   const handleJoin = async () => {
     if (joinState === 'loading' || joinState === 'success') return;
@@ -163,23 +101,9 @@ export function ChallengeCard({
 
       {/* Challenge title with chevron */}
       <button
-        //onClick={() => setIsExpanded(!isExpanded)}
         className="flex w-full items-center justify-between text-left"
       >
         <p className="text-xs font-medium text-white/70 sm:text-sm">Challenge {challengeIndex} • Project: {projectName}</p>
-        {/* <svg
-          className={`h-5 w-5 text-white/60 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path
-            fillRule="evenodd"
-            d="M5.23 7.21a.75.75 0 011.06.02L10 10.17l3.71-2.94a.75.75 0 111.04 1.08l-4.23 3.36a.75.75 0 01-.94 0L5.21 8.29a.75.75 0 01.02-1.08z"
-            clipRule="evenodd"
-          />
-        </svg> */}
       </button>
 
       {description && (
@@ -203,56 +127,6 @@ export function ChallengeCard({
           )}
         </div>
       </div>
-
-      {/* Expanded content: Description + Progression */}
-      {isExpanded && (
-        <div className="mt-3 space-y-3">
-          <span className="text-xs text-white/70 whitespace-nowrap">
-            from {formatDate(startDate)} to {formatDate(endDate)}
-          </span>
-
-          {/* Tasks section */}
-          <div className="mt-4 border-t border-white/10 pt-4">
-            <p className="mb-2 text-xs text-white/50">Tasks</p>
-            {tasksLoading ? (
-              <p className="text-sm text-white/40">Loading tasks...</p>
-            ) : tasks.length === 0 ? (
-              <p className="text-sm text-white/40">No tasks available</p>
-            ) : (
-              <div className="space-y-2">
-                {tasks.filter(t => !t.parent_task_id).map((task) => (
-                  <div
-                    key={task.uuid}
-                    className="flex items-center justify-between py-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-white">{task.title}</span>
-                      {task.type === 'concurrent' && (
-                        <span className="text-xs text-white/40">"concurrent"</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {task.assignees.length > 0 && (
-                        <TeamAvatars members={task.assignees} maxDisplay={3} />
-                      )}
-                      {/* Afficher Assign si solo sans assigné, ou si concurrent */}
-                      {(task.type === 'concurrent' || task.assignees.length === 0) && (
-                        <button
-                          onClick={() => handleAssignTask(task.uuid)}
-                          disabled={assigningTaskId === task.uuid}
-                          className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition disabled:opacity-50"
-                        >
-                          {assigningTaskId === task.uuid ? '...' : 'Assign'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Team avatars + Join button */}
       {/* <div className="mt-4 flex items-center justify-between">

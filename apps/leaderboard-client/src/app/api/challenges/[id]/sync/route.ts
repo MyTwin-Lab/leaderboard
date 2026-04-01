@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ChallengeService } from '../../../../../../../../packages/services/challenge.service';
 
-const challengeService = new ChallengeService();
+async function getChallengeService() {
+  const { ChallengeService } = await import('../../../../../../../../packages/services/challenge/challenge.service');
+  return new ChallengeService();
+}
 
 // POST /api/challenges/[id]/sync - Lancer une évaluation Sync Meeting
 export async function POST(
@@ -10,11 +12,12 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+    const challengeService = await getChallengeService();
     const evaluations = await challengeService.runSyncEvaluation(id);
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       count: evaluations.length,
-      evaluations 
+      evaluations
     });
   } catch (error) {
     console.error('Error syncing challenge:', error);

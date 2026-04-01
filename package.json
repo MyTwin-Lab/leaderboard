@@ -6,11 +6,15 @@
     "test:coverage": "vitest run --coverage",
     "init:macos": "./scripts/macos/init.sh",
     "init:windows": "scripts\\windows\\init.bat",
+    "build": "cd apps/leaderboard-client && npm install && npm run build",
     "start:dev": "cd apps/leaderboard-client && npm run dev",
     "dev": "npm run start:dev",
     "populate-db": "tsx db_data/seed.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
+    "db:seed": "tsx db_data/seed.ts",
+    "db:seed:force": "tsx db_data/seed.ts --force",
+    "db:setup": "drizzle-kit push && tsx db_data/seed.ts",
     "db:studio": "drizzle-kit studio",
     "prod": "bash ./scripts/prod.sh full",
     "prod:full": "bash ./scripts/prod.sh full",
@@ -23,10 +27,12 @@
     "prod:delete": "pm2 delete leaderboard-client"
   },
   "dependencies": {
+    "@scalar/nextjs-api-reference": "^0.9.18",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
     "buffer": "^6.0.3",
     "dotenv": "^17.2.3",
+    "drizzle-kit": "^0.31.5",
     "drizzle-orm": "^0.44.6",
     "google-auth-library": "^10.4.0",
     "googleapis": "^161.0.0",
@@ -38,6 +44,7 @@
     "server-destroy": "^1.0.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
+    "yaml": "^2.8.2",
     "zod": "^4.1.11"
   },
   "devDependencies": {
@@ -46,7 +53,6 @@
     "@types/pg": "^8.15.5",
     "@types/server-destroy": "^1.0.4",
     "@vitest/coverage-v8": "^2.1.3",
-    "drizzle-kit": "^0.31.5",
     "typescript": "^5.9.3",
     "vitest": "^2.1.3"
   }

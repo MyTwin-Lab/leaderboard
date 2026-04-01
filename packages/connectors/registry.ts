@@ -17,9 +17,10 @@ export class ConnectorRegistry {
   /**
    * Crée un connecteur basé sur le type du repo
    * @param repo - Repo contenant le type et l'external_repo_id
+   * @param options - Options supplémentaires (ex: branch pour GitHub)
    * @returns ExternalConnector ou null si le type n'est pas supporté
    */
-  static createConnector(repo: Repo): ExternalConnector | null {
+  static createConnector(repo: Repo, options?: { branch?: string }): ExternalConnector | null {
     switch (repo.type) {
       case 'github':
         // Utiliser external_repo_id qui contient "owner/repo"
@@ -38,6 +39,7 @@ export class ConnectorRegistry {
           token: config.github.token || "",
           owner,
           repo: repoName,
+          branch: options?.branch,
         });
 
       case 'huggingface':

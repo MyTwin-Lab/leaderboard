@@ -12,7 +12,6 @@ export { EvaluationRunsRepository } from "./evaluationRuns.repo.js";
 export { EvaluationRunContributionsRepository } from "./evaluationRunContributions.repo.js";
 export { EvaluationGridsRepository } from "./evaluationGrids.repo.js";
 export { TaskWorkspaceRepository } from "./taskWorkspace.repo.js";
-export { GoogleAccountRepository } from "./googleAccount.repo.js";
 export { SyncMeetingRepository } from "./syncMeeting.repo.js";
 export { MeetingParticipantRepository } from "./meetingParticipant.repo.js";
 export { MeetingAnalysisRepository } from "./meetingAnalysis.repo.js";

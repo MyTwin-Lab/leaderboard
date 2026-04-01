@@ -1,18 +1,16 @@
-import { SyncMeetingRepository, ChallengeTeamRepository, UserRepository, GoogleAccountRepository } from '../../database-service/repositories/index.js';
+import { SyncMeetingRepository, ChallengeTeamRepository, UserRepository } from '../../database-service/repositories/index.js';
 import { GoogleCalendarService } from '../google-workspace/google-calendar.service.js';
 
 export class SyncMeetingService {
   private syncMeetingRepo: SyncMeetingRepository;
   private challengeTeamRepo: ChallengeTeamRepository;
   private userRepo: UserRepository;
-  private googleAccountRepo: GoogleAccountRepository;
   private calendarService: GoogleCalendarService;
 
   constructor() {
     this.syncMeetingRepo = new SyncMeetingRepository();
     this.challengeTeamRepo = new ChallengeTeamRepository();
     this.userRepo = new UserRepository();
-    this.googleAccountRepo = new GoogleAccountRepository();
     this.calendarService = new GoogleCalendarService();
   }
 
@@ -26,9 +24,9 @@ export class SyncMeetingService {
   }) {
     const teamMembers = await this.challengeTeamRepo.findByChallenge(params.challenge_id);
     const userIds = teamMembers.map((tm: any) => tm.user_id);
-    const googleAccounts = await this.googleAccountRepo.findByUserIds(userIds);
-    const attendeeEmails = googleAccounts
-      .map((account) => account.email)
+    const users = await this.userRepo.findByIds(userIds);
+    const attendeeEmails = users
+      .map((user) => user.email)
       .filter((email): email is string => Boolean(email));
 
     const calendarEvent = await this.calendarService.createMeetingEvent({

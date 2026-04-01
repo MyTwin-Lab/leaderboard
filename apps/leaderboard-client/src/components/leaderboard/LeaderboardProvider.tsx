@@ -5,15 +5,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { LeaderboardEntry, ProjectFilter } from "@/lib/types";
 
-export type TimePeriod = "all" | "month" | "week";
-
 interface LeaderboardContextValue {
   projectId: string;
   searchTerm: string;
-  timePeriod: TimePeriod;
   setProjectId: (projectId: string) => void;
   setSearchTerm: (term: string) => void;
-  setTimePeriod: (period: TimePeriod) => void;
   entries: LeaderboardEntry[];
   isLoading: boolean;
   error: string | null;
@@ -30,13 +26,10 @@ interface LeaderboardProviderProps {
   children: React.ReactNode;
 }
 
-async function fetchLeaderboardEntries(projectId: string, timePeriod: TimePeriod) {
+async function fetchLeaderboardEntries(projectId: string) {
   const searchParams = new URLSearchParams();
   if (projectId !== "all") {
     searchParams.set("projectId", projectId);
-  }
-  if (timePeriod !== "all") {
-    searchParams.set("timePeriod", timePeriod);
   }
 
   const response = await fetch(`/api/leaderboard${searchParams.size ? `?${searchParams.toString()}` : ""}`, {
@@ -61,7 +54,6 @@ export function LeaderboardProvider({
 }: LeaderboardProviderProps) {
   const [projectId, setProjectIdState] = useState(initialProjectId);
   const [searchTerm, setSearchTermState] = useState(initialSearchTerm);
-  const [timePeriod, setTimePeriodState] = useState<TimePeriod>("all");
   const [rawEntries, setRawEntries] = useState(initialEntries);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, startTransition] = useTransition();
@@ -95,7 +87,7 @@ export function LeaderboardProvider({
     startTransition(async () => {
       setError(null);
       try {
-        const entries = await fetchLeaderboardEntries(value, timePeriod);
+        const entries = await fetchLeaderboardEntries(value);
         setRawEntries(entries);
       } catch (err) {
         console.error(err);
@@ -107,20 +99,6 @@ export function LeaderboardProvider({
   const handleSearchChange = (term: string) => {
     setSearchTermState(term);
     updateQuery({ q: term });
-  };
-
-  const handleTimePeriodChange = (period: TimePeriod) => {
-    setTimePeriodState(period);
-    startTransition(async () => {
-      setError(null);
-      try {
-        const entries = await fetchLeaderboardEntries(projectId, period);
-        setRawEntries(entries);
-      } catch (err) {
-        console.error(err);
-        setError((err as Error).message);
-      }
-    });
   };
 
   const filteredEntries = useMemo(() => {
@@ -138,16 +116,14 @@ export function LeaderboardProvider({
     () => ({
       projectId,
       searchTerm,
-      timePeriod,
       setProjectId: handleProjectChange,
       setSearchTerm: handleSearchChange,
-      setTimePeriod: handleTimePeriodChange,
       entries: filteredEntries,
       isLoading,
       error,
       projects,
     }),
-    [projectId, searchTerm, timePeriod, filteredEntries, isLoading, error, projects]
+    [projectId, searchTerm, filteredEntries, isLoading, error, projects]
   );
 
   return <LeaderboardContext.Provider value={value}>{children}</LeaderboardContext.Provider>;

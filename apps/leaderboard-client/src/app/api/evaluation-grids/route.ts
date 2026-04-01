@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const grid = await gridRepo.createGrid({
+    const grid = await gridRepo.create({
       ...parsed.data,
       created_by: payload.userId,
     });

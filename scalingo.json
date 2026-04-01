@@ -1,0 +1,6 @@
+{
+  "name": "leaderboard",
+  "scripts": {
+    "postdeploy": "npm run db:push && npm run db:seed"
+  }
+}

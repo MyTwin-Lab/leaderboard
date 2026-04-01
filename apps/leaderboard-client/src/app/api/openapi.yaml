@@ -1,0 +1,2554 @@
+openapi: 3.0.3
+info:
+  title: Leaderboard API
+  description: |
+    API REST du projet Leaderboard — gestion de projets, challenges, tâches, contributions, évaluations et sync meetings.
+
+    ## Authentification
+    L'API utilise des cookies HTTP-only (`access_token` / `refresh_token`) via OAuth2 Google.
+    Certaines routes nécessitent le rôle **admin**.
+  version: 1.0.0
+
+servers:
+  - url: /api
+    description: Next.js API routes
+
+tags:
+  - name: Auth
+    description: Authentification (logout, refresh tokens)
+  - name: Google Auth
+    description: OAuth2 Google (authorize + callback)
+  - name: Users
+    description: Gestion des utilisateurs
+  - name: Contributors
+    description: Profil et tâches du contributeur connecté
+  - name: Projects
+    description: CRUD Projets
+  - name: Challenges
+    description: CRUD Challenges et actions associées
+  - name: Challenge Team
+    description: Gestion de l'équipe d'un challenge
+  - name: Tasks
+    description: CRUD Tâches et actions associées
+  - name: Contributions
+    description: Contributions des utilisateurs
+  - name: Repos
+    description: Gestion des dépôts et liens challenge-repo
+  - name: Evaluation Grids
+    description: Grilles d'évaluation, catégories et sous-critères (admin)
+  - name: Sync Meetings
+    description: Réunions de synchronisation
+  - name: Leaderboard
+    description: Classement des contributeurs
+  - name: Onboarding
+    description: Progression d'onboarding utilisateur
+  - name: Cron
+    description: Tâches planifiées internes
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+    cronBearer:
+      type: http
+      scheme: bearer
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Validation error
+        details:
+          type: array
+          items:
+            type: object
+      required: [error, details]
+
+    Success:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+
+    # ── Users ──
+    User:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        github_username:
+          type: string
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [contributor, admin]
+
+    CreateUser:
+      type: object
+      required: [full_name, role]
+      properties:
+        github_username:
+          type: string
+        full_name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+
+    # ── Projects ──
+    Project:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+
+    CreateProject:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+
+    UpdateProject:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+
+    # ── Challenges ──
+    Challenge:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        description:
+          type: string
+          nullable: true
+        roadmap:
+          type: string
+          nullable: true
+        completion:
+          type: number
+        contribution_points_reward:
+          type: integer
+        project_id:
+          type: string
+          format: uuid
+
+    CreateChallenge:
+      type: object
+      required: [title, status, start_date, end_date, contribution_points_reward, project_id]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        status:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        description:
+          type: string
+        roadmap:
+          type: string
+        contribution_points_reward:
+          type: integer
+          minimum: 0
+        project_id:
+          type: string
+          format: uuid
+
+    UpdateChallenge:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        status:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        description:
+          type: string
+        roadmap:
+          type: string
+        contribution_points_reward:
+          type: integer
+          minimum: 0
+        project_id:
+          type: string
+          format: uuid
+
+    # ── Tasks ──
+    Task:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        challenge_id:
+          type: string
+          format: uuid
+        parent_task_id:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [solo, concurrent]
+        status:
+          type: string
+
+    CreateTask:
+      type: object
+      required: [challenge_id, title, type]
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+        parent_task_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        type:
+          type: string
+          enum: [solo, concurrent]
+
+    UpdateTask:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        type:
+          type: string
+          enum: [solo, concurrent]
+        parent_task_id:
+          type: string
+          format: uuid
+
+    TaskDetails:
+      type: object
+      properties:
+        task:
+          $ref: '#/components/schemas/Task'
+        challenge:
+          type: object
+          nullable: true
+          properties:
+            uuid:
+              type: string
+              format: uuid
+            title:
+              type: string
+            status:
+              type: string
+            completion:
+              type: number
+            contribution_points_reward:
+              type: integer
+        assignees:
+          type: array
+          items:
+            type: object
+            properties:
+              uuid:
+                type: string
+                format: uuid
+              full_name:
+                type: string
+              github_username:
+                type: string
+        workspaces:
+          type: array
+          items:
+            type: object
+            properties:
+              repo_id:
+                type: string
+                format: uuid
+              repo_title:
+                type: string
+              repo_type:
+                type: string
+              repo_external_id:
+                type: string
+              workspace_provider:
+                type: string
+              workspace_ref:
+                type: string
+              workspace_url:
+                type: string
+              workspace_status:
+                type: string
+              workspace_meta:
+                type: object
+        subTasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        contribution:
+          type: object
+          nullable: true
+
+    # ── Contributions ──
+    Contribution:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        task_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        score:
+          type: number
+
+    # ── Repos ──
+    Repo:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        title:
+          type: string
+        type:
+          type: string
+        external_repo_id:
+          type: string
+          nullable: true
+        project_id:
+          type: string
+          format: uuid
+
+    CreateRepo:
+      type: object
+      required: [title, type, project_id]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        type:
+          type: string
+        external_repo_id:
+          type: string
+        project_id:
+          type: string
+          format: uuid
+
+    LinkChallengeRepo:
+      type: object
+      required: [challenge_id, repo_id]
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+        repo_id:
+          type: string
+          format: uuid
+
+    # ── Evaluation Grids ──
+    EvaluationGrid:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        version:
+          type: integer
+        status:
+          type: string
+          enum: [draft, published, archived]
+        instructions:
+          type: string
+          nullable: true
+
+    CreateEvaluationGrid:
+      type: object
+      required: [slug, name]
+      properties:
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 64
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+          default: 1
+        status:
+          type: string
+          enum: [draft, published, archived]
+          default: draft
+        instructions:
+          type: string
+
+    UpdateEvaluationGrid:
+      type: object
+      properties:
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 64
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [draft, published, archived]
+        instructions:
+          type: string
+
+    GridCategory:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        grid_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        weight:
+          type: number
+          minimum: 0
+          maximum: 1
+        type:
+          type: string
+          enum: [objective, mixed, subjective, contextual]
+        position:
+          type: integer
+
+    CreateGridCategory:
+      type: object
+      required: [name, weight, type]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        weight:
+          type: number
+          minimum: 0
+          maximum: 1
+        type:
+          type: string
+          enum: [objective, mixed, subjective, contextual]
+        position:
+          type: integer
+          minimum: 0
+          default: 0
+
+    UpdateGridCategory:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        weight:
+          type: number
+          minimum: 0
+          maximum: 1
+        type:
+          type: string
+          enum: [objective, mixed, subjective, contextual]
+        position:
+          type: integer
+          minimum: 0
+
+    Subcriterion:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        criterion:
+          type: string
+        description:
+          type: string
+          nullable: true
+        weight:
+          type: number
+        metrics:
+          type: array
+          items:
+            type: string
+        indicators:
+          type: array
+          items:
+            type: string
+        scoring_excellent:
+          type: string
+          nullable: true
+        scoring_good:
+          type: string
+          nullable: true
+        scoring_average:
+          type: string
+          nullable: true
+        scoring_poor:
+          type: string
+          nullable: true
+        position:
+          type: integer
+
+    CreateSubcriterion:
+      type: object
+      required: [criterion]
+      properties:
+        criterion:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+        weight:
+          type: number
+          minimum: 0
+          maximum: 1
+        metrics:
+          type: array
+          items:
+            type: string
+        indicators:
+          type: array
+          items:
+            type: string
+        scoring_excellent:
+          type: string
+        scoring_good:
+          type: string
+        scoring_average:
+          type: string
+        scoring_poor:
+          type: string
+        position:
+          type: integer
+          minimum: 0
+          default: 0
+
+    UpdateSubcriterion:
+      type: object
+      properties:
+        criterion:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+        weight:
+          type: number
+          minimum: 0
+          maximum: 1
+        metrics:
+          type: array
+          items:
+            type: string
+        indicators:
+          type: array
+          items:
+            type: string
+        scoring_excellent:
+          type: string
+        scoring_good:
+          type: string
+        scoring_average:
+          type: string
+        scoring_poor:
+          type: string
+        position:
+          type: integer
+          minimum: 0
+
+    # ── Sync Meetings ──
+    SyncMeeting:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        challenge_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+          format: uuid
+
+    CreateSyncMeeting:
+      type: object
+      required: [title, challenge_id, start_time, end_time]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        challenge_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+
+    # ── Leaderboard ──
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        githubUsername:
+          type: string
+        bio:
+          type: string
+          nullable: true
+        totalCP:
+          type: number
+
+    LeaderboardResponse:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeaderboardEntry'
+        filters:
+          type: object
+          properties:
+            projects:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    nullable: true
+                  name:
+                    type: string
+
+    # ── Onboarding ──
+    OnboardingProgress:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        clicked_challenge:
+          type: boolean
+        assigned_task:
+          type: boolean
+        evaluated_contribution:
+          type: boolean
+        validated_task:
+          type: boolean
+        joined_meeting:
+          type: boolean
+
+    # ── Session ──
+    SessionUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        githubUsername:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+
+# ═══════════════════════════════════════════════════════════════
+#  PATHS
+# ═══════════════════════════════════════════════════════════════
+paths:
+
+  # ── Auth ──────────────────────────────────────────────────
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Déconnexion
+      description: Invalide les refresh tokens et supprime les cookies d'authentification.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Déconnexion réussie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rafraîchir les tokens
+      description: Utilise le refresh_token cookie pour générer de nouveaux access_token et refresh_token (rotation).
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Tokens renouvelés (nouveaux cookies définis)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          description: Refresh token manquant ou invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Google Auth ───────────────────────────────────────────
+  /google-auth/authorize:
+    get:
+      tags: [Google Auth]
+      summary: Initier le flux OAuth2 Google
+      description: Redirige vers la page de consentement Google.
+      parameters:
+        - name: from
+          in: query
+          description: URL de redirection après authentification
+          schema:
+            type: string
+            default: /
+      responses:
+        '307':
+          description: Redirection vers Google OAuth
+
+  /google-auth/callback:
+    get:
+      tags: [Google Auth]
+      summary: Callback OAuth2 Google
+      description: Reçoit le code d'autorisation Google, crée ou lie le compte utilisateur, et redirige avec les cookies JWT.
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        '307':
+          description: Redirection vers l'application avec cookies JWT
+
+  # ── Users ─────────────────────────────────────────────────
+  /users:
+    get:
+      tags: [Users]
+      summary: Lister tous les utilisateurs
+      responses:
+        '200':
+          description: Liste des utilisateurs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+    post:
+      tags: [Users]
+      summary: Créer un utilisateur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUser'
+      responses:
+        '201':
+          description: Utilisateur créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  # ── Contributors ──────────────────────────────────────────
+  /contributors/me:
+    get:
+      tags: [Contributors]
+      summary: Profil du contributeur connecté
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Données de session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/SessionUser'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contributors/me/tasks:
+    get:
+      tags: [Contributors]
+      summary: Tâches assignées au contributeur connecté
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Liste des tâches avec le titre du challenge
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/Task'
+                    - type: object
+                      properties:
+                        challenge_title:
+                          type: string
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Projects ──────────────────────────────────────────────
+  /projects:
+    get:
+      tags: [Projects]
+      summary: Lister tous les projets
+      responses:
+        '200':
+          description: Liste des projets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+    post:
+      tags: [Projects]
+      summary: Créer un projet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProject'
+      responses:
+        '201':
+          description: Projet créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /projects/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Projects]
+      summary: Récupérer un projet
+      responses:
+        '200':
+          description: Projet trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          description: Projet non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [Projects]
+      summary: Mettre à jour un projet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProject'
+      responses:
+        '200':
+          description: Projet mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+    delete:
+      tags: [Projects]
+      summary: Supprimer un projet
+      responses:
+        '200':
+          description: Projet supprimé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  # ── Challenges ────────────────────────────────────────────
+  /challenges:
+    get:
+      tags: [Challenges]
+      summary: Lister tous les challenges
+      responses:
+        '200':
+          description: Liste des challenges
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Challenge'
+    post:
+      tags: [Challenges]
+      summary: Créer un challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChallenge'
+      responses:
+        '201':
+          description: Challenge créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /challenges/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Challenges]
+      summary: Récupérer un challenge
+      responses:
+        '200':
+          description: Challenge trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+        '404':
+          description: Challenge non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [Challenges]
+      summary: Mettre à jour un challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChallenge'
+      responses:
+        '200':
+          description: Challenge mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+    delete:
+      tags: [Challenges]
+      summary: Supprimer un challenge
+      responses:
+        '200':
+          description: Challenge supprimé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /challenges/{id}/context:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Challenges]
+      summary: Contexte complet d'un challenge
+      description: Récupère le challenge avec toutes ses données associées (tâches, équipe, repos, etc.).
+      responses:
+        '200':
+          description: Contexte du challenge
+          content:
+            application/json:
+              schema:
+                type: object
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /challenges/{id}/close:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Challenges]
+      summary: Clôturer un challenge
+      description: Clôture le challenge et distribue les rewards (contribution points).
+      responses:
+        '200':
+          description: Challenge clôturé avec rewards distribués
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                  rewards:
+                    type: array
+                    items:
+                      type: object
+
+  /challenges/{id}/join:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Challenges]
+      summary: Rejoindre un challenge
+      description: L'utilisateur connecté rejoint l'équipe du challenge.
+      security:
+        - cookieAuth: []
+      responses:
+        '201':
+          description: Rejoint avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Déjà membre du challenge
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /challenges/{id}/sync:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Challenges]
+      summary: Lancer une évaluation Sync Meeting
+      description: Déclenche l'évaluation des sync meetings pour ce challenge.
+      responses:
+        '200':
+          description: Évaluations générées
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                  evaluations:
+                    type: array
+                    items:
+                      type: object
+
+  # ── Challenge Team ────────────────────────────────────────
+  /challenges/{id}/team:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Challenge Team]
+      summary: Récupérer l'équipe d'un challenge
+      responses:
+        '200':
+          description: Liste des membres
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      tags: [Challenge Team]
+      summary: Ajouter un membre à l'équipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Membre ajouté
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /challenges/{id}/team/{userId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [Challenge Team]
+      summary: Retirer un membre de l'équipe
+      responses:
+        '200':
+          description: Membre retiré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  # ── Tasks ─────────────────────────────────────────────────
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: Lister les tâches d'un challenge
+      parameters:
+        - name: challenge_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: include
+          in: query
+          description: "Passer `assignees` pour inclure les assignés"
+          schema:
+            type: string
+            enum: [assignees]
+      responses:
+        '200':
+          description: Liste des tâches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '400':
+          description: challenge_id manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: [Tasks]
+      summary: Créer une tâche
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTask'
+      responses:
+        '201':
+          description: Tâche créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /tasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Tasks]
+      summary: Récupérer une tâche
+      responses:
+        '200':
+          description: Tâche trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          description: Tâche non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [Tasks]
+      summary: Mettre à jour une tâche
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTask'
+      responses:
+        '200':
+          description: Tâche mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+    delete:
+      tags: [Tasks]
+      summary: Supprimer une tâche
+      responses:
+        '200':
+          description: Tâche supprimée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /tasks/{id}/details:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Tasks]
+      summary: Détails complets d'une tâche
+      description: Retourne la tâche avec challenge, assignés, workspaces, sous-tâches et contribution de l'utilisateur connecté.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Détails complets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetails'
+        '404':
+          description: Tâche non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/{id}/assignees:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Tasks]
+      summary: Récupérer les assignés d'une tâche
+      responses:
+        '200':
+          description: Liste des assignés
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '404':
+          description: Tâche non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/{id}/assign:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Tasks]
+      summary: S'assigner à une tâche
+      description: |
+        Assigne l'utilisateur connecté à la tâche. Provisionne automatiquement les workspaces
+        (branches Git, etc.) et protège l'accès au workspace.
+      security:
+        - cookieAuth: []
+      responses:
+        '201':
+          description: Assignation réussie avec résultats de provisioning
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assignment:
+                    type: object
+                  provisioning:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        repo_id:
+                          type: string
+                          format: uuid
+                        status:
+                          type: string
+                        result:
+                          type: object
+        '400':
+          description: Déjà assigné ou tâche solo déjà prise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Tâche non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: [Tasks]
+      summary: Se désassigner d'une tâche
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Désassignation réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Non assigné à cette tâche
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/{id}/complete:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [Tasks]
+      summary: Marquer une tâche comme complétée
+      description: Seul un admin ou un assigné peut compléter la tâche.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Tâche complétée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Non autorisé (ni admin ni assigné)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Tâche non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/{id}/evaluate:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Tasks]
+      summary: Évaluer une tâche
+      description: Déclenche l'évaluation IA de la tâche. Seul un admin ou un assigné peut évaluer.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Résultat de l'évaluation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  evaluation:
+                    type: object
+                    properties:
+                      globalScore:
+                        type: number
+                      scores:
+                        type: object
+                  contribution:
+                    type: object
+                  isUpdate:
+                    type: boolean
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Non autorisé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Tâche non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Contributions ─────────────────────────────────────────
+  /contributions:
+    get:
+      tags: [Contributions]
+      summary: Lister toutes les contributions
+      responses:
+        '200':
+          description: Liste des contributions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Contribution'
+
+  /contributions/challenge/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Contributions]
+      summary: Contributions d'un challenge
+      responses:
+        '200':
+          description: Liste des contributions du challenge
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Contribution'
+
+  # ── Repos ─────────────────────────────────────────────────
+  /repos:
+    get:
+      tags: [Repos]
+      summary: Lister tous les repos
+      responses:
+        '200':
+          description: Liste des repos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Repo'
+    post:
+      tags: [Repos]
+      summary: Créer un repo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRepo'
+      responses:
+        '201':
+          description: Repo créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Repo'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /repos/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [Repos]
+      summary: Supprimer un repo
+      responses:
+        '200':
+          description: Repo supprimé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /repos/{id}/challenges:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Repos]
+      summary: Challenges liés à un repo
+      responses:
+        '200':
+          description: Liste des challenges du repo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /repos/challenge-repos:
+    post:
+      tags: [Repos]
+      summary: Lier un repo à un challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkChallengeRepo'
+      responses:
+        '201':
+          description: Lien créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+    delete:
+      tags: [Repos]
+      summary: Délier un repo d'un challenge
+      parameters:
+        - name: challenge_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: repo_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lien supprimé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Paramètres manquants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Evaluation Grids ──────────────────────────────────────
+  /evaluation-grids:
+    get:
+      tags: [Evaluation Grids]
+      summary: Lister toutes les grilles d'évaluation
+      description: Requiert le rôle admin.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Liste des grilles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EvaluationGrid'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: [Evaluation Grids]
+      summary: Créer une grille d'évaluation
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEvaluationGrid'
+      responses:
+        '201':
+          description: Grille créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationGrid'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /evaluation-grids/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Evaluation Grids]
+      summary: Récupérer une grille complète
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Grille avec catégories et sous-critères
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationGrid'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Grille non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [Evaluation Grids]
+      summary: Mettre à jour une grille
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEvaluationGrid'
+      responses:
+        '200':
+          description: Grille mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationGrid'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: [Evaluation Grids]
+      summary: Supprimer une grille
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Grille supprimée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /evaluation-grids/{id}/categories:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: ID de la grille
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Evaluation Grids]
+      summary: Lister les catégories d'une grille
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Liste des catégories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GridCategory'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: [Evaluation Grids]
+      summary: Créer une catégorie
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGridCategory'
+      responses:
+        '201':
+          description: Catégorie créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GridCategory'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /evaluation-grids/{id}/categories/{catId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: ID de la grille
+        schema:
+          type: string
+          format: uuid
+      - name: catId
+        in: path
+        required: true
+        description: ID de la catégorie
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [Evaluation Grids]
+      summary: Mettre à jour une catégorie
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateGridCategory'
+      responses:
+        '200':
+          description: Catégorie mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GridCategory'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: [Evaluation Grids]
+      summary: Supprimer une catégorie
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Catégorie supprimée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /evaluation-grids/{id}/categories/{catId}/subcriteria:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: ID de la grille
+        schema:
+          type: string
+          format: uuid
+      - name: catId
+        in: path
+        required: true
+        description: ID de la catégorie
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Evaluation Grids]
+      summary: Lister les sous-critères d'une catégorie
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Liste des sous-critères
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Subcriterion'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: [Evaluation Grids]
+      summary: Créer un sous-critère
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubcriterion'
+      responses:
+        '201':
+          description: Sous-critère créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subcriterion'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /evaluation-grids/{id}/categories/{catId}/subcriteria/{subId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: ID de la grille
+        schema:
+          type: string
+          format: uuid
+      - name: catId
+        in: path
+        required: true
+        description: ID de la catégorie
+        schema:
+          type: string
+          format: uuid
+      - name: subId
+        in: path
+        required: true
+        description: ID du sous-critère
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [Evaluation Grids]
+      summary: Mettre à jour un sous-critère
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSubcriterion'
+      responses:
+        '200':
+          description: Sous-critère mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subcriterion'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: [Evaluation Grids]
+      summary: Supprimer un sous-critère
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Sous-critère supprimé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '403':
+          description: Accès interdit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Sync Meetings ─────────────────────────────────────────
+  /sync-meetings:
+    get:
+      tags: [Sync Meetings]
+      summary: Lister les réunions
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: challenge_id
+          in: query
+          description: Filtrer par challenge
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Liste des réunions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meetings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SyncMeeting'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: [Sync Meetings]
+      summary: Créer une réunion
+      description: Requiert le rôle admin.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSyncMeeting'
+      responses:
+        '201':
+          description: Réunion créée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meeting:
+                    $ref: '#/components/schemas/SyncMeeting'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '403':
+          description: Accès interdit (admin requis)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sync-meetings/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Sync Meetings]
+      summary: Récupérer une réunion
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Réunion trouvée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meeting:
+                    $ref: '#/components/schemas/SyncMeeting'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Réunion non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: [Sync Meetings]
+      summary: Annuler une réunion
+      description: Requiert le rôle admin.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Réunion annulée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '403':
+          description: Accès interdit (admin requis)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sync-meetings/{id}/analysis:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Sync Meetings]
+      summary: Récupérer l'analyse d'une réunion
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Analyse trouvée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analysis:
+                    type: object
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Analyse non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sync-meetings/{id}/participants:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Sync Meetings]
+      summary: Récupérer les participants d'une réunion
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Liste des participants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  participants:
+                    type: array
+                    items:
+                      type: object
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Leaderboard ───────────────────────────────────────────
+  /leaderboard:
+    get:
+      tags: [Leaderboard]
+      summary: Classement des contributeurs
+      parameters:
+        - name: projectId
+          in: query
+          description: "Filtrer par projet (UUID ou `all`)"
+          schema:
+            type: string
+            default: all
+        - name: timePeriod
+          in: query
+          description: Période de temps
+          schema:
+            type: string
+            enum: [all, month, week]
+            default: all
+      responses:
+        '200':
+          description: Classement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponse'
+        '400':
+          description: projectId invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Onboarding ────────────────────────────────────────────
+  /onboarding:
+    get:
+      tags: [Onboarding]
+      summary: Progression d'onboarding de l'utilisateur connecté
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Progression (auto-initialisée si absente)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingProgress'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags: [Onboarding]
+      summary: Marquer une étape comme complétée
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [step]
+              properties:
+                step:
+                  type: string
+                  description: Nom de l'étape d'onboarding
+                  enum: [clicked_challenge, assigned_task, evaluated_contribution, validated_task, joined_meeting]
+      responses:
+        '200':
+          description: Progression mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingProgress'
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Progression non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Cron ──────────────────────────────────────────────────
+  /cron/check-meetings:
+    get:
+      tags: [Cron]
+      summary: Vérifier les réunions terminées
+      description: Tâche planifiée interne. Requiert un Bearer token (CRON_SECRET).
+      security:
+        - cronBearer: []
+      responses:
+        '200':
+          description: Vérification effectuée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+        '401':
+          description: Non autorisé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { TeamAvatars } from '@/components/ui/TeamAvatars';
 import { ChallengeProgressBar } from '@/components/ui/ChallengeProgressBar';
-import { Calendar, Clock, Users, CheckCircle2, Video, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, ClipboardList, Video, ArrowLeft, ChevronRight } from 'lucide-react';
 import type { TeamMember } from '@/lib/types';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
 
@@ -142,8 +142,8 @@ export default function ChallengeDetailPage() {
         method: 'POST',
       });
       if (res.ok) {
-        await fetchTasks();
         trackOnboardingStep('assigned_task');
+        router.push(`/tasks/${taskId}`);
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to assign');
@@ -190,9 +190,11 @@ export default function ChallengeDetailPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="flex items-center justify-center">
-          <div className="text-white/70">Loading challenge...</div>
+      <div className="mx-auto mt-10 max-w-3xl">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-64 rounded bg-white/10" />
+          <div className="h-4 w-96 rounded bg-white/5" />
+          <div className="h-32 rounded bg-white/5" />
         </div>
       </div>
     );
@@ -219,89 +221,177 @@ export default function ChallengeDetailPage() {
         onClick={() => router.push('/challenges')}
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Challenges
+        Challenge List
       </Button>
 
-      <div className="space-y-6">
-        {/* Challenge Info + Team - Layout côte à côte */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Challenge Info - 2/3 de la largeur */}
-          <div className="lg:col-span-2">
-            <Card>
-              <div className="p-6 space-y-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h1 className="text-3xl font-bold text-white mb-2">{challenge.title}</h1>
-                    <div className="flex items-center gap-2 text-white/70 mb-3">
-                      <Calendar className="h-4 w-4" />
-                      <span>
-                        {formatDate(challenge.start_date)} - {formatDate(challenge.end_date)}
-                      </span>
-                    </div>
-                    {challenge.description && (
-                      <p className="text-white/90 leading-relaxed mt-3">{challenge.description}</p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className="text-2xl font-semibold text-white">
-                      {challenge.contribution_points_reward.toLocaleString()}{' '}
-                      <span className="text-brandCP">CP</span>
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left column — 40% : Challenge info + Meetings */}
+        <div className="w-full lg:w-[35%] space-y-6">
+          {/* Challenge Info — ChallengeCard style */}
+          <div className="rounded-md bg-white/5 p-4 shadow-md shadow-black/20 sm:p-5">
+            {/* Header: title + CP */}
+            <div className="flex items-start justify-between gap-2 sm:items-center">
+              <h3 className="text-base font-semibold text-white sm:text-lg">{challenge.title}</h3>
+              <span className="shrink-0 text-xs font-semibold text-white sm:text-sm">
+                {challenge.contribution_points_reward.toLocaleString()} <span className="text-brandCP">CP</span>
+              </span>
+            </div>
+
+            {/* Dates */}
+            <p className="text-xs font-medium text-white/70 sm:text-sm">
+              {formatDate(challenge.start_date)} - {formatDate(challenge.end_date)}
+            </p>
+
+            {challenge.description && (
+              <p className="mt-2 text-xs text-white sm:mt-3 sm:text-sm">{challenge.description}</p>
+            )}
+
+            {/* Progress bar */}
+            <div className="mt-3 flex w-full items-center justify-center sm:mt-4">
+              <div className="flex w-full flex-col items-center gap-1 sm:w-[80%]">
+                {completion === 100 ? (
+                  <>
+                    <span className="flex items-center gap-1 text-xs font-medium text-brandCP sm:text-sm">
+                      Completed
                     </span>
-                  </div>
-                </div>
-
-                <div className="border-t border-white/10 pt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-white/70">Progress</span>
-                    <span className="text-sm font-medium text-brandCP">{completion}%</span>
-                  </div>
-                  <ChallengeProgressBar value={completion / 100} />
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Team - 1/3 de la largeur */}
-          <div className="lg:col-span-1">
-            <Card>
-              <div className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Users className="h-5 w-5 text-brandCP" />
-                  <h2 className="text-xl font-semibold text-white">Team</h2>
-                  <span className="text-white/50 text-sm">({team.length})</span>
-                </div>
-                {team.length === 0 ? (
-                  <p className="text-white/70 text-center text-sm">No team members yet</p>
+                    <ChallengeProgressBar value={1} />
+                  </>
                 ) : (
-                  <div className="space-y-3">
-                    <TeamAvatars members={team} maxDisplay={8} />
-                    <div className="space-y-2">
-                      {team.map(member => (
-                        <div key={member.id} className="text-sm text-white/70 flex items-center gap-2">
-                          <div className="h-1.5 w-1.5 rounded-full bg-brandCP" />
-                          {member.fullName}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <>
+                    <span className="text-xs text-brandCP sm:text-sm">{completion}%</span>
+                    <ChallengeProgressBar value={completion / 100} />
+                  </>
                 )}
               </div>
-            </Card>
+            </div>
           </div>
+
+          {/* Meetings list — vertical */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Video className="h-5 w-5 text-brandCP" />
+              <h2 className="text-base font-semibold text-white sm:text-lg">Meetings</h2>
+              <span className="text-white/50 text-xs sm:text-sm">({meetings.length})</span>
+            </div>
+
+            <div className="space-y-3">
+              {upcomingMeetings.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-white/80">Upcoming</h3>
+                  {upcomingMeetings.map(meeting => (
+                    <div
+                      key={meeting.uuid}
+                      className="cursor-pointer"
+                      onClick={() => router.push(`/sync-meetings/${meeting.uuid}`)}
+                    >
+                      <Card className="hover:shadow-lg transition-shadow">
+                        <div className="p-4 space-y-3">
+                          <div className="flex justify-between items-start">
+                            <h4 className="text-sm font-semibold text-white sm:text-base">{meeting.title}</h4>
+                            <Badge label={getStatusLabel(meeting.status)} />
+                          </div>
+
+                          {meeting.description && (
+                            <p className="text-xs text-white/70 line-clamp-2">{meeting.description}</p>
+                          )}
+
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-xs text-white/70">
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>{new Date(meeting.start_time).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-white/70">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>
+                                {new Date(meeting.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - 
+                                {new Date(meeting.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              </span>
+                            </div>
+                          </div>
+
+                          {meeting.meet_link && (
+                            <Button
+                              size="sm"
+                              className="flex items-center"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                trackOnboardingStep('joined_meeting');
+                                window.open(meeting.meet_link, '_blank');
+                              }}
+                            >
+                              <Video className="mr-2 h-4 w-4" />
+                              Join Meeting
+                            </Button>
+                          )}
+                        </div>
+                      </Card>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {pastMeetings.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-white/80">Past Meetings</h3>
+                  {pastMeetings.map(meeting => (
+                    <div
+                      key={meeting.uuid}
+                      className="cursor-pointer"
+                      onClick={() => router.push(`/sync-meetings/${meeting.uuid}`)}
+                    >
+                      <Card className="hover:shadow-lg transition-shadow opacity-90">
+                        <div className="p-4 space-y-3">
+                          <div className="flex justify-between items-start">
+                            <h4 className="text-sm font-semibold text-white sm:text-base">{meeting.title}</h4>
+                            <Badge label={getStatusLabel(meeting.status)} />
+                          </div>
+
+                          {meeting.description && (
+                            <p className="text-xs text-white/70 line-clamp-2">{meeting.description}</p>
+                          )}
+
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-xs text-white/70">
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>{new Date(meeting.start_time).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-white/70">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>
+                                {new Date(meeting.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - 
+                                {new Date(meeting.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {meetings.length === 0 && (
+                <div className="rounded-md bg-white/5 p-6 text-center">
+                  <Video className="h-10 w-10 text-white/30 mx-auto mb-2" />
+                  <p className="text-xs text-white/70 sm:text-sm">No meetings scheduled</p>
+                </div>
+              )}
+            </div>
+          </section>
         </div>
 
-        {/* Tasks Section */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <CheckCircle2 className="h-6 w-6 text-brandCP" />
-            <h2 className="text-2xl font-semibold text-white">Tasks</h2>
-            <span className="text-white/50">({tasks.length})</span>
-          </div>
+        {/* Right column — 60% : Tasks */}
+        <div className="w-full lg:w-[65%]">
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <ClipboardList className="h-5 w-5 text-brandCP" />
+              <h2 className="text-base font-semibold text-white sm:text-lg">Tasks</h2>
+              <span className="text-white/50 text-xs sm:text-sm">({tasks.length})</span>
+            </div>
 
-          <Card>
-            <div className="p-6">
+            <div>
               {tasks.length === 0 ? (
-                <p className="text-white/70 text-center">No tasks available</p>
+                <p className="text-white/70 text-center text-sm">No tasks available</p>
               ) : (
                 <div className="space-y-2">
                   {parentTasks.map((task) => {
@@ -400,127 +490,8 @@ export default function ChallengeDetailPage() {
                 </div>
               )}
             </div>
-          </Card>
-        </section>
-
-        {/* Meetings Section */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <Video className="h-6 w-6 text-brandCP" />
-            <h2 className="text-2xl font-semibold text-white">Meetings</h2>
-            <span className="text-white/50">({meetings.length})</span>
-          </div>
-
-          <div className="space-y-6">
-            {upcomingMeetings.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-white mb-3">Upcoming</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {upcomingMeetings.map(meeting => (
-                    <div
-                      key={meeting.uuid}
-                      className="cursor-pointer"
-                      onClick={() => router.push(`/sync-meetings/${meeting.uuid}`)}
-                    >
-                      <Card className="hover:shadow-lg transition-shadow">
-                        <div className="p-6 space-y-4">
-                          <div className="flex justify-between items-start">
-                            <h4 className="text-lg font-semibold text-white">{meeting.title}</h4>
-                            <Badge label={getStatusLabel(meeting.status)} />
-                          </div>
-
-                          {meeting.description && (
-                            <p className="text-sm text-white/70 line-clamp-2">{meeting.description}</p>
-                          )}
-
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm text-white/70">
-                              <Calendar className="h-4 w-4" />
-                              <span>{new Date(meeting.start_time).toLocaleDateString()}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-white/70">
-                              <Clock className="h-4 w-4" />
-                              <span>
-                                {new Date(meeting.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - 
-                                {new Date(meeting.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                              </span>
-                            </div>
-                          </div>
-
-                          {meeting.meet_link && (
-                            <Button
-                              size="sm"
-                              className="flex items-center"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                trackOnboardingStep('joined_meeting');
-                                window.open(meeting.meet_link, '_blank');
-                              }}
-                            >
-                              <Video className="mr-2 h-4 w-4" />
-                              Join Meeting
-                            </Button>
-                          )}
-                        </div>
-                      </Card>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {pastMeetings.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-white mb-3">Past Meetings</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {pastMeetings.map(meeting => (
-                    <div
-                      key={meeting.uuid}
-                      className="cursor-pointer"
-                      onClick={() => router.push(`/sync-meetings/${meeting.uuid}`)}
-                    >
-                      <Card className="hover:shadow-lg transition-shadow opacity-90">
-                        <div className="p-6 space-y-4">
-                          <div className="flex justify-between items-start">
-                            <h4 className="text-lg font-semibold text-white">{meeting.title}</h4>
-                            <Badge label={getStatusLabel(meeting.status)} />
-                          </div>
-
-                          {meeting.description && (
-                            <p className="text-sm text-white/70 line-clamp-2">{meeting.description}</p>
-                          )}
-
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm text-white/70">
-                              <Calendar className="h-4 w-4" />
-                              <span>{new Date(meeting.start_time).toLocaleDateString()}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-white/70">
-                              <Clock className="h-4 w-4" />
-                              <span>
-                                {new Date(meeting.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - 
-                                {new Date(meeting.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {meetings.length === 0 && (
-              <Card>
-                <div className="p-8 text-center">
-                  <Video className="h-12 w-12 text-white/30 mx-auto mb-3" />
-                  <p className="text-white/70">No meetings scheduled for this challenge</p>
-                </div>
-              </Card>
-            )}
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   );

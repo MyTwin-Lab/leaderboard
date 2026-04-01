@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { Pencil, Trash2, ChevronLeft, Plus } from 'lucide-react';
 import type {
   EvaluationGridFull,
   EvaluationGridCategory,
@@ -44,12 +48,6 @@ const EMPTY_SUB: SubcriterionFormData = {
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white placeholder-white/30 focus:border-brandCP/50 focus:outline-none focus:ring-1 focus:ring-brandCP/50';
 
-const typeColors: Record<string, string> = {
-  objective: 'bg-blue-500/10 text-blue-400',
-  mixed: 'bg-purple-500/10 text-purple-400',
-  subjective: 'bg-orange-500/10 text-orange-400',
-  contextual: 'bg-green-500/10 text-green-400',
-};
 
 /* ================================================================== */
 /*  PAGE                                                               */
@@ -61,6 +59,9 @@ export default function EvaluationGridDetailPage() {
 
   const [grid, setGrid] = useState<EvaluationGridFull | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const toast = useToast();
+  const confirm = useConfirm();
 
   // Category form state
   const [showCatForm, setShowCatForm] = useState(false);
@@ -116,13 +117,30 @@ export default function EvaluationGridDetailPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(catForm),
     });
-    if (res.ok) { cancelCat(); await fetchGrid(); }
+    if (res.ok) {
+      cancelCat();
+      await fetchGrid();
+      toast(editingCat ? 'Category updated' : 'Category created', 'success');
+    } else {
+      toast('Failed to save category', 'error');
+    }
   };
 
   const deleteCat = async (catId: string) => {
-    if (!confirm('Delete this category and all its subcriteria?')) return;
+    const ok = await confirm({
+      title: 'Delete Category',
+      message: 'This will delete the category and all its subcriteria. Are you sure?',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
     const res = await fetch(`/api/evaluation-grids/${id}/categories/${catId}`, { method: 'DELETE' });
-    if (res.ok) await fetchGrid();
+    if (res.ok) {
+      await fetchGrid();
+      toast('Category deleted', 'success');
+    } else {
+      toast('Failed to delete category', 'error');
+    }
   };
 
   /* ---------- Subcriterion CRUD ---------- */
@@ -177,42 +195,79 @@ export default function EvaluationGridDetailPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (res.ok) { cancelSub(); await fetchGrid(); }
+    if (res.ok) {
+      cancelSub();
+      await fetchGrid();
+      toast(editingSub ? 'Subcriterion updated' : 'Subcriterion created', 'success');
+    } else {
+      toast('Failed to save subcriterion', 'error');
+    }
   };
 
   const deleteSub = async (catId: string, subId: string) => {
-    if (!confirm('Delete this subcriterion?')) return;
+    const ok = await confirm({
+      title: 'Delete Subcriterion',
+      message: 'Are you sure you want to delete this subcriterion?',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
     const res = await fetch(`/api/evaluation-grids/${id}/categories/${catId}/subcriteria/${subId}`, { method: 'DELETE' });
-    if (res.ok) await fetchGrid();
+    if (res.ok) {
+      await fetchGrid();
+      toast('Subcriterion deleted', 'success');
+    } else {
+      toast('Failed to delete subcriterion', 'error');
+    }
   };
 
   /* ---------- Render ---------- */
 
-  if (loading) return <div className="text-white/60">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="space-y-3 animate-pulse">
+        <div className="h-8 w-48 rounded bg-white/5" />
+        <div className="h-12 rounded-md bg-white/5" />
+        {[...Array(3)].map((_, i) => <div key={i} className="h-20 rounded-md bg-white/5" />)}
+      </div>
+    );
+  }
   if (!grid) return <div className="text-red-400">Grid not found</div>;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <button onClick={() => router.push('/admin/evaluation-grids')} className="mb-1 text-xs text-white/40 hover:text-white/70">
-            ← Back to grids
-          </button>
-          <h2 className="text-xl font-bold text-white">{grid.name}</h2>
-          <div className="mt-1 flex items-center gap-2 text-sm text-white/50">
-            <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs">{grid.slug}</span>
-            <span>v{grid.version}</span>
-            <span className="rounded-full bg-brandCP/10 px-2 py-0.5 text-xs text-brandCP">{grid.status}</span>
+      {/* Breadcrumb + Header */}
+      <div>
+        <button
+          onClick={() => router.push('/admin/evaluation-grids')}
+          className="mb-2 flex items-center gap-1 text-xs text-white/40 hover:text-white/70 transition-colors"
+        >
+          <ChevronLeft className="h-3 w-3" />
+          Evaluation Grids
+        </button>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-white">{grid.name}</h2>
+            <div className="mt-1.5 flex items-center gap-2">
+              <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/40 font-mono">{grid.slug}</span>
+              <span className="text-xs text-white/30">v{grid.version}</span>
+              <Badge label={grid.status} />
+            </div>
+            {grid.description && <p className="mt-2 text-sm text-white/40">{grid.description}</p>}
           </div>
-          {grid.description && <p className="mt-2 text-sm text-white/40">{grid.description}</p>}
         </div>
       </div>
 
       {/* Categories */}
       <Card
-        title={`Categories (${grid.categories.length})`}
-        action={<Button size="sm" onClick={openNewCat}>+ Category</Button>}
+        title="Categories"
+        count={grid.categories.length}
+        action={
+          <Button size="sm" onClick={openNewCat}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Category
+          </Button>
+        }
       >
         {/* Category form */}
         {showCatForm && (
@@ -262,16 +317,20 @@ export default function EvaluationGridDetailPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-white">{cat.name}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${typeColors[cat.type] ?? 'bg-white/10 text-white/60'}`}>
-                        {cat.type}
-                      </span>
+                      <Badge label={cat.type} />
                       <span className="text-xs text-white/40">weight: {cat.weight}</span>
                       <span className="text-xs text-white/30">pos: {cat.position}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => openNewSub(cat.uuid)}>+ Subcriterion</Button>
-                      <Button size="sm" variant="ghost" onClick={() => openEditCat(cat)}>Edit</Button>
-                      <Button size="sm" variant="danger" onClick={() => deleteCat(cat.uuid)}>Delete</Button>
+                      <Button size="sm" variant="secondary" onClick={() => openNewSub(cat.uuid)} title="Add subcriterion">
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => openEditCat(cat)} title="Edit category">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="danger" onClick={() => deleteCat(cat.uuid)} title="Delete category">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
 
@@ -370,8 +429,12 @@ export default function EvaluationGridDetailPage() {
                               )}
                             </div>
                             <div className="ml-2 flex shrink-0 items-center gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => openEditSub(cat.uuid, sub)}>Edit</Button>
-                              <Button size="sm" variant="danger" onClick={() => deleteSub(cat.uuid, sub.uuid)}>×</Button>
+                              <Button size="sm" variant="ghost" onClick={() => openEditSub(cat.uuid, sub)} title="Edit">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button size="sm" variant="danger" onClick={() => deleteSub(cat.uuid, sub.uuid)} title="Delete">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             </div>
                           </div>
                         ))}

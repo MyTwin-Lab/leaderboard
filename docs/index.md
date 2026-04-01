@@ -1,19 +1,42 @@
-# Documentation
+# MyTwin Leaderboard — Documentation
 
-This folder contains the technical and functional documentation for the MyTwin Leaderboard monorepo.
+Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 
-## Where to start
+## Start here
 
-- **Overview**: `docs/overview.md`
-- **Getting Started**: see the top-level `README.md`
+- **New to the project?** → [`getting-started.md`](./getting-started.md) — local setup, env config, first run
+- **Want to understand how everything fits?** → [`architecture.md`](./architecture.md)
+- **Looking for a specific feature?** → use the index below
 
 ## Core docs
 
-- `docs/architecture.md` — High-level architecture and data flow
-- `docs/project-structure.md` — Repository structure and where things live
-- `docs/database.md` — PostgreSQL + Drizzle, schema management, seed/reset
-- `docs/auth.md` — JWT cookie auth, roles, protected routes
-- `docs/challenge-workflow.md` — Challenge lifecycle (sync → evaluation → rewards)
-- `docs/packages.md` — What each package/app does and how they connect
-- `docs/testing.md` — Tests and how to run them
-- `docs/api-and-admin.md` — Optional REST API (`packages/api`) and legacy admin UI (`apps/admin`)
+| File | Description |
+|------|-------------|
+| [`overview.md`](./overview.md) | What the project is, core concepts, and tech stack |
+| [`architecture.md`](./architecture.md) | Monorepo structure, data flow, how packages connect |
+| [`project-structure.md`](./project-structure.md) | Annotated directory tree — where everything lives |
+| [`packages.md`](./packages.md) | What each package does, its role, and key files |
+| [`database.md`](./database.md) | PostgreSQL schema, tables, migrations, and seeding |
+| [`auth.md`](./auth.md) | Google OAuth login, JWT cookies, roles, and protected routes |
+| [`api.md`](./api.md) | High-level overview of all API routes |
+
+## Feature docs
+
+| File | Description |
+|------|-------------|
+| [`challenges-and-tasks.md`](./challenges-and-tasks.md) | How challenges and tasks work — the core workflow |
+| [`evaluation.md`](./evaluation.md) | AI evaluation pipeline, scoring grids, rewards |
+| [`sync-meetings.md`](./sync-meetings.md) | Creating meetings in Google Workspace + AI analysis |
+| [`onboarding.md`](./onboarding.md) | New contributor onboarding missions |
+
+## Dev & ops
+
+| File | Description |
+|------|-------------|
+| [`getting-started.md`](./getting-started.md) | Local development setup |
+| [`deployment.md`](./deployment.md) | Production deployment with PM2 |
+| [`testing.md`](./testing.md) | Running tests and ad-hoc scripts |
+
+---
+
+> The top-level `README.md` covers the quick-start — these docs go deeper.

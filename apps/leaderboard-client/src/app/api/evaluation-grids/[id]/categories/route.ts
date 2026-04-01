@@ -23,7 +23,7 @@ export async function GET(
     }
 
     const { id } = await params;
-    const categories = await gridRepo.findCategories(id);
+    const categories = await gridRepo.findCategoriesByGridId(id);
     return NextResponse.json(categories);
   } catch (error) {
     console.error('[EvaluationGridCategories] GET error:', error);

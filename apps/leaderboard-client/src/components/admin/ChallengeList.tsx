@@ -3,6 +3,7 @@
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Pencil, Trash2, Users, RefreshCw, Trophy } from 'lucide-react';
 import type { Challenge } from '../../../../../packages/database-service/domain/entities';
 
 interface ChallengeListProps {
@@ -12,17 +13,18 @@ interface ChallengeListProps {
   onTeam: (challenge: Challenge) => void;
   onSync: (id: string) => void;
   onClose: (id: string) => void;
+  actionLoading?: string | null;
 }
 
-export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, onClose }: ChallengeListProps) {
+export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, onClose, actionLoading }: ChallengeListProps) {
   const columns = [
     {
       key: 'title',
-      header: 'Title',
+      header: 'Challenge',
       render: (challenge: Challenge) => (
         <div>
-          <div className="font-medium">{challenge.title}</div>
-          <div className="text-xs text-white/50">#{challenge.index}</div>
+          <div className="font-medium text-white">{challenge.title}</div>
+          <div className="text-xs text-white/40">#{challenge.index}</div>
         </div>
       ),
     },
@@ -30,52 +32,64 @@ export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, on
       key: 'status',
       header: 'Status',
       render: (challenge: Challenge) => <Badge label={challenge.status} />,
-      width: '120px',
+      width: '110px',
     },
     {
       key: 'dates',
-      header: 'Dates',
+      header: 'Period',
       render: (challenge: Challenge) => (
         <div className="text-sm">
-          <div>{new Date(challenge.start_date).toLocaleDateString()}</div>
-          <div className="text-white/50">→ {new Date(challenge.end_date).toLocaleDateString()}</div>
+          <div className="text-white/70">{new Date(challenge.start_date).toLocaleDateString('fr-FR')}</div>
+          <div className="text-white/40">→ {new Date(challenge.end_date).toLocaleDateString('fr-FR')}</div>
         </div>
       ),
-      width: '150px',
+      width: '130px',
     },
     {
       key: 'reward',
-      header: 'CP Reward',
+      header: 'Reward',
       render: (challenge: Challenge) => (
-        <span className="text-brandCP font-medium">{challenge.contribution_points_reward}</span>
+        <span className="font-medium text-brandCP">{challenge.contribution_points_reward} CP</span>
       ),
-      width: '100px',
+      width: '90px',
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: '',
       render: (challenge: Challenge) => (
-        <div className="flex gap-1 flex-wrap">
-          <Button size="sm" variant="secondary" onClick={() => onTeam(challenge)}>
-            👥
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="secondary" onClick={() => onTeam(challenge)} title="Manage team">
+            <Users className="h-3.5 w-3.5" />
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => onSync(challenge.uuid)}>
-            🔄
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => onSync(challenge.uuid)}
+            disabled={actionLoading === `sync-${challenge.uuid}`}
+            title="Run sync evaluation"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${actionLoading === `sync-${challenge.uuid}` ? 'animate-spin' : ''}`} />
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => onClose(challenge.uuid)}>
-            🏆
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => onClose(challenge.uuid)}
+            disabled={actionLoading === `close-${challenge.uuid}`}
+            title="Close & distribute rewards"
+          >
+            <Trophy className="h-3.5 w-3.5" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => onEdit(challenge)}>
-            ✏️
+          <Button size="sm" variant="ghost" onClick={() => onEdit(challenge)} title="Edit">
+            <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button size="sm" variant="danger" onClick={() => onDelete(challenge.uuid)}>
-            🗑️
+          <Button size="sm" variant="danger" onClick={() => onDelete(challenge.uuid)} title="Delete">
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       ),
-      width: '220px',
+      width: '200px',
     },
   ];
 
-  return <Table data={challenges} columns={columns} emptyMessage="No challenges found" />;
+  return <Table data={challenges} columns={columns} emptyMessage="No challenges yet" />;
 }

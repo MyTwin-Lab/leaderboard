@@ -2,7 +2,7 @@ import { GoogleMeetService } from '../google-workspace/google-meet.service.js';
 import {
   SyncMeetingRepository,
   MeetingParticipantRepository,
-  GoogleAccountRepository,
+  UserRepository,
 } from '../../database-service/repositories/index.js';
 import { MeetingPollingService } from './meeting-polling.service.js';
 import { MeetingAnalysisService } from './meeting-analysis.service.js';
@@ -11,14 +11,14 @@ import type { Utterance } from '../../sync-meeting-agent/types.js';
 export class MeetingIngestionService {
   private syncMeetingRepo: SyncMeetingRepository;
   private participantRepo: MeetingParticipantRepository;
-  private googleAccountRepo: GoogleAccountRepository;
+  private userRepo: UserRepository;
   private pollingService: MeetingPollingService;
   private analysisService: MeetingAnalysisService;
 
   constructor() {
     this.syncMeetingRepo = new SyncMeetingRepository();
     this.participantRepo = new MeetingParticipantRepository();
-    this.googleAccountRepo = new GoogleAccountRepository();
+    this.userRepo = new UserRepository();
     this.pollingService = new MeetingPollingService();
     this.analysisService = new MeetingAnalysisService();
   }
@@ -45,11 +45,11 @@ export class MeetingIngestionService {
         const googleUserId = (p.signedinUser as any)?.user?.split('/').pop();
         if (!googleUserId) continue;
 
-        const googleAccount = await this.googleAccountRepo.findByGoogleUserId(googleUserId);
+        const user = await this.userRepo.findByGoogleUserId(googleUserId);
 
         const participant = await this.participantRepo.create({
           sync_meeting_id: meetingId,
-          user_id: googleAccount?.user_id,
+          user_id: user?.uuid,
           google_user_id: googleUserId,
           display_name: (p.signedinUser as any)?.displayName || 'Unknown',
         });

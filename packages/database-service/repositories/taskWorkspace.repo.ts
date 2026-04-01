@@ -1,5 +1,5 @@
 import { db } from "../db/drizzle";
-import { task_workspaces, tasks, repos, challenges } from "../db/drizzle";
+import { task_workspaces, tasks, repos, challenges, task_assignees, users } from "../db/drizzle";
 import { eq, and } from "drizzle-orm";
 import { toDomainTaskWorkspace, toDbTaskWorkspace } from "../db/mappers";
 import type { TaskWorkspace, WorkspaceStatus, WorkspaceMeta } from "../domain/entities";
@@ -83,6 +83,45 @@ export class TaskWorkspaceRepository {
     await db
       .delete(task_workspaces)
       .where(and(eq(task_workspaces.task_id, taskId), eq(task_workspaces.repo_id, repoId)));
+  }
+
+  /**
+   * Récupère les workspaces d'un repo avec les assignees de chaque task
+   */
+  async findByRepoWithAssignees(repoId: string): Promise<(TaskWorkspace & { assignees: { full_name: string; github_username?: string }[] })[]> {
+    const results = await db
+      .select({
+        task_workspace: task_workspaces,
+        user: {
+          full_name: users.full_name,
+          github_username: users.github_username,
+        },
+      })
+      .from(task_workspaces)
+      .leftJoin(task_assignees, eq(task_workspaces.task_id, task_assignees.task_id))
+      .leftJoin(users, eq(task_assignees.user_id, users.uuid))
+      .where(eq(task_workspaces.repo_id, repoId));
+
+    // Regrouper les assignees par workspace (task_id)
+    const workspaceMap = new Map<string, TaskWorkspace & { assignees: { full_name: string; github_username?: string }[] }>();
+
+    for (const row of results) {
+      const taskId = row.task_workspace.task_id!;
+      if (!workspaceMap.has(taskId)) {
+        workspaceMap.set(taskId, {
+          ...toDomainTaskWorkspace(row.task_workspace),
+          assignees: [],
+        });
+      }
+      if (row.user?.full_name) {
+        workspaceMap.get(taskId)!.assignees.push({
+          full_name: row.user.full_name,
+          github_username: row.user.github_username ?? undefined,
+        });
+      }
+    }
+
+    return Array.from(workspaceMap.values());
   }
 
   /**
