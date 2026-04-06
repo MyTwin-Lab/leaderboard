@@ -1,4 +1,4 @@
-export type ConnectorType = 'github' | 'google_drive' | 'huggingface' | 'slack' | string;
+export type ConnectorType = 'github' | 'google_drive' | 'kaggle_dataset' | 'kaggle_model' | 'slack' | string;
 
 export interface ConnectorAuthConfig {
   apiKey?: string;
@@ -15,6 +15,24 @@ export interface ExternalItem {
   type: string; // 'file', 'commit', 'message', ...
   url?: string;
   metadata?: Record<string, any>;
+}
+
+export interface ModifiedFile {
+  path: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+  sha: string;
+  content?: string;
+  patch?: string;
+  isBinary?: boolean;
+  contentEncoding?: string;
+}
+
+export interface ExternalItemContent {
+  commitSha: string;
+  modifiedFiles: ModifiedFile[];
 }
 
 export interface ExternalConnector {
@@ -37,7 +55,7 @@ export interface ExternalConnector {
   fetchItems(options?: Record<string, any>): Promise<ExternalItem[]>;
 
   /** Récupère le contenu détaillé d’un élément */
-  fetchItemContent(itemId: string): Promise<any>;
+  fetchItemContent(itemId: string): Promise<ExternalItemContent>;
 
   /** Nettoyage éventuel */
   disconnect?(): Promise<void>;
