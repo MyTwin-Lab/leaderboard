@@ -9,6 +9,7 @@ import {
 } from '../../../../packages/database-service/repositories/index.js';
 import { provisionTaskWorkspace, ProvisionerRegistry } from '../../../../packages/provisioner/src/index.js';
 import { mapRepoTypeToWorkspaceType } from '../../../../packages/provisioner/src/utils.js';
+import { ConnectorRegistry } from '../../../../packages/connectors/registry.js';
 
 export interface ProvisioningResult {
   repo_id: string;
@@ -90,7 +91,12 @@ export class TaskAssignService {
       return [];
     }
 
-    const isKaggle = cr.repo_type === 'kaggle_model' || cr.repo_type === 'kaggle_dataset';
+    const kaggleTypes = new Set(
+      Object.keys(ConnectorRegistry.REPO_TYPE_TO_GRID).filter(
+        type => type.startsWith('kaggle')
+      )
+    );
+    const isKaggle = cr.repo_type !== null && kaggleTypes.has(cr.repo_type);
     if (isKaggle) {
       const existingWorkspace = await this.taskWorkspaceRepo.findByTaskAndRepo(taskId, cr.repo_id);
       if (!existingWorkspace) {

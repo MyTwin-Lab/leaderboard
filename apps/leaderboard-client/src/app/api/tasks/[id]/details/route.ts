@@ -1,20 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
 import { TaskDetailsService } from '../../../../../application/task-details.service.js';
+import { getUserIdFromRequest } from '../../../../../application/auth.js';
 
 const taskDetailsService = new TaskDetailsService();
-
-async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
-  const token = request.cookies.get('access_token')?.value;
-  if (!token) return null;
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    return payload.userId as string;
-  } catch {
-    return null;
-  }
-}
 
 // GET /api/tasks/[id]/details
 export async function GET(

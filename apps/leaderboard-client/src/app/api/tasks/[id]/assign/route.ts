@@ -1,20 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
 import { TaskAssignService } from '../../../../../application/task-assign.service.js';
+import { getUserIdFromRequest } from '../../../../../application/auth.js';
 
 const taskAssignService = new TaskAssignService();
-
-async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
-  const token = request.cookies.get('access_token')?.value;
-  if (!token) return null;
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    return payload.userId as string;
-  } catch {
-    return null;
-  }
-}
 
 // POST /api/tasks/[id]/assign - S'assigner à une tâche
 export async function POST(
