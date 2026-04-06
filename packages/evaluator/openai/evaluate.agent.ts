@@ -6,6 +6,7 @@ import path from "path";
 import { config } from "../../config/index.js";
 
 const client = new OpenAI({ apiKey: config.openai.apiKey });
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
 
 // Helper pour vérifier si la réponse contient des tool calls
 function hasToolCalls(response: OpenAI.Responses.Response): boolean {
@@ -140,7 +141,7 @@ export async function runEvaluateAgent(
   `;
 
   let response = await client.responses.create({
-    model: "gpt-5-nano",
+    model: OPENAI_MODEL,
     tools,
     tool_choice: "auto",
     input: prompt,
@@ -163,10 +164,15 @@ export async function runEvaluateAgent(
       if (toolCall.name === "read_file") {
         try {
           const args = JSON.parse(toolCall.arguments);
-          const filePath = path.join(workspace, args.path);
-          console.log("Lecture du fichier: ", filePath);
-          const content = await fs.readFile(filePath, "utf-8");
-          output = content;
+          const resolvedWorkspace = path.resolve(workspace);
+          const filePath = path.resolve(workspace, args.path);
+          if (!filePath.startsWith(resolvedWorkspace + path.sep) && filePath !== resolvedWorkspace) {
+            output = "Erreur: accès refusé, le chemin est en dehors du workspace autorisé";
+          } else {
+            console.log("Lecture du fichier: ", filePath);
+            const content = await fs.readFile(filePath, "utf-8");
+            output = content;
+          }
         } catch (error) {
           output = `Erreur lors de la lecture du fichier: ${error instanceof Error ? error.message : String(error)}`;
         }
@@ -185,7 +191,7 @@ export async function runEvaluateAgent(
 
     // Continue la conversation avec les résultats des tool calls
     response = await client.responses.create({
-      model: "gpt-5-nano",
+      model: OPENAI_MODEL,
       tools,
       tool_choice: "auto",
       previous_response_id: response.id,
