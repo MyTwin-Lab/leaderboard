@@ -1,5 +1,6 @@
 import { OpenAIAgentEvaluator } from "../../evaluator/evaluator.js";
 import { EvaluationGridRegistry } from "../../evaluator/grids/index.js";
+import type { AgentEvaluator } from "../../evaluator/interfaces.js";
 import type {
   Evaluation,
   EvaluateContext,
@@ -37,19 +38,24 @@ export interface TaskEvaluationResult {
 export class TaskEvaluationService {
   private contextService: TaskContextService;
   private snapshotService: SnapshotService;
-  private evaluator: OpenAIAgentEvaluator;
+  private evaluator: AgentEvaluator;
   private contributionRepo: ContributionRepository;
   private runLogger: RunLogger;
   private static dbProviderInitialized = false;
 
-  constructor() {
-    this.contextService = new TaskContextService();
-    this.snapshotService = new SnapshotService();
-    this.evaluator = new OpenAIAgentEvaluator();
-    this.contributionRepo = new ContributionRepository();
-    this.runLogger = new RunLogger();
+  constructor(
+    contextService: TaskContextService = new TaskContextService(),
+    snapshotService: SnapshotService = new SnapshotService(),
+    evaluator: AgentEvaluator = new OpenAIAgentEvaluator(),
+    contributionRepo: ContributionRepository = new ContributionRepository(),
+    runLogger: RunLogger = new RunLogger()
+  ) {
+    this.contextService = contextService;
+    this.snapshotService = snapshotService;
+    this.evaluator = evaluator;
+    this.contributionRepo = contributionRepo;
+    this.runLogger = runLogger;
 
-    // Initialiser le DatabaseGridProvider une seule fois
     if (!TaskEvaluationService.dbProviderInitialized) {
       EvaluationGridRegistry.setDatabaseProvider(new DatabaseGridProvider());
       TaskEvaluationService.dbProviderInitialized = true;
@@ -67,7 +73,7 @@ export class TaskEvaluationService {
     console.log(`\n🔄 [TaskEvaluationService] Évaluation de la task ${taskId} pour l'utilisateur ${userId}`);
 
     // 1. Récupérer le contexte de la task
-    const taskContext = await this.contextService.getTaskContext(taskId);
+    const taskContext = await this.contextService.getTaskContext(taskId, userId);
     const { challenge, task, workspaces } = taskContext;
 
     console.log(`   - Challenge: ${challenge.title}`);
@@ -189,11 +195,6 @@ export class TaskEvaluationService {
     }
   }
 
-  private static readonly REPO_TYPE_TO_GRID: Record<string, string> = {
-    github: 'code',
-    huggingface: 'model',
-  };
-
   /**
    * Déduit le slug de grille d'évaluation depuis le type de repo des workspaces.
    * Utilise le premier workspace disponible.
@@ -204,7 +205,7 @@ export class TaskEvaluationService {
       throw new Error('[TaskEvaluationService] Cannot resolve grid slug: no workspace with a repo');
     }
 
-    const gridSlug = TaskEvaluationService.REPO_TYPE_TO_GRID[repoType];
+    const gridSlug = ConnectorRegistry.REPO_TYPE_TO_GRID[repoType];
     if (!gridSlug) {
       throw new Error(`[TaskEvaluationService] No evaluation grid mapping for repo type: "${repoType}"`);
     }
