@@ -12,9 +12,9 @@ import { ContributionRepository } from "../../database-service/repositories/inde
 import { ConnectorRegistry } from "../../connectors/registry.js";
 import { ConnectorsOrchestrator } from "../../connectors/connectors.orchestrator.js";
 import type { ExternalConnector } from "../../connectors/interfaces.js";
-import { SnapshotService } from "../challenge/snapshot.service.js";
-import { DatabaseGridProvider } from "../database-grid-provider.js";
-import { RunLogger } from "../run-logger.js";
+import { SnapshotService } from "../evaluation/snapshot.service.js";
+import { DatabaseGridProvider } from "../evaluation/database-grid-provider.js";
+import { RunLogger } from "../evaluation/run-logger.js";
 import { TaskContextService, type TaskEvaluationContext, type TaskWorkspaceInfo } from "./task-context.service.js";
 
 export interface TaskEvaluationOptions {

@@ -12,10 +12,8 @@ interface EvaluationRunWithChallenge extends EvaluationRun {
 
 interface EvaluationRunListProps {
   runs: EvaluationRunWithChallenge[];
-  onRetry: (run: EvaluationRunWithChallenge) => void;
   onDelete: (id: string) => void;
   onSelect: (run: EvaluationRunWithChallenge) => void;
-  retryingId: string | null;
 }
 
 function formatDuration(ms?: number) {
@@ -39,7 +37,7 @@ const triggerLabels: Record<string, string> = {
   github_pr: 'GitHub PR',
 };
 
-export function EvaluationRunList({ runs, onRetry, onDelete, onSelect, retryingId }: EvaluationRunListProps) {
+export function EvaluationRunList({ runs, onDelete, onSelect }: EvaluationRunListProps) {
   const columns = [
     {
       key: 'challenge',
@@ -106,11 +104,10 @@ export function EvaluationRunList({ runs, onRetry, onDelete, onSelect, retryingI
           <Button
             size="sm"
             variant="secondary"
-            onClick={() => onRetry(run)}
-            disabled={retryingId === run.uuid || run.status === 'running'}
-            title="Re-run evaluation"
+            disabled
+            title="Re-run not available"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${retryingId === run.uuid ? 'animate-spin' : ''}`} />
+            <RefreshCw className="h-3.5 w-3.5" />
           </Button>
           <Button size="sm" variant="danger" onClick={() => onDelete(run.uuid)} title="Delete run">
             <Trash2 className="h-3.5 w-3.5" />

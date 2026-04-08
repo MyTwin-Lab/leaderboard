@@ -1,7 +1,7 @@
 import { 
   EvaluationRunsRepository, 
   EvaluationRunContributionsRepository 
-} from "../database-service/repositories/index.js";
+} from "../../database-service/repositories/index.js";
 import type { 
   EvaluationRun, 
   EvaluationRunTriggerType, 
@@ -9,7 +9,7 @@ import type {
   EvaluationRunMeta,
   EvaluationRunContribution,
   EvaluationRunContributionStatus,
-} from "../database-service/domain/entities.js";
+} from "../../database-service/domain/entities.js";
 
 export interface StartRunContext {
   challengeId: string;

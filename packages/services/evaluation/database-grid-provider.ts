@@ -1,6 +1,6 @@
-import type { GridProvider, EvaluationGridTemplate, DetailedEvaluationGridTemplate, EvaluationCategory, SubCriterion } from "../evaluator/grids/index.js";
-import { EvaluationGridsRepository } from "../database-service/repositories/index.js";
-import type { EvaluationGridFull } from "../database-service/domain/entities.js";
+import type { GridProvider, EvaluationGridTemplate, DetailedEvaluationGridTemplate, EvaluationCategory, SubCriterion } from "../../evaluator/grids/index.js";
+import { EvaluationGridsRepository } from "../../database-service/repositories/index.js";
+import type { EvaluationGridFull } from "../../database-service/domain/entities.js";
 
 /**
  * DatabaseGridProvider

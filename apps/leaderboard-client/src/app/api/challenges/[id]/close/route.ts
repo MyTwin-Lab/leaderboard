@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { RewardsService } from '../../../../../../../../packages/services/evaluation/rewards.service.js';
 
-async function getChallengeService() {
-  const { ChallengeService } = await import('../../../../../../../../packages/services/challenge/challenge.service');
-  return new ChallengeService();
-}
+const rewardsService = new RewardsService();
 
 // POST /api/challenges/[id]/close - Clôturer un challenge et distribuer les rewards
 export async function POST(
@@ -12,8 +10,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const challengeService = await getChallengeService();
-    const rewards = await challengeService.computeChallengeRewards(id);
+    const rewards = await rewardsService.computeChallengeRewards(id);
     return NextResponse.json({
       success: true,
       count: rewards.length,
