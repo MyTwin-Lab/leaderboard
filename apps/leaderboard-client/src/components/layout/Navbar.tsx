@@ -178,7 +178,7 @@ export const Navbar = ({ session, theme }: NavbarProps) => {
             onClick={() => setMobileMenuOpen(false)}
             className={cn(
               "text-3xl font-light tracking-tight transition-all duration-300 hover:text-brandCP",
-              session ? "text-white" : "text-white",
+              "text-white",
               mobileMenuOpen
                 ? "opacity-100 translate-y-0"
                 : "opacity-0 translate-y-4"
