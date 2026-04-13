@@ -46,9 +46,11 @@ export class TaskContextService {
   }
 
   /**
-   * Récupère le contexte complet d'une task
+   * Récupère le contexte complet d'une task.
+   * Pour les tâches concurrentes, userId est utilisé pour résoudre le workspace
+   * propre au contributeur (workspace_meta.userUrls[userId]).
    */
-  async getTaskContext(taskId: string): Promise<TaskEvaluationContext> {
+  async getTaskContext(taskId: string, userId?: string): Promise<TaskEvaluationContext> {
     // 1. Récupérer la task
     const task = await this.taskRepo.findById(taskId);
     if (!task) {
@@ -69,20 +71,38 @@ export class TaskContextService {
 
     const workspaces: TaskWorkspaceInfo[] = [];
     for (const tw of taskWorkspaceRows) {
-      if (!tw.workspace_ref) continue;
-
       const repo = await this.repoRepo.findById(tw.repo_id);
       if (!repo) {
         console.warn(`[TaskContextService] Repo ${tw.repo_id} not found for task workspace`);
         continue;
       }
 
-      const branch = this.extractBranchName(tw.workspace_ref);
+      // Pour les tâches concurrentes, résoudre l'external_repo_id par utilisateur
+      // depuis workspace_meta.userUrls[userId]
+      let effectiveRepo = repo;
+      if (task.type === 'concurrent' && userId) {
+        const meta = tw.workspace_meta as Record<string, unknown> | null;
+        const userUrls = meta?.userUrls as Record<string, string> | undefined;
+        const userUrl = userUrls?.[userId];
+        if (userUrl) {
+          const slug = this.extractSlugFromUrl(userUrl);
+          if (slug) {
+            effectiveRepo = { ...repo, external_repo_id: slug };
+            console.log(`[TaskContextService] Concurrent task — using user-specific slug: ${slug} (from ${userUrl})`);
+          } else {
+            console.warn(`[TaskContextService] Could not extract slug from user URL: ${userUrl}`);
+          }
+        } else {
+          console.warn(`[TaskContextService] No URL submitted by user ${userId} for concurrent workspace on repo ${repo.title}`);
+        }
+      }
+
+      const branch = tw.workspace_ref ? this.extractBranchName(tw.workspace_ref) : '';
       workspaces.push({
-        repo,
+        repo: effectiveRepo,
         branch,
-        workspaceRef: tw.workspace_ref,
-        workspaceUrl: tw.workspace_url,
+        workspaceRef: tw.workspace_ref ?? '',
+        workspaceUrl: tw.workspace_url ?? undefined,
       });
     }
 
@@ -99,5 +119,22 @@ export class TaskContextService {
    */
   private extractBranchName(workspaceRef: string): string {
     return workspaceRef.replace(/^refs\/heads\//, '');
+  }
+
+  /**
+   * Extrait le slug "owner/name" depuis une URL externe.
+   * Ex: "https://www.kaggle.com/models/alice/my-model" → "alice/my-model"
+   * Ex: "https://huggingface.co/alice/my-model" → "alice/my-model"
+   */
+  private extractSlugFromUrl(url: string): string | null {
+    try {
+      const segments = new URL(url).pathname.split('/').filter(Boolean);
+      if (segments.length >= 2) {
+        return `${segments[segments.length - 2]}/${segments[segments.length - 1]}`;
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 }
