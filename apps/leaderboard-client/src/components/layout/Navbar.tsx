@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { ContributorBadge } from "@/components/contributor/ContributorBadge";
+import type { ThemeConfig } from "@/theme/types";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
@@ -15,9 +16,10 @@ interface NavbarProps {
     githubUsername: string;
     role: string;
   } | null;
+  theme: Pick<ThemeConfig, "logoPath" | "appName" | "nav">;
 }
 
-export const Navbar = ({ session }: NavbarProps) => {
+export const Navbar = ({ session, theme }: NavbarProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -42,9 +44,9 @@ export const Navbar = ({ session }: NavbarProps) => {
   }, [mobileMenuOpen]);
 
   const navLinks = [
-    { name: "About", path: "/about" },
-    { name: "Leaderboard", path: "/" },
-    { name: "Challenges", path: "/challenges" },
+    { name: theme.nav.about,       path: "/about" },
+    { name: theme.nav.leaderboard, path: "/" },
+    { name: theme.nav.challenges,  path: "/challenges" },
   ];
 
   const isActive = (path: string) => {
@@ -68,14 +70,14 @@ export const Navbar = ({ session }: NavbarProps) => {
           {/* Logo */}
           <Link href="/" className="z-50 flex items-center">
             <Image
-              src="/mytwinlab.svg"
-              alt="MyTwinLab"
+              src={theme.logoPath}
+              alt={theme.appName}
               width={154}
               height={62}
               priority
               className="h-8 w-auto sm:h-9"
             />
-            <span className="sr-only">MyTwinLab</span>
+            <span className="sr-only">{theme.appName}</span>
           </Link>
 
           {/* Desktop Navigation - Centered */}
