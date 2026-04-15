@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { ContributorBadge } from "@/components/contributor/ContributorBadge";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
@@ -8,7 +9,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export const Navbar = () => {
+interface NavbarProps {
+  session?: {
+    fullName: string;
+    githubUsername: string;
+    role: string;
+  } | null;
+}
+
+export const Navbar = ({ session }: NavbarProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -87,11 +96,17 @@ export const Navbar = () => {
             </div>
           </div>
 
-          {/* Desktop CTA */}
-          <div className="hidden md:block opacity-0">
-            <Button variant="primary" size="md">
-              Sign In
-            </Button>
+          {/* Desktop User Badge / Sign In */}
+          <div className="hidden md:flex items-center">
+            {session ? (
+              <ContributorBadge fullName={session.fullName} githubUsername={session.githubUsername} role={session.role} />
+            ) : (
+              <div className="hidden p-2 md:flex items-center rounded-2xl bg-white/10 hover:bg-white/15 cursor-pointer transition">
+                <Link href="/login?from=/contributors/me" className="transition hover:opacity-80">
+                  <Image src="/profile.svg" alt="Sign in" width={24} height={24} />
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -155,10 +170,13 @@ export const Navbar = () => {
             ))}
           </div>
 
-          {/* CTA Button */}
-          <div
+          {/* Mobile User Profile / Sign In */}
+          <Link
+            href={session ? "/contributors/me" : "/login?from=/contributors/me"}
+            onClick={() => setMobileMenuOpen(false)}
             className={cn(
-              "transition-all duration-300",
+              "text-3xl font-light tracking-tight transition-all duration-300 hover:text-brandCP",
+              session ? "text-white" : "text-white",
               mobileMenuOpen
                 ? "opacity-100 translate-y-0"
                 : "opacity-0 translate-y-4"
@@ -167,17 +185,8 @@ export const Navbar = () => {
               transitionDelay: mobileMenuOpen ? `${navLinks.length * 100 + 200}ms` : "0ms",
             }}
           >
-            <Button
-              size="lg"
-              variant="primary"
-              className="text-lg px-12 opacity-0"
-              onClick={() => {
-                setMobileMenuOpen(false);
-              }}
-            >
-              Sign In
-            </Button>
-          </div>
+            {session ? "Profile" : "Sign in"}
+          </Link>
         </div>
       </div>
     </>

@@ -32,6 +32,15 @@ const envSchema = z
     GOOGLE_REFRESH_TOKEN: z.string().optional(),
     GOOGLE_REDIRECT_URI: z.string().optional(),
     GOOGLE_FOLDER_ID: z.string().optional(),
+    // Google Workspace (Sync Meetings)
+    GOOGLE_WORKSPACE_SERVICE_ACCOUNT_EMAIL: z.string().optional(),
+    GOOGLE_WORKSPACE_SERVICE_ACCOUNT_KEY: z.string().optional(),
+    GOOGLE_WORKSPACE_ADMIN_EMAIL: z.string().optional(),
+    GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
+    GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
+    GOOGLE_OAUTH_REDIRECT_URI: z.string().optional(),
+    // Cron Security
+    CRON_SECRET: z.string().optional(),
   })
   .strict();
 
@@ -52,6 +61,13 @@ const envInput = {
   GOOGLE_REFRESH_TOKEN: process.env.GOOGLE_REFRESH_TOKEN,
   GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
   GOOGLE_FOLDER_ID: process.env.GOOGLE_FOLDER_ID,
+  GOOGLE_WORKSPACE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_WORKSPACE_SERVICE_ACCOUNT_EMAIL,
+  GOOGLE_WORKSPACE_SERVICE_ACCOUNT_KEY: process.env.GOOGLE_WORKSPACE_SERVICE_ACCOUNT_KEY,
+  GOOGLE_WORKSPACE_ADMIN_EMAIL: process.env.GOOGLE_WORKSPACE_ADMIN_EMAIL,
+  GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
+  GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+  GOOGLE_OAUTH_REDIRECT_URI: process.env.GOOGLE_OAUTH_REDIRECT_URI,
+  CRON_SECRET: process.env.CRON_SECRET,
 };
 
 const parsedEnv = envSchema.safeParse(envInput);
@@ -97,6 +113,17 @@ export const config = {
     refreshToken: env.GOOGLE_REFRESH_TOKEN,
     redirectUri: env.GOOGLE_REDIRECT_URI,
     folderId: env.GOOGLE_FOLDER_ID,
+  },
+  googleWorkspace: {
+    serviceAccountEmail: env.GOOGLE_WORKSPACE_SERVICE_ACCOUNT_EMAIL,
+    serviceAccountKey: env.GOOGLE_WORKSPACE_SERVICE_ACCOUNT_KEY,
+    adminEmail: env.GOOGLE_WORKSPACE_ADMIN_EMAIL,
+    oauthClientId: env.GOOGLE_OAUTH_CLIENT_ID,
+    oauthClientSecret: env.GOOGLE_OAUTH_CLIENT_SECRET,
+    oauthRedirectUri: env.GOOGLE_OAUTH_REDIRECT_URI,
+  },
+  cron: {
+    secret: env.CRON_SECRET,
   },
 } as const;
 

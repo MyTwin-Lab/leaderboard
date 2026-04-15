@@ -9,7 +9,7 @@ export type { AgentEvaluator } from "./interfaces.js";
 
 // Export grids
 export { EvaluationGridRegistry } from "./grids/index.js";
-export type { EvaluationGridTemplate } from "./grids/index.js";
+export type { EvaluationGridTemplate, DetailedEvaluationGridTemplate, GridProvider } from "./grids/index.js";
 
 // Export reward computation
 export { computeRewards } from "./reward.js";

@@ -50,23 +50,75 @@ export interface DetailedEvaluationGridTemplate {
 }
 
 /**
+ * GridProvider
+ * ------------
+ * Interface pour les fournisseurs de grilles (DB, fichiers, etc.)
+ */
+export interface GridProvider {
+  getGrid(type: string): Promise<EvaluationGridTemplate | DetailedEvaluationGridTemplate | null>;
+}
+
+/**
  * EvaluationGridRegistry
  * ----------------------
  * Registry centralisé pour gérer les grilles d'évaluation par type de contribution.
+ * Supporte les grilles statiques (fichiers) et dynamiques (base de données).
  */
 export class EvaluationGridRegistry {
   private static grids = new Map<string, EvaluationGridTemplate | DetailedEvaluationGridTemplate>();
+  private static dbProvider: GridProvider | null = null;
 
+  /**
+   * Configure le fournisseur de grilles depuis la base de données
+   */
+  static setDatabaseProvider(provider: GridProvider): void {
+    this.dbProvider = provider;
+  }
+
+  /**
+   * Enregistre une grille statique (fichier)
+   */
   static register(grid: EvaluationGridTemplate | DetailedEvaluationGridTemplate): void {
     this.grids.set(grid.type, grid);
   }
 
+  /**
+   * Récupère une grille (sync) - uniquement les grilles statiques
+   * @deprecated Utiliser getGridAsync pour supporter les grilles DB
+   */
   static getGrid(type: string): EvaluationGridTemplate | DetailedEvaluationGridTemplate {
     const grid = this.grids.get(type);
     if (!grid) {
       throw new Error(`[EvaluationGridRegistry] No grid found for type: "${type}"`);
     }
     return grid;
+  }
+
+  /**
+   * Récupère une grille (async) - DB en priorité, puis fallback sur statique
+   */
+  static async getGridAsync(type: string): Promise<EvaluationGridTemplate | DetailedEvaluationGridTemplate> {
+    // 1. Essayer la base de données en priorité
+    if (this.dbProvider) {
+      try {
+        const dbGrid = await this.dbProvider.getGrid(type);
+        if (dbGrid) {
+          console.log(`[EvaluationGridRegistry] Using DB grid for type: ${type}`);
+          return dbGrid;
+        }
+      } catch (error) {
+        console.warn(`[EvaluationGridRegistry] DB provider error for type ${type}:`, error);
+      }
+    }
+
+    // 2. Fallback sur les grilles statiques
+    const staticGrid = this.grids.get(type);
+    if (staticGrid) {
+      console.log(`[EvaluationGridRegistry] Using static grid for type: ${type}`);
+      return staticGrid;
+    }
+
+    throw new Error(`[EvaluationGridRegistry] No grid found for type: "${type}"`);
   }
 
   static hasGrid(type: string): boolean {

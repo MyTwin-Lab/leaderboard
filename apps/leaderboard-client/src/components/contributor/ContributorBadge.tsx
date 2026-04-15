@@ -33,9 +33,9 @@ export function ContributorBadge({ fullName, githubUsername, role }: Contributor
     <div ref={containerRef} className="relative">
       <button
         onClick={() => setIsOpen((open) => !open)}
-        className="cursor-pointer flex items-center gap-2 rounded-full bg-white/5 text-sm text-white shadow-md shadow-black/20 transition hover:bg-white/10"
+        className="cursor-pointer flex items-center gap-2 rounded-full text-sm text-white transition"
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brandCP text-s font-semibold text-slate-900">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-brandCP text-s font-semibold hover:bg-white/15">
           {fullName
             .split(" ")
             .map((part) => part[0])

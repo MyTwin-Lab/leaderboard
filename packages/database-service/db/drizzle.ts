@@ -1,6 +1,6 @@
 import { config } from "../../config/index.js";
 import "dotenv/config";
-import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial, real } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial, real, index, uniqueIndex, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -20,7 +20,10 @@ export const repos = pgTable("repos", {
   type: varchar("type", { length: 100 }).notNull(),
   external_repo_id: varchar("external_repo_id", { length: 255 }),
   project_id: uuid("project_id").references(() => projects.uuid, { onDelete: "cascade" }),
-});
+}, (table) => ({
+  projectIdIdx: index("idx_repos_project_id").on(table.project_id),
+  externalRepoIdIdx: index("idx_repos_external_repo_id").on(table.external_repo_id),
+}));
 
 // --- CHALLENGES ---
 export const challenges = pgTable("challenges", {
@@ -35,19 +38,36 @@ export const challenges = pgTable("challenges", {
   contribution_points_reward: integer("contribution_points_reward").default(0),
   completion: real("completion").default(0),
   project_id: uuid("project_id").references(() => projects.uuid, { onDelete: "cascade" }),
-});
+}, (table) => ({
+  projectIdIdx: index("idx_challenges_project_id").on(table.project_id),
+  statusIdx: index("idx_challenges_status").on(table.status),
+}));
 
 // --- CHALLENGE_REPOS ---
 export const challenge_repos = pgTable("challenge_repos", {
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
   repo_id: uuid("repo_id").references(() => repos.uuid, { onDelete: "cascade" }),
-});
+  // Workspace provisioning fields
+  workspace_provider: varchar("workspace_provider", { length: 32 }), // github, huggingface, figma...
+  workspace_ref: varchar("workspace_ref", { length: 200 }), // ex: refs/heads/challenge/007-admin-experience
+  workspace_url: text("workspace_url"), // ex: https://github.com/owner/repo/tree/challenge/007
+  workspace_status: varchar("workspace_status", { length: 20 }).default("pending"), // pending | ready | failed
+  workspace_meta: json("workspace_meta"), // { baseBranch, createdAt, error, sha... }
+}, (table) => ({
+  challengeIdIdx: index("idx_challenge_repos_challenge_id").on(table.challenge_id),
+  repoIdIdx: index("idx_challenge_repos_repo_id").on(table.repo_id),
+  compositeIdx: index("idx_challenge_repos_composite").on(table.challenge_id, table.repo_id),
+}));
 
 // --- CHALLENGE_TEAMS ---
 export const challenge_teams = pgTable("challenge_teams", {
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
   user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }),
-});
+}, (table) => ({
+  challengeIdIdx: index("idx_challenge_teams_challenge_id").on(table.challenge_id),
+  userIdIdx: index("idx_challenge_teams_user_id").on(table.user_id),
+  compositeIdx: index("idx_challenge_teams_composite").on(table.challenge_id, table.user_id),
+}));
 
 // --- USERS ---
 export const users = pgTable("users", {
@@ -58,7 +78,9 @@ export const users = pgTable("users", {
   bio: text("bio"),
   password_hash: text("password_hash"),
   created_at: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  githubUsernameIdx: uniqueIndex("idx_users_github_username").on(table.github_username),
+}));
 
 // --- CONTRIBUTIONS ---
 export const contributions = pgTable("contributions", {
@@ -71,8 +93,13 @@ export const contributions = pgTable("contributions", {
   reward: integer("reward").default(0),
   user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }),
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
+  task_id: uuid("task_id").references(() => tasks.uuid, { onDelete: "set null" }),
   submitted_at: timestamp("submitted_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  challengeIdIdx: index("idx_contributions_challenge_id").on(table.challenge_id),
+  userIdIdx: index("idx_contributions_user_id").on(table.user_id),
+  taskIdIdx: index("idx_contributions_task_id").on(table.task_id),
+}));
 
 // --- TASKS ---
 export const tasks = pgTable("tasks", {
@@ -84,14 +111,38 @@ export const tasks = pgTable("tasks", {
   type: varchar("type", { length: 50 }).notNull(), // "solo" | "concurrent"
   status: varchar("status", { length: 20 }).notNull().default("todo"), // "todo" | "done"
   created_at: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  challengeIdIdx: index("idx_tasks_challenge_id").on(table.challenge_id),
+  parentTaskIdIdx: index("idx_tasks_parent_task_id").on(table.parent_task_id),
+  challengeStatusIdx: index("idx_tasks_challenge_status").on(table.challenge_id, table.status),
+}));
 
 // --- TASK_ASSIGNEES ---
 export const task_assignees = pgTable("task_assignees", {
   task_id: uuid("task_id").references(() => tasks.uuid, { onDelete: "cascade" }),
   user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }),
   assigned_at: timestamp("assigned_at").defaultNow(),
-});
+}, (table) => ({
+  taskIdIdx: index("idx_task_assignees_task_id").on(table.task_id),
+  userIdIdx: index("idx_task_assignees_user_id").on(table.user_id),
+  compositeIdx: index("idx_task_assignees_composite").on(table.task_id, table.user_id),
+}));
+
+// --- TASK_WORKSPACES ---
+export const task_workspaces = pgTable("task_workspaces", {
+  task_id: uuid("task_id").references(() => tasks.uuid, { onDelete: "cascade" }),
+  repo_id: uuid("repo_id").references(() => repos.uuid, { onDelete: "cascade" }),
+  // Workspace provisioning fields
+  workspace_provider: varchar("workspace_provider", { length: 32 }), // github, huggingface, figma...
+  workspace_ref: varchar("workspace_ref", { length: 200 }), // ex: refs/heads/task/007-setup-environment
+  workspace_url: text("workspace_url"), // ex: https://github.com/owner/repo/tree/task/007-setup
+  workspace_status: varchar("workspace_status", { length: 20 }).default("pending"), // pending | ready | failed
+  workspace_meta: json("workspace_meta"), // { baseBranch, createdAt, error, sha... }
+}, (table) => ({
+  taskIdIdx: index("idx_task_workspaces_task_id").on(table.task_id),
+  repoIdIdx: index("idx_task_workspaces_repo_id").on(table.repo_id),
+  compositeIdx: index("idx_task_workspaces_composite").on(table.task_id, table.repo_id),
+}));
 
 // --- REFRESH_TOKENS ---
 export const refresh_tokens = pgTable("refresh_tokens", {
@@ -100,7 +151,105 @@ export const refresh_tokens = pgTable("refresh_tokens", {
   token_hash: text("token_hash").notNull().unique(),
   expires_at: timestamp("expires_at").notNull(),
   created_at: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index("idx_refresh_tokens_user_id").on(table.user_id),
+  expiresAtIdx: index("idx_refresh_tokens_expires_at").on(table.expires_at),
+}));
+
+// --- EVALUATION RUN ---
+export const evaluation_runs = pgTable('evaluation_runs', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  challengeId: uuid('challenge_id')
+    .notNull()
+    .references(() => challenges.uuid, { onDelete: 'cascade' }),
+  triggerType: varchar('trigger_type', { length: 50 }).notNull(), // 'manual' | 'sync' | 'github_pr'
+  triggerPayload: json('trigger_payload'), // exemple: { prNumber, mergedBy }
+  windowStart: timestamp('window_start').notNull(),
+  windowEnd: timestamp('window_end').notNull(),
+  status: varchar('status', { length: 20 }).notNull(), // pending | running | succeeded | failed | canceled
+  startedAt: timestamp('started_at').defaultNow(),
+  finishedAt: timestamp('finished_at'),
+  errorCode: varchar('error_code', { length: 100 }),
+  errorMessage: text('error_message'),
+  createdBy: uuid('created_by').references(() => users.uuid),
+  meta: json('meta') // { contributionCount, durationMs, evaluatorVersion }
+}, (table) => ({
+  challengeIdIdx: index('idx_evaluation_runs_challenge_id').on(table.challengeId),
+  statusIdx: index('idx_evaluation_runs_status').on(table.status),
+  challengeStatusIdx: index('idx_evaluation_runs_challenge_status').on(table.challengeId, table.status),
+  startedAtIdx: index('idx_evaluation_runs_started_at').on(table.startedAt),
+}));
+
+// --- EVALUATION RUN CONTRIBUTION ---
+export const evaluation_run_contributions = pgTable('evaluation_run_contributions', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  runId: uuid('run_id')
+    .notNull()
+    .references(() => evaluation_runs.uuid, { onDelete: 'cascade' }),
+  contributionId: uuid('contribution_id')
+    .notNull()
+    .references(() => contributions.uuid, { onDelete: 'cascade' }),
+  status: varchar('status', { length: 20 }).notNull(), // identified | merged | evaluated | skipped
+  notes: json('notes'), // raison skip, warnings evaluator
+  createdAt: timestamp('created_at').defaultNow()
+}, (table) => ({
+  runIdIdx: index('idx_eval_run_contributions_run_id').on(table.runId),
+  contributionIdIdx: index('idx_eval_run_contributions_contribution_id').on(table.contributionId),
+  runStatusIdx: index('idx_eval_run_contributions_run_status').on(table.runId, table.status),
+}));
+
+// --- EVALUATION GRIDS ---
+export const evaluation_grids = pgTable('evaluation_grids', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  slug: varchar('slug', { length: 64 }).notNull().unique(), // ex: "code", "model", "dataset"
+  name: varchar('name', { length: 120 }).notNull(),
+  description: text('description'),
+  version: integer('version').notNull().default(1),
+  status: varchar('status', { length: 20 }).notNull().default('draft'), // draft | published | archived
+  instructions: text('instructions'), // Instructions pour l'agent IA
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+  published_at: timestamp('published_at'),
+  created_by: uuid('created_by').references(() => users.uuid),
+}, (table) => ({
+  statusIdx: index('idx_evaluation_grids_status').on(table.status),
+  updatedAtIdx: index('idx_evaluation_grids_updated_at').on(table.updated_at),
+  slugStatusIdx: index('idx_evaluation_grids_slug_status').on(table.slug, table.status),
+}));
+
+export const evaluation_grid_categories = pgTable('evaluation_grid_categories', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  grid_id: uuid('grid_id')
+    .notNull()
+    .references(() => evaluation_grids.uuid, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 120 }).notNull(), // ex: "Qualité technique mesurable"
+  weight: real('weight').notNull(), // ex: 0.25
+  type: varchar('type', { length: 20 }).notNull(), // objective | mixed | subjective | contextual
+  position: integer('position').notNull().default(0),
+}, (table) => ({
+  gridIdIdx: index('idx_evaluation_grid_categories_grid_id').on(table.grid_id),
+  positionIdx: index('idx_evaluation_grid_categories_position').on(table.grid_id, table.position),
+}));
+
+export const evaluation_grid_subcriteria = pgTable('evaluation_grid_subcriteria', {
+  uuid: uuid('id').primaryKey().defaultRandom(),
+  category_id: uuid('category_id')
+    .notNull()
+    .references(() => evaluation_grid_categories.uuid, { onDelete: 'cascade' }),
+  criterion: varchar('criterion', { length: 120 }).notNull(), // ex: "Complexité du code"
+  description: text('description'),
+  weight: real('weight'), // Poids optionnel au sein de la catégorie
+  metrics: json('metrics'), // string[] - métriques mesurables
+  indicators: json('indicators'), // string[] - indicateurs qualitatifs
+  scoring_excellent: text('scoring_excellent'), // Guide: 8-9
+  scoring_good: text('scoring_good'), // Guide: 5-7
+  scoring_average: text('scoring_average'), // Guide: 2-4
+  scoring_poor: text('scoring_poor'), // Guide: 0-1
+  position: integer('position').notNull().default(0),
+}, (table) => ({
+  categoryIdIdx: index('idx_evaluation_grid_subcriteria_category_id').on(table.category_id),
+  positionIdx: index('idx_evaluation_grid_subcriteria_position').on(table.category_id, table.position),
+}));
 
 // --- DISCORD_ACCOUNTS ---
 export const discord_accounts = pgTable("discord_accounts", {
@@ -181,6 +330,10 @@ export const contributionsRelations = relations(contributions, ({ one }) => ({
     fields: [contributions.challenge_id],
     references: [challenges.uuid],
   }),
+  task: one(tasks, {
+    fields: [contributions.task_id],
+    references: [tasks.uuid],
+  }),
 }));
 
 export const challengeTeamsRelations = relations(challenge_teams, ({ one }) => ({
@@ -248,6 +401,85 @@ export const discordEvaluationsRelations = relations(discord_evaluations, ({ one
   }),
 }));
 
+export const evaluationGridsRelations = relations(evaluation_grids, ({ one, many }) => ({
+  categories: many(evaluation_grid_categories),
+  created_by_user: one(users, {
+    fields: [evaluation_grids.created_by],
+    references: [users.uuid],
+  }),
+}));
+
+export const evaluationGridCategoriesRelations = relations(evaluation_grid_categories, ({ one, many }) => ({
+  grid: one(evaluation_grids, {
+    fields: [evaluation_grid_categories.grid_id],
+    references: [evaluation_grids.uuid],
+  }),
+  subcriteria: many(evaluation_grid_subcriteria),
+}));
+
+export const evaluationGridSubcriteriaRelations = relations(evaluation_grid_subcriteria, ({ one }) => ({
+  category: one(evaluation_grid_categories, {
+    fields: [evaluation_grid_subcriteria.category_id],
+    references: [evaluation_grid_categories.uuid],
+  }),
+}));
+
+export const taskWorkspacesRelations = relations(task_workspaces, ({ one }) => ({
+  task: one(tasks, {
+    fields: [task_workspaces.task_id],
+    references: [tasks.uuid],
+  }),
+  repo: one(repos, {
+    fields: [task_workspaces.repo_id],
+    references: [repos.uuid],
+  }),
+}));
+
+export const googleAccountsRelations = relations(google_accounts, ({ one }) => ({
+  user: one(users, {
+    fields: [google_accounts.user_id],
+    references: [users.uuid],
+  }),
+}));
+
+export const syncMeetingsRelations = relations(sync_meetings, ({ one, many }) => ({
+  challenge: one(challenges, {
+    fields: [sync_meetings.challenge_id],
+    references: [challenges.uuid],
+  }),
+  created_by_user: one(users, {
+    fields: [sync_meetings.created_by],
+    references: [users.uuid],
+  }),
+  participants: many(meeting_participants),
+  analysis: one(meeting_analyses),
+}));
+
+export const meetingParticipantsRelations = relations(meeting_participants, ({ one }) => ({
+  meeting: one(sync_meetings, {
+    fields: [meeting_participants.sync_meeting_id],
+    references: [sync_meetings.uuid],
+  }),
+  user: one(users, {
+    fields: [meeting_participants.user_id],
+    references: [users.uuid],
+  }),
+}));
+
+export const meetingAnalysesRelations = relations(meeting_analyses, ({ one }) => ({
+  meeting: one(sync_meetings, {
+    fields: [meeting_analyses.sync_meeting_id],
+    references: [sync_meetings.uuid],
+  }),
+}));
+
+export const onboardingProgressRelations = relations(onboarding_progress, ({ one }) => ({
+  user: one(users, {
+    fields: [onboarding_progress.user_id],
+    references: [users.uuid],
+  }),
+}));
+
 // --- DATABASE CLIENT ---
 
 const pool = new Pool({
@@ -268,6 +500,16 @@ export const db = drizzle(pool, {
     refresh_tokens,
     discord_accounts,
     discord_evaluations,
+    evaluation_runs,
+    evaluation_run_contributions,
+    evaluation_grids,
+    evaluation_grid_categories,
+    evaluation_grid_subcriteria,
+    task_workspaces,
+    google_accounts,
+    sync_meetings,
+    meeting_participants,
+    meeting_analyses,
     projectsRelations,
     reposRelations,
     challengesRelations,
@@ -280,5 +522,14 @@ export const db = drizzle(pool, {
     refreshTokensRelations,
     discordAccountsRelations,
     discordEvaluationsRelations,
+    evaluationGridsRelations,
+    evaluationGridCategoriesRelations,
+    evaluationGridSubcriteriaRelations,
+    taskWorkspacesRelations,
+    googleAccountsRelations,
+    syncMeetingsRelations,
+    meetingParticipantsRelations,
+    meetingAnalysesRelations,
+    onboardingProgressRelations,
   },
 });

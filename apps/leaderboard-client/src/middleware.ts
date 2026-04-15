@@ -8,6 +8,7 @@ type ProtectedPage = { prefix: string; roles: readonly UserRole[] };
 const protectedPages: ProtectedPage[] = [
   { prefix: '/admin', roles: ['admin'] },
   { prefix: '/contributors/me', roles: ['admin', 'contributor'] },
+  { prefix: '/challenges/', roles: ['admin', 'contributor'] },
 ];
 
 // Routes API qui nécessitent une authentification (sauf auth)
@@ -22,7 +23,7 @@ const protectedApiRoutes = [
 ];
 
 // Routes publiques d'authentification
-const authRoutes = ['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'];
+const authRoutes = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/auth/logout'];
 
 // Fonction de vérification JWT simplifiée pour Edge Runtime
 async function verifyTokenEdge(token: string): Promise<{ userId: string; role: string } | null> {
@@ -123,6 +124,7 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/contributors/me',
+    '/challenges/:path*',
     '/api/challenges/:path*',
     '/api/projects/:path*',
     '/api/users/:path*',

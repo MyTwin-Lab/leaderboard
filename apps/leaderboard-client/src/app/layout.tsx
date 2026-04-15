@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { GradientBackground } from "@/components/layout/GradientBackground";
 import { Navbar } from "@/components/layout/Navbar";
+import { OnboardingDrawer } from "@/components/onboarding/OnboardingDrawer";
+import { fetchContributorSession } from "@/lib/contributor";
+import { fetchOnboardingProgress } from "@/lib/server/onboarding";
 
 import "./globals.css";
 
@@ -21,19 +24,25 @@ export const metadata: Metadata = {
   description: "Visualisez le classement des contributeurs du Lab",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await fetchContributorSession();
+  const onboarding = session ? await fetchOnboardingProgress(session.id) : null;
+
   return (
     <html lang="fr">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <GradientBackground>
-          <Navbar />
+          <Navbar session={session} />
           <main className="mx-auto w-full max-w-6xl px-4 pt-20 pb-16 sm:px-6 md:pt-24">
             {children}
           </main>
+          {session && onboarding && !onboarding.completed_at && (
+            <OnboardingDrawer initialProgress={onboarding} />
+          )}
         </GradientBackground>
       </body>
     </html>
