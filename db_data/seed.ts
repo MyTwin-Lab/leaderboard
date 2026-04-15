@@ -60,7 +60,7 @@ async function seed() {
       uuid: newUuid,
       role: u.role,
       full_name: u.full_name,
-      github_username: u.github_username || "unknown",
+      github_username: u.github_username || `user_${u.uuid}`,
       bio: u.bio,
     });
   }

@@ -7,6 +7,11 @@ export class DiscordAccountRepository {
     return row ?? null;
   }
 
+  async findByUserId(user_id: string) {
+    const [row] = await db.select().from(discord_accounts).where(eq(discord_accounts.user_id, user_id));
+    return row ?? null;
+  }
+
   async upsert(data: { discord_id: string; username: string; user_id?: string | null }) {
     const [row] = await db
       .insert(discord_accounts)

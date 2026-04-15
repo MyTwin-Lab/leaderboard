@@ -70,9 +70,29 @@ Ce contexte a conduit, en concertation avec le référent, à **revoir la répar
 
 **Après-midi**
 
-- Setup du bot Discord (token, permissions `GUILD_MESSAGE_REACTIONS` + `MESSAGE_CONTENT`)
-- Écoute de l'événement `MESSAGE_REACTION_ADD`, filtré sur l'emoji trigger
-- Gestion des cas limites : bot exclu, double reaction, message du bot
+**Setup du bot**
+- Création et configuration du bot Discord (token, intents `GUILD_MESSAGE_REACTIONS` + `MESSAGE_CONTENT`)
+- Connexion au serveur et vérification des permissions nécessaires pour lire les réactions et le contenu des messages
+
+**Détection du déclencheur**
+- Écoute de l'événement `MESSAGE_REACTION_ADD` côté bot
+- Filtrage sur l'emoji trigger défini (seul cet emoji déclenche le flux d'évaluation)
+
+**Gestion des cas limites**
+- Exclusion du bot lui-même (évite les boucles si le bot réagit à un message)
+- Détection des doubles réactions d'un même utilisateur sur le même message (idempotence)
+- Exclusion des réactions sur les messages du bot
+- Exclusion des réactions à son propre message (on ne peut pas se remercier soi-même)
+- Détection des doublons pour éviter de déclencher plusieurs évaluations pour le même échange
+
+**Structuration des données**
+- Construction de l'objet de contribution à partir des données de l'événement Discord : `helper_id`, `beneficiary_id`, `channel_id`, `trigger_message_id`, `emoji`, timestamp
+- Préparation du payload conforme au contrat d'interface défini côté Dev (`DiscordEvaluationInput`)
+
+**Début d'intégration avec l'évaluateur**
+- Première connexion avec le stub `evaluateDiscordHelp()` exposé par le Dev
+- Vérification que le bot peut appeler la fonction et recevoir un résultat (score + notes)
+- Base posée pour l'appel réel à `POST /api/discord/trigger` (à finaliser séance 7)
 
 ---
 

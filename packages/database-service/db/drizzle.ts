@@ -275,6 +275,87 @@ export const discord_evaluations = pgTable("discord_evaluations", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
+// --- ONBOARDING PROGRESS ---
+export const onboarding_progress = pgTable("onboarding_progress", {
+  user_id: uuid("user_id").primaryKey().references(() => users.uuid, { onDelete: "cascade" }),
+  clicked_challenge: boolean("clicked_challenge").default(false).notNull(),
+  assigned_task: boolean("assigned_task").default(false).notNull(),
+  evaluated_contribution: boolean("evaluated_contribution").default(false).notNull(),
+  validated_task: boolean("validated_task").default(false).notNull(),
+  joined_meeting: boolean("joined_meeting").default(false).notNull(),
+  completed_at: timestamp("completed_at"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// --- GOOGLE ACCOUNTS ---
+export const google_accounts = pgTable("google_accounts", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").notNull().references(() => users.uuid, { onDelete: "cascade" }),
+  google_user_id: varchar("google_user_id", { length: 255 }).notNull().unique(),
+  display_name: varchar("display_name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userIdIdx: index("idx_google_accounts_user_id").on(table.user_id),
+}));
+
+// --- SYNC MEETINGS ---
+export const sync_meetings = pgTable("sync_meetings", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  challenge_id: uuid("challenge_id").notNull().references(() => challenges.uuid, { onDelete: "cascade" }),
+  start_time: timestamp("start_time").notNull(),
+  end_time: timestamp("end_time").notNull(),
+  meet_link: text("meet_link"),
+  calendar_event_id: varchar("calendar_event_id", { length: 255 }),
+  conference_id: varchar("conference_id", { length: 255 }),
+  conference_record_id: varchar("conference_record_id", { length: 255 }),
+  status: varchar("status", { length: 50 }).notNull().default("scheduled"),
+  created_by: uuid("created_by").notNull().references(() => users.uuid),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  challengeIdIdx: index("idx_sync_meetings_challenge_id").on(table.challenge_id),
+  statusIdx: index("idx_sync_meetings_status").on(table.status),
+  endTimeIdx: index("idx_sync_meetings_end_time").on(table.end_time),
+  endTimeStatusIdx: index("idx_sync_meetings_end_time_status").on(table.end_time, table.status),
+  createdByIdx: index("idx_sync_meetings_created_by").on(table.created_by),
+  conferenceRecordIdIdx: index("idx_sync_meetings_conference_record_id").on(table.conference_record_id),
+}));
+
+// --- MEETING PARTICIPANTS ---
+export const meeting_participants = pgTable("meeting_participants", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  sync_meeting_id: uuid("sync_meeting_id").notNull().references(() => sync_meetings.uuid, { onDelete: "cascade" }),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "set null" }),
+  google_user_id: varchar("google_user_id", { length: 255 }).notNull(),
+  display_name: varchar("display_name", { length: 255 }).notNull(),
+}, (table) => ({
+  meetingIdIdx: index("idx_meeting_participants_meeting_id").on(table.sync_meeting_id),
+  userIdIdx: index("idx_meeting_participants_user_id").on(table.user_id),
+  googleUserIdIdx: index("idx_meeting_participants_google_user_id").on(table.google_user_id),
+}));
+
+// --- MEETING ANALYSES ---
+export const meeting_analyses = pgTable("meeting_analyses", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  sync_meeting_id: uuid("sync_meeting_id").notNull().references(() => sync_meetings.uuid, { onDelete: "cascade" }),
+  summary: text("summary"),
+  decisions: json("decisions").$type<any[]>(),
+  actions: json("actions").$type<any[]>(),
+  contribution_signals: json("contribution_signals").$type<any[]>(),
+  status: varchar("status", { length: 50 }).notNull().default("pending"),
+  processed_at: timestamp("processed_at"),
+  error_message: text("error_message"),
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  meetingIdIdx: index("idx_meeting_analyses_meeting_id").on(table.sync_meeting_id),
+  statusIdx: index("idx_meeting_analyses_status").on(table.status),
+}));
+
 // --- RELATIONS ---
 
 export const projectsRelations = relations(projects, ({ many }) => ({

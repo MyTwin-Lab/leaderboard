@@ -109,3 +109,30 @@ export async function fetchContributorProfile(userId: string): Promise<Contribut
     challenges: aggregated,
   } satisfies ContributorProfile;
 }
+
+export type DiscordEvaluationEntry = {
+  uuid: string;
+  status: string;
+  score: number | null;
+  emoji: string;
+  beneficiaryUsername: string | null;
+  evaluatedAt: Date | null;
+  justification: string | null;
+};
+
+export async function fetchDiscordEvaluations(userId: string): Promise<DiscordEvaluationEntry[]> {
+  const account = await repositories.discordAccount.findByUserId(userId);
+  if (!account) return [];
+
+  const evaluations = await repositories.discordEvaluation.findByHelperDiscordId(account.discord_id);
+
+  return evaluations.map((ev) => ({
+    uuid: ev.uuid,
+    status: ev.status,
+    score: ev.score ?? null,
+    emoji: ev.emoji,
+    beneficiaryUsername: null,
+    evaluatedAt: ev.evaluated_at ?? null,
+    justification: (ev.notes as any)?.justification ?? null,
+  }));
+}

@@ -48,6 +48,13 @@ export class DiscordEvaluationRepository {
     return { evaluation, helper, beneficiary };
   }
 
+  async findByHelperDiscordId(discord_id: string) {
+    return db
+      .select()
+      .from(discord_evaluations)
+      .where(eq(discord_evaluations.helper_discord_id, discord_id));
+  }
+
   async saveResult(uuid: string, data: { score: number; notes: unknown }) {
     const [row] = await db
       .update(discord_evaluations)
