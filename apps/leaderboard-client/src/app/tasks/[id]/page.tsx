@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/Badge';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
+import { HowToContribute } from '@/components/tasks/HowToContribute';
 
 interface TaskDetails {
   currentUserId: string | null;
@@ -232,6 +233,13 @@ export default function TaskDetailPage() {
               >
                 {task.status === 'done' ? 'Done' : 'To do'}
               </span>
+              {workspaces[0]?.repo_type && (
+                <HowToContribute
+                  repoType={workspaces[0].repo_type as 'github' | 'kaggle_dataset' | 'kaggle_model'}
+                  githubRepo={workspaces[0].repo_external_id ?? workspaces[0].repo_title}
+                  branchSlug={workspaces[0].workspace_ref?.replace(/^refs\/heads\//, '')}
+                />
+              )}
             </div>
           </div>
           {task.description && (
@@ -319,10 +327,7 @@ export default function TaskDetailPage() {
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                   </svg>
-                  Submitted —
-                  <a href={mySubmittedUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-300 truncate max-w-xs">
-                    {mySubmittedUrl}
-                  </a>
+                  Submitted
                 </p>
               )}
               {kaggleErrors[ws.repo_id] && (
