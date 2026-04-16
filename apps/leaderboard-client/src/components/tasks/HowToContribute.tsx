@@ -26,7 +26,7 @@ function buildConfig(
   switch (repoType) {
     case 'github':
       return [
-        { type: 'text', content: 'Clone le repo et checkout sur la branche de la tâche.' },
+        { type: 'text', content: 'Clone the repo and checkout to your task branch.' },
         {
           type: 'bash',
           commands: [
@@ -35,7 +35,7 @@ function buildConfig(
             `git checkout ${branchSlug}`,
           ],
         },
-        { type: 'text', content: 'Travaille sur cette branche, puis pousse tes modifications.' },
+        { type: 'text', content: 'Work on this branch, then push your code.' },
         {
           type: 'bash',
           commands: [
@@ -48,36 +48,41 @@ function buildConfig(
 
     case 'kaggle_dataset':
       return [
-        { type: 'text', content: 'Crée un dataset Kaggle et structure tes fichiers ainsi :' },
+        { type: 'text', content: 'Create a Kaggle dataset and structure it like so :' },
         {
           type: 'tree',
           lines: [
-            'your-dataset/',
+            'dataset-name/',
             '├── data/',
-            '│   ├── train.csv',
-            '│   └── test.csv',
+            '│   ├── images/',
+            '│   ├── annotations/',
+            '│   └── labels/',
+            '├── docs/',
+            '│   └── dataset_card.md',
             '├── README.md',
-            '└── dataset-metadata.json',
+            '└── metadata.csv',
           ],
         },
-        { type: 'text', content: 'Soumets ensuite le lien de ton dataset dans le champ ci-dessus.' },
+        { type: 'text', content: 'Submit the link to your dataset in the field below.' },
       ];
 
     case 'kaggle_model':
       return [
-        { type: 'text', content: 'Publie ton modèle sur Kaggle avec la structure suivante :' },
+        { type: 'text', content: 'Publish your model on Kaggle with the following structure :' },
         {
           type: 'tree',
           lines: [
-            'your-model/',
+            'model-project/',
             '├── model/',
-            '│   ├── weights.h5',
-            '│   └── config.json',
-            '├── README.md',
-            '└── model-metadata.json',
+            '│   └── model_weights.pt',
+            '├── notebook/',
+            '│   └── training_experiment.ipynb',
+            '├── train.py',
+            '├── inference.py',
+            '└── config.yaml',
           ],
         },
-        { type: 'text', content: 'Soumets ensuite le lien de ton modèle dans le champ ci-dessus.' },
+        { type: 'text', content: 'Submit the link to your model in the field below.' },
       ];
   }
 }
