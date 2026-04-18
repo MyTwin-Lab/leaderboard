@@ -111,7 +111,7 @@ export class KaggleConnector implements ExternalConnector {
   async testConnection(): Promise<boolean> {
     try {
       if (this.subtype === "kaggle_dataset") {
-        await this.kaggleFetch(`/datasets/${this.owner}/${this.slug}`);
+        await this.kaggleFetch(`/datasets/metadata/${this.owner}/${this.slug}`);
       } else {
         await this.kaggleFetch(`/models/${this.owner}/${this.slug}/get`);
       }
@@ -136,12 +136,12 @@ export class KaggleConnector implements ExternalConnector {
 
   private async fetchDatasetItem(): Promise<ExternalItem[]> {
     const metadata = await this.kaggleFetch(
-      `/datasets/${this.owner}/${this.slug}`
+      `/datasets/metadata/${this.owner}/${this.slug}`
     );
 
     // Find README among dataset files (case-insensitive)
     const filesData = await this.kaggleFetch(
-      `/datasets/${this.owner}/${this.slug}/files`
+      `/datasets/list/${this.owner}/${this.slug}`
     );
     const files: any[] = filesData.datasetFiles ?? filesData.files ?? [];
     const readmeFile = files.find((f: any) =>
@@ -213,16 +213,16 @@ export class KaggleConnector implements ExternalConnector {
     // Try README.md first, then readme.md, then fall back to description
     try {
       content = await this.kaggleFetchText(
-        `/datasets/${this.owner}/${this.slug}/download/README.md`
+        `/datasets/download/${this.owner}/${this.slug}/README.md`
       );
     } catch {
       try {
         content = await this.kaggleFetchText(
-          `/datasets/${this.owner}/${this.slug}/download/readme.md`
+          `/datasets/download/${this.owner}/${this.slug}/readme.md`
         );
       } catch {
         const metadata = await this.kaggleFetch(
-          `/datasets/${this.owner}/${this.slug}`
+          `/datasets/metadata/${this.owner}/${this.slug}`
         );
         content =
           metadata.description ||
@@ -251,17 +251,63 @@ export class KaggleConnector implements ExternalConnector {
   }
 
   private async fetchModelContent(itemId: string) {
+    const TARGET_FILES = new Set([
+      "metrics.json",
+      "train.py",
+      "inference.py",
+      "config.yaml",
+    ]);
+
+    // 1. Get model metadata + first instance info
     const metadata = await this.kaggleFetch(
       `/models/${this.owner}/${this.slug}/get`
     );
-    const content = JSON.stringify(metadata, null, 2);
-    const lineCount = content.split("\n").length;
 
-    return {
-      commitSha: itemId,
-      modifiedFiles: [
-        {
-          path: "model_card.json",
+    const modifiedFiles: any[] = [];
+
+    // Always include full metadata as model_card.json
+    const modelCardContent = JSON.stringify(metadata, null, 2);
+    modifiedFiles.push({
+      path: "model_card.json",
+      status: "added",
+      additions: modelCardContent.split("\n").length,
+      deletions: 0,
+      changes: modelCardContent.split("\n").length,
+      sha: "",
+      isBinary: false,
+      contentEncoding: "utf-8",
+      content: modelCardContent,
+    });
+
+    const instances: any[] = metadata.instances ?? [];
+    const instance = instances[0];
+    if (!instance) {
+      return { commitSha: itemId, modifiedFiles };
+    }
+
+    const { framework, slug: instanceSlug, versionNumber } = instance;
+    const versionBase = `/models/${this.owner}/${this.slug}/${framework}/${instanceSlug}/${versionNumber}`;
+
+    // 2. List files for this instance version
+    let fileNames: string[] = [];
+    try {
+      const filesData = await this.kaggleFetch(`${versionBase}/files`);
+      const files: any[] = filesData.files ?? [];
+      fileNames = files.map((f: any) => f.name).filter(Boolean);
+    } catch {
+      // Files listing unavailable — proceed with model_card.json only
+    }
+
+    // 3. Download target files and notebooks
+    for (const name of fileNames) {
+      if (!TARGET_FILES.has(name) && !name.endsWith(".ipynb")) continue;
+      try {
+        const content = await this.kaggleFetchText(
+          `${versionBase}/download/${name}`
+        );
+        const lineCount = content.split("\n").length;
+        modifiedFiles.push({
+          path: name,
           status: "added",
           additions: lineCount,
           deletions: 0,
@@ -270,8 +316,12 @@ export class KaggleConnector implements ExternalConnector {
           isBinary: false,
           contentEncoding: "utf-8",
           content,
-        },
-      ],
-    };
+        });
+      } catch {
+        // File not downloadable, skip silently
+      }
+    }
+
+    return { commitSha: itemId, modifiedFiles };
   }
 }
