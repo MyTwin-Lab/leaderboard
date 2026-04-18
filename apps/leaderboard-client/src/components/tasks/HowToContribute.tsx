@@ -162,9 +162,9 @@ export function HowToContribute({ repoType, githubRepo, branchSlug }: HowToContr
   const blocks = buildConfig(repoType, { githubRepo, branchSlug });
 
   const labels: Record<RepoType, string> = {
-    github: 'Comment contribuer (GitHub)',
-    kaggle_dataset: 'Comment contribuer (Dataset Kaggle)',
-    kaggle_model: 'Comment contribuer (Modèle Kaggle)',
+    github: 'How to contribute (GitHub)',
+    kaggle_dataset: 'How to contribute (Dataset Kaggle)',
+    kaggle_model: 'How to contribute (Modèle Kaggle)',
   };
 
   return (

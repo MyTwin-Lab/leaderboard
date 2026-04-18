@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/Badge';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 import { HowToContribute } from '@/components/tasks/HowToContribute';
+import { trackOnboardingStep } from '@/lib/onboarding-track';
 
 interface TaskDetails {
   currentUserId: string | null;
@@ -129,6 +130,7 @@ export default function TaskDetailPage() {
     try {
       const res = await fetch(`/api/tasks/${taskId}/complete`, { method: 'PATCH' });
       if (res.ok) {
+        trackOnboardingStep('validated_task');
         await fetchDetails();
       } else {
         const err = await res.json();
@@ -272,16 +274,22 @@ export default function TaskDetailPage() {
                       {ws.workspace_status && (
                         <WorkspaceStatusBadge status={ws.workspace_status} />
                       )}
-                      {ws.workspace_url && (
-                        <a
-                          href={ws.workspace_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20 transition"
-                        >
-                          Open
-                        </a>
-                      )}
+                      {(() => {
+                        const isKaggle = ws.repo_type === 'kaggle_model' || ws.repo_type === 'kaggle_dataset';
+                        const openUrl = isKaggle
+                          ? (currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined)
+                          : ws.workspace_url;
+                        return openUrl ? (
+                          <a
+                            href={openUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20 transition"
+                          >
+                            Open
+                          </a>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                 </div>
