@@ -201,8 +201,10 @@ export async function runEvaluateAgent(
 
   const text = response.output_text;
 
-  // Nettoyer les caractères de contrôle invalides
+  // Nettoyer les caractères de contrôle invalides et les blocs markdown
   const cleanedText = text
+    .replace(/^```(?:json)?\s*/i, '') // Supprimer l'ouverture du bloc markdown
+    .replace(/\s*```$/, '')           // Supprimer la fermeture du bloc markdown
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Supprimer les caractères de contrôle
     .replace(/\n/g, ' ') // Remplacer les vrais retours à la ligne par des espaces
     .trim();
