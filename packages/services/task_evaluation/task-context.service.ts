@@ -77,10 +77,11 @@ export class TaskContextService {
         continue;
       }
 
-      // Pour les tâches concurrentes, résoudre l'external_repo_id par utilisateur
-      // depuis workspace_meta.userUrls[userId]
+      // Pour les repos Kaggle, résoudre l'external_repo_id depuis workspace_meta.userUrls[userId]
+      // (tâches concurrentes : URL par utilisateur ; tâches normales : URL commune)
+      const isKaggleRepo = repo.type === 'kaggle_dataset' || repo.type === 'kaggle_model';
       let effectiveRepo = repo;
-      if (task.type === 'concurrent' && userId) {
+      if (isKaggleRepo && userId) {
         const meta = tw.workspace_meta as Record<string, unknown> | null;
         const userUrls = meta?.userUrls as Record<string, string> | undefined;
         const userUrl = userUrls?.[userId];
@@ -88,12 +89,12 @@ export class TaskContextService {
           const slug = this.extractSlugFromUrl(userUrl);
           if (slug) {
             effectiveRepo = { ...repo, external_repo_id: slug };
-            console.log(`[TaskContextService] Concurrent task — using user-specific slug: ${slug} (from ${userUrl})`);
+            console.log(`[TaskContextService] Kaggle repo — using slug: ${slug} (from ${userUrl})`);
           } else {
             console.warn(`[TaskContextService] Could not extract slug from user URL: ${userUrl}`);
           }
         } else {
-          console.warn(`[TaskContextService] No URL submitted by user ${userId} for concurrent workspace on repo ${repo.title}`);
+          console.warn(`[TaskContextService] No URL submitted by user ${userId} for Kaggle repo ${repo.title}`);
         }
       }
 
