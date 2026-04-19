@@ -1,6 +1,6 @@
 import { ChallengeRepository, ContributionRepository } from "../../database-service/repositories/index.js";
 import { computeRewards } from "../../evaluator/reward.js";
-import type { Evaluation, ContributionReward } from "../../evaluator/types.js";
+import type { ContributionReward } from "../../evaluator/types.js";
 
 /**
  * RewardsService
@@ -32,26 +32,24 @@ export class RewardsService {
     const contributions = await this.contributionRepo.findByChallenge(challengeId);
     console.log(`   - ${contributions.length} contributions trouvées`);
 
-    // 3. Extraire les évaluations
-    const evaluations: Evaluation[] = contributions
-      .filter(c => c.evaluation)
-      .map(c => c.evaluation as Evaluation);
+    // 3. Vérifier qu'il y a des évaluations
+    const evaluated = contributions.filter(c => c.evaluation);
 
-    if (evaluations.length === 0) {
+    if (evaluated.length === 0) {
       console.warn("[RewardsService] Aucune évaluation trouvée");
       return [];
     }
 
     // 4. Calculer les rewards
     const totalPool = challenge.contribution_points_reward;
-    const rewards = computeRewards(evaluations, totalPool);
+    const rewards = computeRewards(evaluated, totalPool);
 
     console.log(`[RewardsService] ${rewards.length} rewards calculés`);
 
     // 5. Mettre à jour les contributions avec les rewards
     for (const reward of rewards) {
-      const contribution = contributions.find(c => 
-        c.title === reward.contributionTitle
+      const contribution = contributions.find(c =>
+        c.uuid === reward.contributionId
       );
       
       if (contribution) {
