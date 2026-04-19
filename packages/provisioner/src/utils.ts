@@ -41,6 +41,18 @@ export function generateTaskBranchName(challengeIndex: number, taskTitle: string
 }
 
 /**
+ * Génère le nom de branche pour une task concurrente (par utilisateur)
+ * Format: task/{challenge-index}-{task-slug}-{user-slug}
+ * Exemple: task/007-setup-environment-john-doe
+ */
+export function generateUserTaskBranchName(challengeIndex: number, taskTitle: string, userIdentifier: string): string {
+  const paddedIndex = String(challengeIndex).padStart(3, '0');
+  const titleSlug = slugify(taskTitle);
+  const userSlug = slugify(userIdentifier);
+  return `task/${paddedIndex}-${titleSlug}-${userSlug}`;
+}
+
+/**
  * Mappe un type de repo vers un type de workspace
  */
 export function mapRepoTypeToWorkspaceType(repoType: string): string {

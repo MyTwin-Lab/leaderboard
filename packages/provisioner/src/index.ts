@@ -8,10 +8,11 @@ import type {
 } from './types.js';
 import { ProvisionerRegistry } from './registry.js';
 import { GitHubBranchProvider } from './providers/github-branch.provider.js';
-import { 
-  generateChallengeBranchName, 
-  generateTaskBranchName, 
-  mapRepoTypeToWorkspaceType 
+import {
+  generateChallengeBranchName,
+  generateTaskBranchName,
+  generateUserTaskBranchName,
+  mapRepoTypeToWorkspaceType
 } from './utils.js';
 import { ProviderNotFoundError } from './errors.js';
 
@@ -107,8 +108,10 @@ export async function provisionTaskWorkspace(
   // Récupérer le provider
   const provider = ProvisionerRegistry.getProvider(workspaceType);
   
-  // Générer le nom de branche
-  const branchName = generateTaskBranchName(challengeIndex, taskTitle);
+  // Générer le nom de branche (par utilisateur pour les tâches concurrentes)
+  const branchName = context.userIdentifier
+    ? generateUserTaskBranchName(challengeIndex, taskTitle, context.userIdentifier)
+    : generateTaskBranchName(challengeIndex, taskTitle);
   
   // Déterminer la branche de base (branche du challenge ou main)
   let baseRef = 'main';

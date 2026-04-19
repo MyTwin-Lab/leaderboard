@@ -259,26 +259,40 @@ export default function TaskDetailPage() {
                 <div key={i} className="rounded-lg bg-white/5 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <div>
-                        <p className="text-sm font-medium text-white">
-                          {ws.repo_external_id || ws.repo_title}
-                        </p>
-                        {ws.workspace_ref && (
-                          <p className="text-xs text-white/50">
-                            Branch: <span className="font-mono text-brandCP">{ws.workspace_ref.replace(/^refs\/heads\//, '')}</span>
-                          </p>
-                        )}
-                      </div>
+                      {(() => {
+                        const userUrl = currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined;
+                        const branchLabel = ws.workspace_ref
+                          ? ws.workspace_ref.replace(/^refs\/heads\//, '')
+                          : (userUrl && ws.repo_type === 'github')
+                            ? (() => {
+                                try {
+                                  const parts = new URL(userUrl).pathname.split('/').filter(Boolean);
+                                  const treeIdx = parts.indexOf('tree');
+                                  return treeIdx !== -1 ? parts.slice(treeIdx + 1).join('/') : null;
+                                } catch { return null; }
+                              })()
+                            : null;
+                        return (
+                          <div>
+                            <p className="text-sm font-medium text-white">
+                              {ws.repo_external_id || ws.repo_title}
+                            </p>
+                            {branchLabel && (
+                              <p className="text-xs text-white/50">
+                                Branch: <span className="font-mono text-brandCP">{branchLabel}</span>
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center gap-2">
                       {ws.workspace_status && (
                         <WorkspaceStatusBadge status={ws.workspace_status} />
                       )}
                       {(() => {
-                        const isKaggle = ws.repo_type === 'kaggle_model' || ws.repo_type === 'kaggle_dataset';
-                        const openUrl = isKaggle
-                          ? (currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined)
-                          : ws.workspace_url;
+                        const userUrl = currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined;
+                        const openUrl = userUrl ?? ws.workspace_url;
                         return openUrl ? (
                           <a
                             href={openUrl}

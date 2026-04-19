@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskRepository, TaskAssigneeRepository } from '../../../../../../../../packages/database-service/repositories';
-import { jwtVerify } from 'jose';
+import { getSessionFromRequest } from '../../../../../application/auth.js';
 
 const taskRepo = new TaskRepository();
 const taskAssigneeRepo = new TaskAssigneeRepository();
@@ -10,33 +10,12 @@ async function getTaskEvaluationService() {
   return new TaskEvaluationService();
 }
 
-type SessionPayload = {
-  userId: string;
-  role: string;
-} | null;
-
-async function getSession(request: NextRequest): Promise<SessionPayload> {
-  const token = request.cookies.get('access_token')?.value;
-  if (!token) return null;
-
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    return {
-      userId: payload.userId as string,
-      role: payload.role as string,
-    };
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getSession(request);
+    const session = await getSessionFromRequest(request);
     if (!session) {
       return NextResponse.json(
         { error: 'Authentication required' },

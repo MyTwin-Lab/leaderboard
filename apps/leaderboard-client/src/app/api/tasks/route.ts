@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskRepository } from '../../../../../../packages/database-service/repositories';
+import { getSessionFromRequest } from '../../../application/auth.js';
 import { z } from 'zod';
 
 const taskRepo = new TaskRepository();
@@ -43,9 +44,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/tasks - Créer une nouvelle tâche
+// POST /api/tasks - Créer une nouvelle tâche (admin uniquement)
 export async function POST(request: NextRequest) {
   try {
+    const session = await getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (session.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await request.json();
     const validated = createTaskSchema.parse(body);
 

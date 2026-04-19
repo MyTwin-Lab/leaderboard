@@ -117,6 +117,86 @@ export class TaskAssignService {
       return [];
     }
 
+    // Tâche concurrente GitHub : une branche par utilisateur, stockée comme Kaggle (workspace_meta.userUrls)
+    const isConcurrentGitHub = task.type === 'concurrent' && cr.repo_type === 'github';
+    if (isConcurrentGitHub) {
+      const user = await this.userRepo.findById(userId);
+      const userIdentifier = user?.github_username || user?.full_name || userId.substring(0, 8);
+      const existingWorkspace = await this.taskWorkspaceRepo.findByTaskAndRepo(taskId, cr.repo_id);
+
+      try {
+        console.log(`[TaskAssignService] Provisioning concurrent GitHub branch for user "${userIdentifier}" on task "${task.title}"`);
+        const result = await provisionTaskWorkspace({
+          challengeIndex: challenge.index ?? 0,
+          taskTitle: task.title,
+          repoExternalId: cr.repo_external_id,
+          repoType: cr.repo_type,
+          challengeBranchRef: cr.workspace_ref,
+          userIdentifier,
+        });
+
+        const existingMeta = (existingWorkspace?.workspace_meta ?? {}) as Record<string, unknown>;
+        const existingUserUrls = (existingMeta.userUrls ?? {}) as Record<string, string>;
+        const updatedMeta = {
+          ...existingMeta,
+          userUrls: { ...existingUserUrls, [userId]: result.url },
+        };
+
+        if (existingWorkspace) {
+          await this.taskWorkspaceRepo.updateWorkspace(taskId, cr.repo_id, {
+            workspace_provider: result.provider,
+            workspace_status: result.status,
+            workspace_meta: updatedMeta,
+          });
+        } else {
+          await this.taskWorkspaceRepo.create({
+            task_id: taskId,
+            repo_id: cr.repo_id,
+            workspace_provider: result.provider,
+            workspace_status: result.status,
+            workspace_meta: updatedMeta,
+          });
+        }
+
+        if (result.status === 'ready' && result.ref && user?.github_username) {
+          try {
+            const workspaceType = mapRepoTypeToWorkspaceType(cr.repo_type);
+            const provider = ProvisionerRegistry.getProvider(workspaceType);
+            if (provider.protect) {
+              await provider.protect(cr.repo_external_id, result.ref, [user.github_username]);
+            }
+          } catch (protectError) {
+            console.warn(`[TaskAssignService] Workspace protection failed for repo ${cr.repo_id}:`, protectError);
+          }
+        }
+
+        if (result.error) {
+          console.warn(`[TaskAssignService] Concurrent GitHub provisioning warning for repo ${cr.repo_id}: ${result.error}`);
+        }
+        return [{ repo_id: cr.repo_id, status: result.status, result }];
+
+      } catch (provisionError) {
+        console.error(`[TaskAssignService] Concurrent GitHub provisioning failed for repo ${cr.repo_id}:`, provisionError);
+        const errorMsg = provisionError instanceof Error ? provisionError.message : 'Unknown error';
+
+        const existingMeta = (existingWorkspace?.workspace_meta ?? {}) as Record<string, unknown>;
+        if (!existingWorkspace) {
+          await this.taskWorkspaceRepo.create({
+            task_id: taskId,
+            repo_id: cr.repo_id,
+            workspace_status: 'failed',
+            workspace_meta: { ...existingMeta, error: errorMsg },
+          });
+        } else {
+          await this.taskWorkspaceRepo.updateWorkspace(taskId, cr.repo_id, {
+            workspace_status: 'failed',
+            workspace_meta: { ...existingMeta, error: errorMsg },
+          });
+        }
+        return [{ repo_id: cr.repo_id, status: 'failed', error: errorMsg }];
+      }
+    }
+
     const existingWorkspace = await this.taskWorkspaceRepo.findByTaskAndRepo(taskId, cr.repo_id);
     if (existingWorkspace?.workspace_status === 'ready') {
       return [{ repo_id: cr.repo_id, status: 'already_exists', workspace: existingWorkspace }];
