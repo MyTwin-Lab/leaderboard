@@ -268,14 +268,14 @@ export const discord_accounts = pgTable("discord_accounts", {
 // Les messages sont stockés dans notes.context (fetchés via Discord connector, jamais persistés).
 export const discord_evaluations = pgTable("discord_evaluations", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
-  channel_id: varchar("channel_id", { length: 32 }).notNull(),
-  trigger_message_id: varchar("trigger_message_id", { length: 32 }).notNull(), // snowflake du message ayant reçu l'emoji
-  emoji: varchar("emoji", { length: 64 }).notNull(),
+  metadata: json("metadata").$type<{ channel_id: string; trigger_message_id: string; emoji: string }>().notNull(),
   helper_discord_id: varchar("helper_discord_id", { length: 32 }).references(() => discord_accounts.discord_id, { onDelete: "set null" }),
   beneficiary_discord_id: varchar("beneficiary_discord_id", { length: 32 }).references(() => discord_accounts.discord_id, { onDelete: "set null" }),
   status: varchar("status", { length: 20 }).notNull().default("pending"), // pending | running | evaluated | skipped
+  context_hash: varchar("context_hash", { length: 64 }), // hash du contexte pour dédupliquer
+  contribution_id: uuid("contribution_id").references(() => contributions.uuid, { onDelete: "set null" }),
   score: integer("score"),
-  notes: json("notes"), // { context: DiscordMessageItem[], justification?: string, criteria?: [...] }
+  notes: json("notes"), // { justification?: string, criteria?: [...] }
   evaluated_at: timestamp("evaluated_at"),
   created_at: timestamp("created_at").defaultNow(),
 });
@@ -505,13 +505,6 @@ export const taskWorkspacesRelations = relations(task_workspaces, ({ one }) => (
   repo: one(repos, {
     fields: [task_workspaces.repo_id],
     references: [repos.uuid],
-  }),
-}));
-
-export const googleAccountsRelations = relations(google_accounts, ({ one }) => ({
-  user: one(users, {
-    fields: [google_accounts.user_id],
-    references: [users.uuid],
   }),
 }));
 

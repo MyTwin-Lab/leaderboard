@@ -36,30 +36,36 @@ Discord
 
 ## Décisions prises en cours de projet
 
-| # | Décision | Justification |
-|---|----------|---------------|
-| A | Le **bot Discord est développé par les Data IA** | Cohérence avec leur maîtrise du LLM et de la détection NLP |
-| B | La table `evaluation_runs` **n'est pas réutilisée** | Retirée par la branche `main` ; table `discord_evaluations` autonome créée à la place |
-| C | Les **règles de scoring ne sont pas redéfinies** | `packages/evaluator/reward.ts` existant réutilisé (distribution proportionnelle des CP) |
-| D | Les points sont stockés comme une **contribution** `discord_help` | Réutilise le système de leaderboard existant sans modifier le schéma utilisateur |
-| E | Les **messages ne sont pas stockés en table dédiée** | Décision référent : transit JSON uniquement — context sauvegardé dans `contributions.evaluation` |
-| F | Le **trigger est un emoji reaction** | Signal explicite du bénéficiaire, pas de faux positifs |
-| G | **Schéma minimal** : pas de `discord_conversations` ni `discord_triggers` | Une réaction = un enregistrement `discord_evaluations` |
-| H | **Flux synchrone** | Décision référent + Alix : l'orchestrateur est appelé directement dans `POST /trigger`, pas de callback LLM |
+- **A** — Le bot Discord est développé par les **Data IA** *(cohérence avec leur maîtrise du LLM)*
+- **B** — La table `evaluation_runs` **n'est pas réutilisée** *(retirée par `main` ; `discord_evaluations` autonome créée)*
+- **C** — Les règles de scoring **ne sont pas redéfinies** *(`packages/evaluator/reward.ts` réutilisé)*
+- **D** — Les points sont stockés comme une **contribution** `discord_help` *(réutilise le système existant)*
+- **E** — Les messages **ne sont pas stockés en table dédiée** *(transit JSON uniquement, sauvegardés dans `contributions.evaluation`)*
+- **F** — Le trigger est un **emoji reaction** *(signal explicite du bénéficiaire, pas de faux positifs)*
+- **G** — **Schéma minimal** : pas de `discord_conversations` ni `discord_triggers` *(une réaction = un enregistrement)*
+- **H** — **Flux synchrone** *(décision Antoine + Alix : orchestrateur appelé directement dans `POST /trigger`)*
+- **I** — **UUID Discord conservé** comme identifiant, pas le username *(le username peut changer, l'UUID est stable)*
+- **J** — `discord_evaluations` devient une **soft contribution** *(même structure que `contributions`, métadonnées en JSON)*
+- **K** — **Hash du contexte** dans `discord_evaluations` *(lie plusieurs messages à un même échange, évite les doublons)*
 
 ---
 
 ## Schéma DB final
 
-```
-discord_accounts       discord_id (PK) · username · user_id FK→users
-discord_evaluations    uuid (PK) · channel_id · trigger_message_id · emoji
-                       helper_discord_id FK · beneficiary_discord_id FK
-                       status · score · notes (JSON: justification + critères LLM)
-                       evaluated_at · created_at
-```
+**`discord_accounts`**
+- `discord_id` (PK, UUID Discord stable)
+- `username`
+- `user_id` FK → users
 
-> Les messages de la conversation ne transitent qu'en RAM — ils sont stockés uniquement dans `contributions.evaluation` (objet contribution final).
+**`discord_evaluations`** *(soft contribution)*
+- `uuid` (PK)
+- `context_hash` (déduplication)
+- `metadata` JSON — channel_id, trigger_message_id, emoji
+- `helper_discord_id` FK, `beneficiary_discord_id` FK
+- `status`, `score`, `notes` JSON (justification + critères LLM)
+- `evaluated_at`, `created_at`
+
+> Les messages ne transitent qu'en RAM — stockés dans `contributions.evaluation`.
 
 ---
 
@@ -92,14 +98,14 @@ Les Data IA remplacent le stub par l'appel réel à leur orchestrateur (tâche 4
 
 ---
 
-## Avancement — Séance 6 (après réunion référent)
+## Avancement — Séance 7 (15 avril 2026)
 
 ```
-Phase 1 — Base de données    ██████████░  90%  (1.7 migration restante)
-Phase 2 — Bot Discord        ██████░░░░░  60%  (2.3→2.4 restants)
-Phase 3 — API                █████████░░  90%  (3.5 sécurité restante)
-Phase 4 — LLM                ░░░░░░░░░░░   0%  (Data IA — à démarrer)
-Phase 5 — Frontend           ░░░░░░░░░░░   0%  (à démarrer séance 7)
+Phase 1 — Base de données    ███████████  100% ✅
+Phase 2 — Bot Discord        ██████░░░░░   60% (2.3→2.4 restants — réunion cet aprem)
+Phase 3 — API                ███████████  100% ✅
+Phase 4 — LLM                ░░░░░░░░░░░    0% (Data IA — démarre séance 7)
+Phase 5 — Frontend           ████░░░░░░░   30% (5.2 profil terminé)
 ```
 
 ---
@@ -121,7 +127,7 @@ Phase 5 — Frontend           ░░░░░░░░░░░   0%  (à déma
 - [x] ~~**1.4** `discord_triggers`~~ — supprimée (décision G)
 - [x] **1.5** — Vérification `evaluation_runs` / `evaluation_grids` → décision B *(Dev)*
 - [x] **1.6** — Table **`discord_evaluations`** enrichie (`channel_id`, `trigger_message_id`, `emoji`, participants FK, `status`, `score`, `notes`) *(Dev)*
-- [ ] **1.7** — **Migration Drizzle** *(Dev)*
+- [x] **1.7** — **Migration Drizzle** *(Dev)*
 - [x] **1.8** — Repositories : `discordAccount`, `discordEvaluation` *(Dev)*
 
 ---
@@ -143,7 +149,7 @@ Phase 5 — Frontend           ░░░░░░░░░░░   0%  (à déma
 - [x] ~~**3.3** `POST /evaluation-result`~~ — supprimé (flux synchrone, pas de callback) *(Dev)*
 - [x] **3.4** — `DiscordService.awardPoints()` → contribution `discord_help` avec messages en JSON *(Dev)*
 - [x] **3.6** — `DiscordConnector` — fetch `GET /channels/{id}/messages?before={id}&limit=20` *(Dev)*
-- [ ] **3.5** — Sécuriser l'endpoint trigger (token partagé bot ↔ API) *(Dev)*
+- [x] **3.5** — Sécuriser l'endpoint trigger (token partagé bot ↔ API) *(Dev)*
 
 ---
 
@@ -159,9 +165,64 @@ Phase 5 — Frontend           ░░░░░░░░░░░   0%  (à déma
 ## Phase 5 — Frontend (Dev)
 
 - [ ] **5.1** — Scores Discord dans le **leaderboard** *(Dev)*
-- [ ] **5.2** — Page **profil** : section "Aide Discord" *(Dev)*
+- [x] **5.2** — Page **profil** : section "Aide Discord" *(Dev)*
+- [ ] **5.2b** — Page **profil** : tab switcher **Challenges / Entraide Discord** — liste des soft contributions `discord_help` *(Dev — décision réunion séance 7)*
 - [ ] **5.3** — Page **admin** : liste des `discord_evaluations` (trigger, score, statut, participants) via `GET /evaluations/:id` *(Dev)*
 - [ ] **5.4** — Flow de **liaison compte Discord** sur le profil *(Dev)*
+
+---
+
+## Productions réalisées
+
+**Code** — [Branche Ydays sur GitHub](https://github.com/MyTwin-Lab/leaderboard/tree/Ydays)
+
+- **Schéma DB** — Tables `discord_accounts`, `discord_evaluations` + migration `drizzle/0004_puzzling_zodiak.sql`
+- **API REST** — `POST /api/discord/trigger` · `GET /api/discord/evaluations/:id`
+  → `apps/leaderboard-client/src/app/api/discord/`
+- **Connecteur Discord** — fetch des 20 messages avant le trigger
+  → `packages/connectors/implementation/Discord.connector.ts`
+- **Contrat interface Dev ↔ Data IA** — `DiscordEvaluationInput` / `DiscordEvaluationOutput`
+  → `packages/evaluator/discord/discord.evaluator.ts`
+- **Grille d'évaluation** — grille `discord_help` pour le LLM
+  → `packages/evaluator/grids/discord_help.grid.ts`
+- **Frontend** — Section "Aide Discord" sur la page profil
+  → `apps/leaderboard-client/src/components/contributor/DiscordSection.tsx`
+
+**Documents**
+
+- Rapport séance 6 → `rapport-seance-6.md`
+- Schéma Ydays (architecture, flux, décisions) → `Schéma Ydays.md`
+
+---
+
+## Acquisition des compétences
+
+### Dev (Camille)
+
+- **Drizzle ORM** — schéma, relations, migrations, repositories
+- **Next.js App Router** — API routes, server components, server actions
+- **Architecture API REST** — flux synchrone bout en bout (trigger → LLM → DB → contribution)
+- **Intégration Discord API** — fetch de messages via `GET /channels/{id}/messages`
+- **Design de contrat d'interface** — `DiscordEvaluationInput/Output` Dev ↔ Data IA
+- **Travail en équipe multi-rôles** — coordination Dev / Data IA / référent
+- **Git — gestion de branches** — merge de `main` dans `Ydays`, résolution de conflits
+- **TypeScript** — typage strict, interfaces, schémas Zod
+- **React / Tailwind** — composants UI cohérents avec le design système existant
+
+### Data IA
+
+- **Bot Discord** — setup, intents, écoute de `MESSAGE_REACTION_ADD`, gestion des cas limites
+- **Orchestration LLM** — prompt système, grille `discord_help`, scoring 0–100 avec justification
+- **Intégration API REST** — appel de `POST /api/discord/trigger` depuis le bot, payload conforme au contrat
+
+---
+
+## Réunions & échanges
+
+- **Séance 5** — Toute l'équipe + référent — cadrage initial, répartition des rôles
+- **Séance 6 matin** — Dev (Camille) — tables DB, API, connecteur Discord
+- **Séance 6 après-midi** — Toute l'équipe + Antoine + Alix — pivot architecture : flux synchrone, schéma minimal, contrat interface (décisions A→H)
+- **Séance 7 après-midi** — Toute l'équipe + Antoine + Alix — décisions I→K : UUID Discord, soft contribution, hash contexte, tab UI profil
 
 ---
 
