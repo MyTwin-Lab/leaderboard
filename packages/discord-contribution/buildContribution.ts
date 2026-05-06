@@ -80,7 +80,7 @@ export function buildContribution(event: DiscordThanksEvent): Contribution {
 
   return {
     title: `Discord help: ${shortContent || "message"}`,
-    type: "dataset",
+    type: "discord_help",
     description,
     challenge_id: "discord-help",
     tags: ["discord", "community", "help-interaction"],

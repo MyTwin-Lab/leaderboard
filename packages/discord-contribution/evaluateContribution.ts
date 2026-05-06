@@ -4,8 +4,8 @@ export async function evaluateContribution(
   contribution: Contribution,
   workspacePath: string
 ) {
-  const evaluatorModule = await import("../../leaderboard/packages/evaluator/evaluator");
-  const gridsModule = await import("../../leaderboard/packages/evaluator/grids/index");
+  const evaluatorModule = await import("../evaluator/evaluator");
+  const gridsModule = await import("../evaluator/grids/index");
 
   const { OpenAIAgentEvaluator } = evaluatorModule;
   const { EvaluationGridRegistry } = gridsModule;
