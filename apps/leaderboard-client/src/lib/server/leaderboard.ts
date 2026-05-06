@@ -99,7 +99,12 @@ export async function fetchContributorProfile(userId: string): Promise<Contribut
   }
 
   const aggregated = Array.from(aggregatedMap.values());
-  const totalCP = aggregated.reduce((acc, item) => acc + item.reward, 0);
+
+  const discordCP = contributions
+    .filter((c) => c.type === "discord_help")
+    .reduce((acc, c) => acc + (c.reward ?? 0), 0);
+
+  const totalCP = aggregated.reduce((acc, item) => acc + item.reward, 0) + discordCP;
 
   return {
     userId: user.uuid,
@@ -130,7 +135,7 @@ export async function fetchDiscordEvaluations(userId: string): Promise<DiscordEv
     uuid: ev.uuid,
     status: ev.status,
     score: ev.score ?? null,
-    emoji: ev.emoji,
+    emoji: ev.metadata?.emoji ?? "❓",
     beneficiaryUsername: null,
     evaluatedAt: ev.evaluated_at ?? null,
     justification: (ev.notes as any)?.justification ?? null,

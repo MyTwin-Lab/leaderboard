@@ -4,7 +4,22 @@ import path from "path";
 const nextConfig: NextConfig = {
   // Config turbopack vide pour permettre l'utilisation de --webpack
   turbopack: {},
-  
+
+  // Exclude OTel and other Node-only packages from Webpack bundling to avoid
+  // dynamic-require warnings from @protobufjs/inquire
+  serverExternalPackages: [
+    '@opentelemetry/sdk-node',
+    '@opentelemetry/exporter-trace-otlp-http',
+    '@opentelemetry/otlp-transformer',
+    '@opentelemetry/instrumentation-http',
+    '@opentelemetry/instrumentation-fetch',
+    '@opentelemetry/instrumentation-pg',
+    '@opentelemetry/sdk-trace-node',
+    '@opentelemetry/resources',
+    '@opentelemetry/api',
+    'protobufjs',
+  ],
+
   // Configuration webpack pour résoudre les imports du monorepo
   webpack: (config, { isServer }) => {
     // Résoudre les alias pour les packages

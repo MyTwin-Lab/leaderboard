@@ -3,13 +3,6 @@ import { DiscordEvaluationRepository } from "../../../../../../../../../packages
 
 const evaluationRepo = new DiscordEvaluationRepository();
 
-/**
- * GET /api/discord/evaluations/:id
- *
- * Endpoint admin — visualisation d'une évaluation Discord (phase 5.3).
- * Retourne les métadonnées de l'évaluation et ses participants.
- * Les messages ne sont pas retournés ici (stockés dans contributions.evaluation).
- */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -26,9 +19,7 @@ export async function GET(
 
     return NextResponse.json({
       evaluation_id: evaluation.uuid,
-      channel_id: evaluation.channel_id,
-      trigger_message_id: evaluation.trigger_message_id,
-      emoji: evaluation.emoji,
+      metadata: evaluation.metadata,
       status: evaluation.status,
       score: evaluation.score,
       notes: evaluation.notes,

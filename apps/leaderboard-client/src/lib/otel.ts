@@ -11,8 +11,7 @@ import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
 //diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG); 
 
 export function setupOtel() {
-  //const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
-  const endpoint = 'https://otlp-gateway-prod-eu-central-0.grafana.net/otlp';
+  const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
   if (!endpoint) {
     console.warn('[OTel] OTEL_EXPORTER_OTLP_ENDPOINT not set — tracing disabled');
@@ -30,16 +29,9 @@ export function setupOtel() {
     }
   }
 
-  /*const traceExporter = new OTLPTraceExporter({
-    url: `${endpoint}/v1/traces`,
-    headers,
-  });*/
-
   const traceExporter = new OTLPTraceExporter({
     url: `${endpoint}/v1/traces`,
-    headers: {  
-      'Authorization': 'Basic MTUyNDY4MjpnbGNfZXlKdklqb2lNVFkyTnpZMk1DSXNJbTRpT2lKc1pXRmtaWEppYjJGeVgyZHlZV1poYm1GZmRHOXJaVzRpTENKcklqb2lVa2d3V1RVNVRGWTVWRTVWU0RWaU56SXlPSFZTYms4eUlpd2liU0k2ZXlKeUlqb2ljSEp2WkMxbGRTMWpaVzUwY21Gc0xUQWlmWDA9'  // remplacez par votre vraie valeur base64  
-    }, 
+    headers,
   });
 
   const sdk = new NodeSDK({

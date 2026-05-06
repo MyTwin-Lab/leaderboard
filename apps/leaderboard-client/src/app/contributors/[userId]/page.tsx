@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { ContributorHeader } from "@/components/contributor/ContributorHeader";
-import { ChallengeList } from "@/components/contributor/ChallengeList";
-import { DiscordSection } from "@/components/contributor/DiscordSection";
+import { ProfileTabs } from "@/components/contributor/ProfileTabs";
 import { fetchContributorProfile, fetchDiscordEvaluations } from "@/lib/server/leaderboard";
 
 interface ContributorPageProps {
@@ -29,15 +28,7 @@ export default async function ContributorPage({ params }: ContributorPageProps) 
         githubUsername={profile.githubUsername}
         totalCP={profile.totalCP}
       />
-      <ChallengeList challenges={profile.challenges} />
-      {discordEvaluations.length > 0 && (
-        <div>
-          <h2 className="mb-3 text-sm font-semibold text-white/60 sm:mb-4 sm:text-base">
-            Aide Discord
-          </h2>
-          <DiscordSection evaluations={discordEvaluations} />
-        </div>
-      )}
+      <ProfileTabs challenges={profile.challenges} discordEvaluations={discordEvaluations} />
     </div>
   );
 }
