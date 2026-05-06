@@ -74,12 +74,15 @@ export const users = pgTable("users", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   role: varchar("role", { length: 100 }).notNull(),
   full_name: varchar("full_name", { length: 255 }).notNull(),
-  github_username: varchar("github_username", { length: 255 }).notNull(),
+  github_username: varchar("github_username", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  google_user_id: varchar("google_user_id", { length: 255 }),
   bio: text("bio"),
-  password_hash: text("password_hash"),
   created_at: timestamp("created_at").defaultNow(),
 }, (table) => ({
   githubUsernameIdx: uniqueIndex("idx_users_github_username").on(table.github_username),
+  emailIdx: uniqueIndex("idx_users_email").on(table.email),
+  googleUserIdIdx: uniqueIndex("idx_users_google_user_id").on(table.google_user_id),
 }));
 
 // --- CONTRIBUTIONS ---
@@ -105,6 +108,7 @@ export const contributions = pgTable("contributions", {
 export const tasks = pgTable("tasks", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
+  repo_id: uuid("repo_id").references(() => repos.uuid, { onDelete: "set null" }),
   parent_task_id: uuid("parent_task_id"),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
@@ -113,6 +117,7 @@ export const tasks = pgTable("tasks", {
   created_at: timestamp("created_at").defaultNow(),
 }, (table) => ({
   challengeIdIdx: index("idx_tasks_challenge_id").on(table.challenge_id),
+  repoIdIdx: index("idx_tasks_repo_id").on(table.repo_id),
   parentTaskIdIdx: index("idx_tasks_parent_task_id").on(table.parent_task_id),
   challengeStatusIdx: index("idx_tasks_challenge_status").on(table.challenge_id, table.status),
 }));
@@ -287,19 +292,6 @@ export const onboarding_progress = pgTable("onboarding_progress", {
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 });
-
-// --- GOOGLE ACCOUNTS ---
-export const google_accounts = pgTable("google_accounts", {
-  uuid: uuid("uuid").primaryKey().defaultRandom(),
-  user_id: uuid("user_id").notNull().references(() => users.uuid, { onDelete: "cascade" }),
-  google_user_id: varchar("google_user_id", { length: 255 }).notNull().unique(),
-  display_name: varchar("display_name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 255 }),
-  created_at: timestamp("created_at").defaultNow(),
-  updated_at: timestamp("updated_at").defaultNow(),
-}, (table) => ({
-  userIdIdx: index("idx_google_accounts_user_id").on(table.user_id),
-}));
 
 // --- SYNC MEETINGS ---
 export const sync_meetings = pgTable("sync_meetings", {
@@ -587,7 +579,6 @@ export const db = drizzle(pool, {
     evaluation_grid_categories,
     evaluation_grid_subcriteria,
     task_workspaces,
-    google_accounts,
     sync_meetings,
     meeting_participants,
     meeting_analyses,
@@ -607,7 +598,6 @@ export const db = drizzle(pool, {
     evaluationGridCategoriesRelations,
     evaluationGridSubcriteriaRelations,
     taskWorkspacesRelations,
-    googleAccountsRelations,
     syncMeetingsRelations,
     meetingParticipantsRelations,
     meetingAnalysesRelations,

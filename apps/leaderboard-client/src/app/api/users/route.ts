@@ -1,24 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserRepository } from '../../../../../../packages/database-service/repositories';
-import { hashPassword } from '@/lib/auth';
 import { z } from 'zod';
 
 const userRepo = new UserRepository();
 
 const createUserSchema = z.object({
-  github_username: z.string().min(1),
+  github_username: z.string().min(1).optional(),
   full_name: z.string().min(1),
+  email: z.string().email().optional(),
   role: z.string(),
-  password: z.string().min(8).optional(),
 });
 
 // GET /api/users - Liste tous les utilisateurs
 export async function GET() {
   try {
     const users = await userRepo.findAll();
-    // Ne pas renvoyer les password_hash
-    const sanitizedUsers = users.map(({ password_hash, ...user }) => user);
-    return NextResponse.json(sanitizedUsers);
+    return NextResponse.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json(
@@ -34,20 +31,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = createUserSchema.parse(body);
     
-    const userData: any = {
+    const user = await userRepo.create({
       github_username: validated.github_username,
       full_name: validated.full_name,
+      email: validated.email,
       role: validated.role,
-    };
+    });
     
-    if (validated.password) {
-      userData.password_hash = await hashPassword(validated.password);
-    }
-    
-    const user = await userRepo.create(userData);
-    const { password_hash, ...sanitizedUser } = user;
-    
-    return NextResponse.json(sanitizedUser, { status: 201 });
+    return NextResponse.json(user, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

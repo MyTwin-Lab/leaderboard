@@ -1,0 +1,1 @@
+ALTER TABLE "meeting_analyses" DROP COLUMN "key_points";

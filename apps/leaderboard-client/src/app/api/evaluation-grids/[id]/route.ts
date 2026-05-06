@@ -25,7 +25,7 @@ export async function GET(
     }
 
     const { id } = await params;
-    const grid = await gridRepo.findFull(id);
+    const grid = await gridRepo.findFullById(id);
 
     if (!grid) {
       return NextResponse.json({ error: 'Grid not found' }, { status: 404 });
@@ -58,7 +58,7 @@ export async function PUT(
       );
     }
 
-    const grid = await gridRepo.updateGrid(id, parsed.data);
+    const grid = await gridRepo.update(id, parsed.data);
     return NextResponse.json(grid);
   } catch (error) {
     console.error('[EvaluationGrids] PUT error:', error);
@@ -77,7 +77,7 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    await gridRepo.deleteGrid(id);
+    await gridRepo.delete(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[EvaluationGrids] DELETE error:', error);

@@ -1,6 +1,6 @@
 import { db } from "../db/drizzle";
 import { contributions, users, challenges } from "../db/drizzle";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { toDomainContribution, toDomainUser, toDomainChallenge, toDbContribution } from "../db/mappers";
 import type { Contribution, User, Challenge } from "../domain/entities";
 import { contributionSchema } from "../domain/schemas_zod";
@@ -19,6 +19,14 @@ export class ContributionRepository {
   async findByUser(userId: string): Promise<Contribution[]> {
     const rows = await db.select().from(contributions).where(eq(contributions.user_id, userId));
     return rows.map(toDomainContribution);
+  }
+
+  async findByTaskAndUser(taskId: string, userId: string): Promise<Contribution | null> {
+    const [row] = await db
+      .select()
+      .from(contributions)
+      .where(and(eq(contributions.task_id, taskId), eq(contributions.user_id, userId)));
+    return row ? toDomainContribution(row) : null;
   }
 
   async findByChallenge(challengeId: string): Promise<Contribution[]> {

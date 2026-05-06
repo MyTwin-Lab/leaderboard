@@ -3,8 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { RefreshTokenRepository } from '../../../../packages/database-service/repositories';
 import { UserRepository } from '../../../../packages/database-service/repositories';
-import type { User } from '../../../../packages/database-service/domain/entities';
-import * as bcrypt from 'bcryptjs';
+import { hash as bcryptHash } from 'bcryptjs';
 import { config } from '../../../../packages/config';
 import type { SessionUser } from '@/lib/types';
 
@@ -17,23 +16,9 @@ const REFRESH_TOKEN_EXPIRY = config.auth.refreshExpiry; // "7d"
 
 export interface JWTPayload {
   userId: string;
-  github_username: string;
+  email: string;
   role: string;
   [key: string]: unknown;
-}
-
-/**
- * Hash un mot de passe avec bcrypt
- */
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
-}
-
-/**
- * Vérifie un mot de passe contre son hash
- */
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
 }
 
 /**
@@ -74,7 +59,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
  * Stocke un refresh token en base de données (hashé)
  */
 export async function storeRefreshToken(userId: string, token: string): Promise<void> {
-  const tokenHash = await hashPassword(token);
+  const tokenHash = await bcryptHash(token, 10);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7); // 7 jours
 
@@ -133,7 +118,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   return {
     id: user.uuid,
     fullName: user.full_name,
-    githubUsername: user.github_username,
+    githubUsername: user.github_username ?? '',
+    email: user.email ?? '',
     role: user.role,
   } satisfies SessionUser;
 }
@@ -156,9 +142,3 @@ export async function checkRole(request: NextRequest, allowedRoles: string[]): P
   return allowedRoles.includes(payload.role);
 }
 
-/**
- * Récupère un utilisateur par son github_username
- */
-export async function getUserByGithubUsername(github_username: string): Promise<User | null> {
-  return userRepo.findByGithub(github_username);
-}

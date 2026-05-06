@@ -1,27 +1,52 @@
+import { db, onboarding_progress } from "../db/drizzle";
 import { eq } from "drizzle-orm";
-import { db, onboarding_progress } from "../db/drizzle.js";
-import { toDomainOnboardingProgress } from "../db/mappers.js";
-import type { OnboardingProgress } from "../domain/entities.js";
+import { toDomainOnboardingProgress } from "../db/mappers";
+import type { OnboardingProgress, OnboardingStep } from "../domain/entities";
+
+const ALL_STEPS: OnboardingStep[] = [
+  'clicked_challenge',
+  'assigned_task',
+  'evaluated_contribution',
+  'validated_task',
+  'joined_meeting',
+];
 
 export class OnboardingProgressRepository {
   async findByUserId(userId: string): Promise<OnboardingProgress | null> {
-    const rows = await db.select().from(onboarding_progress).where(eq(onboarding_progress.user_id, userId));
-    return rows[0] ? toDomainOnboardingProgress(rows[0]) : null;
+    const [row] = await db.select().from(onboarding_progress).where(eq(onboarding_progress.user_id, userId));
+    return row ? toDomainOnboardingProgress(row) : null;
   }
 
-  async upsert(userId: string, data: Partial<Omit<OnboardingProgress, "user_id" | "created_at">>): Promise<OnboardingProgress> {
-    const [row] = await db
-      .insert(onboarding_progress)
-      .values({ user_id: userId, ...data })
-      .onConflictDoUpdate({
-        target: onboarding_progress.user_id,
-        set: { ...data, updated_at: new Date() },
+  async initForUser(userId: string): Promise<OnboardingProgress> {
+    const [inserted] = await db.insert(onboarding_progress).values({
+      user_id: userId,
+    }).returning();
+    return toDomainOnboardingProgress(inserted);
+  }
+
+  async markStepComplete(userId: string, step: OnboardingStep): Promise<OnboardingProgress | null> {
+    const [updated] = await db.update(onboarding_progress)
+      .set({
+        [step]: true,
+        updated_at: new Date(),
       })
+      .where(eq(onboarding_progress.user_id, userId))
       .returning();
-    return toDomainOnboardingProgress(row);
-  }
 
-  async delete(userId: string): Promise<void> {
-    await db.delete(onboarding_progress).where(eq(onboarding_progress.user_id, userId));
+    if (!updated) return null;
+
+    const allComplete = ALL_STEPS.every((s) => updated[s] === true);
+    if (allComplete && !updated.completed_at) {
+      const [final] = await db.update(onboarding_progress)
+        .set({
+          completed_at: new Date(),
+          updated_at: new Date(),
+        })
+        .where(eq(onboarding_progress.user_id, userId))
+        .returning();
+      return toDomainOnboardingProgress(final);
+    }
+
+    return toDomainOnboardingProgress(updated);
   }
 }

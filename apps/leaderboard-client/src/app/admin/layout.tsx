@@ -4,6 +4,8 @@ import { ReactNode, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
+import { ToastProvider } from '@/components/ui/Toast';
+import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialog';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -12,7 +14,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
+    router.push('/');
     router.refresh();
   };
 
@@ -24,10 +26,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     { href: '/admin/users', label: 'Users' },
     { href: '/admin/contributions', label: 'Contributions' },
     { href: '/admin/evaluation-grids', label: 'Grids' },
+    { href: '/admin/evaluation-runs', label: 'Runs' },
     { href: '/admin/meetings', label: 'Meetings' },
   ];
 
   return (
+    <ToastProvider>
+    <ConfirmDialogProvider>
     <div className="min-h-screen">
       {/* Header avec navigation */}
       <header className="rounded-md bg-white/5 shadow-md backdrop-blur-sm">
@@ -100,5 +105,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
     </div>
+    </ConfirmDialogProvider>
+    </ToastProvider>
   );
 }

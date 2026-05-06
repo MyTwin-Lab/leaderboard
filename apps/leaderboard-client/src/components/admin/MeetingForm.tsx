@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/Button';
+import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/components/ui/FormField';
 import type { Challenge } from '../../../../../packages/database-service/domain/entities';
 
 interface MeetingFormProps {
@@ -17,97 +17,89 @@ interface MeetingFormProps {
 }
 
 export function MeetingForm({ challenges, onSubmit, onCancel }: MeetingFormProps) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [challengeId, setChallengeId] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    challenge_id: '',
+    start_time: '',
+    end_time: '',
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
-      title,
-      description: description || undefined,
-      challenge_id: challengeId,
-      start_time: new Date(startTime).toISOString(),
-      end_time: new Date(endTime).toISOString(),
+      title: formData.title,
+      description: formData.description || undefined,
+      challenge_id: formData.challenge_id,
+      start_time: new Date(formData.start_time).toISOString(),
+      end_time: new Date(formData.end_time).toISOString(),
     });
   };
 
-  const inputClass =
-    'w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-white/30 focus:border-brandCP/50 focus:outline-none focus:ring-1 focus:ring-brandCP/50';
+  const set = (field: keyof typeof formData) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setFormData((p) => ({ ...p, [field]: e.target.value }));
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-2">
-      <div>
-        <label className="mb-1 block text-sm font-medium text-white/70">Title *</label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className={inputClass}
-          placeholder="Weekly sync"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium text-white/70">Description</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className={inputClass}
-          rows={2}
-          placeholder="Optional description..."
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium text-white/70">Challenge *</label>
-        <select
-          value={challengeId}
-          onChange={(e) => setChallengeId(e.target.value)}
-          className={inputClass}
-          required
-        >
-          <option value="">Select a challenge</option>
-          {challenges.map((c) => (
-            <option key={c.uuid} value={c.uuid}>
-              {c.title}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-white/70">Start *</label>
+    <form onSubmit={handleSubmit} className="space-y-6 p-4">
+      <FormSection title="General">
+        <FormField label="Title" required>
           <input
-            type="datetime-local"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            className={inputClass}
+            type="text"
             required
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-white/70">End *</label>
-          <input
-            type="datetime-local"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
+            value={formData.title}
+            onChange={set('title')}
             className={inputClass}
-            required
+            placeholder="Weekly sync"
+            autoFocus
           />
-        </div>
-      </div>
+        </FormField>
 
-      <div className="flex justify-end gap-3 pt-2">
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit">Create Meeting</Button>
-      </div>
+        <FormField label="Description">
+          <textarea
+            rows={2}
+            value={formData.description}
+            onChange={set('description')}
+            className={inputClass}
+            placeholder="Optional description…"
+          />
+        </FormField>
+
+        <FormField label="Challenge" required>
+          <select required value={formData.challenge_id} onChange={set('challenge_id')} className={selectClass}>
+            <option value="">Select a challenge</option>
+            {challenges.map((c) => (
+              <option key={c.uuid} value={c.uuid}>{c.title}</option>
+            ))}
+          </select>
+        </FormField>
+      </FormSection>
+
+      <FormSection title="Schedule">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField label="Start" required>
+            <input
+              type="datetime-local"
+              required
+              value={formData.start_time}
+              onChange={set('start_time')}
+              className={inputClass}
+            />
+          </FormField>
+
+          <FormField label="End" required>
+            <input
+              type="datetime-local"
+              required
+              value={formData.end_time}
+              onChange={set('end_time')}
+              className={inputClass}
+            />
+          </FormField>
+        </div>
+      </FormSection>
+
+      <FormFooter onCancel={onCancel} submitLabel="Create Meeting" />
     </form>
   );
 }

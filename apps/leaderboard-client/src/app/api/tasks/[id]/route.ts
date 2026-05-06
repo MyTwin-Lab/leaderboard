@@ -8,6 +8,7 @@ const updateTaskSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
   type: z.enum(['solo', 'concurrent']).optional(),
+  repo_id: z.string().uuid().optional(),
   parent_task_id: z.string().uuid().optional(),
 });
 

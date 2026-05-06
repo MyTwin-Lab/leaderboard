@@ -8,6 +8,7 @@ import {
   ChallengeTeamRepository,
   DiscordAccountRepository,
   DiscordEvaluationRepository,
+  OnboardingProgressRepository,
 } from "../../../../packages/database-service/repositories/index";
 
 export const repositories = {
@@ -18,6 +19,7 @@ export const repositories = {
   challengeTeam: new ChallengeTeamRepository(),
   discordAccount: new DiscordAccountRepository(),
   discordEvaluation: new DiscordEvaluationRepository(),
+  onboardingProgress: new OnboardingProgressRepository(),
 };
 
 export type Repositories = typeof repositories;

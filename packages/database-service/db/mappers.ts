@@ -21,7 +21,6 @@ import {
   evaluation_grids,
   evaluation_grid_categories,
   evaluation_grid_subcriteria,
-  google_accounts,
   sync_meetings,
   meeting_participants,
   meeting_analyses,
@@ -51,7 +50,6 @@ import type {
   EvaluationGridSubcriterion,
   EvaluationGridStatus,
   EvaluationGridCategoryType,
-  GoogleAccount,
   SyncMeeting,
   SyncMeetingStatus,
   MeetingParticipant,
@@ -141,9 +139,10 @@ export function toDomainUser(row: DbUser): User {
     uuid: row.uuid,
     role: row.role,
     full_name: row.full_name,
-    github_username: row.github_username,
+    github_username: row.github_username ?? undefined,
+    email: row.email ?? undefined,
+    google_user_id: row.google_user_id ?? undefined,
     bio: row.bio ?? undefined,
-    password_hash: row.password_hash ?? undefined,
     created_at: new Date(row.created_at ?? Date.now()),
   };
 }
@@ -203,9 +202,10 @@ export function toDbUser(entity: Omit<User, "uuid" | "created_at">): typeof user
   return {
     role: entity.role,
     full_name: entity.full_name,
-    github_username: entity.github_username,
+    github_username: entity.github_username ?? null,
+    email: entity.email ?? null,
+    google_user_id: entity.google_user_id ?? null,
     bio: entity.bio ?? null,
-    password_hash: entity.password_hash ?? null,
   };
 }
 
@@ -246,6 +246,7 @@ export function toDomainTask(row: DbTask): Task {
   return {
     uuid: row.uuid,
     challenge_id: row.challenge_id ?? "",
+    repo_id: row.repo_id ?? undefined,
     parent_task_id: row.parent_task_id ?? undefined,
     title: row.title,
     description: row.description ?? undefined,
@@ -258,6 +259,7 @@ export function toDomainTask(row: DbTask): Task {
 export function toDbTask(entity: Omit<Task, "uuid" | "created_at">): typeof tasks.$inferInsert {
   return {
     challenge_id: entity.challenge_id || null,
+    repo_id: entity.repo_id || null,
     parent_task_id: entity.parent_task_id || null,
     title: entity.title,
     description: entity.description || null,
@@ -469,32 +471,9 @@ export function toDbEvaluationGridSubcriterion(
 // SYNC MEETINGS MAPPERS
 // ============================================================
 
-type DbGoogleAccount = InferSelectModel<typeof google_accounts>;
 type DbSyncMeeting = InferSelectModel<typeof sync_meetings>;
 type DbMeetingParticipant = InferSelectModel<typeof meeting_participants>;
 type DbMeetingAnalysis = InferSelectModel<typeof meeting_analyses>;
-
-// --- GoogleAccount ---
-export function toDomainGoogleAccount(row: DbGoogleAccount): GoogleAccount {
-  return {
-    uuid: row.uuid,
-    user_id: row.user_id,
-    google_user_id: row.google_user_id,
-    display_name: row.display_name,
-    email: row.email ?? undefined,
-    created_at: row.created_at!,
-    updated_at: row.updated_at!,
-  };
-}
-
-export function toDbGoogleAccount(entity: Omit<GoogleAccount, "uuid" | "created_at" | "updated_at">) {
-  return {
-    user_id: entity.user_id,
-    google_user_id: entity.google_user_id,
-    display_name: entity.display_name,
-    email: entity.email ?? null,
-  };
-}
 
 // --- SyncMeeting ---
 export function toDomainSyncMeeting(row: DbSyncMeeting): SyncMeeting {

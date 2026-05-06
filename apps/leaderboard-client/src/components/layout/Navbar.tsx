@@ -102,7 +102,7 @@ export const Navbar = ({ session }: NavbarProps) => {
               <ContributorBadge fullName={session.fullName} githubUsername={session.githubUsername} role={session.role} />
             ) : (
               <div className="hidden p-2 md:flex items-center rounded-2xl bg-white/10 hover:bg-white/15 cursor-pointer transition">
-                <Link href="/login?from=/contributors/me" className="transition hover:opacity-80">
+                <Link href="/api/google-auth/authorize?from=/contributors/me" className="transition hover:opacity-80">
                   <Image src="/profile.svg" alt="Sign in" width={24} height={24} />
                 </Link>
               </div>
@@ -172,7 +172,7 @@ export const Navbar = ({ session }: NavbarProps) => {
 
           {/* Mobile User Profile / Sign In */}
           <Link
-            href={session ? "/contributors/me" : "/login?from=/contributors/me"}
+            href={session ? "/contributors/me" : "/api/google-auth/authorize?from=/contributors/me"}
             onClick={() => setMobileMenuOpen(false)}
             className={cn(
               "text-3xl font-light tracking-tight transition-all duration-300 hover:text-brandCP",
