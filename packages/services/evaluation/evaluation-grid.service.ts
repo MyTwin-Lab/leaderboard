@@ -1,4 +1,4 @@
-import { EvaluationGridsRepository } from "../database-service/repositories/index.js";
+import { EvaluationGridsRepository } from "../../database-service/repositories/index.js";
 import type { 
   EvaluationGrid, 
   EvaluationGridCategory,
@@ -6,7 +6,7 @@ import type {
   EvaluationGridFull,
   EvaluationGridStatus,
   EvaluationGridCategoryType,
-} from "../database-service/domain/entities.js";
+} from "../../database-service/domain/entities.js";
 
 export interface CreateGridInput {
   slug: string;

@@ -5,8 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/Badge';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
+import { HowToContribute } from '@/components/tasks/HowToContribute';
+import { trackOnboardingStep } from '@/lib/onboarding-track';
 
 interface TaskDetails {
+  currentUserId: string | null;
   task: {
     uuid: string;
     challenge_id: string;
@@ -38,7 +41,7 @@ interface TaskDetails {
     workspace_ref?: string;
     workspace_url?: string;
     workspace_status?: string;
-    workspace_meta?: Record<string, unknown>;
+    workspace_meta?: { userUrls?: Record<string, string>; [key: string]: unknown };
   }[];
   subTasks: {
     uuid: string;
@@ -71,6 +74,10 @@ export default function TaskDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [evaluating, setEvaluating] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [kaggleUrls, setKaggleUrls] = useState<Record<string, string>>({});
+  const [submittingKaggle, setSubmittingKaggle] = useState<Record<string, boolean>>({});
+  const [kaggleErrors, setKaggleErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchDetails();
@@ -83,8 +90,17 @@ export default function TaskDetailPage() {
         setError(res.status === 404 ? 'Task not found' : 'Failed to load task');
         return;
       }
-      const json = await res.json();
+      const json: TaskDetails = await res.json();
       setData(json);
+      // Pre-fill Kaggle inputs with the current user's already-submitted URLs
+      if (json.currentUserId) {
+        const prefilled: Record<string, string> = {};
+        for (const ws of json.workspaces) {
+          const myUrl = ws.workspace_meta?.userUrls?.[json.currentUserId];
+          if (myUrl) prefilled[ws.repo_id] = myUrl;
+        }
+        setKaggleUrls(prefilled);
+      }
     } catch {
       setError('Failed to load task');
     } finally {
@@ -97,7 +113,6 @@ export default function TaskDetailPage() {
     try {
       const res = await fetch(`/api/tasks/${taskId}/evaluate`, { method: 'POST' });
       if (res.ok) {
-        // Refresh details to show updated evaluation
         await fetchDetails();
       } else {
         const err = await res.json();
@@ -107,6 +122,48 @@ export default function TaskDetailPage() {
       alert('Evaluation failed');
     } finally {
       setEvaluating(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    setCompleting(true);
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/complete`, { method: 'PATCH' });
+      if (res.ok) {
+        trackOnboardingStep('validated_task');
+        await fetchDetails();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to complete task');
+      }
+    } catch {
+      alert('Failed to complete task');
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+  const handleKaggleSubmit = async (repoId: string) => {
+    const url = kaggleUrls[repoId]?.trim();
+    if (!url) return;
+    setSubmittingKaggle(prev => ({ ...prev, [repoId]: true }));
+    setKaggleErrors(prev => ({ ...prev, [repoId]: '' }));
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/workspace`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo_id: repoId, workspace_url: url }),
+      });
+      if (res.ok) {
+        await fetchDetails();
+      } else {
+        const err = await res.json();
+        setKaggleErrors(prev => ({ ...prev, [repoId]: err.error || 'Failed to save URL' }));
+      }
+    } catch {
+      setKaggleErrors(prev => ({ ...prev, [repoId]: 'Failed to save URL' }));
+    } finally {
+      setSubmittingKaggle(prev => ({ ...prev, [repoId]: false }));
     }
   };
 
@@ -136,7 +193,7 @@ export default function TaskDetailPage() {
     );
   }
 
-  const { task, challenge, assignees, workspaces, subTasks, contribution } = data;
+  const { currentUserId, task, challenge, assignees, workspaces, subTasks, contribution } = data;
 
   return (
     <div className="mx-auto mt-4 max-w-3xl space-y-6 sm:mt-6">
@@ -178,6 +235,13 @@ export default function TaskDetailPage() {
               >
                 {task.status === 'done' ? 'Done' : 'To do'}
               </span>
+              {workspaces[0]?.repo_type && (
+                <HowToContribute
+                  repoType={workspaces[0].repo_type as 'github' | 'kaggle_dataset' | 'kaggle_model'}
+                  githubRepo={workspaces[0].repo_external_id ?? workspaces[0].repo_title}
+                  branchSlug={workspaces[0].workspace_ref?.replace(/^refs\/heads\//, '')}
+                />
+              )}
             </div>
           </div>
           {task.description && (
@@ -195,31 +259,51 @@ export default function TaskDetailPage() {
                 <div key={i} className="rounded-lg bg-white/5 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <div>
-                        <p className="text-sm font-medium text-white">
-                          {ws.repo_external_id || ws.repo_title}
-                        </p>
-                        {ws.workspace_ref && (
-                          <p className="text-xs text-white/50">
-                            Branch: <span className="font-mono text-brandCP">{ws.workspace_ref.replace(/^refs\/heads\//, '')}</span>
-                          </p>
-                        )}
-                      </div>
+                      {(() => {
+                        const userUrl = currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined;
+                        const branchLabel = ws.workspace_ref
+                          ? ws.workspace_ref.replace(/^refs\/heads\//, '')
+                          : (userUrl && ws.repo_type === 'github')
+                            ? (() => {
+                                try {
+                                  const parts = new URL(userUrl).pathname.split('/').filter(Boolean);
+                                  const treeIdx = parts.indexOf('tree');
+                                  return treeIdx !== -1 ? parts.slice(treeIdx + 1).join('/') : null;
+                                } catch { return null; }
+                              })()
+                            : null;
+                        return (
+                          <div>
+                            <p className="text-sm font-medium text-white">
+                              {ws.repo_external_id || ws.repo_title}
+                            </p>
+                            {branchLabel && (
+                              <p className="text-xs text-white/50">
+                                Branch: <span className="font-mono text-brandCP">{branchLabel}</span>
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center gap-2">
                       {ws.workspace_status && (
                         <WorkspaceStatusBadge status={ws.workspace_status} />
                       )}
-                      {ws.workspace_url && (
-                        <a
-                          href={ws.workspace_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20 transition"
-                        >
-                          Open
-                        </a>
-                      )}
+                      {(() => {
+                        const userUrl = currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined;
+                        const openUrl = userUrl ?? ws.workspace_url;
+                        return openUrl ? (
+                          <a
+                            href={openUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20 transition"
+                          >
+                            Open
+                          </a>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -228,6 +312,52 @@ export default function TaskDetailPage() {
           )}
         </Section>
       </div>
+
+      {/* Kaggle URL submission — one panel per Kaggle workspace, always visible */}
+      {workspaces
+        .filter(ws => ws.repo_type === 'kaggle_model' || ws.repo_type === 'kaggle_dataset')
+        .map(ws => {
+          const mySubmittedUrl = currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined;
+          const isSubmitted = !!mySubmittedUrl;
+          const label = ws.repo_type === 'kaggle_model' ? 'Kaggle Model' : 'Kaggle Dataset';
+          return (
+            <Section key={ws.repo_id} title={label}>
+              <p className="mb-3 text-sm text-white/60">
+                Paste the link to your {label.toLowerCase()} so it can be included in the evaluation.
+                {task.type === 'concurrent' && (
+                  <span className="ml-1 text-white/40">(Each contributor submits their own link.)</span>
+                )}
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={kaggleUrls[ws.repo_id] ?? ''}
+                  onChange={e => setKaggleUrls(prev => ({ ...prev, [ws.repo_id]: e.target.value }))}
+                  placeholder={ws.repo_type === 'kaggle_model' ? 'https://www.kaggle.com/models/...' : 'https://www.kaggle.com/datasets/...'}
+                  className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-brandCP"
+                />
+                <button
+                  onClick={() => handleKaggleSubmit(ws.repo_id)}
+                  disabled={submittingKaggle[ws.repo_id] || !kaggleUrls[ws.repo_id]?.trim()}
+                  className="rounded-xl bg-brandCP/10 px-4 py-2 text-sm font-semibold text-brandCP hover:bg-brandCP/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submittingKaggle[ws.repo_id] ? 'Saving...' : isSubmitted ? 'Update' : 'Submit'}
+                </button>
+              </div>
+              {isSubmitted && !kaggleErrors[ws.repo_id] && (
+                <p className="mt-2 flex items-center gap-1.5 text-xs text-green-400">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  Submitted
+                </p>
+              )}
+              {kaggleErrors[ws.repo_id] && (
+                <p className="mt-2 text-xs text-red-400">{kaggleErrors[ws.repo_id]}</p>
+              )}
+            </Section>
+          );
+        })}
 
       {/* Evaluation */}
       <Section title="Evaluation">
@@ -292,18 +422,29 @@ export default function TaskDetailPage() {
           </div>
         )}
 
-        <div className="mt-4 flex justify-center">
-          <button
-            onClick={handleEvaluate}
-            disabled={evaluating}
-            className="rounded-xl bg-brandCP/10 px-6 py-2 text-sm font-semibold text-brandCP hover:bg-brandCP/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {evaluating
-              ? 'Evaluating...'
-              : contribution?.evaluation
-                ? 'Re-evaluate'
-                : 'Evaluate'}
-          </button>
+        <div className="mt-4 flex justify-center gap-3">
+          {task.status !== 'done' && (
+            <button
+              onClick={handleEvaluate}
+              disabled={evaluating}
+              className="rounded-xl bg-brandCP/10 px-6 py-2 text-sm font-semibold text-brandCP hover:bg-brandCP/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {evaluating
+                ? 'Evaluating...'
+                : contribution?.evaluation
+                  ? 'Re-evaluate'
+                  : 'Evaluate'}
+            </button>
+          )}
+          {contribution?.evaluation && task.status !== 'done' && (
+            <button
+              onClick={handleComplete}
+              disabled={completing}
+              className="rounded-xl bg-green-500/10 px-6 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {completing ? 'Validating...' : 'Mark as done'}
+            </button>
+          )}
         </div>
       </Section>
     </div>

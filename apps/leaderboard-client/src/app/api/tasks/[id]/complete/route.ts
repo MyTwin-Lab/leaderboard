@@ -1,37 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TaskRepository, TaskAssigneeRepository } from '../../../../../../../../packages/database-service/repositories';
-import { jwtVerify } from 'jose';
+import { TaskRepository, TaskAssigneeRepository, ContributionRepository } from '../../../../../../../../packages/database-service/repositories';
+import { getSessionFromRequest } from '../../../../../application/auth.js';
 
 const taskRepo = new TaskRepository();
 const taskAssigneeRepo = new TaskAssigneeRepository();
-
-type SessionPayload = {
-  userId: string;
-  role: string;
-} | null;
-
-async function getSession(request: NextRequest): Promise<SessionPayload> {
-  const token = request.cookies.get('access_token')?.value;
-  if (!token) return null;
-
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    return {
-      userId: payload.userId as string,
-      role: payload.role as string,
-    };
-  } catch {
-    return null;
-  }
-}
+const contributionRepo = new ContributionRepository();
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getSession(request);
+    const session = await getSessionFromRequest(request);
     if (!session) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -55,6 +35,15 @@ export async function PATCH(
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
+      );
+    }
+
+    const taskContributions = await contributionRepo.findByTask(taskId);
+    const hasEvaluation = taskContributions.some(c => c.evaluation != null);
+    if (!hasEvaluation) {
+      return NextResponse.json(
+        { error: 'Task must have at least one evaluated contribution before being marked as done' },
+        { status: 400 }
       );
     }
 

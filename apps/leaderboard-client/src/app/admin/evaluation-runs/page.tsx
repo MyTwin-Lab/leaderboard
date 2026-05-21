@@ -29,7 +29,6 @@ export default function EvaluationRunsPage() {
   const [selectedChallengeId, setSelectedChallengeId] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const [retryingId, setRetryingId] = useState<string | null>(null);
   const [selectedRun, setSelectedRun] = useState<EvaluationRunWithChallenge | null>(null);
 
   const toast = useToast();
@@ -67,31 +66,6 @@ export default function EvaluationRunsPage() {
   useEffect(() => {
     fetchRuns();
   }, [selectedChallengeId, selectedStatus, challenges]);
-
-  const handleRetry = async (run: EvaluationRunWithChallenge) => {
-    const ok = await confirm({
-      title: 'Re-run Evaluation',
-      message: `Re-launch the sync evaluation for "${run.challengeTitle ?? 'this challenge'}"?`,
-      confirmLabel: 'Re-run',
-    });
-    if (!ok) return;
-
-    setRetryingId(run.uuid);
-    try {
-      const res = await fetch(`/api/evaluation-runs/${run.uuid}/retry`, { method: 'POST' });
-      const data = await res.json();
-      if (res.ok) {
-        toast(`Evaluation re-launched — ${data.count} contributions processed`, 'success');
-        await fetchRuns();
-      } else {
-        toast(data.error ?? 'Failed to re-run evaluation', 'error');
-      }
-    } catch {
-      toast('Failed to re-run evaluation', 'error');
-    } finally {
-      setRetryingId(null);
-    }
-  };
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({
@@ -173,10 +147,8 @@ export default function EvaluationRunsPage() {
         >
           <EvaluationRunList
             runs={runs}
-            onRetry={handleRetry}
             onDelete={handleDelete}
             onSelect={setSelectedRun}
-            retryingId={retryingId}
           />
         </Card>
       </div>

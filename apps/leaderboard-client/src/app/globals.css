@@ -4,6 +4,13 @@
   --background: #0a0a0a;
   --background-dark: #030208;
   --foreground: #ededed;
+  --color-brandCP: #0af7c1;
+  --color-primary-100: #8ad0ff;
+  --color-primary-200: #52c1ff;
+  --color-primary-300: #1ba5ff;
+  --gradient-from: #0A1C3F;
+  --gradient-via: #0D224F;
+  --gradient-to: #050B1F;
 }
 
 @theme inline {
@@ -13,10 +20,10 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  --color-primary-100: #8ad0ff;
-  --color-primary-200: #52c1ff;
-  --color-primary-300: #1ba5ff;
-  --color-brandCP: #0af7c1;
+  --color-primary-100: var(--color-primary-100);
+  --color-primary-200: var(--color-primary-200);
+  --color-primary-300: var(--color-primary-300);
+  --color-brandCP: var(--color-brandCP);
 }
 
 body {

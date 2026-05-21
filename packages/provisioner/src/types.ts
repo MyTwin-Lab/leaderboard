@@ -113,4 +113,6 @@ export interface TaskProvisionContext {
   repoType: string;
   /** Branche du challenge parent (base pour la branche task) */
   challengeBranchRef?: string;
+  /** Identifiant utilisateur pour les tâches concurrentes (génère une branche par utilisateur) */
+  userIdentifier?: string;
 }

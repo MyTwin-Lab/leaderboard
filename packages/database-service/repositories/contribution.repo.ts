@@ -21,6 +21,11 @@ export class ContributionRepository {
     return rows.map(toDomainContribution);
   }
 
+  async findByTask(taskId: string): Promise<Contribution[]> {
+    const rows = await db.select().from(contributions).where(eq(contributions.task_id, taskId));
+    return rows.map(toDomainContribution);
+  }
+
   async findByTaskAndUser(taskId: string, userId: string): Promise<Contribution | null> {
     const [row] = await db
       .select()

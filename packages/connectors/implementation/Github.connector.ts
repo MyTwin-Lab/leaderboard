@@ -5,6 +5,8 @@ import {
   ConnectorAuthConfig,
   ExternalItem,
   ConnectorType,
+  ExternalItemContent,
+  ModifiedFile,
 } from "../interfaces.js";
 
 /**
@@ -250,7 +252,7 @@ export class GitHubExternalConnector implements ExternalConnector {
    * @param commitSha SHA du commit à analyser
    * @param includePatch Inclure le diff des fichiers modifiés (f.patch)
    */
-  async fetchItemContent(commitSha: string, includePatch = false) {
+  async fetchItemContent(commitSha: string, includePatch = false): Promise<ExternalItemContent> {
     try {
       // 1️⃣ Récupérer le commit et la liste des fichiers modifiés
       const commitResponse = await this.octokit.rest.repos.getCommit({
