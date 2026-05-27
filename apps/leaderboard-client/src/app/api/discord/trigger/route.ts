@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { DiscordAccountRepository } from "../../../../../../../../packages/database-service/repositories";
-import { DiscordEvaluationRepository } from "../../../../../../../../packages/database-service/repositories";
-import { DiscordService } from "../../../../../../../../packages/services/discord.service";
-import { DiscordConnector } from "../../../../../../../../packages/connectors/implementation/Discord.connector";
-import { evaluateDiscordHelp } from "../../../../../../../../packages/evaluator/discord/discord.evaluator";
+import { DiscordAccountRepository } from "../../../../../../../packages/database-service/repositories";
+import { DiscordEvaluationRepository } from "../../../../../../../packages/database-service/repositories";
+import { DiscordService } from "../../../../../../../packages/services/discord.service";
+import { DiscordConnector } from "../../../../../../../packages/connectors/implementation/Discord.connector";
+import { evaluateDiscordHelp } from "../../../../../../../packages/evaluator/discord/discord.evaluator";
 
 const accountRepo = new DiscordAccountRepository();
 const evaluationRepo = new DiscordEvaluationRepository();
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       status: evalResult.skipped ? "skipped" : "evaluated",
       notes: evalResult.skipped
         ? { skip_reason: evalResult.skip_reason }
-        : { justification: evalResult.justification, criteria: evalResult.criteria },
+        : { justification: evalResult.evaluation.justification, criteria: evalResult.evaluation.scores },
     });
 
     if (evalResult.skipped) {

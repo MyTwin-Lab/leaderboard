@@ -100,11 +100,9 @@ export async function fetchContributorProfile(userId: string): Promise<Contribut
 
   const aggregated = Array.from(aggregatedMap.values());
 
-  const discordCP = contributions
-    .filter((c) => c.type === "discord_help")
-    .reduce((acc, c) => acc + (c.reward ?? 0), 0);
-
-  const totalCP = aggregated.reduce((acc, item) => acc + item.reward, 0) + discordCP;
+  const totalCP =
+    aggregated.reduce((acc, item) => acc + item.reward, 0) +
+    contributions.filter((c) => c.type === "discord_help").reduce((acc, c) => acc + (c.reward ?? 0), 0);
 
   return {
     userId: user.uuid,
@@ -124,6 +122,12 @@ export type DiscordEvaluationEntry = {
   evaluatedAt: Date | null;
   justification: string | null;
 };
+
+export async function fetchDiscordAccount(userId: string): Promise<{ discord_id: string; username: string } | null> {
+  const account = await repositories.discordAccount.findByUserId(userId);
+  if (!account) return null;
+  return { discord_id: account.discord_id, username: account.username };
+}
 
 export async function fetchDiscordEvaluations(userId: string): Promise<DiscordEvaluationEntry[]> {
   const account = await repositories.discordAccount.findByUserId(userId);

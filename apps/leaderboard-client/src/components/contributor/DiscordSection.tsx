@@ -1,16 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import type { DiscordEvaluationEntry } from "@/lib/server/leaderboard";
 
 interface DiscordSectionProps {
   evaluations: DiscordEvaluationEntry[];
+  isOwner: boolean;
+  discordAccount: { discord_id: string; username: string } | null;
 }
 
-export function DiscordSection({ evaluations }: DiscordSectionProps) {
+export function DiscordSection({ evaluations, isOwner, discordAccount }: DiscordSectionProps) {
+  if (isOwner && !discordAccount) {
+    return <DiscordLinkForm />;
+  }
+
   if (evaluations.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-md bg-white/5 p-4 text-sm text-white/60 sm:p-6 sm:text-base">
-        No Discord help yet.
+        Aucune aide Discord pour le moment.
       </div>
     );
   }
@@ -54,6 +61,75 @@ export function DiscordSection({ evaluations }: DiscordSectionProps) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function DiscordLinkForm() {
+  const [discordId, setDiscordId] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("loading");
+    setError(null);
+
+    try {
+      const res = await fetch("/api/discord/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ discord_id: discordId.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Une erreur est survenue.");
+        setStatus("error");
+        return;
+      }
+
+      setStatus("success");
+    } catch {
+      setError("Une erreur est survenue.");
+      setStatus("error");
+    }
+  }
+
+  if (status === "success") {
+    return (
+      <div className="rounded-md bg-green-500/10 p-4 text-sm text-green-400 sm:p-6">
+        Compte Discord lié avec succès. Rechargez la page pour voir vos évaluations.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md bg-white/5 p-4 sm:p-6">
+      <p className="mb-4 text-sm text-white/70">
+        Liez votre compte Discord pour que vos points d'entraide apparaissent ici.
+      </p>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
+        <input
+          type="text"
+          value={discordId}
+          onChange={(e) => setDiscordId(e.target.value)}
+          placeholder="Votre Discord ID (ex: 123456789012345678)"
+          className="flex-1 rounded-md bg-white/10 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-brandCP"
+          required
+        />
+        <button
+          type="submit"
+          disabled={status === "loading" || !discordId.trim()}
+          className="rounded-md bg-brandCP/20 px-4 py-2 text-sm font-medium text-brandCP transition hover:bg-brandCP/30 disabled:opacity-50"
+        >
+          {status === "loading" ? "Liaison…" : "Lier"}
+        </button>
+      </form>
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      <p className="mt-3 text-[11px] text-white/30">
+        Ton Discord ID se trouve dans Paramètres → Avancés → Mode développeur, puis clic droit sur ton profil → Copier l'identifiant.
+      </p>
     </div>
   );
 }

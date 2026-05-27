@@ -9,9 +9,11 @@ import type { DiscordEvaluationEntry } from "@/lib/server/leaderboard";
 interface ProfileTabsProps {
   challenges: ContributorProfile["challenges"];
   discordEvaluations: DiscordEvaluationEntry[];
+  isOwner: boolean;
+  discordAccount: { discord_id: string; username: string } | null;
 }
 
-export function ProfileTabs({ challenges, discordEvaluations }: ProfileTabsProps) {
+export function ProfileTabs({ challenges, discordEvaluations, isOwner, discordAccount }: ProfileTabsProps) {
   const [activeTab, setActiveTab] = useState<"challenges" | "discord">("challenges");
 
   return (
@@ -32,7 +34,13 @@ export function ProfileTabs({ challenges, discordEvaluations }: ProfileTabsProps
       </div>
 
       {activeTab === "challenges" && <ChallengeList challenges={challenges} />}
-      {activeTab === "discord" && <DiscordSection evaluations={discordEvaluations} />}
+      {activeTab === "discord" && (
+        <DiscordSection
+          evaluations={discordEvaluations}
+          isOwner={isOwner}
+          discordAccount={discordAccount}
+        />
+      )}
     </div>
   );
 }

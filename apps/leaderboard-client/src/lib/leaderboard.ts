@@ -45,18 +45,17 @@ export function aggregateUsersByContribution({
     const targetUser = userById.get(contribution.user_id);
     if (!targetUser) continue;
 
+    if (contribution.type === "discord_help") {
+      if (projectId) continue;
+      if (dateThreshold && contribution.submitted_at < dateThreshold) continue;
+      totals.set(contribution.user_id, (totals.get(contribution.user_id) ?? 0) + (contribution.reward ?? 0));
+      continue;
+    }
+
     const challenge = challengeById.get(contribution.challenge_id);
-    if (projectId && challenge?.project_id !== projectId) {
-      continue;
-    }
-
-    // Filter by time period
-    if (dateThreshold && contribution.submitted_at < dateThreshold) {
-      continue;
-    }
-
-    const reward = contribution.reward ?? 0;
-    totals.set(contribution.user_id, (totals.get(contribution.user_id) ?? 0) + reward);
+    if (projectId && challenge?.project_id !== projectId) continue;
+    if (dateThreshold && contribution.submitted_at < dateThreshold) continue;
+    totals.set(contribution.user_id, (totals.get(contribution.user_id) ?? 0) + (contribution.reward ?? 0));
   }
 
   // Include all users, even those with 0 CP
