@@ -23,4 +23,16 @@ export class DiscordAccountRepository {
       .returning();
     return row;
   }
+
+  async linkUser(discord_id: string, user_id: string) {
+    const [row] = await db
+      .insert(discord_accounts)
+      .values({ discord_id, username: discord_id, user_id })
+      .onConflictDoUpdate({
+        target: discord_accounts.discord_id,
+        set: { user_id },
+      })
+      .returning();
+    return row;
+  }
 }

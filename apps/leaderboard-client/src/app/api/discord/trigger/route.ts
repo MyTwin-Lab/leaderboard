@@ -47,11 +47,11 @@ export async function POST(request: NextRequest) {
     }
 
     const connector = new DiscordConnector(botToken);
-    const messages = await connector.fetchMessagesBefore(
-      data.channel_id,
-      data.trigger_message_id,
-      20
-    );
+    const [contextMessages, triggerMessage] = await Promise.all([
+      connector.fetchMessagesBefore(data.channel_id, data.trigger_message_id, 20),
+      connector.fetchMessage(data.channel_id, data.trigger_message_id),
+    ]);
+    const messages = triggerMessage ? [...contextMessages, triggerMessage] : contextMessages;
 
     const evalResult = await evaluateDiscordHelp({
       messages,

@@ -140,7 +140,7 @@ export async function runEvaluateAgent(
   `;
 
   let response = await client.responses.create({
-    model: "gpt-5-nano",
+    model: "gpt-4o-mini",
     tools,
     tool_choice: "auto",
     input: prompt,
@@ -185,7 +185,7 @@ export async function runEvaluateAgent(
 
     // Continue la conversation avec les résultats des tool calls
     response = await client.responses.create({
-      model: "gpt-5-nano",
+      model: "gpt-4o-mini",
       tools,
       tool_choice: "auto",
       previous_response_id: response.id,

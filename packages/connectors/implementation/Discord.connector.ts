@@ -22,6 +22,22 @@ export class DiscordConnector {
     this.botToken = botToken;
   }
 
+  async fetchMessage(channelId: string, messageId: string): Promise<DiscordMessageItem | null> {
+    const url = `${this.baseUrl}/channels/${channelId}/messages/${messageId}`;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bot ${this.botToken}`, "Content-Type": "application/json" },
+    });
+    if (!response.ok) return null;
+    const msg: any = await response.json();
+    return {
+      id: msg.id,
+      author_id: msg.author.id,
+      author_username: msg.author.username,
+      content: msg.content,
+      timestamp: msg.timestamp,
+    };
+  }
+
   /**
    * Récupère les messages d'un channel avant un message donné.
    *
