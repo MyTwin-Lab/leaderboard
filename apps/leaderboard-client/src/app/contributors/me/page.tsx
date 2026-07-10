@@ -11,12 +11,18 @@ import { fetchContributorProfile, fetchContributorSession } from "@/lib/contribu
 import { LogoutButton } from "@/components/contributor/LogoutButton";
 import { AdminButton } from "@/components/contributor/AdminButton";
 import { ProfileEditForm } from "@/components/contributor/ProfileEditForm";
+import { ClickableAvatarUpload } from "@/components/contributor/ClickableAvatarUpload";
+import { GitHubConnectionCard } from "@/components/contributor/GitHubConnectionCard";
 import { AppSettingsRepository } from "@packages/database-service/repositories";
 import { isValidThemeKey, DEFAULT_THEME_KEY } from "@/lib/themes";
 
 const appSettingsRepo = new AppSettingsRepository();
 
-export default async function ContributorSelfPage() {
+export default async function ContributorSelfPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ github_error?: string }>;
+}) {
   const session = await fetchContributorSession();
 
   if (!session) {
@@ -28,6 +34,9 @@ export default async function ContributorSelfPage() {
   if (!profile) {
     redirect("/");
   }
+
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const githubError = resolvedSearchParams.github_error ?? null;
 
   const [firstName, ...lastNameParts] = session.fullName.split(" ");
   const lastName = lastNameParts.join(" ");
@@ -60,6 +69,7 @@ export default async function ContributorSelfPage() {
               lastName,
               githubUsername: session.githubUsername,
             }}
+            initialAvatarUrl={profile.avatarUrl ?? null}
           />
         </div>
       ),
@@ -72,13 +82,14 @@ export default async function ContributorSelfPage() {
     tabs.push({
       label: "Appearance",
       panel: (
-        <div className="mx-auto max-w-lg py-2">
+        <div className="mx-auto max-w-lg py-2 space-y-6">
           <ThemeSettings
             currentTheme={themeKey}
             currentPrimaryColor={settings.primary_color ?? null}
             currentBackgroundColor={settings.background_color ?? null}
             currentThemeMode={settings.theme_mode}
           />
+          <GitHubConnectionCard initialError={githubError} />
         </div>
       ),
     });
@@ -90,7 +101,15 @@ export default async function ContributorSelfPage() {
         <ContributorHeader
           displayName={profile.displayName}
           githubUsername={profile.githubUsername}
+          avatarUrl={profile.avatarUrl}
           totalCP={profile.totalCP}
+          avatarSlot={
+            <ClickableAvatarUpload
+              name={profile.displayName}
+              size={64}
+              initialAvatarUrl={profile.avatarUrl}
+            />
+          }
         />
         <div className="flex shrink-0 items-center gap-2 pt-1">
           {session.role === "admin" && <AdminButton />}
