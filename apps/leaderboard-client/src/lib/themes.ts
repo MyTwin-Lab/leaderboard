@@ -1,13 +1,14 @@
 export type ThemeKey =
   | "default"
   | "purple-dark"
-  | "green-dark"
-  | "orange-dark"
-  | "red-dark"
-  | "teal-dark";
+  | "teal-dark"
+  | "blue-light"
+  | "rose-light"
+  | "sage-light";
 
 export interface ThemeTokens {
   label: string;
+  mode: "dark" | "light";
   primary100: string;
   primary200: string;
   primary300: string;
@@ -17,8 +18,10 @@ export interface ThemeTokens {
 }
 
 export const THEMES: Record<ThemeKey, ThemeTokens> = {
+  // ── Dark themes ──────────────────────────────────────────
   "default": {
     label: "Blue",
+    mode: "dark",
     primary100: "#8ad0ff",
     primary200: "#52c1ff",
     primary300: "#1ba5ff",
@@ -28,6 +31,7 @@ export const THEMES: Record<ThemeKey, ThemeTokens> = {
   },
   "purple-dark": {
     label: "Purple",
+    mode: "dark",
     primary100: "#d8b4fe",
     primary200: "#c084fc",
     primary300: "#a855f7",
@@ -35,41 +39,46 @@ export const THEMES: Record<ThemeKey, ThemeTokens> = {
     background: "#09060f",
     backgroundDark: "#04020a",
   },
-  "green-dark": {
-    label: "Green",
-    primary100: "#86efac",
-    primary200: "#4ade80",
-    primary300: "#22c55e",
-    brandCP: "#84cc16",
-    background: "#060a06",
-    backgroundDark: "#020502",
-  },
-  "orange-dark": {
-    label: "Orange",
-    primary100: "#fdba74",
-    primary200: "#fb923c",
-    primary300: "#f97316",
-    brandCP: "#fbbf24",
-    background: "#0a0700",
-    backgroundDark: "#050300",
-  },
-  "red-dark": {
-    label: "Red",
-    primary100: "#fca5a5",
-    primary200: "#f87171",
-    primary300: "#ef4444",
-    brandCP: "#fb7185",
-    background: "#0a0606",
-    backgroundDark: "#050202",
-  },
   "teal-dark": {
     label: "Teal",
+    mode: "dark",
     primary100: "#99f6e4",
     primary200: "#5eead4",
     primary300: "#14b8a6",
     brandCP: "#22d3ee",
     background: "#040a0a",
     backgroundDark: "#010505",
+  },
+  // ── Light themes ─────────────────────────────────────────
+  "blue-light": {
+    label: "Sky",
+    mode: "light",
+    primary100: "#bfdbfe",
+    primary200: "#60a5fa",
+    primary300: "#2563eb",
+    brandCP: "#0891b2",
+    background: "#f8fafc",
+    backgroundDark: "#f1f5f9",
+  },
+  "rose-light": {
+    label: "Rose",
+    mode: "light",
+    primary100: "#fecdd3",
+    primary200: "#fb7185",
+    primary300: "#e11d48",
+    brandCP: "#db2777",
+    background: "#fff1f2",
+    backgroundDark: "#ffe4e6",
+  },
+  "sage-light": {
+    label: "Sage",
+    mode: "light",
+    primary100: "#bbf7d0",
+    primary200: "#4ade80",
+    primary300: "#16a34a",
+    brandCP: "#0d9488",
+    background: "#f0fdf4",
+    backgroundDark: "#dcfce7",
   },
 };
 

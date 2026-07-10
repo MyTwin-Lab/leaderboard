@@ -60,10 +60,12 @@ export function ThemeSettings({
     setActivePreset(key);
     setPrimaryColor(tokens.brandCP);
     setBackgroundColor(tokens.background);
+    setThemeMode(tokens.mode);
     save({
       theme_key: key,
-      primary_color: null,   // clear custom overrides — use palette
+      primary_color: null,      // clear custom overrides — use palette
       background_color: null,
+      theme_mode: tokens.mode,  // apply the preset's mode
     });
   };
 
@@ -117,9 +119,14 @@ export function ThemeSettings({
                   <div className="absolute bottom-0 left-0 right-0 h-4 rounded-t-full" style={{ backgroundColor: tokens.primary300 }} />
                   <div className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full" style={{ backgroundColor: tokens.brandCP }} />
                 </div>
-                <span className={`text-[10px] font-medium leading-tight ${isActive ? "text-white" : "text-white/40 group-hover:text-white/60"}`}>
-                  {tokens.label}
-                </span>
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className={`text-[10px] font-medium leading-tight ${isActive ? "text-white" : "text-white/40 group-hover:text-white/60"}`}>
+                    {tokens.label}
+                  </span>
+                  {tokens.mode === "light" && (
+                    <span className="text-[8px] uppercase tracking-widest text-white/25">light</span>
+                  )}
+                </div>
                 {isActive && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-white/80" />}
               </button>
             );
