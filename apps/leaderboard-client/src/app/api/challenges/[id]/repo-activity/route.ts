@@ -17,7 +17,14 @@ export async function GET(
 
     const results = await Promise.allSettled(
       repos.map(async (repo) => {
-        const connector = ConnectorRegistry.createConnector(repo as any);
+        // findByChallengeWithRepo returns { repo_type, repo_external_id } but
+        // createConnector expects { type, external_repo_id } — remap explicitly.
+        const repoForConnector = {
+          ...repo,
+          type: repo.repo_type,
+          external_repo_id: repo.repo_external_id,
+        };
+        const connector = ConnectorRegistry.createConnector(repoForConnector as any);
         if (!connector || typeof connector.fetchRepoActivity !== 'function') {
           return { repo_id: repo.repo_id, result: { error: 'No activity method available' } };
         }
