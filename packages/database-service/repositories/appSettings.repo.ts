@@ -36,4 +36,38 @@ export class AppSettingsRepository {
       .returning();
     return toDomainAppSettings(upserted);
   }
+
+  async updateGithubConnection(data: {
+    github_token_enc: string;
+    github_token_iv: string;
+    github_org: string;
+    github_connected_by: string;
+  }): Promise<void> {
+    const set = {
+      github_token_enc: data.github_token_enc,
+      github_token_iv: data.github_token_iv,
+      github_org: data.github_org,
+      github_connected_at: new Date(),
+      github_connected_by: data.github_connected_by,
+      updated_at: new Date(),
+    };
+    await db
+      .insert(app_settings)
+      .values({ id: 1, theme_key: "default", theme_mode: "dark", ...set })
+      .onConflictDoUpdate({ target: app_settings.id, set });
+  }
+
+  async clearGithubConnection(): Promise<void> {
+    await db
+      .update(app_settings)
+      .set({
+        github_token_enc: null,
+        github_token_iv: null,
+        github_org: null,
+        github_connected_at: null,
+        github_connected_by: null,
+        updated_at: new Date(),
+      })
+      .where(eq(app_settings.id, 1));
+  }
 }
