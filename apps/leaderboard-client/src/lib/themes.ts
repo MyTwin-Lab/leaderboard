@@ -36,8 +36,8 @@ export const THEMES: Record<ThemeKey, ThemeTokens> = {
     primary200: "#c084fc",
     primary300: "#a855f7",
     brandCP: "#f472b6",
-    background: "#09060f",
-    backgroundDark: "#04020a",
+    background: "#13082a",
+    backgroundDark: "#0c0418",
   },
   "teal-dark": {
     label: "Teal",
@@ -46,8 +46,8 @@ export const THEMES: Record<ThemeKey, ThemeTokens> = {
     primary200: "#5eead4",
     primary300: "#14b8a6",
     brandCP: "#22d3ee",
-    background: "#040a0a",
-    backgroundDark: "#010505",
+    background: "#051c1a",
+    backgroundDark: "#020e0d",
   },
   // ── Light themes ─────────────────────────────────────────
   "blue-light": {
