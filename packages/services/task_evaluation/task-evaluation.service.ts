@@ -67,7 +67,7 @@ export class TaskEvaluationService {
     console.log(`\n🔄 [TaskEvaluationService] Évaluation de la task ${taskId} pour l'utilisateur ${userId}`);
 
     // 1. Récupérer le contexte de la task
-    const taskContext = await this.contextService.getTaskContext(taskId);
+    const taskContext = await this.contextService.getTaskContext(taskId, userId);
     const { challenge, task, workspaces } = taskContext;
 
     console.log(`   - Challenge: ${challenge.title}`);
@@ -90,7 +90,7 @@ export class TaskEvaluationService {
     });
 
     // 3. Créer les connecteurs via le registre (agnostique du type)
-    const orchestrator = this.createOrchestrator(workspaces);
+    const orchestrator = await this.createOrchestrator(workspaces);
     await orchestrator.connectAll();
 
     try {
@@ -191,7 +191,8 @@ export class TaskEvaluationService {
 
   private static readonly REPO_TYPE_TO_GRID: Record<string, string> = {
     github: 'code',
-    huggingface: 'model',
+    kaggle_dataset: 'dataset',
+    kaggle_model: 'model',
   };
 
   /**
@@ -216,12 +217,12 @@ export class TaskEvaluationService {
    * Crée un orchestrateur de connecteurs à partir des workspaces de la task.
    * Utilise le ConnectorRegistry pour instancier le bon connecteur selon le type de repo.
    */
-  private createOrchestrator(workspaces: TaskWorkspaceInfo[]): ConnectorsOrchestrator {
+  private async createOrchestrator(workspaces: TaskWorkspaceInfo[]): Promise<ConnectorsOrchestrator> {
     const repos = workspaces.map(w => w.repo);
     const connectors: ExternalConnector[] = [];
 
     for (const workspace of workspaces) {
-      const connector = ConnectorRegistry.createConnector(workspace.repo, { branch: workspace.branch });
+      const connector = await ConnectorRegistry.createConnector(workspace.repo, { branch: workspace.branch });
       if (!connector) {
         console.warn(`[TaskEvaluationService] No connector for repo ${workspace.repo.title} (type: ${workspace.repo.type})`);
         continue;

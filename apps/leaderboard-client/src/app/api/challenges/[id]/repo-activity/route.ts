@@ -24,7 +24,7 @@ export async function GET(
           type: repo.repo_type,
           external_repo_id: repo.repo_external_id,
         };
-        const connector = ConnectorRegistry.createConnector(repoForConnector as any);
+        const connector = await ConnectorRegistry.createConnector(repoForConnector as any);
         if (!connector || typeof connector.fetchRepoActivity !== 'function') {
           return { repo_id: repo.repo_id, result: { error: 'No activity method available' } };
         }

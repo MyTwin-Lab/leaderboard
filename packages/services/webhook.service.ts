@@ -232,7 +232,7 @@ export class WebhookService {
     console.log(`   - Target repo: ${targetRepo.title} (${targetRepo.type})`);
 
     // 3. Créer le connecteur pour ce repo spécifique
-    const connector = ConnectorRegistry.createConnector(targetRepo);
+    const connector = await ConnectorRegistry.createConnector(targetRepo);
 
     if (!connector) {
       throw new Error(`No connector available for repo type: ${targetRepo.type}`);

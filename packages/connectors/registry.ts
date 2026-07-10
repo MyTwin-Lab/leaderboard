@@ -1,7 +1,9 @@
 import type { Repo } from "../database-service/domain/entities.js";
 import type { ExternalConnector } from "./interfaces.js";
 import { GitHubExternalConnector } from "./implementation/Github.connector.js";
+import { KaggleConnector } from "./implementation/Kaggle.connector.js";
 import { config } from "../config/index.js";
+import { getGithubToken } from "../config/githubToken.js";
 // Future: import { HuggingFaceConnector } from "./implementation/HuggingFace.connector.js";
 
 /**
@@ -13,6 +15,7 @@ import { config } from "../config/index.js";
 export class ConnectorRegistry {
   // Exposed for tests to swap implementation
   static GitHubConnectorClass = GitHubExternalConnector;
+  static KaggleConnectorClass = KaggleConnector;
 
   /**
    * Crée un connecteur basé sur le type du repo
@@ -20,29 +23,50 @@ export class ConnectorRegistry {
    * @param options - Options supplémentaires (ex: branch pour GitHub)
    * @returns ExternalConnector ou null si le type n'est pas supporté
    */
-  static createConnector(repo: Repo, options?: { branch?: string }): ExternalConnector | null {
+  static async createConnector(repo: Repo, options?: { branch?: string }): Promise<ExternalConnector | null> {
     switch (repo.type) {
-      case 'github':
+      case 'github': {
         // Utiliser external_repo_id qui contient "owner/repo"
         if (!repo.external_repo_id) {
           console.error(`[ConnectorRegistry] Missing external_repo_id for GitHub repo: ${repo.title}`);
           return null;
         }
-        
+
         const [owner, repoName] = repo.external_repo_id.split('/');
         if (!owner || !repoName) {
           console.error(`[ConnectorRegistry] Invalid external_repo_id format for repo: ${repo.title}. Expected "owner/repo", got "${repo.external_repo_id}"`);
           return null;
         }
-        
+
+        const token = await getGithubToken();
+        if (!token) {
+          console.error('[ConnectorRegistry] No GitHub token available (DB or .env)');
+          return null;
+        }
+
         return new this.GitHubConnectorClass({
-          token: config.github.token || "",
+          token,
           owner,
           repo: repoName,
           branch: options?.branch,
         });
+      }
 
-      case 'huggingface':
+      case 'kaggle_dataset':
+      case 'kaggle_model':
+        if (!repo.external_repo_id) {
+          console.error(`[ConnectorRegistry] Missing external_repo_id for Kaggle repo: ${repo.title}`);
+          return null;
+        }
+
+        return new this.KaggleConnectorClass({
+          username: config.kaggle.username || "",
+          apiKey: config.kaggle.apiKey || "",
+          ref: repo.external_repo_id,
+          subtype: repo.type as 'kaggle_dataset' | 'kaggle_model',
+        });
+
+      case 'slack':
         // Future: return new HuggingFaceConnector({ ... });
         console.warn(`[ConnectorRegistry] Type '${repo.type}' not yet implemented for repo: ${repo.title}`);
         return null;

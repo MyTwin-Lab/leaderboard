@@ -86,8 +86,7 @@ export class ChallengeContextService {
     const codeRepos = repos.filter(r => r.type !== 'google_drive');
 
     // Créer les connecteurs via le registre
-    const connectors = codeRepos
-      .map(repo => ConnectorRegistry.createConnector(repo))
+    const connectors = (await Promise.all(codeRepos.map(repo => ConnectorRegistry.createConnector(repo))))
       .filter((c): c is ExternalConnector => c !== null);
 
     if (connectors.length === 0) {
