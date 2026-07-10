@@ -398,4 +398,135 @@ export class GitHubExternalConnector implements ExternalConnector {
   async disconnect(): Promise<void> {
     // Rien à nettoyer pour l'API GitHub
   }
+
+  /**
+   * Fetches a chronological activity timeline for the repo:
+   * commits, pull requests, PR reviews, and branches.
+   * Returns up to 100 items per category, sorted newest first.
+   */
+  async fetchRepoActivity(): Promise<import('../interfaces.js').GitHubRepoActivity> {
+    const [commitsResp, prsResp, branchesResp] = await Promise.all([
+      this.octokit.rest.repos.listCommits({
+        owner: this.owner,
+        repo: this.repo,
+        sha: this.branch,
+        per_page: 100,
+      }).catch(() => ({ data: [] as any[] })),
+
+      this.octokit.rest.pulls.list({
+        owner: this.owner,
+        repo: this.repo,
+        state: 'all',
+        per_page: 100,
+      }).catch(() => ({ data: [] as any[] })),
+
+      this.octokit.rest.git.listMatchingRefs({
+        owner: this.owner,
+        repo: this.repo,
+        ref: 'heads/',
+      }).catch(() => ({ data: [] as any[] })),
+    ]);
+
+    const events: import('../interfaces.js').GitHubEvent[] = [];
+
+    // ── Commits ────────────────────────────────────────────────────────────
+    for (const c of commitsResp.data) {
+      events.push({
+        type: 'commit',
+        id: c.sha,
+        title: c.commit.message.split('\n')[0],
+        author: c.author?.login ?? c.commit.author?.name ?? 'unknown',
+        date: c.commit.author?.date ?? new Date(0).toISOString(),
+        url: c.html_url,
+        metadata: {
+          sha: c.sha,
+          additions: c.stats?.additions,
+          deletions: c.stats?.deletions,
+        },
+      });
+    }
+
+    // ── Pull requests + reviews ────────────────────────────────────────────
+    const reviewsPerPR = await Promise.all(
+      prsResp.data.map((pr: any) =>
+        this.octokit.rest.pulls.listReviews({
+          owner: this.owner,
+          repo: this.repo,
+          pull_number: pr.number,
+        }).catch(() => ({ data: [] as any[] }))
+      )
+    );
+
+    for (const pr of prsResp.data) {
+      const isMerged = !!pr.merged_at;
+      const state: 'open' | 'closed' | 'merged' = isMerged ? 'merged' : pr.state as 'open' | 'closed';
+
+      events.push({
+        type: 'pull_request',
+        id: `pr-${pr.number}`,
+        title: pr.title,
+        author: pr.user?.login ?? 'unknown',
+        date: pr.created_at,
+        url: pr.html_url,
+        metadata: { prNumber: pr.number, state },
+      });
+    }
+
+    for (let i = 0; i < prsResp.data.length; i++) {
+      const pr = prsResp.data[i];
+      for (const review of reviewsPerPR[i].data) {
+        if (!review.submitted_at) continue;
+        const rawState = review.state?.toLowerCase();
+        const reviewState: 'approved' | 'changes_requested' | 'commented' =
+          rawState === 'approved' ? 'approved'
+          : rawState === 'changes_requested' ? 'changes_requested'
+          : 'commented';
+
+        events.push({
+          type: 'pr_review',
+          id: `review-${review.id}`,
+          title: `Review on #${pr.number}: ${pr.title}`,
+          author: review.user?.login ?? 'unknown',
+          date: review.submitted_at,
+          url: review.html_url ?? pr.html_url,
+          metadata: { prNumber: pr.number, reviewState },
+        });
+      }
+    }
+
+    // ── Branches (tip commit date as proxy for creation) ───────────────────
+    const branchTipDates = await Promise.all(
+      branchesResp.data.map(async (ref: any) => {
+        try {
+          const { data: commit } = await this.octokit.rest.repos.getCommit({
+            owner: this.owner,
+            repo: this.repo,
+            ref: ref.object.sha,
+          });
+          return commit.commit.author?.date ?? new Date(0).toISOString();
+        } catch {
+          return new Date(0).toISOString();
+        }
+      })
+    );
+
+    for (let i = 0; i < branchesResp.data.length; i++) {
+      const ref = branchesResp.data[i];
+      const branchName = ref.ref.replace('refs/heads/', '');
+      events.push({
+        type: 'branch_created',
+        id: `branch-${branchName}`,
+        title: branchName,
+        author: 'unknown',
+        date: branchTipDates[i],
+        url: `https://github.com/${this.owner}/${this.repo}/tree/${branchName}`,
+        metadata: { branchName },
+      });
+    }
+
+    // ── Sort newest first ──────────────────────────────────────────────────
+    events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return { type: 'github', events };
+  }
 }
