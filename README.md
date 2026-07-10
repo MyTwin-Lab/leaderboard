@@ -172,6 +172,53 @@ server {
 }
 ```
 
+## GitHub OAuth Connection (admin)
+
+Admins can connect a GitHub organization account directly from the UI — replacing the static `GITHUB_TOKEN` in `.env` with an encrypted token stored in the database. This enables repository operations (branches, commits, PRs) without touching server config.
+
+### Setup
+
+**1. Register a GitHub OAuth App**
+
+Go to [github.com/settings/developers](https://github.com/settings/developers) → **OAuth Apps** → **New OAuth App**.
+
+| Field | Value |
+|-------|-------|
+| Homepage URL | `http://localhost:3000` (or your production URL) |
+| Authorization callback URL | `http://localhost:3000/api/github-oauth/callback` |
+
+Copy the **Client ID** and generate a **Client Secret**.
+
+**2. Generate an encryption key**
+
+```bash
+openssl rand -hex 32
+```
+
+**3. Add to `.env`**
+
+```env
+GITHUB_CLIENT_ID=Iv1.xxxxxxxxxxxxxxxx
+GITHUB_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/api/github-oauth/callback
+GITHUB_TOKEN_ENCRYPTION_KEY=<output of openssl rand -hex 32>
+```
+
+Copy to `apps/leaderboard-client/.env.local` as well.
+
+**4. Connect via the UI**
+
+Log in as an admin → `/contributors/me` → **Appearance** tab → **Connect GitHub Account**.
+
+GitHub will ask you to authorize the app. The account must be an **owner or admin of a GitHub organization** — personal accounts without an org are rejected with a clear error message.
+
+### How it works
+
+- The OAuth token is encrypted with **AES-256-GCM** before being stored in the `app_settings` table. The encryption key never enters the database.
+- All connectors (`ConnectorRegistry`) automatically use the database token when available, falling back to `GITHUB_TOKEN` in `.env` if not connected.
+- Admins can disconnect at any time from the same Appearance tab; connectors immediately revert to the `.env` fallback.
+- The token is never returned raw in any API response.
+
 ## Troubleshooting
 
 - **“Invalid environment configuration: JWT_SECRET …”**: set `JWT_SECRET` to **32+ characters** (see `packages/config/index.ts`).
