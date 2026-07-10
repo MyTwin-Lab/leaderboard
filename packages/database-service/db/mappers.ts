@@ -25,6 +25,7 @@ import {
   meeting_participants,
   meeting_analyses,
   onboarding_progress,
+  app_settings,
 } from "./drizzle.js";
 import type {
   Project,
@@ -56,6 +57,7 @@ import type {
   MeetingAnalysis,
   MeetingAnalysisStatus,
   OnboardingProgress,
+  AppSettings,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -105,6 +107,7 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     index: row.index,
     title: row.title,
     status: row.status,
+    type: row.type ?? 'code',
     start_date: row.start_date ? new Date(row.start_date) : new Date(),
     end_date: row.end_date ? new Date(row.end_date) : new Date(),
     description: row.description ?? "",
@@ -188,6 +191,7 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenge
     // index est auto-généré par PostgreSQL (serial)
     title: entity.title,
     status: entity.status,
+    type: entity.type ?? 'code',
     start_date: entity.start_date.toISOString().split("T")[0], // YYYY-MM-DD
     end_date: entity.end_date.toISOString().split("T")[0],
     description: entity.description || null,
@@ -577,5 +581,16 @@ export function toDomainOnboardingProgress(row: DbOnboardingProgress): Onboardin
     completed_at: row.completed_at ?? undefined,
     created_at: row.created_at!,
     updated_at: row.updated_at!,
+  };
+}
+
+// ============================================================
+// APP SETTINGS MAPPERS
+// ============================================================
+
+export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>): AppSettings {
+  return {
+    theme_key: row.theme_key,
+    updated_at: row.updated_at ?? undefined,
   };
 }

@@ -16,3 +16,4 @@ export { SyncMeetingRepository } from "./syncMeeting.repo.js";
 export { MeetingParticipantRepository } from "./meetingParticipant.repo.js";
 export { MeetingAnalysisRepository } from "./meetingAnalysis.repo.js";
 export { OnboardingProgressRepository } from "./onboardingProgress.repo.js";
+export { AppSettingsRepository } from "./appSettings.repo.js";

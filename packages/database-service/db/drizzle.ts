@@ -31,6 +31,7 @@ export const challenges = pgTable("challenges", {
   index: serial("index"),
   title: varchar("title", { length: 255 }).notNull(),
   status: varchar("status", { length: 100 }).notNull(),
+  type: varchar("type", { length: 50 }).default("code"), // 'code' | 'ml' | ...
   start_date: date("start_date"),
   end_date: date("end_date"),
   description: text("description"),
@@ -407,6 +408,14 @@ export const onboarding_progress = pgTable("onboarding_progress", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
+// --- APP SETTINGS (singleton) ---
+export const app_settings = pgTable("app_settings", {
+  id: integer("id").primaryKey().default(1),
+  theme_key: varchar("theme_key", { length: 64 }).notNull().default("default"),
+  updated_at: timestamp("updated_at").defaultNow(),
+  updated_by: uuid("updated_by").references(() => users.uuid),
+});
+
 // --- SYNC MEETINGS ---
 export const sync_meetings = pgTable("sync_meetings", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
@@ -545,5 +554,6 @@ export const db = drizzle(pool, {
     meetingParticipantsRelations,
     meetingAnalysesRelations,
     onboardingProgressRelations,
+    app_settings,
   },
 });

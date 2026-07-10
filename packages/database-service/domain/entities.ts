@@ -35,6 +35,7 @@ export interface Challenge {
   index?: number;
   title: string;
   status: string;
+  type: string; // 'code' | 'ml' | ...
   start_date: Date;
   end_date: Date;
   description?: string;
@@ -280,6 +281,12 @@ export interface MeetingAnalysis {
   processed_at?: Date;
   error_message?: string;
   created_at: Date;
+}
+
+// --- APP SETTINGS ---
+export interface AppSettings {
+  theme_key: string;
+  updated_at?: Date;
 }
 
 // --- ONBOARDING PROGRESS ---
