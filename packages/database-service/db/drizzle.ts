@@ -412,6 +412,9 @@ export const onboarding_progress = pgTable("onboarding_progress", {
 export const app_settings = pgTable("app_settings", {
   id: integer("id").primaryKey().default(1),
   theme_key: varchar("theme_key", { length: 64 }).notNull().default("default"),
+  primary_color: varchar("primary_color", { length: 7 }),   // custom hex e.g. "#0af7c1"
+  background_color: varchar("background_color", { length: 7 }), // custom hex e.g. "#0a0a0a"
+  theme_mode: varchar("theme_mode", { length: 10 }).notNull().default("dark"), // "dark" | "light"
   updated_at: timestamp("updated_at").defaultNow(),
   updated_by: uuid("updated_by").references(() => users.uuid),
 });

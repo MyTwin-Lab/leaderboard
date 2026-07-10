@@ -591,6 +591,9 @@ export function toDomainOnboardingProgress(row: DbOnboardingProgress): Onboardin
 export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>): AppSettings {
   return {
     theme_key: row.theme_key,
+    primary_color: row.primary_color ?? null,
+    background_color: row.background_color ?? null,
+    theme_mode: row.theme_mode ?? "dark",
     updated_at: row.updated_at ?? undefined,
   };
 }

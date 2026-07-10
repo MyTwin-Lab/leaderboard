@@ -73,7 +73,12 @@ export default async function ContributorSelfPage() {
       label: "Appearance",
       panel: (
         <div className="mx-auto max-w-lg py-2">
-          <ThemeSettings currentTheme={themeKey} />
+          <ThemeSettings
+            currentTheme={themeKey}
+            currentPrimaryColor={settings.primary_color ?? null}
+            currentBackgroundColor={settings.background_color ?? null}
+            currentThemeMode={settings.theme_mode}
+          />
         </div>
       ),
     });

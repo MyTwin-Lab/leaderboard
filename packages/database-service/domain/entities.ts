@@ -286,6 +286,9 @@ export interface MeetingAnalysis {
 // --- APP SETTINGS ---
 export interface AppSettings {
   theme_key: string;
+  primary_color?: string | null;
+  background_color?: string | null;
+  theme_mode: string; // "dark" | "light"
   updated_at?: Date;
 }
 

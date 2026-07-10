@@ -8,6 +8,7 @@ import { fetchContributorSession } from "@/lib/contributor";
 import { fetchOnboardingProgress } from "@/lib/server/onboarding";
 import { AppSettingsRepository } from "@packages/database-service/repositories";
 import { THEMES, DEFAULT_THEME_KEY, isValidThemeKey } from "@/lib/themes";
+import { resolveTheme } from "@/lib/color-utils";
 
 import "./globals.css";
 
@@ -40,7 +41,14 @@ export default async function RootLayout({
   const onboarding = session ? await fetchOnboardingProgress(session.id) : null;
 
   const themeKey = isValidThemeKey(settings.theme_key) ? settings.theme_key : DEFAULT_THEME_KEY;
-  const theme = THEMES[themeKey];
+  const palette = THEMES[themeKey];
+
+  const theme = resolveTheme({
+    primaryColor: settings.primary_color,
+    backgroundColor: settings.background_color,
+    themeMode: settings.theme_mode,
+    paletteTokens: palette,
+  });
 
   const themeStyle = `
     :root {
@@ -50,6 +58,7 @@ export default async function RootLayout({
       --color-brandCP: ${theme.brandCP};
       --background: ${theme.background};
       --background-dark: ${theme.backgroundDark};
+      --foreground: ${theme.foreground};
     }
   `;
 
