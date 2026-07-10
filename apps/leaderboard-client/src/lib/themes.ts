@@ -20,14 +20,14 @@ export interface ThemeTokens {
 export const THEMES: Record<ThemeKey, ThemeTokens> = {
   // ── Dark themes ──────────────────────────────────────────
   "default": {
-    label: "Blue",
+    label: "MyTwin",
     mode: "dark",
     primary100: "#8ad0ff",
     primary200: "#52c1ff",
     primary300: "#1ba5ff",
     brandCP: "#0af7c1",
-    background: "#0a0a0a",
-    backgroundDark: "#030208",
+    background: "#0A1C3F",
+    backgroundDark: "#050B1F",
   },
   "purple-dark": {
     label: "Purple",
