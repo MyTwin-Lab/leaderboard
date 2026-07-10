@@ -1,4 +1,4 @@
-export type ConnectorType = ‘github’ | ‘google_drive’ | ‘kaggle_dataset’ | ‘kaggle_model’ | ‘slack’ | string;
+export type ConnectorType = 'github' | 'google_drive' | 'kaggle_dataset' | 'kaggle_model' | 'slack' | string;
 
 export interface ConnectorAuthConfig {
   apiKey?: string;
@@ -12,14 +12,14 @@ export interface ConnectorAuthConfig {
 export interface ExternalItem {
   id: string;
   name: string;
-  type: string; // ‘file’, ‘commit’, ‘message’, ...
+  type: string; // 'file', 'commit', 'message', ...
   url?: string;
   metadata?: Record<string, any>;
 }
 
 // ─── Repo Activity types ──────────────────────────────────────────────────────
 
-export type GitHubEventType = ‘commit’ | ‘pull_request’ | ‘pr_review’ | ‘branch_created’;
+export type GitHubEventType = 'commit' | 'pull_request' | 'pr_review' | 'branch_created';
 
 export interface GitHubEvent {
   type: GitHubEventType;
@@ -33,14 +33,14 @@ export interface GitHubEvent {
     additions?: number;
     deletions?: number;
     prNumber?: number;
-    state?: ‘open’ | ‘closed’ | ‘merged’;
-    reviewState?: ‘approved’ | ‘changes_requested’ | ‘commented’;
+    state?: 'open' | 'closed' | 'merged';
+    reviewState?: 'approved' | 'changes_requested' | 'commented';
     branchName?: string;
   };
 }
 
 export interface GitHubRepoActivity {
-  type: ‘github’;
+  type: 'github';
   events: GitHubEvent[]; // sorted newest to oldest
 }
 
@@ -58,7 +58,7 @@ export interface KaggleModelVersion {
 }
 
 export interface KaggleRepoActivity {
-  type: ‘kaggle_dataset’ | ‘kaggle_model’;
+  type: 'kaggle_dataset' | 'kaggle_model';
   datasetMeta?: {
     title: string;
     description?: string;
@@ -83,7 +83,7 @@ export interface ExternalConnector {
   /** Type de connecteur */
   type: ConnectorType;
 
-  /** Configuration d’authentification */
+  /** Configuration d'authentification */
   authConfig: ConnectorAuthConfig;
 
   /** Initialise la connexion (OAuth ou clé API) */
@@ -92,13 +92,13 @@ export interface ExternalConnector {
   /** Vérifie la validité et disponibilité du connecteur */
   testConnection(): Promise<boolean>;
 
-  /** Récupère une liste d’éléments (fichiers, commits, messages, modèles, etc.) */
+  /** Récupère une liste d'éléments (fichiers, commits, messages, modèles, etc.) */
   fetchItems(options?: Record<string, any>): Promise<ExternalItem[]>;
 
-  /** Récupère le contenu détaillé d’un élément */
+  /** Récupère le contenu détaillé d'un élément */
   fetchItemContent(itemId: string): Promise<any>;
 
-  /** Récupère l’activité du repo (commits, PRs, reviews, branches / métriques Kaggle) */
+  /** Récupère l'activité du repo (commits, PRs, reviews, branches / métriques Kaggle) */
   fetchRepoActivity?(): Promise<RepoActivity>;
 
   /** Nettoyage éventuel */
