@@ -6,6 +6,8 @@ import { Navbar } from "@/components/layout/Navbar";
 import { OnboardingDrawer } from "@/components/onboarding/OnboardingDrawer";
 import { fetchContributorSession } from "@/lib/contributor";
 import { fetchOnboardingProgress } from "@/lib/server/onboarding";
+import { AppSettingsRepository } from "@packages/database-service/repositories";
+import { THEMES, DEFAULT_THEME_KEY, isValidThemeKey } from "@/lib/themes";
 
 import "./globals.css";
 
@@ -24,16 +26,38 @@ export const metadata: Metadata = {
   description: "Visualisez le classement des contributeurs du Lab",
 };
 
+const appSettingsRepo = new AppSettingsRepository();
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await fetchContributorSession();
+  const [session, settings] = await Promise.all([
+    fetchContributorSession(),
+    appSettingsRepo.get(),
+  ]);
   const onboarding = session ? await fetchOnboardingProgress(session.id) : null;
+
+  const themeKey = isValidThemeKey(settings.theme_key) ? settings.theme_key : DEFAULT_THEME_KEY;
+  const theme = THEMES[themeKey];
+
+  const themeStyle = `
+    :root {
+      --color-primary-100: ${theme.primary100};
+      --color-primary-200: ${theme.primary200};
+      --color-primary-300: ${theme.primary300};
+      --color-brandCP: ${theme.brandCP};
+      --background: ${theme.background};
+      --background-dark: ${theme.backgroundDark};
+    }
+  `;
 
   return (
     <html lang="fr">
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: themeStyle }} />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <GradientBackground>
           <Navbar session={session} />
