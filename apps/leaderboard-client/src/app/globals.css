@@ -1,9 +1,19 @@
 @import "tailwindcss";
 
 :root {
+  /* ── Overrideable theme tokens ──────────────────────────────
+     These are set as inline styles on <html> by the root layout
+     (server-side, from app_settings in DB). Inline styles have
+     higher specificity than this :root block, so they always win.
+     Tailwind @theme inline references these vars, which causes
+     utility classes to resolve dynamically at runtime.            */
   --background: #0a0a0a;
   --background-dark: #030208;
   --foreground: #ededed;
+  --theme-primary: #0af7c1;
+  --theme-primary-100: #8ad0ff;
+  --theme-primary-200: #52c1ff;
+  --theme-primary-300: #1ba5ff;
 }
 
 @theme inline {
@@ -13,10 +23,10 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  --color-primary-100: #8ad0ff;
-  --color-primary-200: #52c1ff;
-  --color-primary-300: #1ba5ff;
-  --color-brandCP: #0af7c1;
+  --color-primary-100: var(--theme-primary-100);
+  --color-primary-200: var(--theme-primary-200);
+  --color-primary-300: var(--theme-primary-300);
+  --color-brandCP: var(--theme-primary);
 }
 
 body {

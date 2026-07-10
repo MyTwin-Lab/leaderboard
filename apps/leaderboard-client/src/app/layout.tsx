@@ -50,13 +50,14 @@ export default async function RootLayout({
     paletteTokens: palette,
   });
 
-  // Inline styles on <html> override any stylesheet — including Tailwind's @theme inline.
-  // Custom property names are valid CSS but not in React's CSSProperties type, hence the cast.
+  // Set the intermediate vars that globals.css @theme inline references via var().
+  // Inline style on <html> wins over :root in the stylesheet (higher specificity).
+  // Tailwind utility classes then resolve dynamically through the var() chain.
   const themeVars = {
-    "--color-primary-100": theme.primary100,
-    "--color-primary-200": theme.primary200,
-    "--color-primary-300": theme.primary300,
-    "--color-brandCP": theme.brandCP,
+    "--theme-primary": theme.brandCP,
+    "--theme-primary-100": theme.primary100,
+    "--theme-primary-200": theme.primary200,
+    "--theme-primary-300": theme.primary300,
     "--background": theme.background,
     "--background-dark": theme.backgroundDark,
     "--foreground": theme.foreground,
