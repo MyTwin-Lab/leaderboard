@@ -39,8 +39,16 @@ const envSchema = z
     GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
     GOOGLE_OAUTH_REDIRECT_URI: z.string().optional(),
+    // Kaggle
+    KAGGLE_USERNAME: z.string().optional(),
+    KAGGLE_KEY: z.string().optional(),
     // Cron Security
     CRON_SECRET: z.string().optional(),
+    // GitHub OAuth App
+    GITHUB_CLIENT_ID: z.string().optional(),
+    GITHUB_CLIENT_SECRET: z.string().optional(),
+    GITHUB_OAUTH_REDIRECT_URI: z.string().optional(),
+    GITHUB_TOKEN_ENCRYPTION_KEY: z.string().optional(),
   })
   .strict();
 
@@ -67,7 +75,13 @@ const envInput = {
   GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
   GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
   GOOGLE_OAUTH_REDIRECT_URI: process.env.GOOGLE_OAUTH_REDIRECT_URI,
+  KAGGLE_USERNAME: process.env.KAGGLE_USERNAME,
+  KAGGLE_KEY: process.env.KAGGLE_KEY,
   CRON_SECRET: process.env.CRON_SECRET,
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
+  GITHUB_OAUTH_REDIRECT_URI: process.env.GITHUB_OAUTH_REDIRECT_URI,
+  GITHUB_TOKEN_ENCRYPTION_KEY: process.env.GITHUB_TOKEN_ENCRYPTION_KEY,
 };
 
 const parsedEnv = envSchema.safeParse(envInput);
@@ -122,8 +136,18 @@ export const config = {
     oauthClientSecret: env.GOOGLE_OAUTH_CLIENT_SECRET,
     oauthRedirectUri: env.GOOGLE_OAUTH_REDIRECT_URI,
   },
+  kaggle: {
+    username: env.KAGGLE_USERNAME,
+    apiKey: env.KAGGLE_KEY,
+  },
   cron: {
     secret: env.CRON_SECRET,
+  },
+  githubOAuth: {
+    clientId: env.GITHUB_CLIENT_ID,
+    clientSecret: env.GITHUB_CLIENT_SECRET,
+    redirectUri: env.GITHUB_OAUTH_REDIRECT_URI,
+    encryptionKey: env.GITHUB_TOKEN_ENCRYPTION_KEY,
   },
 } as const;
 
