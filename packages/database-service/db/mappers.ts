@@ -146,6 +146,7 @@ export function toDomainUser(row: DbUser): User {
     email: row.email ?? undefined,
     google_user_id: row.google_user_id ?? undefined,
     bio: row.bio ?? undefined,
+    avatar_url: row.avatar_url ?? undefined,
     created_at: new Date(row.created_at ?? Date.now()),
   };
 }
@@ -595,5 +596,9 @@ export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>):
     background_color: row.background_color ?? null,
     theme_mode: row.theme_mode ?? "dark",
     updated_at: row.updated_at ?? undefined,
+    github_org: row.github_org ?? null,
+    github_connected_at: row.github_connected_at ?? null,
+    github_connected_by: row.github_connected_by ?? null,
+    github_is_connected: !!row.github_token_enc,
   };
 }

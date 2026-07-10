@@ -79,6 +79,7 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }),
   google_user_id: varchar("google_user_id", { length: 255 }),
   bio: text("bio"),
+  avatar_url: text("avatar_url"),
   created_at: timestamp("created_at").defaultNow(),
 }, (table) => ({
   githubUsernameIdx: uniqueIndex("idx_users_github_username").on(table.github_username),
@@ -417,6 +418,12 @@ export const app_settings = pgTable("app_settings", {
   theme_mode: varchar("theme_mode", { length: 10 }).notNull().default("dark"), // "dark" | "light"
   updated_at: timestamp("updated_at").defaultNow(),
   updated_by: uuid("updated_by").references(() => users.uuid),
+  // GitHub OAuth connection
+  github_token_enc: text("github_token_enc"),
+  github_token_iv: varchar("github_token_iv", { length: 64 }),
+  github_org: varchar("github_org", { length: 255 }),
+  github_connected_at: timestamp("github_connected_at"),
+  github_connected_by: uuid("github_connected_by").references(() => users.uuid),
 });
 
 // --- SYNC MEETINGS ---

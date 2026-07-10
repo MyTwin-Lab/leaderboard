@@ -67,6 +67,7 @@ export interface User {
   email?: string;
   google_user_id?: string;
   bio?: string;
+  avatar_url?: string;
   created_at: Date;
 }
 
@@ -290,6 +291,10 @@ export interface AppSettings {
   background_color?: string | null;
   theme_mode: string; // "dark" | "light"
   updated_at?: Date;
+  github_org?: string | null;
+  github_connected_at?: Date | null;
+  github_connected_by?: string | null;
+  github_is_connected: boolean; // derived: !!github_token_enc in DB
 }
 
 // --- ONBOARDING PROGRESS ---
