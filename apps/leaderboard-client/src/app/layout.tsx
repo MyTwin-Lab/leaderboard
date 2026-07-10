@@ -50,23 +50,21 @@ export default async function RootLayout({
     paletteTokens: palette,
   });
 
-  const themeStyle = `
-    :root {
-      --color-primary-100: ${theme.primary100};
-      --color-primary-200: ${theme.primary200};
-      --color-primary-300: ${theme.primary300};
-      --color-brandCP: ${theme.brandCP};
-      --background: ${theme.background};
-      --background-dark: ${theme.backgroundDark};
-      --foreground: ${theme.foreground};
-    }
-  `;
+  // Inline styles on <html> override any stylesheet — including Tailwind's @theme inline.
+  // Custom property names are valid CSS but not in React's CSSProperties type, hence the cast.
+  const themeVars = {
+    "--color-primary-100": theme.primary100,
+    "--color-primary-200": theme.primary200,
+    "--color-primary-300": theme.primary300,
+    "--color-brandCP": theme.brandCP,
+    "--background": theme.background,
+    "--background-dark": theme.backgroundDark,
+    "--foreground": theme.foreground,
+  } as React.CSSProperties;
 
   return (
-    <html lang="fr">
-      <head>
-        <style dangerouslySetInnerHTML={{ __html: themeStyle }} />
-      </head>
+    <html lang="fr" style={themeVars} data-mode={settings.theme_mode}>
+      <head />
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <GradientBackground>
           <Navbar session={session} />
