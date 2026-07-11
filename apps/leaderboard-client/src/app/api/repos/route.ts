@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RepoRepository } from '../../../../../../packages/database-service/repositories';
+import { verifyRequestToken } from '@/lib/auth';
+import { repositories } from '@/lib/db';
 import { z } from 'zod';
 
 const repoRepo = new RepoRepository();
@@ -28,8 +30,20 @@ export async function GET() {
 // POST /api/repos - Créer un nouveau repo
 export async function POST(request: NextRequest) {
   try {
+    const session = await verifyRequestToken(request);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const validated = createRepoSchema.parse(body);
+
+    if (session.role !== 'admin') {
+      const project = await repositories.project.findById(validated.project_id);
+      if (!project || project.manager_id !== session.userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
     
     const repo = await repoRepo.create(validated);
     return NextResponse.json(repo, { status: 201 });

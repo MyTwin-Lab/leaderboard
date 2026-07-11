@@ -7,6 +7,7 @@ const projectRepo = new ProjectRepository();
 const updateProjectSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
+  manager_id: z.string().uuid().nullable().optional(),
 });
 
 // GET /api/projects/[id] - Récupérer un projet

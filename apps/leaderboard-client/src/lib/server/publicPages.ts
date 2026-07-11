@@ -8,7 +8,11 @@ export type ChallengesPageData = {
   joinedChallengeIds: string[];
 };
 
-export async function fetchProjectsWithChallenges(userId?: string | null): Promise<ChallengesPageData> {
+export async function fetchProjectsWithChallenges(
+  userId?: string | null,
+  isAdmin = false,
+  managedProjectIds: string[] = [],
+): Promise<ChallengesPageData & { managedProjectIds: string[] }> {
   const [projects, challenges, contributions, userChallengeTeams, allChallengeTeams] = await Promise.all([
     repositories.project.findAll(),
     repositories.challenge.findAll(),
@@ -32,7 +36,7 @@ export async function fetchProjectsWithChallenges(userId?: string | null): Promi
     const user = usersMap.get(ct.user_id);
     if (user) {
       const members = acc.get(ct.challenge_id) ?? [];
-      members.push({ id: user.uuid, fullName: user.full_name });
+      members.push({ id: user.uuid, fullName: user.full_name, avatarUrl: user.avatar_url ?? undefined });
       acc.set(ct.challenge_id, members);
     }
     return acc;
@@ -44,12 +48,19 @@ export async function fetchProjectsWithChallenges(userId?: string | null): Promi
     .map((project) => {
       const projectChallenges = challenges
         .filter((challenge) => challenge.project_id === project.uuid)
+        .filter((challenge) =>
+          isAdmin ||
+          challenge.status !== 'draft' ||
+          managedProjectIds.includes(challenge.project_id)
+        )
         .map((challenge) => ({
           id: challenge.uuid,
           // DB column is NOT NULL (serial), but shared domain types mark it optional.
           // Normalize here so UI types can rely on `index: number`.
           index: challenge.index ?? 0,
           title: challenge.title,
+          status: challenge.status,
+          type: challenge.type ?? 'code',
           rewardPool: challenge.contribution_points_reward ?? 0,
           contributionsCount: contributionsCountByChallenge.get(challenge.uuid) ?? 0,
           completion: challenge.completion ?? 0,
@@ -69,5 +80,6 @@ export async function fetchProjectsWithChallenges(userId?: string | null): Promi
   return {
     projects: projectsData,
     joinedChallengeIds,
+    managedProjectIds,
   };
 }

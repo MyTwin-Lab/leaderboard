@@ -26,6 +26,7 @@ import {
   meeting_analyses,
   onboarding_progress,
   app_settings,
+  challenge_documents,
 } from "./drizzle.js";
 import type {
   Project,
@@ -33,6 +34,7 @@ import type {
   Challenge,
   ChallengeRepo,
   ChallengeTeam,
+  ChallengeDocument,
   User,
   Contribution,
   RefreshToken,
@@ -87,6 +89,7 @@ export function toDomainProject(row: DbProject): Project {
     uuid: row.uuid,
     title: row.title,
     description: row.description ?? "",
+    manager_id: row.manager_id ?? undefined,
     created_at: new Date(row.created_at ?? Date.now()),
   };
 }
@@ -175,6 +178,7 @@ export function toDbProject(entity: Omit<Project, "uuid" | "created_at">): typeo
   return {
     title: entity.title,
     description: entity.description || null,
+    manager_id: entity.manager_id ?? null,
   };
 }
 
@@ -582,6 +586,34 @@ export function toDomainOnboardingProgress(row: DbOnboardingProgress): Onboardin
     completed_at: row.completed_at ?? undefined,
     created_at: row.created_at!,
     updated_at: row.updated_at!,
+  };
+}
+
+// ============================================================
+// CHALLENGE DOCUMENTS MAPPERS
+// ============================================================
+
+type DbChallengeDocument = InferSelectModel<typeof challenge_documents>;
+
+export function toDomainChallengeDocument(row: DbChallengeDocument): ChallengeDocument {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challenge_id,
+    filename: row.filename,
+    content: row.content,
+    uploaded_by: row.uploaded_by ?? undefined,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbChallengeDocument(
+  entity: Omit<ChallengeDocument, "uuid" | "created_at">
+): typeof challenge_documents.$inferInsert {
+  return {
+    challenge_id: entity.challenge_id,
+    filename: entity.filename,
+    content: entity.content,
+    uploaded_by: entity.uploaded_by ?? null,
   };
 }
 

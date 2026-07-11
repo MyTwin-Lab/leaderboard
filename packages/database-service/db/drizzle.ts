@@ -11,6 +11,7 @@ export const projects = pgTable("projects", {
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   created_at: timestamp("created_at").defaultNow(),
+  manager_id: uuid("manager_id").references(() => users.uuid, { onDelete: "set null" }),
 });
 
 // --- REPOS ---
@@ -258,6 +259,18 @@ export const evaluation_grid_subcriteria = pgTable('evaluation_grid_subcriteria'
   positionIdx: index('idx_evaluation_grid_subcriteria_position').on(table.category_id, table.position),
 }));
 
+// --- CHALLENGE DOCUMENTS ---
+export const challenge_documents = pgTable("challenge_documents", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  challenge_id: uuid("challenge_id").notNull().references(() => challenges.uuid, { onDelete: "cascade" }),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  uploaded_by: uuid("uploaded_by").references(() => users.uuid, { onDelete: "set null" }),
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  challengeIdIdx: index("idx_challenge_documents_challenge_id").on(table.challenge_id),
+}));
+
 // --- RELATIONS ---
 
 export const projectsRelations = relations(projects, ({ many }) => ({
@@ -282,6 +295,18 @@ export const challengesRelations = relations(challenges, ({ one, many }) => ({
   team_members: many(challenge_teams),
   contributions: many(contributions),
   tasks: many(tasks),
+  documents: many(challenge_documents),
+}));
+
+export const challengeDocumentsRelations = relations(challenge_documents, ({ one }) => ({
+  challenge: one(challenges, {
+    fields: [challenge_documents.challenge_id],
+    references: [challenges.uuid],
+  }),
+  uploaded_by_user: one(users, {
+    fields: [challenge_documents.uploaded_by],
+    references: [users.uuid],
+  }),
 }));
 
 export const challengeReposRelations = relations(challenge_repos, ({ one }) => ({
@@ -548,7 +573,9 @@ export const db = drizzle(pool, {
     meeting_analyses,
     projectsRelations,
     reposRelations,
-    challengesRelations,
+    challenge_documents,
+  challengeDocumentsRelations,
+  challengesRelations,
     challengeReposRelations,
     challengeTeamsRelations,
     usersRelations,

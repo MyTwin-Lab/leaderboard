@@ -4,6 +4,7 @@ export interface Project {
   uuid: string;
   title: string;
   description?: string;
+  manager_id?: string | null; // FK → users.uuid, nullable
   created_at: Date;
 }
 
@@ -43,6 +44,15 @@ export interface Challenge {
   contribution_points_reward: number;
   completion: number;
   project_id: string; // FK -> projects.uuid
+}
+
+export interface ChallengeDocument {
+  uuid: string;
+  challenge_id: string; // FK -> challenges.uuid
+  filename: string;
+  content: string;
+  uploaded_by?: string; // FK -> users.uuid
+  created_at: Date;
 }
 
 export interface Contribution {

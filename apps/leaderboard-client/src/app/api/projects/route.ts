@@ -7,6 +7,7 @@ const projectRepo = new ProjectRepository();
 const createProjectSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
+  manager_id: z.string().uuid().nullable().optional(),
 });
 
 // GET /api/projects - Liste tous les projets

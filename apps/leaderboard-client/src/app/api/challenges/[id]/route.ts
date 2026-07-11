@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChallengeRepository } from '../../../../../../../packages/database-service/repositories';
+import { verifyRequestToken } from '@/lib/auth';
+import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { z } from 'zod';
 
 const challengeRepo = new ChallengeRepository();
@@ -47,7 +49,17 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await verifyRequestToken(request);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { id } = await params;
+    const isAdmin = session.role === 'admin';
+    const isManager = !isAdmin && await isManagerOfChallenge(session.userId, id);
+    if (!isAdmin && !isManager) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await request.json();
     const validated = updateChallengeSchema.parse(body);
     

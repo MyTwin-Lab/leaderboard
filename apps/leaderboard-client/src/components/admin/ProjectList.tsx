@@ -5,13 +5,21 @@ import { Button } from '@/components/ui/Button';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { Project } from '../../../../../packages/database-service/domain/entities';
 
+interface User {
+  uuid: string;
+  full_name: string;
+}
+
 interface ProjectListProps {
   projects: Project[];
+  users?: User[];
   onEdit: (project: Project) => void;
   onDelete: (id: string) => void;
 }
 
-export function ProjectList({ projects, onEdit, onDelete }: ProjectListProps) {
+export function ProjectList({ projects, users = [], onEdit, onDelete }: ProjectListProps) {
+  const usersMap = new Map(users.map(u => [u.uuid, u.full_name]));
+
   const columns = [
     {
       key: 'title',
@@ -28,6 +36,16 @@ export function ProjectList({ projects, onEdit, onDelete }: ProjectListProps) {
           {project.description || <span className="text-white/25 italic">No description</span>}
         </div>
       ),
+    },
+    {
+      key: 'manager',
+      header: 'Manager',
+      render: (project: Project) => (
+        <div className="text-sm text-white/50">
+          {project.manager_id ? (usersMap.get(project.manager_id) ?? <span className="text-white/25 italic">Unknown</span>) : <span className="text-white/25">—</span>}
+        </div>
+      ),
+      width: '140px',
     },
     {
       key: 'created_at',

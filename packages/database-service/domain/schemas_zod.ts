@@ -5,6 +5,7 @@ export const projectSchema = z.object({
   uuid: z.string().uuid(),
   title: z.string().min(1),
   description: z.string().optional(),
+  manager_id: z.string().uuid().nullable().optional(),
   created_at: z.coerce.date(),
 });
 
@@ -31,6 +32,7 @@ export const challengeSchema = z.object({
   index: z.number().int().optional(),
   title: z.string(),
   status: z.string(),
+  type: z.string().default('code'),
   start_date: z.coerce.date(),
   end_date: z.coerce.date(),
   description: z.string().optional(),
@@ -57,11 +59,12 @@ export const contributionSchema = z.object({
 export const userSchema = z.object({
   uuid: z.string().uuid(),
   role: z.string(),
-  full_name: z.string(),
-  github_username: z.string().optional(),
+  full_name: z.string().min(1).max(255),
+  github_username: z.string().max(39).optional(),
   email: z.string().email().optional(),
   google_user_id: z.string().optional(),
-  bio: z.string().optional(),
+  bio: z.string().max(2000).optional(),
+  avatar_url: z.string().max(700_000).optional(),
   created_at: z.coerce.date(),
 });
 
@@ -267,3 +270,15 @@ export const onboardingProgressSchema = z.object({
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
 });
+
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+export const appSettingsSchema = z.object({
+  theme_key: z.string().max(64),
+  primary_color: z.string().regex(HEX_COLOR).nullable().optional(),
+  background_color: z.string().regex(HEX_COLOR).nullable().optional(),
+  theme_mode: z.enum(["dark", "light"]),
+  updated_at: z.coerce.date().optional(),
+});
+
+export type AppSettingsInput = z.infer<typeof appSettingsSchema>;

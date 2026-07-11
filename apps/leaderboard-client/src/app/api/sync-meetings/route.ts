@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SyncMeetingService } from '../../../../../../packages/services/sync-meeting/sync-meeting.service.js';
-import { verifyRequestToken, verifyAdmin } from '@/lib/auth';
+import { verifyRequestToken } from '@/lib/auth';
+import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { z } from 'zod';
 
 const createMeetingSchema = z.object({
@@ -9,6 +10,7 @@ const createMeetingSchema = z.object({
   challenge_id: z.string().uuid(),
   start_time: z.string().datetime(),
   end_time: z.string().datetime(),
+  meet_link: z.string().url().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -39,9 +41,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = await verifyAdmin(request);
+    const payload = await verifyRequestToken(request);
     if (!payload) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -55,6 +57,12 @@ export async function POST(request: NextRequest) {
       );
     }
     const validated = parsed.data;
+
+    const isAdmin = payload.role === 'admin';
+    const isManager = !isAdmin && await isManagerOfChallenge(payload.userId, validated.challenge_id);
+    if (!isAdmin && !isManager) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const syncMeetingService = new SyncMeetingService();
     const meeting = await syncMeetingService.createMeeting({
