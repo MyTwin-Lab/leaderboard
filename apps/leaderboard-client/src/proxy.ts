@@ -115,6 +115,9 @@ export async function proxy(request: NextRequest) {
       // Rejoindre un challenge
       const isChallengeJoinRoute = pathname.endsWith('/join');
 
+      // Mise à jour du profil par le contributeur lui-même
+      const isContributorSelfRoute = pathname === '/api/contributors/me' && method === 'PATCH';
+
       // Routes accessibles aux managers de projet (auth vérifiée dans le handler)
       const isManagerAccessibleRoute =
         (pathname.match(/^\/api\/challenges\/[^/]+$/) && ['PUT', 'PATCH'].includes(method)) ||
@@ -123,7 +126,7 @@ export async function proxy(request: NextRequest) {
 
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isManagerAccessibleRoute) {
+        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isManagerAccessibleRoute && !isContributorSelfRoute) {
           return NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }
