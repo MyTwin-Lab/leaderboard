@@ -82,13 +82,20 @@ export default async function ContributorSelfPage({
     tabs.push({
       label: "Appearance",
       panel: (
-        <div className="mx-auto max-w-lg py-2 space-y-6">
+        <div className="mx-auto max-w-lg py-2">
           <ThemeSettings
             currentTheme={themeKey}
             currentPrimaryColor={settings.primary_color ?? null}
             currentBackgroundColor={settings.background_color ?? null}
             currentThemeMode={settings.theme_mode}
           />
+        </div>
+      ),
+    });
+    tabs.push({
+      label: "Integrations",
+      panel: (
+        <div className="mx-auto max-w-lg py-2">
           <GitHubConnectionCard initialError={githubError} />
         </div>
       ),
