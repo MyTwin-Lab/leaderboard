@@ -32,7 +32,7 @@ export async function fetchProjectsWithChallenges(
   }, new Map());
 
   // Group team members by challenge
-  const teamMembersByChallenge = allChallengeTeams.reduce<Map<string, { id: string; fullName: string }[]>>((acc, ct) => {
+  const teamMembersByChallenge = allChallengeTeams.reduce<Map<string, { id: string; fullName: string; avatarUrl?: string }[]>>((acc, ct) => {
     const user = usersMap.get(ct.user_id);
     if (user) {
       const members = acc.get(ct.challenge_id) ?? [];
