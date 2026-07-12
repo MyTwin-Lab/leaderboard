@@ -71,17 +71,16 @@ export default async function HomePage() {
 
           {/* H1 */}
           <h1
-            className="animate-fade-up max-w-xl text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl"
+            className="animate-fade-up max-w-3xl text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl"
             style={{ animationDelay: "60ms" }}
           >
-            A global movement<br />
-            to reinvent health.<br />
+            A global movement to reinvent health.{" "}
             <span className="text-brandCP">Together.</span>
           </h1>
 
           {/* Body */}
           <p
-            className="animate-fade-up mt-5 max-w-lg text-sm leading-relaxed sm:text-base"
+            className="animate-fade-up mt-5 max-w-2xl text-sm leading-relaxed sm:text-base"
             style={{ animationDelay: "120ms", opacity: 0.65 }}
           >
             It&apos;s a movement — a collective uprising of students, engineers, clinicians,

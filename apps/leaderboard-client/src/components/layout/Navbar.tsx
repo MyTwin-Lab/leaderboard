@@ -26,11 +26,19 @@ function lerp(a: number, b: number, t: number) {
 
 export const Navbar = ({ session }: NavbarProps) => {
   const [p, setP] = useState(0); // scroll progress 0→1
+  const [heroVisible, setHeroVisible] = useState(true); // hero in view on homepage
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
+  const isHomePage = pathname === "/";
+  // Invert navbar colors while the hero section is visible (first ~260px of scroll)
+  const invertNav = isHomePage && heroVisible;
+
   useEffect(() => {
-    const handleScroll = () => setP(Math.min(window.scrollY / 72, 1));
+    const handleScroll = () => {
+      setP(Math.min(window.scrollY / 72, 1));
+      setHeroVisible(window.scrollY < 260);
+    };
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
@@ -74,7 +82,9 @@ export const Navbar = ({ session }: NavbarProps) => {
               borderRadius: `${lerp(0, 999, p)}px`,
               backdropFilter: p > 0.05 ? `blur(${lerp(0, 10, p)}px) saturate(${lerp(100, 160, p)}%)` : undefined,
               WebkitBackdropFilter: p > 0.05 ? `blur(${lerp(0, 10, p)}px) saturate(${lerp(100, 160, p)}%)` : undefined,
-              border: `1px solid rgba(255, 255, 255, ${lerp(0, 0.1, p)})`,
+              border: invertNav
+                ? `1px solid rgba(0, 0, 0, ${lerp(0, 0.12, p)})`
+                : `1px solid rgba(255, 255, 255, ${lerp(0, 0.1, p)})`,
               boxShadow: p > 0.05
                 ? `0 ${lerp(0, 6, p)}px ${lerp(0, 28, p)}px rgba(0,0,0,${lerp(0, 0.55, p)})`
                 : "none",
@@ -103,14 +113,23 @@ export const Navbar = ({ session }: NavbarProps) => {
                       key={link.path}
                       href={link.path}
                       className={cn(
-                        "group relative pb-0.5 font-medium transition-all duration-200",
+                        "group relative pb-0.5 font-medium transition-all duration-300",
                         isActive(link.path)
-                          ? "text-[15px] text-white"
-                          : "text-[13px] text-white/60 hover:text-brandCP hover:text-[15px]"
+                          ? "text-[15px]"
+                          : "text-[13px] hover:text-brandCP hover:text-[15px]"
                       )}
+                      style={{
+                        color: invertNav
+                          ? isActive(link.path)
+                            ? "var(--background)"
+                            : "color-mix(in srgb, var(--background) 60%, transparent)"
+                          : isActive(link.path)
+                            ? "white"
+                            : "rgba(255,255,255,0.6)",
+                        transition: "color 0.3s ease",
+                      }}
                     >
                       {link.name}
-                      {/* Underline — always present, slides in/out with scaleX */}
                       <span
                         className={cn(
                           "absolute -bottom-0.5 left-0 h-[2px] w-full origin-left rounded-full bg-brandCP transition-transform duration-200",
