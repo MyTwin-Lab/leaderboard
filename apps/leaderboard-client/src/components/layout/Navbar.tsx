@@ -215,9 +215,10 @@ export const Navbar = ({ session }: NavbarProps) => {
       >
         <div
           className={cn(
-            "absolute inset-0 bg-[#060D22] backdrop-blur-2xl transition-opacity duration-500",
+            "absolute inset-0 backdrop-blur-2xl transition-opacity duration-500",
             mobileMenuOpen ? "opacity-95" : "opacity-0"
           )}
+          style={{ background: "var(--background)" }}
         />
 
         <div className="relative h-full flex flex-col items-center justify-center px-8">
