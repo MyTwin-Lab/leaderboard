@@ -28,6 +28,7 @@ export const Navbar = ({ session }: NavbarProps) => {
   const [p, setP] = useState(0); // scroll progress 0→1
   const [heroVisible, setHeroVisible] = useState(true); // hero in view on homepage
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLightMode, setIsLightMode] = useState(false);
   const pathname = usePathname();
 
   const isHomePage = pathname === "/";
@@ -42,6 +43,14 @@ export const Navbar = ({ session }: NavbarProps) => {
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const check = () => setIsLightMode(document.documentElement.dataset.mode === "light");
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-mode"] });
+    return () => obs.disconnect();
   }, []);
 
   useEffect(() => {
@@ -101,15 +110,14 @@ export const Navbar = ({ session }: NavbarProps) => {
               }}
             >
               {/* Logo */}
-              <Link
-                href="/"
-                className="z-50 flex items-center"
-                style={{
-                  color: invertNav ? "var(--background)" : undefined,
-                  transition: "color 0.3s ease",
-                }}
-              >
-                <MyTwinLogo className="h-8 w-auto sm:h-9" />
+              <Link href="/" className="z-50 flex items-center">
+                <MyTwinLogo
+                  className="h-8 w-auto sm:h-9"
+                  style={{
+                    color: invertNav ? "var(--background)" : undefined,
+                    transition: "color 0.3s ease",
+                  }}
+                />
               </Link>
 
               {/* Desktop Navigation */}
@@ -170,7 +178,12 @@ export const Navbar = ({ session }: NavbarProps) => {
                       alt="Sign in"
                       width={20}
                       height={20}
-                      style={{ filter: invertNav ? "invert(1)" : undefined, transition: "filter 0.3s ease" }}
+                      style={{
+                        // Hero is light in dark mode → invert white icon to black
+                        // Hero is dark in light mode → keep white icon as-is
+                        filter: invertNav ? (isLightMode ? "none" : "invert(1)") : undefined,
+                        transition: "filter 0.3s ease",
+                      }}
                     />
                   </Link>
                 )}
