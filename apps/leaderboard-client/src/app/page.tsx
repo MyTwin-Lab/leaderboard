@@ -23,25 +23,30 @@ export default async function HomePage() {
   return (
     <div className="space-y-8 sm:space-y-10">
 
-      {/* ── Hero section ───────────────────────────────────────────────
-          Background = foreground color of the theme (true inverse).
-          Light theme: dark hero on white page.
-          Dark theme: light hero on dark page.
-          Text = background color (readable in both modes).           */}
+      {/* ── Hero — truly full-bleed, behind navbar ─────────────────────
+          width: 100vw + margin-left: calc(50% - 50vw) = breaks out of
+          any centered container to span edge-to-edge.
+          -mt-20 md:-mt-24 cancels the navbar padding so the hero
+          background starts at the very top of the viewport.
+          Inner div restores the correct top padding for content.      */}
       <section
-        className="relative -mx-4 overflow-hidden rounded-b-3xl sm:-mx-6"
-        style={{ background: "color-mix(in srgb, var(--foreground) 92%, var(--background))" }}
+        className="-mt-20 rounded-b-3xl md:-mt-24"
+        style={{
+          width: "100vw",
+          marginLeft: "calc(50% - 50vw)",
+          background: "color-mix(in srgb, var(--foreground) 92%, var(--background))",
+        }}
       >
         {/* Decorative brandCP orb — top right */}
         <div
-          className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full sm:-right-8 sm:-top-8"
+          className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full sm:right-0 sm:top-0"
           style={{
             background: "radial-gradient(circle, var(--theme-primary), transparent 70%)",
-            opacity: 0.18,
+            opacity: 0.15,
           }}
         />
 
-        {/* Decorative grid lines */}
+        {/* Subtle grid lines */}
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.04]"
           style={{
@@ -51,16 +56,14 @@ export default async function HomePage() {
           }}
         />
 
-        {/* Content */}
+        {/* Inner container — recenters content, restores navbar clearance */}
         <div
-          className="relative flex flex-col gap-5 px-6 py-12 sm:px-12 sm:py-16"
+          className="relative mx-auto max-w-6xl overflow-hidden px-4 pb-12 pt-24 sm:px-6 md:pt-32"
           style={{ color: "var(--background)" }}
         >
           {/* Eyebrow */}
-          <div className="animate-fade-up flex items-center gap-3">
-            <span
-              className="h-[2px] w-8 rounded-full bg-brandCP"
-            />
+          <div className="animate-fade-up mb-6 flex items-center gap-3">
+            <span className="h-[2px] w-8 rounded-full bg-brandCP" />
             <span className="text-xs font-bold uppercase tracking-[0.25em] text-brandCP">
               #WeAreNotWaiting
             </span>
@@ -76,25 +79,23 @@ export default async function HomePage() {
             <span className="text-brandCP">Together.</span>
           </h1>
 
-          {/* Body — first para from /about */}
+          {/* Body */}
           <p
-            className="animate-fade-up max-w-lg text-sm leading-relaxed sm:text-base"
+            className="animate-fade-up mt-5 max-w-lg text-sm leading-relaxed sm:text-base"
             style={{ animationDelay: "120ms", opacity: 0.65 }}
           >
             It&apos;s a movement — a collective uprising of students, engineers, clinicians,
             researchers, designers, startups, and citizens who refuse to wait for health
             innovation to happen <em>to</em> them.{" "}
-            <strong style={{ opacity: 1, color: "var(--background)" }}>
-              We build it ourselves. We build it together.
-            </strong>
+            <strong style={{ opacity: 1 }}>We build it ourselves. We build it together.</strong>
           </p>
 
-          {/* Quote from /about */}
+          {/* Quote */}
           <blockquote
-            className="animate-fade-up flex items-start gap-3"
+            className="animate-fade-up mt-4 flex items-start gap-3"
             style={{ animationDelay: "180ms" }}
           >
-            <span className="mt-0.5 h-[2px] w-5 shrink-0 translate-y-2 rounded-full bg-brandCP opacity-60" />
+            <span className="mt-[9px] h-[2px] w-5 shrink-0 rounded-full bg-brandCP opacity-60" />
             <p className="text-sm italic" style={{ opacity: 0.45 }}>
               If you contribute, you exist. If you build, you shine.
             </p>
