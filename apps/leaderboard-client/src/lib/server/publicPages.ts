@@ -1,7 +1,7 @@
 import "server-only";
 
 import { repositories } from "@/lib/db";
-import type { ProjectWithChallenges } from "@/lib/types";
+import type { ProjectWithChallenges, TrendingChallenge } from "@/lib/types";
 
 export type ChallengesPageData = {
   projects: ProjectWithChallenges[];
@@ -82,4 +82,61 @@ export async function fetchProjectsWithChallenges(
     joinedChallengeIds,
     managedProjectIds,
   };
+}
+
+export async function fetchTrendingChallenges(limit: number): Promise<TrendingChallenge[]> {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [contributions, challenges, projects, allChallengeTeams, allUsers] = await Promise.all([
+    repositories.contribution.findAll(),
+    repositories.challenge.findAll(),
+    repositories.project.findAll(),
+    repositories.challengeTeam.findAll(),
+    repositories.user.findAll(),
+  ]);
+
+  const recentCountByChallenge = contributions
+    .filter((c) => c.submitted_at >= sevenDaysAgo)
+    .reduce<Map<string, number>>((acc, c) => {
+      acc.set(c.challenge_id, (acc.get(c.challenge_id) ?? 0) + 1);
+      return acc;
+    }, new Map());
+
+  const usersMap = new Map(allUsers.map((u) => [u.uuid, u]));
+  const projectsMap = new Map(projects.map((p) => [p.uuid, p]));
+
+  const teamMembersByChallenge = allChallengeTeams.reduce<Map<string, { id: string; fullName: string; avatarUrl?: string }[]>>(
+    (acc, ct) => {
+      const user = usersMap.get(ct.user_id);
+      if (user) {
+        const members = acc.get(ct.challenge_id) ?? [];
+        members.push({ id: user.uuid, fullName: user.full_name, avatarUrl: user.avatar_url ?? undefined });
+        acc.set(ct.challenge_id, members);
+      }
+      return acc;
+    },
+    new Map()
+  );
+
+  return challenges
+    .filter((c) => c.status !== "draft" && recentCountByChallenge.has(c.uuid))
+    .sort((a, b) => (recentCountByChallenge.get(b.uuid) ?? 0) - (recentCountByChallenge.get(a.uuid) ?? 0))
+    .slice(0, limit)
+    .map((c) => {
+      const project = projectsMap.get(c.project_id);
+      return {
+        id: c.uuid,
+        index: c.index ?? 0,
+        title: c.title,
+        type: c.type ?? "code",
+        projectName: project?.title ?? "Unknown project",
+        description: project?.description ?? null,
+        rewardPool: c.contribution_points_reward ?? 0,
+        completion: Math.round((c.completion ?? 0) * 100),
+        teamMembers: teamMembersByChallenge.get(c.uuid) ?? [],
+        startDate: c.start_date.toISOString(),
+        endDate: c.end_date.toISOString(),
+        recentContributions: recentCountByChallenge.get(c.uuid) ?? 0,
+      };
+    });
 }

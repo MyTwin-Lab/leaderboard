@@ -4,6 +4,7 @@ export type LeaderboardEntry = {
   displayName: string;
   githubUsername?: string;
   bio?: string;
+  avatarUrl?: string;
   totalCP: number;
 };
 
@@ -19,6 +20,7 @@ export type ContributorContribution = {
   title: string;
   description: string | null;
   reward: number;
+  submittedAt: string | null;
 };
 
 export type ContributorChallenge = {
@@ -34,8 +36,10 @@ export type ContributorProfile = {
   userId: string;
   displayName: string;
   githubUsername?: string;
+  avatarUrl?: string;
   totalCP: number;
   challenges: ContributorChallenge[];
+  globalRank?: number;
 };
 
 export type ProjectFilter = LeaderboardResponse["filters"]["projects"][number];
@@ -46,6 +50,7 @@ export type SessionUser = {
   githubUsername: string;
   email: string;
   role: string;
+  avatarUrl?: string;
 };
 
 export type ContributorSession = SessionUser;
@@ -53,12 +58,15 @@ export type ContributorSession = SessionUser;
 export type TeamMember = {
   id: string;
   fullName: string;
+  avatarUrl?: string;
 };
 
 export type ProjectChallengeSummary = {
   id: string;
   index: number;
   title: string;
+  status: string;
+  type: string;
   rewardPool: number;
   contributionsCount: number;
   completion: number;
@@ -72,4 +80,19 @@ export type ProjectWithChallenges = {
   title: string;
   description: string | null;
   challenges: ProjectChallengeSummary[];
+};
+
+export type TrendingChallenge = {
+  id: string;
+  index: number;
+  title: string;
+  type: string;
+  projectName: string;
+  description: string | null;
+  rewardPool: number;
+  completion: number; // 0–100 (already multiplied)
+  teamMembers: TeamMember[];
+  startDate: string; // ISO string
+  endDate: string;   // ISO string
+  recentContributions: number;
 };
