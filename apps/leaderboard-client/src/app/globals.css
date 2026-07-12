@@ -33,6 +33,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
 }
 
 /* ── Light mode overrides ─────────────────────────────────── */
@@ -57,6 +58,49 @@ html[data-mode="light"] [class*="border-white"] {
 /* Translucent white backgrounds flip to translucent black */
 html[data-mode="light"] [class*="bg-white/"] {
   background-color: rgb(0 0 0 / 0.04) !important;
+}
+
+/* Placeholder pseudo-element (not matched by class selectors above) */
+html[data-mode="light"] input::placeholder,
+html[data-mode="light"] textarea::placeholder {
+  color: rgb(0 0 0 / 0.35) !important;
+}
+
+/* Inputs & selects — covers inline backgroundColor styles too */
+html[data-mode="light"] input,
+html[data-mode="light"] textarea,
+html[data-mode="light"] select {
+  background-color: rgb(0 0 0 / 0.04) !important;
+  color: var(--foreground) !important;
+  border-color: rgb(0 0 0 / 0.12) !important;
+}
+
+/* Select options — override hardcoded dark colors */
+html[data-mode="light"] option {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* SVG icons — force foreground color on all SVG elements in light mode
+   so icons using currentColor or stroke="currentColor" render dark */
+html[data-mode="light"] svg {
+  color: var(--foreground);
+}
+
+/* But keep accent-colored elements (brandCP) as-is */
+html[data-mode="light"] [class*="text-brandCP"] svg,
+html[data-mode="light"] [class*="text-primary"] svg {
+  color: inherit;
+}
+
+/* Monochrome icon images (white SVGs used as <img>) — invert in light mode */
+html[data-mode="light"] img[alt="Sign in"] {
+  filter: invert(0.8);
+}
+
+/* Scrollbar in light mode */
+html[data-mode="light"] {
+  scrollbar-color: rgb(0 0 0 / 0.15) transparent;
 }
 
 @keyframes slide-in {
