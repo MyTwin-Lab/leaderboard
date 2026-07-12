@@ -101,7 +101,14 @@ export const Navbar = ({ session }: NavbarProps) => {
               }}
             >
               {/* Logo */}
-              <Link href="/" className="z-50 flex items-center">
+              <Link
+                href="/"
+                className="z-50 flex items-center"
+                style={{
+                  color: invertNav ? "var(--background)" : undefined,
+                  transition: "color 0.3s ease",
+                }}
+              >
                 <MyTwinLogo className="h-8 w-auto sm:h-9" />
               </Link>
 
@@ -153,9 +160,18 @@ export const Navbar = ({ session }: NavbarProps) => {
                 ) : (
                   <Link
                     href="/api/google-auth/authorize?from=/contributors/me"
-                    className="flex items-center rounded-xl bg-white/10 p-2 transition-colors hover:bg-white/15"
+                    className="flex items-center rounded-xl p-2 transition-colors"
+                    style={{
+                      background: invertNav ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.1)",
+                    }}
                   >
-                    <Image src="/profile.svg" alt="Sign in" width={20} height={20} />
+                    <Image
+                      src="/profile.svg"
+                      alt="Sign in"
+                      width={20}
+                      height={20}
+                      style={{ filter: invertNav ? "invert(1)" : undefined, transition: "filter 0.3s ease" }}
+                    />
                   </Link>
                 )}
               </div>
