@@ -24,81 +24,81 @@ export default async function HomePage() {
     <div className="space-y-8 sm:space-y-10">
 
       {/* ── Hero section ───────────────────────────────────────────────
-          Full-bleed within container (-mx-4 sm:-mx-6).
-          Background: always 12% darker than the theme background,
-          works for both light and dark themes.                        */}
+          Background = foreground color of the theme (true inverse).
+          Light theme: dark hero on white page.
+          Dark theme: light hero on dark page.
+          Text = background color (readable in both modes).           */}
       <section
         className="relative -mx-4 overflow-hidden rounded-b-3xl sm:-mx-6"
-        style={{ background: "color-mix(in srgb, black 12%, var(--background))" }}
+        style={{ background: "color-mix(in srgb, var(--foreground) 92%, var(--background))" }}
       >
-        {/* Radial brandCP glow at top-center */}
+        {/* Decorative brandCP orb — top right */}
         <div
-          className="pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full sm:-right-8 sm:-top-8"
           style={{
-            background: "radial-gradient(ellipse 70% 60% at 50% -5%, var(--theme-primary), transparent)",
-            opacity: 0.08,
+            background: "radial-gradient(circle, var(--theme-primary), transparent 70%)",
+            opacity: 0.18,
+          }}
+        />
+
+        {/* Decorative grid lines */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "linear-gradient(var(--background) 1px, transparent 1px), linear-gradient(90deg, var(--background) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
           }}
         />
 
         {/* Content */}
-        <div className="relative px-6 py-10 sm:px-12 sm:py-14">
-
+        <div
+          className="relative flex flex-col gap-5 px-6 py-12 sm:px-12 sm:py-16"
+          style={{ color: "var(--background)" }}
+        >
           {/* Eyebrow */}
-          <div className="mb-5 inline-flex animate-fade-up items-center gap-2 rounded-full border border-brandCP/20 bg-brandCP/10 px-3 py-1">
-            <span className="h-1.5 w-1.5 animate-ping-slow rounded-full bg-brandCP" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-brandCP">
+          <div className="animate-fade-up flex items-center gap-3">
+            <span
+              className="h-[2px] w-8 rounded-full bg-brandCP"
+            />
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-brandCP">
               #WeAreNotWaiting
             </span>
           </div>
 
-          {/* Headline — original text from /about */}
+          {/* H1 */}
           <h1
-            className="animate-fade-up max-w-2xl text-3xl font-bold leading-tight text-white sm:text-4xl"
+            className="animate-fade-up max-w-xl text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl"
             style={{ animationDelay: "60ms" }}
           >
-            A global movement to reinvent health.{" "}
+            A global movement<br />
+            to reinvent health.<br />
             <span className="text-brandCP">Together.</span>
           </h1>
 
-          {/* Subtitle — original intro from /about */}
+          {/* Body — first para from /about */}
           <p
-            className="animate-fade-up mt-4 max-w-xl text-sm leading-relaxed text-white/60 sm:text-base"
-            style={{ animationDelay: "120ms" }}
+            className="animate-fade-up max-w-lg text-sm leading-relaxed sm:text-base"
+            style={{ animationDelay: "120ms", opacity: 0.65 }}
           >
             It&apos;s a movement — a collective uprising of students, engineers, clinicians,
             researchers, designers, startups, and citizens who refuse to wait for health
             innovation to happen <em>to</em> them.{" "}
-            <strong className="text-white/90">We build it together.</strong>
+            <strong style={{ opacity: 1, color: "var(--background)" }}>
+              We build it ourselves. We build it together.
+            </strong>
           </p>
 
-          {/* Quote */}
+          {/* Quote from /about */}
           <blockquote
-            className="animate-fade-up mt-4 border-l-4 border-brandCP py-0.5 pl-4 text-sm italic text-white/50"
-            style={{ animationDelay: "160ms" }}
+            className="animate-fade-up flex items-start gap-3"
+            style={{ animationDelay: "180ms" }}
           >
-            If you contribute, you exist. If you build, you shine.
+            <span className="mt-0.5 h-[2px] w-5 shrink-0 translate-y-2 rounded-full bg-brandCP opacity-60" />
+            <p className="text-sm italic" style={{ opacity: 0.45 }}>
+              If you contribute, you exist. If you build, you shine.
+            </p>
           </blockquote>
-
-          {/* CTAs */}
-          <div
-            className="animate-fade-up mt-7 flex flex-wrap gap-3"
-            style={{ animationDelay: "200ms" }}
-          >
-            <Link
-              href="/challenges"
-              className="inline-flex items-center gap-2 rounded-xl bg-brandCP px-5 py-2.5 text-sm font-semibold text-backgroundDark shadow-lg shadow-brandCP/20 transition-all duration-200 hover:scale-[1.03] hover:shadow-brandCP/30"
-            >
-              Explore challenges
-              <ArrowIcon />
-            </Link>
-            <Link
-              href="/about"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/[0.10]"
-            >
-              Learn more
-              <ArrowIcon />
-            </Link>
-          </div>
         </div>
       </section>
 
