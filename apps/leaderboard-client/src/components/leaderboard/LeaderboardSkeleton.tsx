@@ -1,6 +1,6 @@
 export function LeaderboardSkeleton() {
   return (
-    <div className="space-y-2 rounded-xl bg-white/5 p-6 shadow-md shadow-black/20">
+    <div className="space-y-2 rounded-2xl bg-white/5 border border-white/10 p-6 shadow-md shadow-black/20">
       {Array.from({ length: 8 }).map((_, index) => (
         <div key={index} className="flex items-center gap-4">
           <div className="h-4 w-8 animate-pulse rounded bg-white/10" />

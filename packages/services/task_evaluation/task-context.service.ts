@@ -77,13 +77,10 @@ export class TaskContextService {
         continue;
       }
 
-      // Pour les repos Kaggle ou GitHub concurrent, résoudre depuis workspace_meta.userUrls[userId]
-      const isKaggleRepo = repo.type === 'kaggle_dataset' || repo.type === 'kaggle_model';
-      const isConcurrentGitHub = repo.type === 'github' && task.type === 'concurrent';
+      // Pour les tâches concurrentes, résoudre l'external_repo_id par utilisateur
+      // depuis workspace_meta.userUrls[userId]
       let effectiveRepo = repo;
-      let effectiveBranch = tw.workspace_ref ? this.extractBranchName(tw.workspace_ref) : '';
-
-      if (isKaggleRepo && userId) {
+      if (task.type === 'concurrent' && userId) {
         const meta = tw.workspace_meta as Record<string, unknown> | null;
         const userUrls = meta?.userUrls as Record<string, string> | undefined;
         const userUrl = userUrls?.[userId];
@@ -91,33 +88,19 @@ export class TaskContextService {
           const slug = this.extractSlugFromUrl(userUrl);
           if (slug) {
             effectiveRepo = { ...repo, external_repo_id: slug };
-            console.log(`[TaskContextService] Kaggle repo — using slug: ${slug} (from ${userUrl})`);
+            console.log(`[TaskContextService] Concurrent task — using user-specific slug: ${slug} (from ${userUrl})`);
           } else {
             console.warn(`[TaskContextService] Could not extract slug from user URL: ${userUrl}`);
           }
         } else {
-          console.warn(`[TaskContextService] No URL submitted by user ${userId} for Kaggle repo ${repo.title}`);
-        }
-      } else if (isConcurrentGitHub && userId) {
-        const meta = tw.workspace_meta as Record<string, unknown> | null;
-        const userUrls = meta?.userUrls as Record<string, string> | undefined;
-        const userUrl = userUrls?.[userId];
-        if (userUrl) {
-          const branch = this.extractBranchFromGitHubUrl(userUrl);
-          if (branch) {
-            effectiveBranch = branch;
-            console.log(`[TaskContextService] Concurrent GitHub — using branch: ${branch} (from ${userUrl})`);
-          } else {
-            console.warn(`[TaskContextService] Could not extract branch from GitHub URL: ${userUrl}`);
-          }
-        } else {
-          console.warn(`[TaskContextService] No branch URL for user ${userId} in concurrent GitHub task ${repo.title}`);
+          console.warn(`[TaskContextService] No URL submitted by user ${userId} for concurrent workspace on repo ${repo.title}`);
         }
       }
 
+      const branch = tw.workspace_ref ? this.extractBranchName(tw.workspace_ref) : '';
       workspaces.push({
         repo: effectiveRepo,
-        branch: effectiveBranch,
+        branch,
         workspaceRef: tw.workspace_ref ?? '',
         workspaceUrl: tw.workspace_url ?? undefined,
       });
@@ -136,24 +119,6 @@ export class TaskContextService {
    */
   private extractBranchName(workspaceRef: string): string {
     return workspaceRef.replace(/^refs\/heads\//, '');
-  }
-
-  /**
-   * Extrait le nom de branche depuis une URL GitHub
-   * Ex: "https://github.com/owner/repo/tree/task/007-setup-env-john-doe" → "task/007-setup-env-john-doe"
-   */
-  private extractBranchFromGitHubUrl(url: string): string {
-    try {
-      const parts = new URL(url).pathname.split('/').filter(Boolean);
-      // parts = ['owner', 'repo', 'tree', 'task', '007-...']
-      const treeIndex = parts.indexOf('tree');
-      if (treeIndex !== -1 && treeIndex < parts.length - 1) {
-        return parts.slice(treeIndex + 1).join('/');
-      }
-      return '';
-    } catch {
-      return '';
-    }
   }
 
   /**

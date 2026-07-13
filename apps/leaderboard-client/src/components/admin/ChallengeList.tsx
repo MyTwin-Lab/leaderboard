@@ -1,9 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Pencil, Trash2, Users, RefreshCw, Trophy } from 'lucide-react';
+import { Pencil, Trash2, Users, RefreshCw, Trophy, Code2, BrainCircuit, ExternalLink } from 'lucide-react';
 import type { Challenge } from '../../../../../packages/database-service/domain/entities';
 
 interface ChallengeListProps {
@@ -22,11 +23,32 @@ export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, on
       key: 'title',
       header: 'Challenge',
       render: (challenge: Challenge) => (
-        <div>
-          <div className="font-medium text-white">{challenge.title}</div>
-          <div className="text-xs text-white/40">#{challenge.index}</div>
+        <div className="flex items-center gap-2.5">
+          <div>
+            <div className="font-medium text-white">{challenge.title}</div>
+            <div className="text-xs text-white/35">#{challenge.index}</div>
+          </div>
         </div>
       ),
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      render: (challenge: Challenge) => {
+        const type = (challenge as any).type ?? 'code';
+        const isML = type === 'ml';
+        return (
+          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
+            isML
+              ? 'border-purple-500/20 bg-purple-500/10 text-purple-400'
+              : 'border-white/10 bg-white/[0.04] text-white/50'
+          }`}>
+            {isML ? <BrainCircuit className="h-3 w-3" /> : <Code2 className="h-3 w-3" />}
+            {isML ? 'ML' : 'Code'}
+          </span>
+        );
+      },
+      width: '90px',
     },
     {
       key: 'status',
@@ -39,8 +61,8 @@ export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, on
       header: 'Period',
       render: (challenge: Challenge) => (
         <div className="text-sm">
-          <div className="text-white/70">{new Date(challenge.start_date).toLocaleDateString('fr-FR')}</div>
-          <div className="text-white/40">→ {new Date(challenge.end_date).toLocaleDateString('fr-FR')}</div>
+          <div className="text-white/60">{new Date(challenge.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</div>
+          <div className="text-white/35">→ {new Date(challenge.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
         </div>
       ),
       width: '130px',
@@ -49,7 +71,7 @@ export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, on
       key: 'reward',
       header: 'Reward',
       render: (challenge: Challenge) => (
-        <span className="font-medium text-brandCP">{challenge.contribution_points_reward} CP</span>
+        <span className="font-semibold text-brandCP">{challenge.contribution_points_reward.toLocaleString()} <span className="text-[11px]">CP</span></span>
       ),
       width: '90px',
     },
@@ -58,6 +80,9 @@ export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, on
       header: '',
       render: (challenge: Challenge) => (
         <div className="flex items-center gap-1">
+          <Link href={`/admin/challenges/${challenge.uuid}`} title="Open manager view">
+            <Button size="sm" variant="secondary"><ExternalLink className="h-3.5 w-3.5" /></Button>
+          </Link>
           <Button size="sm" variant="secondary" onClick={() => onTeam(challenge)} title="Manage team">
             <Users className="h-3.5 w-3.5" />
           </Button>
@@ -87,7 +112,7 @@ export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, on
           </Button>
         </div>
       ),
-      width: '200px',
+      width: '240px',
     },
   ];
 

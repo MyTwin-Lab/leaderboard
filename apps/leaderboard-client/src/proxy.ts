@@ -106,11 +106,28 @@ export async function proxy(request: NextRequest) {
       const isTaskSelfServiceRoute =
         pathname.startsWith('/api/tasks/') &&
         (pathname.endsWith('/assign') || pathname.endsWith('/complete'));
-      
+
+      // Routes ML accessibles aux contributeurs pour soumettre leur travail
+      const isMLContributorRoute =
+        pathname.includes('/ml-workspace') ||
+        pathname.includes('/ml-validate');
+
+      // Rejoindre un challenge
+      const isChallengeJoinRoute = pathname.endsWith('/join');
+
+      // Mise à jour du profil par le contributeur lui-même
+      const isContributorSelfRoute = pathname === '/api/contributors/me' && method === 'PATCH';
+
+      // Routes accessibles aux managers de projet (auth vérifiée dans le handler)
+      const isManagerAccessibleRoute =
+        (pathname.match(/^\/api\/challenges\/[^/]+$/) && ['PUT', 'PATCH'].includes(method)) ||
+        (pathname === '/api/challenges' && method === 'POST') ||
+        (pathname.startsWith('/api/repos') && ['POST', 'PUT'].includes(method)) ||
+        pathname.includes('/documents');
+
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        // Permettre aux contributeurs de s'assigner/désassigner des tâches
-        if (!isTaskSelfServiceRoute) {
+        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isManagerAccessibleRoute && !isContributorSelfRoute) {
           return NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }

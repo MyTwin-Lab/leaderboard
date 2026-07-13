@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/Badge';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
-import { HowToContribute } from '@/components/tasks/HowToContribute';
-import { trackOnboardingStep } from '@/lib/onboarding-track';
+import {
+  ArrowLeft, CheckCircle2, Circle, ExternalLink,
+  GitBranch, BarChart2, Users, ChevronRight,
+} from 'lucide-react';
 
 interface TaskDetails {
   currentUserId: string | null;
@@ -31,6 +32,7 @@ interface TaskDetails {
     uuid: string;
     full_name: string;
     github_username: string;
+    avatar_url?: string;
   }[];
   workspaces: {
     repo_id: string;
@@ -130,7 +132,6 @@ export default function TaskDetailPage() {
     try {
       const res = await fetch(`/api/tasks/${taskId}/complete`, { method: 'PATCH' });
       if (res.ok) {
-        trackOnboardingStep('validated_task');
         await fetchDetails();
       } else {
         const err = await res.json();
@@ -169,11 +170,24 @@ export default function TaskDetailPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto mt-10 max-w-3xl">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-64 rounded bg-white/10" />
-          <div className="h-4 w-96 rounded bg-white/5" />
-          <div className="h-32 rounded bg-white/5" />
+      <div className="mx-auto max-w-5xl animate-pulse space-y-6 pt-2">
+        <div className="h-4 w-24 rounded-full bg-white/8" />
+        <div className="space-y-3">
+          <div className="h-3 w-20 rounded-full bg-white/8" />
+          <div className="h-8 w-2/3 rounded-xl bg-white/10" />
+          <div className="h-3 w-full max-w-lg rounded-full bg-white/6" />
+        </div>
+        <div className="flex gap-6">
+          <div className="h-7 w-24 rounded-full bg-white/8" />
+          <div className="h-7 w-20 rounded-full bg-white/8" />
+        </div>
+        <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
+          <div className="space-y-3">
+            {[1, 2].map(i => <div key={i} className="h-20 rounded-2xl bg-white/5" />)}
+          </div>
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => <div key={i} className="h-14 rounded-xl bg-white/5" />)}
+          </div>
         </div>
       </div>
     );
@@ -181,296 +195,364 @@ export default function TaskDetailPage() {
 
   if (error || !data) {
     return (
-      <div className="mx-auto mt-10 max-w-3xl text-center">
-        <p className="text-white/60">{error || 'Task not found'}</p>
-        <button
-          onClick={() => router.back()}
-          className="mt-4 rounded-2xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20 transition"
-        >
-          Go back
-        </button>
+      <div className="flex items-center justify-center py-32 text-white/40 text-sm">
+        {error || 'Task not found.'}
       </div>
     );
   }
 
   const { currentUserId, task, challenge, assignees, workspaces, subTasks, contribution } = data;
+  const isDone = task.status === 'done';
+  const kaggleWorkspaces = workspaces.filter(
+    ws => ws.repo_type === 'kaggle_model' || ws.repo_type === 'kaggle_dataset'
+  );
 
   return (
-    <div className="mx-auto mt-4 max-w-3xl space-y-6 sm:mt-6">
-      {/* Back button */}
+    <div className="mx-auto max-w-5xl animate-fade-up">
+
+      {/* ── Back ── */}
       <button
         onClick={() => router.back()}
-        className="flex items-center bg-white/10 rounded-xl px-3 py-2 gap-1.5 text-sm text-white/100 hover:bg-white/20 transition"
+        className="group mb-6 flex items-center gap-1.5 text-xs text-white/40 transition-colors hover:text-white/70"
       >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-        </svg>
-        Back
+        <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
+        {challenge ? challenge.title : 'Back'}
       </button>
 
-      {/* Task info + Workspaces side by side */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Left — Task card */}
-        <div className="rounded-lg bg-white/5 p-5 shadow-md shadow-black/20">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex-1">
-              <h1 className="text-base font-bold text-white sm:text-lg">{task.title}</h1>
-              {challenge && (
-                <Link
-                  href={`/challenges/${challenge.uuid}`}
-                  className="mt-1 inline-block text-sm text-brandCP hover:underline"
-                >
-                  {challenge.title}
-                </Link>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge label={task.type} />
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  task.status === 'done'
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-yellow-500/20 text-yellow-400'
-                }`}
+      {/* ── Hero ── */}
+      <div className="mb-10">
+        {/* Status row */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+            isDone ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'
+          }`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${isDone ? 'bg-green-400' : 'bg-yellow-400'}`} />
+            {isDone ? 'Done' : 'To do'}
+          </span>
+          <span className="text-white/20">·</span>
+          <span className="rounded-full bg-white/8 px-2.5 py-0.5 text-xs text-white/40 capitalize">
+            {task.type}
+          </span>
+          {challenge && (
+            <>
+              <span className="text-white/20">·</span>
+              <Link
+                href={`/challenges/${challenge.uuid}`}
+                className="text-xs text-white/40 hover:text-brandCP transition-colors"
               >
-                {task.status === 'done' ? 'Done' : 'To do'}
-              </span>
-              {workspaces[0]?.repo_type && (
-                <HowToContribute
-                  repoType={workspaces[0].repo_type as 'github' | 'kaggle_dataset' | 'kaggle_model'}
-                  githubRepo={workspaces[0].repo_external_id ?? workspaces[0].repo_title}
-                  branchSlug={workspaces[0].workspace_ref?.replace(/^refs\/heads\//, '')}
-                />
-              )}
-            </div>
-          </div>
-          {task.description && (
-            <p className="mt-2 text-sm leading-relaxed text-white/70">{task.description}</p>
+                {challenge.title}
+              </Link>
+            </>
           )}
         </div>
 
-        {/* Right — Workspaces */}
-        <Section title={`Workspaces (${workspaces.length})`}>
-          {workspaces.length === 0 ? (
-            <p className="text-sm text-white/40">No workspaces configured</p>
-          ) : (
-            <div className="space-y-3">
-              {workspaces.map((ws, i) => (
-                <div key={i} className="rounded-lg bg-white/5 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {(() => {
-                        const userUrl = currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined;
-                        const branchLabel = ws.workspace_ref
-                          ? ws.workspace_ref.replace(/^refs\/heads\//, '')
-                          : (userUrl && ws.repo_type === 'github')
-                            ? (() => {
-                                try {
-                                  const parts = new URL(userUrl).pathname.split('/').filter(Boolean);
-                                  const treeIdx = parts.indexOf('tree');
-                                  return treeIdx !== -1 ? parts.slice(treeIdx + 1).join('/') : null;
-                                } catch { return null; }
-                              })()
-                            : null;
-                        return (
-                          <div>
-                            <p className="text-sm font-medium text-white">
-                              {ws.repo_external_id || ws.repo_title}
-                            </p>
-                            {branchLabel && (
-                              <p className="text-xs text-white/50">
-                                Branch: <span className="font-mono text-brandCP">{branchLabel}</span>
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {ws.workspace_status && (
-                        <WorkspaceStatusBadge status={ws.workspace_status} />
-                      )}
-                      {(() => {
-                        const userUrl = currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined;
-                        const openUrl = userUrl ?? ws.workspace_url;
-                        return openUrl ? (
-                          <a
-                            href={openUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20 transition"
-                          >
-                            Open
-                          </a>
-                        ) : null;
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* Title */}
+        <h1 className="mb-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          {task.title}
+        </h1>
+
+        {/* Description */}
+        {task.description && (
+          <p className="max-w-2xl text-sm leading-relaxed text-white/50">
+            {task.description}
+          </p>
+        )}
+
+        {/* Stats row */}
+        <div className="mt-6 flex flex-wrap items-center gap-5">
+          {challenge?.contribution_points_reward != null && (
+            <>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-bold text-white">
+                  {challenge.contribution_points_reward.toLocaleString()}
+                </span>
+                <span className="text-sm font-semibold text-brandCP">CP</span>
+              </div>
+              <div className="h-6 w-px bg-white/10" />
+            </>
           )}
-        </Section>
+          <span className="text-xs text-white/30">
+            {new Date(task.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </span>
+        </div>
       </div>
 
-      {/* Kaggle URL submission — one panel per Kaggle workspace, always visible */}
-      {workspaces
-        .filter(ws => ws.repo_type === 'kaggle_model' || ws.repo_type === 'kaggle_dataset')
-        .map(ws => {
-          const mySubmittedUrl = currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined;
-          const isSubmitted = !!mySubmittedUrl;
-          const label = ws.repo_type === 'kaggle_model' ? 'Kaggle Model' : 'Kaggle Dataset';
-          return (
-            <Section key={ws.repo_id} title={label}>
-              <p className="mb-3 text-sm text-white/60">
-                Paste the link to your {label.toLowerCase()} so it can be included in the evaluation.
-                {task.type === 'concurrent' && (
-                  <span className="ml-1 text-white/40">(Each contributor submits their own link.)</span>
-                )}
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={kaggleUrls[ws.repo_id] ?? ''}
-                  onChange={e => setKaggleUrls(prev => ({ ...prev, [ws.repo_id]: e.target.value }))}
-                  placeholder={ws.repo_type === 'kaggle_model' ? 'https://www.kaggle.com/models/...' : 'https://www.kaggle.com/datasets/...'}
-                  className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-brandCP"
-                />
-                <button
-                  onClick={() => handleKaggleSubmit(ws.repo_id)}
-                  disabled={submittingKaggle[ws.repo_id] || !kaggleUrls[ws.repo_id]?.trim()}
-                  className="rounded-xl bg-brandCP/10 px-4 py-2 text-sm font-semibold text-brandCP hover:bg-brandCP/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submittingKaggle[ws.repo_id] ? 'Saving...' : isSubmitted ? 'Update' : 'Submit'}
-                </button>
-              </div>
-              {isSubmitted && !kaggleErrors[ws.repo_id] && (
-                <p className="mt-2 flex items-center gap-1.5 text-xs text-green-400">
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                  Submitted
-                </p>
-              )}
-              {kaggleErrors[ws.repo_id] && (
-                <p className="mt-2 text-xs text-red-400">{kaggleErrors[ws.repo_id]}</p>
-              )}
-            </Section>
-          );
-        })}
+      {/* ── Body grid ── */}
+      <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
 
-      {/* Evaluation */}
-      <Section title="Evaluation">
-        {contribution?.evaluation ? (
-          <div className="space-y-4">
-            {/* Global score */}
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brandCP/20">
-                <span className="text-xl font-bold text-brandCP">
-                  {Math.round(contribution.evaluation.globalScore ?? 0)}
+        {/* ── Left column: Assignees + Sub-tasks ── */}
+        <div className="space-y-8">
+
+          {/* Assignees */}
+          <div className="space-y-3">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
+              <Users className="h-3.5 w-3.5" />
+              Assignees
+              {assignees.length > 0 && (
+                <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">
+                  {assignees.length}
                 </span>
+              )}
+            </h2>
+            {assignees.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] py-8 text-center">
+                <Users className="h-6 w-6 text-white/15" />
+                <p className="text-xs text-white/25">Unassigned</p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-white">Global Score</p>
-                <p className="text-xs text-white/50">
-                  Based on {contribution.evaluation.scores?.length ?? 0} criteria
-                </p>
-              </div>
-            </div>
-
-            {/* Detailed scores with AI comments */}
-            {contribution.evaluation.scores && contribution.evaluation.scores.length > 0 && (
-              <div className="space-y-3">
-                {contribution.evaluation.scores.map((s, i) => (
-                  <div key={i} className="rounded-lg bg-white/5 p-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-white">{s.criterion}</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-white/40">weight: {s.weight}</span>
-                        <span className="rounded-full bg-brandCP/20 px-2.5 py-0.5 text-xs font-semibold text-brandCP">
-                          {s.score}/10
-                        </span>
-                      </div>
+            ) : (
+              <div className="space-y-1">
+                {assignees.map(a => (
+                  <div key={a.uuid} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/[0.04] transition-colors">
+                    <InitialsAvatar name={a.full_name} size={30} avatarUrl={a.avatar_url} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{a.full_name}</p>
+                      {a.github_username && (
+                        <p className="text-xs text-white/35 truncate">@{a.github_username}</p>
+                      )}
                     </div>
-                    {/* Score bar */}
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-brandCP transition-all duration-500"
-                        style={{ width: `${s.score*10}%` }}
-                      />
-                    </div>
-                    {/* AI comment */}
-                    {s.comment && (
-                      <p className="mt-2 text-xs leading-relaxed text-white/60 italic">
-                        {s.comment}
-                      </p>
-                    )}
                   </div>
                 ))}
               </div>
             )}
-
-            <p className="text-xs text-white/40">
-              Last evaluated: {new Date(contribution.submitted_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </p>
           </div>
-        ) : (
-          <div className="text-center py-4">
-            <p className="text-sm text-white/40 mb-4">
-              {contribution ? 'No evaluation data yet' : 'No evaluation has been run for this task yet'}
-            </p>
-          </div>
-        )}
 
-        <div className="mt-4 flex justify-center gap-3">
-          {task.status !== 'done' && (
-            <button
-              onClick={handleEvaluate}
-              disabled={evaluating}
-              className="rounded-xl bg-brandCP/10 px-6 py-2 text-sm font-semibold text-brandCP hover:bg-brandCP/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {evaluating
-                ? 'Evaluating...'
-                : contribution?.evaluation
-                  ? 'Re-evaluate'
-                  : 'Evaluate'}
-            </button>
-          )}
-          {contribution?.evaluation && task.status !== 'done' && (
-            <button
-              onClick={handleComplete}
-              disabled={completing}
-              className="rounded-xl bg-green-500/10 px-6 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {completing ? 'Validating...' : 'Mark as done'}
-            </button>
+          {/* Sub-tasks */}
+          {subTasks.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Sub-tasks
+                <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">
+                  {subTasks.filter(s => s.status === 'done').length}/{subTasks.length}
+                </span>
+              </h2>
+              <div className="space-y-1">
+                {subTasks.map((st, idx) => (
+                  <Link
+                    key={st.uuid}
+                    href={`/tasks/${st.uuid}`}
+                    className="group flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 transition-all duration-200 hover:border-white/15 hover:bg-white/[0.06]"
+                  >
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${
+                      st.status === 'done' ? 'bg-green-500' : 'bg-white/25'
+                    }`} />
+                    <span className={`flex-1 truncate text-sm ${
+                      st.status === 'done' ? 'text-white/35 line-through decoration-white/20' : 'text-white'
+                    }`}>
+                      {st.title}
+                    </span>
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/0 transition-all group-hover:text-white/25" />
+                  </Link>
+                ))}
+              </div>
+            </div>
           )}
         </div>
-      </Section>
+
+        {/* ── Right column: Workspaces + Kaggle + Evaluation ── */}
+        <div className="space-y-8">
+
+          {/* Workspaces */}
+          <div className="space-y-3">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
+              <GitBranch className="h-3.5 w-3.5" />
+              Workspaces
+              {workspaces.length > 0 && (
+                <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">
+                  {workspaces.length}
+                </span>
+              )}
+            </h2>
+            {workspaces.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] py-10 text-center">
+                <GitBranch className="h-7 w-7 text-white/15" />
+                <p className="text-xs text-white/25">No workspaces configured</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {workspaces.map((ws, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 transition-all duration-200 hover:border-white/15 hover:bg-white/[0.06]"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-white truncate">
+                        {ws.repo_external_id || ws.repo_title}
+                      </p>
+                      {ws.workspace_ref && (
+                        <p className="mt-0.5 font-mono text-xs text-white/35">
+                          {ws.workspace_ref.replace(/^refs\/heads\//, '')}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {ws.workspace_status && <WorkspaceStatusBadge status={ws.workspace_status} />}
+                      {ws.workspace_url && (
+                        <a
+                          href={ws.workspace_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 rounded-lg bg-brandCP/15 px-3 py-1.5 text-xs font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/25 hover:shadow-[0_0_12px_rgba(10,247,193,0.15)]"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Open
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Kaggle submissions */}
+          {kaggleWorkspaces.map(ws => {
+            const mySubmittedUrl = currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined;
+            const isSubmitted = !!mySubmittedUrl;
+            const label = ws.repo_type === 'kaggle_model' ? 'Kaggle Model' : 'Kaggle Dataset';
+            return (
+              <div key={ws.repo_id} className="space-y-3">
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30">{label}</h2>
+                <p className="text-xs text-white/40">
+                  Submit your {label.toLowerCase()} link to include it in the evaluation.
+                  {task.type === 'concurrent' && (
+                    <span className="ml-1 text-white/25">Each contributor submits their own.</span>
+                  )}
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={kaggleUrls[ws.repo_id] ?? ''}
+                    onChange={e => setKaggleUrls(prev => ({ ...prev, [ws.repo_id]: e.target.value }))}
+                    placeholder={ws.repo_type === 'kaggle_model' ? 'https://www.kaggle.com/models/...' : 'https://www.kaggle.com/datasets/...'}
+                    className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white placeholder-white/20 transition focus:border-brandCP/40 focus:outline-none focus:ring-1 focus:ring-brandCP/20"
+                  />
+                  <button
+                    onClick={() => handleKaggleSubmit(ws.repo_id)}
+                    disabled={submittingKaggle[ws.repo_id] || !kaggleUrls[ws.repo_id]?.trim()}
+                    className="rounded-xl bg-brandCP/15 px-4 py-2 text-sm font-semibold text-brandCP transition hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {submittingKaggle[ws.repo_id] ? '…' : isSubmitted ? 'Update' : 'Submit'}
+                  </button>
+                </div>
+                {isSubmitted && !kaggleErrors[ws.repo_id] && (
+                  <p className="flex items-center gap-1.5 text-xs text-green-400">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    <a href={mySubmittedUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-300 truncate">
+                      {mySubmittedUrl}
+                    </a>
+                  </p>
+                )}
+                {kaggleErrors[ws.repo_id] && (
+                  <p className="text-xs text-red-400">{kaggleErrors[ws.repo_id]}</p>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Evaluation */}
+          <div className="space-y-3">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
+              <BarChart2 className="h-3.5 w-3.5" />
+              Evaluation
+            </h2>
+
+            {contribution?.evaluation ? (
+              <div className="space-y-4">
+                {/* Score banner */}
+                <div className="flex items-center gap-4 rounded-xl border border-brandCP/15 bg-brandCP/[0.04] px-4 py-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brandCP/15">
+                    <span className="text-2xl font-bold text-brandCP">
+                      {Math.round(contribution.evaluation.globalScore ?? 0)}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Global Score</p>
+                    <p className="text-xs text-white/40 mt-0.5">
+                      {contribution.evaluation.scores?.length ?? 0} criteria · {contribution.reward.toLocaleString()} CP earned
+                    </p>
+                  </div>
+                </div>
+
+                {/* Criteria */}
+                {contribution.evaluation.scores && contribution.evaluation.scores.length > 0 && (
+                  <div className="space-y-2">
+                    {contribution.evaluation.scores.map((s, i) => (
+                      <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium text-white">{s.criterion}</p>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="text-[10px] text-white/25">×{s.weight}</span>
+                            <span className="rounded-full bg-brandCP/15 px-2.5 py-0.5 text-xs font-bold text-brandCP">
+                              {s.score}/10
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-white/8">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-brandCP/60 to-brandCP transition-[width] duration-700 ease-out"
+                            style={{ width: `${s.score * 10}%` }}
+                          />
+                        </div>
+                        {s.comment && (
+                          <p className="mt-2.5 text-xs italic leading-relaxed text-white/40">{s.comment}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-[11px] text-white/25">
+                  Evaluated {new Date(contribution.submitted_at).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] py-12 text-center">
+                <BarChart2 className="h-7 w-7 text-white/15" />
+                <p className="text-xs text-white/25">
+                  {contribution ? 'No evaluation data yet' : 'No evaluation run yet'}
+                </p>
+              </div>
+            )}
+
+            {/* Actions */}
+            {!isDone && (
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={handleEvaluate}
+                  disabled={evaluating}
+                  className="rounded-lg bg-brandCP/15 px-4 py-2 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/25 hover:shadow-[0_0_12px_rgba(10,247,193,0.1)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {evaluating ? 'Evaluating…' : contribution?.evaluation ? 'Re-evaluate' : 'Evaluate'}
+                </button>
+                {contribution?.evaluation && (
+                  <button
+                    onClick={handleComplete}
+                    disabled={completing}
+                    className="rounded-lg bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-400 transition-all duration-200 hover:bg-green-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {completing ? 'Validating…' : 'Mark as done'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-// --- Helper components ---
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg bg-white/5 p-5 shadow-md shadow-black/20">
-      <h2 className="mb-4 text-base font-semibold text-white">{title}</h2>
-      {children}
-    </div>
-  );
-}
-
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function WorkspaceStatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    ready: 'bg-green-500/20 text-green-400',
-    pending: 'bg-yellow-500/20 text-yellow-400',
-    failed: 'bg-red-500/20 text-red-400',
+    ready:   'bg-green-500/15 text-green-400',
+    pending: 'bg-yellow-500/15 text-yellow-400',
+    failed:  'bg-red-500/15 text-red-400',
   };
   return (
-    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status] ?? 'bg-white/10 text-white/50'}`}>
+    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles[status] ?? 'bg-white/8 text-white/40'}`}>
       {status}
     </span>
   );
