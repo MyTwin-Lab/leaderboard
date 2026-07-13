@@ -288,7 +288,7 @@ export default function ChallengeDetailPage() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [tasks, setTasks] = useState<TaskWithAssignees[]>([]);
   const [meetings, setMeetings] = useState<SyncMeeting[]>([]);
-  const [meetingsEnabled, setMeetingsEnabled] = useState(true);
+  const [meetingsEnabled, setMeetingsEnabled] = useState(false);
   const [repoTypes, setRepoTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigningTaskId, setAssigningTaskId] = useState<string | null>(null);

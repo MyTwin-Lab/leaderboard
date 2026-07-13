@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { AppSettingsRepository } from "@packages/database-service/repositories";
 import { fetchContributorSession } from "@/lib/contributor";
 

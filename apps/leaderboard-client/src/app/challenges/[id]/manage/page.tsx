@@ -822,7 +822,7 @@ export default function ChallengeManagePage() {
   const [isManager, setIsManager] = useState<boolean | null>(null);
   const [meetingDrawerOpen, setMeetingDrawerOpen] = useState(false);
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
-  const [meetingsEnabled, setMeetingsEnabled] = useState(true);
+  const [meetingsEnabled, setMeetingsEnabled] = useState(false);
 
   useEffect(() => { if (challengeId) fetchAll(); }, [challengeId]);
 
