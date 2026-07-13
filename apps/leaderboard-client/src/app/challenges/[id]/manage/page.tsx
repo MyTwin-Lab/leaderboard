@@ -143,7 +143,7 @@ function StatusPicker({ challengeId, status, onUpdate }: {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 w-36 rounded-xl border border-white/10 bg-[#0d1117] p-1 shadow-xl">
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-36 rounded-xl border border-white/10 bg-backgroundDark p-1 shadow-xl">
           {STATUS_OPTIONS.map(opt => (
             <button
               key={opt.value}
@@ -188,8 +188,8 @@ function Skeleton() {
 
 // ─── Overview Tab ────────────────────────────────────────────────────────────
 
-function TabOverview({ challenge, team, meetings, contributions, onNewMeeting }: {
-  challenge: Challenge; team: TeamMember[]; meetings: Meeting[]; contributions: Contribution[]; onNewMeeting: () => void;
+function TabOverview({ challenge, team, meetings, contributions, onNewMeeting, meetingsEnabled }: {
+  challenge: Challenge; team: TeamMember[]; meetings: Meeting[]; contributions: Contribution[]; onNewMeeting: () => void; meetingsEnabled: boolean;
 }) {
   const upcoming = meetings.filter(m => ['scheduled', 'in_progress'].includes(m.status))
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
@@ -219,49 +219,51 @@ function TabOverview({ challenge, team, meetings, contributions, onNewMeeting }:
         </div>
 
         {/* Meetings */}
-        <div className="space-y-3">
-          <div className="flex items-center">
-            {sectionHeader(<Video className="h-3.5 w-3.5" />, 'Meetings', meetings.length)}
-            <button
-              onClick={onNewMeeting}
-              className="ml-auto flex items-center gap-1 rounded-lg bg-brandCP/10 px-2.5 py-1 text-[11px] font-semibold text-brandCP transition-all hover:bg-brandCP/20"
-            >
-              <Plus className="h-3 w-3" />
-              New
-            </button>
-          </div>
-          {upcoming.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider text-white/20">Upcoming</p>
-              {upcoming.map(m => (
-                <div key={m.uuid} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">{m.title}</p>
-                    <p className="text-xs text-white/35">{fmtTime(m.start_time)} – {fmtTime(m.end_time)}</p>
+        {meetingsEnabled && (
+          <div className="space-y-3">
+            <div className="flex items-center">
+              {sectionHeader(<Video className="h-3.5 w-3.5" />, 'Meetings', meetings.length)}
+              <button
+                onClick={onNewMeeting}
+                className="ml-auto flex items-center gap-1 rounded-lg bg-brandCP/10 px-2.5 py-1 text-[11px] font-semibold text-brandCP transition-all hover:bg-brandCP/20"
+              >
+                <Plus className="h-3 w-3" />
+                New
+              </button>
+            </div>
+            {upcoming.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase tracking-wider text-white/20">Upcoming</p>
+                {upcoming.map(m => (
+                  <div key={m.uuid} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-white">{m.title}</p>
+                      <p className="text-xs text-white/35">{fmtTime(m.start_time)} – {fmtTime(m.end_time)}</p>
+                    </div>
+                    {m.meet_link && (
+                      <a href={m.meet_link} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 rounded-lg bg-brandCP/15 px-2.5 py-1 text-xs font-semibold text-brandCP hover:bg-brandCP/25">
+                        <Video className="h-3 w-3" /> Join
+                      </a>
+                    )}
                   </div>
-                  {m.meet_link && (
-                    <a href={m.meet_link} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1 rounded-lg bg-brandCP/15 px-2.5 py-1 text-xs font-semibold text-brandCP hover:bg-brandCP/25">
-                      <Video className="h-3 w-3" /> Join
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {past.length > 0 && (
-            <div className="space-y-0.5">
-              <p className="text-[10px] uppercase tracking-wider text-white/20">Past ({past.length})</p>
-              {past.slice(0, 5).map(m => (
-                <div key={m.uuid} className="flex items-center gap-2 rounded px-2 py-1">
-                  <span className="text-[11px] text-white/25 w-16 shrink-0">{fmt(m.start_time, { month: 'short', day: 'numeric' })}</span>
-                  <span className="truncate text-xs text-white/45">{m.title}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {meetings.length === 0 && <p className="text-xs text-white/25">No meetings yet</p>}
-        </div>
+                ))}
+              </div>
+            )}
+            {past.length > 0 && (
+              <div className="space-y-0.5">
+                <p className="text-[10px] uppercase tracking-wider text-white/20">Past ({past.length})</p>
+                {past.slice(0, 5).map(m => (
+                  <div key={m.uuid} className="flex items-center gap-2 rounded px-2 py-1">
+                    <span className="text-[11px] text-white/25 w-16 shrink-0">{fmt(m.start_time, { month: 'short', day: 'numeric' })}</span>
+                    <span className="truncate text-xs text-white/45">{m.title}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {meetings.length === 0 && <p className="text-xs text-white/25">No meetings yet</p>}
+          </div>
+        )}
       </div>
 
       {/* Right col — stats */}
@@ -365,9 +367,9 @@ function TabKanban({ tasks }: { tasks: Task[] }) {
 
 // ─── Activity Tab (code) ─────────────────────────────────────────────────────
 
-function TabActivity({ contributions, meetings, team, repoActivity }: {
+function TabActivity({ contributions, meetings, team, repoActivity, meetingsEnabled }: {
   contributions: Contribution[]; meetings: Meeting[]; team: TeamMember[];
-  repoActivity: Record<string, any> | null;
+  repoActivity: Record<string, any> | null; meetingsEnabled: boolean;
 }) {
   const userMap = Object.fromEntries(team.map(m => [m.id, m.fullName]));
   const avatarMap = Object.fromEntries(team.map(m => [m.id, m.avatarUrl]));
@@ -472,7 +474,7 @@ function TabActivity({ contributions, meetings, team, repoActivity }: {
       </div>
 
       {/* Past meetings */}
-      {meetings.filter(m => m.status === 'processed').length > 0 && (
+      {meetingsEnabled && meetings.filter(m => m.status === 'processed').length > 0 && (
         <div className="space-y-3">
           {sectionHeader(<Video className="h-3.5 w-3.5" />, 'Processed meetings')}
           <div className="space-y-1">
@@ -499,11 +501,13 @@ const ML_STEP_CONFIG = [
 ];
 
 function TabMLSubmissions({ mlData, team }: {
-  mlData: { currentUserId: string | null; repos: MLRepo[] } | null;
+  mlData: { currentUserId: string | null; repos: MLRepo[]; users?: Record<string, { fullName: string; avatarUrl?: string }> } | null;
   team: TeamMember[];
 }) {
-  const userMap = Object.fromEntries(team.map(m => [m.id, m.fullName]));
-  const avatarMap = Object.fromEntries(team.map(m => [m.id, m.avatarUrl]));
+  const teamUserMap = Object.fromEntries(team.map(m => [m.id, m.fullName]));
+  const teamAvatarMap = Object.fromEntries(team.map(m => [m.id, m.avatarUrl]));
+  const userMap = (uid: string) => mlData?.users?.[uid]?.fullName ?? teamUserMap[uid] ?? uid;
+  const avatarMap = (uid: string) => mlData?.users?.[uid]?.avatarUrl ?? teamAvatarMap[uid];
 
   if (!mlData) return <p className="text-xs text-white/25">Loading…</p>;
 
@@ -526,9 +530,9 @@ function TabMLSubmissions({ mlData, team }: {
                   ) : urls.map(([uid, url]) => (
                     <div key={uid} className="flex items-center gap-3 px-4 py-3">
                       <div className="shrink-0">
-                        <InitialsAvatar name={userMap[uid] ?? '?'} size={28} avatarUrl={avatarMap[uid]} />
+                        <InitialsAvatar name={userMap(uid)} size={28} avatarUrl={avatarMap(uid)} />
                       </div>
-                      <span className="text-sm text-white/60 flex-1">{userMap[uid] ?? uid}</span>
+                      <span className="text-sm text-white/60 flex-1">{userMap(uid)}</span>
                       <a href={url} target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1 truncate max-w-xs text-xs text-brandCP hover:underline">
                         {url.replace(/^https?:\/\//, '')}
@@ -812,12 +816,13 @@ export default function ChallengeManagePage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [mlData, setMlData] = useState<{ currentUserId: string | null; repos: MLRepo[] } | null>(null);
+  const [mlData, setMlData] = useState<{ currentUserId: string | null; repos: MLRepo[]; users?: Record<string, { fullName: string; avatarUrl?: string }> } | null>(null);
   const [repoActivity, setRepoActivity] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
   const [isManager, setIsManager] = useState<boolean | null>(null);
   const [meetingDrawerOpen, setMeetingDrawerOpen] = useState(false);
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
+  const [meetingsEnabled, setMeetingsEnabled] = useState(true);
 
   useEffect(() => { if (challengeId) fetchAll(); }, [challengeId]);
 
@@ -857,6 +862,7 @@ export default function ChallengeManagePage() {
       ),
       fetch(`/api/challenges/${challengeId}/ml-workspace`).then(r => r.ok && r.json()).then(d => d && setMlData(d)),
       fetch(`/api/challenges/${challengeId}/repo-activity`).then(r => r.ok && r.json()).then(d => d?.activities && setRepoActivity(d.activities)),
+      fetch('/api/modules').then(r => r.ok && r.json()).then(d => d && setMeetingsEnabled(d.meetings_enabled !== false)),
     ]);
     setLoading(false);
   };
@@ -876,7 +882,7 @@ export default function ChallengeManagePage() {
   const tabs = isML ? [
     {
       label: 'Overview',
-      panel: <TabOverview challenge={challenge} team={team} meetings={meetings} contributions={contributions} onNewMeeting={() => setMeetingDrawerOpen(true)} />,
+      panel: <TabOverview challenge={challenge} team={team} meetings={meetings} contributions={contributions} onNewMeeting={() => setMeetingDrawerOpen(true)} meetingsEnabled={meetingsEnabled} />,
     },
     {
       label: 'Submissions',
@@ -893,7 +899,7 @@ export default function ChallengeManagePage() {
   ] : [
     {
       label: 'Overview',
-      panel: <TabOverview challenge={challenge} team={team} meetings={meetings} contributions={contributions} onNewMeeting={() => setMeetingDrawerOpen(true)} />,
+      panel: <TabOverview challenge={challenge} team={team} meetings={meetings} contributions={contributions} onNewMeeting={() => setMeetingDrawerOpen(true)} meetingsEnabled={meetingsEnabled} />,
     },
     {
       label: 'Kanban',
@@ -901,7 +907,7 @@ export default function ChallengeManagePage() {
     },
     {
       label: 'Activity',
-      panel: <TabActivity contributions={contributions} meetings={meetings} team={team} repoActivity={repoActivity} />,
+      panel: <TabActivity contributions={contributions} meetings={meetings} team={team} repoActivity={repoActivity} meetingsEnabled={meetingsEnabled} />,
     },
     {
       label: 'Rankings',
