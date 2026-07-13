@@ -36,14 +36,29 @@ export const Navbar = ({ session }: NavbarProps) => {
   const invertNav = isHomePage && heroVisible;
 
   useEffect(() => {
-    const handleScroll = () => {
-      setP(Math.min(window.scrollY / 72, 1));
-      setHeroVisible(window.scrollY < 260);
-    };
+    const handleScroll = () => setP(Math.min(window.scrollY / 72, 1));
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (!isHomePage) {
+      setHeroVisible(false);
+      return;
+    }
+    const sentinel = document.getElementById("hero-end");
+    if (!sentinel) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        // heroVisible = true as long as sentinel is in view or hasn't been reached yet
+        setHeroVisible(entry.isIntersecting || entry.boundingClientRect.top > 0);
+      },
+      { threshold: 0 }
+    );
+    obs.observe(sentinel);
+    return () => obs.disconnect();
+  }, [isHomePage]);
 
   useEffect(() => {
     const check = () => setIsLightMode(document.documentElement.dataset.mode === "light");

@@ -100,6 +100,8 @@ export default async function HomePage() {
             </p>
           </blockquote>
         </div>
+      {/* Sentinel: Navbar observes this to know when the hero is no longer visible */}
+      <div id="hero-end" />
       </section>
 
       {/* ── Leaderboard + Challenges grid ─────────────────────────────── */}
