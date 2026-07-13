@@ -99,101 +99,122 @@ export async function POST(
       const challengeRepos = await challengeRepoRepo.findByChallengeWithRepo(challenge.uuid);
       const cr = challengeRepos.find(r => r.repo_id === task.repo_id);
 
-      if (cr && cr.repo_external_id) {
-        // Vérifier si un workspace existe déjà pour cette task/repo
-        const existingWorkspace = await taskWorkspaceRepo.findByTaskAndRepo(taskId, cr.repo_id);
-        if (existingWorkspace && existingWorkspace.workspace_status === 'ready') {
-          provisioningResults.push({
-            repo_id: cr.repo_id,
-            status: 'already_exists',
-            workspace: existingWorkspace,
-          });
-        } else {
-          try {
-            console.log(`[task-assign] Provisioning workspace for task "${task.title}" on repo ${cr.repo_external_id}`);
-            
-            const result = await provisionTaskWorkspace({
-              challengeIndex: challenge.index ?? 0,
-              taskTitle: task.title,
-              repoExternalId: cr.repo_external_id,
-              repoType: cr.repo_type,
-              challengeBranchRef: cr.workspace_ref,
-            });
+      if (cr) {
+        const isKaggle = cr.repo_type === 'kaggle_model' || cr.repo_type === 'kaggle_dataset';
 
-            // Créer ou mettre à jour le task_workspace
-            if (existingWorkspace) {
-              await taskWorkspaceRepo.updateWorkspace(taskId, cr.repo_id, {
-                workspace_provider: result.provider,
-                workspace_ref: result.ref,
-                workspace_url: result.url,
-                workspace_status: result.status,
-                workspace_meta: result.meta,
-              });
-            } else {
-              await taskWorkspaceRepo.create({
-                task_id: taskId,
-                repo_id: cr.repo_id,
-                workspace_provider: result.provider,
-                workspace_ref: result.ref,
-                workspace_url: result.url,
-                workspace_status: result.status,
-                workspace_meta: result.meta,
-              });
-            }
-
-            provisioningResults.push({
+        if (isKaggle) {
+          // Kaggle workspaces are user-submitted — no automatic provisioning
+          const existingWorkspace = await taskWorkspaceRepo.findByTaskAndRepo(taskId, cr.repo_id);
+          if (!existingWorkspace) {
+            await taskWorkspaceRepo.create({
+              task_id: taskId,
               repo_id: cr.repo_id,
-              status: result.status,
-              result,
-            });
-
-            // Protéger le workspace (restreindre l'accès à l'assignee)
-            if (result.status === 'ready' && result.ref) {
-              try {
-                const workspaceType = mapRepoTypeToWorkspaceType(cr.repo_type);
-                const provider = ProvisionerRegistry.getProvider(workspaceType);
-                if (provider.protect) {
-                  const user = await userRepo.findById(userId);
-                  if (user?.github_username) {
-                    await provider.protect(cr.repo_external_id, result.ref, [user.github_username]);
-                  }
-                }
-              } catch (protectError) {
-                console.warn(`[task-assign] Workspace protection failed for repo ${cr.repo_id}:`, protectError);
-              }
-            }
-
-            if (result.error) {
-              console.warn(`[task-assign] Provisioning warning for repo ${cr.repo_id}: ${result.error}`);
-            }
-          } catch (provisionError) {
-            console.error(`[task-assign] Provisioning failed for repo ${cr.repo_id}:`, provisionError);
-            
-            // Créer un workspace en état failed
-            if (!existingWorkspace) {
-              await taskWorkspaceRepo.create({
-                task_id: taskId,
-                repo_id: cr.repo_id,
-                workspace_status: 'failed',
-                workspace_meta: {
-                  error: provisionError instanceof Error ? provisionError.message : 'Unknown error',
-                },
-              });
-            } else {
-              await taskWorkspaceRepo.updateWorkspace(taskId, cr.repo_id, {
-                workspace_status: 'failed',
-                workspace_meta: {
-                  error: provisionError instanceof Error ? provisionError.message : 'Unknown error',
-                },
-              });
-            }
-
-            provisioningResults.push({
-              repo_id: cr.repo_id,
-              status: 'failed',
-              error: provisionError instanceof Error ? provisionError.message : 'Unknown error',
+              workspace_provider: 'kaggle',
+              workspace_status: 'pending',
+              workspace_meta: { type: cr.repo_type },
             });
           }
+          provisioningResults.push({ repo_id: cr.repo_id, status: 'pending_user_submission' });
+          console.log(`[task-assign] Kaggle repo ${cr.repo_id} — workspace pending user URL submission`);
+
+        } else if (cr.repo_external_id) {
+          // Vérifier si un workspace existe déjà pour cette task/repo
+          const existingWorkspace = await taskWorkspaceRepo.findByTaskAndRepo(taskId, cr.repo_id);
+          if (existingWorkspace && existingWorkspace.workspace_status === 'ready') {
+            provisioningResults.push({
+              repo_id: cr.repo_id,
+              status: 'already_exists',
+              workspace: existingWorkspace,
+            });
+          } else {
+            try {
+              console.log(`[task-assign] Provisioning workspace for task "${task.title}" on repo ${cr.repo_external_id}`);
+
+              const result = await provisionTaskWorkspace({
+                challengeIndex: challenge.index ?? 0,
+                taskTitle: task.title,
+                repoExternalId: cr.repo_external_id,
+                repoType: cr.repo_type,
+                challengeBranchRef: cr.workspace_ref,
+              });
+
+              // Créer ou mettre à jour le task_workspace
+              if (existingWorkspace) {
+                await taskWorkspaceRepo.updateWorkspace(taskId, cr.repo_id, {
+                  workspace_provider: result.provider,
+                  workspace_ref: result.ref,
+                  workspace_url: result.url,
+                  workspace_status: result.status,
+                  workspace_meta: result.meta,
+                });
+              } else {
+                await taskWorkspaceRepo.create({
+                  task_id: taskId,
+                  repo_id: cr.repo_id,
+                  workspace_provider: result.provider,
+                  workspace_ref: result.ref,
+                  workspace_url: result.url,
+                  workspace_status: result.status,
+                  workspace_meta: result.meta,
+                });
+              }
+
+              provisioningResults.push({
+                repo_id: cr.repo_id,
+                status: result.status,
+                result,
+              });
+
+              // Protéger le workspace (restreindre l'accès à l'assignee)
+              if (result.status === 'ready' && result.ref) {
+                try {
+                  const workspaceType = mapRepoTypeToWorkspaceType(cr.repo_type);
+                  const provider = ProvisionerRegistry.getProvider(workspaceType);
+                  if (provider.protect) {
+                    const user = await userRepo.findById(userId);
+                    if (user?.github_username) {
+                      await provider.protect(cr.repo_external_id, result.ref, [user.github_username]);
+                    }
+                  }
+                } catch (protectError) {
+                  console.warn(`[task-assign] Workspace protection failed for repo ${cr.repo_id}:`, protectError);
+                }
+              }
+
+              if (result.error) {
+                console.warn(`[task-assign] Provisioning warning for repo ${cr.repo_id}: ${result.error}`);
+              }
+            } catch (provisionError) {
+              console.error(`[task-assign] Provisioning failed for repo ${cr.repo_id}:`, provisionError);
+
+              // Créer un workspace en état failed
+              if (!existingWorkspace) {
+                await taskWorkspaceRepo.create({
+                  task_id: taskId,
+                  repo_id: cr.repo_id,
+                  workspace_status: 'failed',
+                  workspace_meta: {
+                    error: provisionError instanceof Error ? provisionError.message : 'Unknown error',
+                  },
+                });
+              } else {
+                await taskWorkspaceRepo.updateWorkspace(taskId, cr.repo_id, {
+                  workspace_status: 'failed',
+                  workspace_meta: {
+                    error: provisionError instanceof Error ? provisionError.message : 'Unknown error',
+                  },
+                });
+              }
+
+              provisioningResults.push({
+                repo_id: cr.repo_id,
+                status: 'failed',
+                error: provisionError instanceof Error ? provisionError.message : 'Unknown error',
+              });
+            }
+          }
+        } else {
+          console.warn(`[task-assign] Repo ${cr.repo_id} (${cr.repo_type}) has no external_repo_id, skipping provisioning`);
         }
       } else {
         console.warn(`[task-assign] No matching challenge repo found for task repo_id ${task.repo_id}`);

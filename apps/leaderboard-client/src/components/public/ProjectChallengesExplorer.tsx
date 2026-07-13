@@ -40,6 +40,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
   const [selectedProjectId, setSelectedProjectId] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [managerDrawerOpen, setManagerDrawerOpen] = useState(false);
   const [popup, setPopup] = useState<{ x: number; y: number; challengeId: string } | null>(null);
 
   const joinedSet = useMemo(() => new Set(joinedChallengeIds), [joinedChallengeIds]);
@@ -67,6 +68,11 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
   }, [projects]);
 
   const managedSet = useMemo(() => new Set(managedProjectIds), [managedProjectIds]);
+
+  const managedProjectOptions = useMemo(
+    () => projects.filter(p => managedSet.has(p.id)).map(p => ({ id: p.id, name: p.title })),
+    [projects, managedSet],
+  );
 
   const filteredChallenges = useMemo(() => {
     return allChallenges.filter((challenge) => {
@@ -108,6 +114,14 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
               <Plus className="h-4 w-4" />
               New challenge
             </button>
+          ) : statusFilter === 'manage' && managedProjectIds.length > 0 ? (
+            <button
+              onClick={() => setManagerDrawerOpen(true)}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-brandCP/25 bg-brandCP/10 px-4 py-2.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/20 hover:shadow-[0_0_16px_rgba(10,247,193,0.15)]"
+            >
+              <Plus className="h-4 w-4" />
+              New challenge
+            </button>
           ) : undefined}
         />
 
@@ -130,34 +144,26 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
         ) : (
           <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredChallenges.map((challenge, i) => (
-              <div
+              <ChallengeCard
                 key={challenge.id}
-                onClick={(e) => {
-                  if (managedSet.has(challenge.projectId)) {
-                    setPopup({ x: e.clientX, y: e.clientY, challengeId: challenge.id });
-                  } else {
-                    router.push(`/challenges/${challenge.id}`);
-                  }
-                }}
-                className="cursor-pointer"
-              >
-                <ChallengeCard
-                  index={i}
-                  challengeId={challenge.id}
-                  challengeIndex={challenge.index}
-                  challengeTitle={challenge.title}
-                  challengeType={challenge.type}
-                  projectName={challenge.projectName}
-                  description={challenge.description}
-                  rewardPool={challenge.rewardPool}
-                  completion={challenge.completion}
-                  isMember={joinedSet.has(challenge.id)}
-                  isAdmin={isAdmin}
-                  teamMembers={challenge.teamMembers}
-                  startDate={challenge.startDate}
-                  endDate={challenge.endDate}
-                />
-              </div>
+                index={i}
+                challengeId={challenge.id}
+                challengeIndex={challenge.index}
+                challengeTitle={challenge.title}
+                challengeType={challenge.type}
+                projectName={challenge.projectName}
+                description={challenge.description}
+                rewardPool={challenge.rewardPool}
+                completion={challenge.completion}
+                isMember={joinedSet.has(challenge.id)}
+                isAdmin={isAdmin}
+                teamMembers={challenge.teamMembers}
+                startDate={challenge.startDate}
+                endDate={challenge.endDate}
+                onCardClick={managedSet.has(challenge.projectId)
+                  ? (e) => setPopup({ x: e.clientX, y: e.clientY, challengeId: challenge.id })
+                  : undefined}
+              />
             ))}
           </div>
         )}
@@ -169,7 +175,17 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
           projects={projectOptions}
-          onCreated={(id) => router.push(isAdmin ? `/admin/challenges/${id}` : `/challenges/${id}`)}
+          onCreated={(id) => router.push(`/admin/challenges/${id}`)}
+        />
+      )}
+
+      {/* Manager drawer */}
+      {!isAdmin && managedProjectIds.length > 0 && (
+        <CreateChallengeDrawer
+          open={managerDrawerOpen}
+          onClose={() => setManagerDrawerOpen(false)}
+          projects={managedProjectOptions}
+          onCreated={(id) => router.push(`/challenges/${id}/manage`)}
         />
       )}
 

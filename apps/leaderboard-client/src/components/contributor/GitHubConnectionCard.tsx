@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Github, CheckCircle2, AlertCircle, Loader2, Link2, Unlink } from 'lucide-react';
+import { Github, AlertCircle, Loader2, Unlink } from 'lucide-react';
 
 interface GithubStatus {
   connected: boolean;
@@ -60,17 +60,7 @@ export function GitHubConnectionCard({ initialError }: Props) {
     : null;
 
   return (
-    <div className="animate-fade-up space-y-8 py-2">
-
-      {/* ── Section header ── */}
-      <div>
-        <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-          <Link2 className="h-3.5 w-3.5" />
-          Integrations
-        </h2>
-
-        {/* ── GitHub card ── */}
-        <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
 
           {/* Card header */}
           <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/[0.05]">
@@ -162,7 +152,5 @@ export function GitHubConnectionCard({ initialError }: Props) {
             )}
           </div>
         </div>
-      </div>
-    </div>
   );
 }

@@ -39,3 +39,7 @@ packages/**/package-lock.json
 
 scalingo*
 scalingo
+
+.claude/*
+.ship-safe/*
+PRESENTATION.md

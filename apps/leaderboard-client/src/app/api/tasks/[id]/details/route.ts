@@ -79,6 +79,7 @@ export async function GET(
     }
 
     return NextResponse.json({
+      currentUserId: userId,
       task,
       challenge: challenge
         ? {
@@ -93,6 +94,7 @@ export async function GET(
         uuid: a.uuid,
         full_name: a.full_name,
         github_username: a.github_username,
+        avatar_url: a.avatar_url,
       })),
       workspaces,
       subTasks,

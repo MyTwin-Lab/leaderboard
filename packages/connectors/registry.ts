@@ -2,8 +2,8 @@ import type { Repo } from "../database-service/domain/entities.js";
 import type { ExternalConnector } from "./interfaces.js";
 import { GitHubExternalConnector } from "./implementation/Github.connector.js";
 import { KaggleConnector } from "./implementation/Kaggle.connector.js";
-import { config } from "../config/index.js";
 import { getGithubToken } from "../config/githubToken.js";
+import { getKaggleCredentials } from "../config/kaggleCredentials.js";
 // Future: import { HuggingFaceConnector } from "./implementation/HuggingFace.connector.js";
 
 /**
@@ -53,18 +53,25 @@ export class ConnectorRegistry {
       }
 
       case 'kaggle_dataset':
-      case 'kaggle_model':
+      case 'kaggle_model': {
         if (!repo.external_repo_id) {
           console.error(`[ConnectorRegistry] Missing external_repo_id for Kaggle repo: ${repo.title}`);
           return null;
         }
 
+        const kaggleCreds = await getKaggleCredentials();
+        if (!kaggleCreds) {
+          console.error('[ConnectorRegistry] No Kaggle credentials available (DB or .env)');
+          return null;
+        }
+
         return new this.KaggleConnectorClass({
-          username: config.kaggle.username || "",
-          apiKey: config.kaggle.apiKey || "",
+          username: kaggleCreds.username,
+          apiKey: kaggleCreds.apiKey,
           ref: repo.external_repo_id,
           subtype: repo.type as 'kaggle_dataset' | 'kaggle_model',
         });
+      }
 
       case 'slack':
         // Future: return new HuggingFaceConnector({ ... });

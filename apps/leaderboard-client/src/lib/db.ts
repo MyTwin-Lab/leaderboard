@@ -7,6 +7,7 @@ import {
   UserRepository,
   ChallengeTeamRepository,
   OnboardingProgressRepository,
+  ChallengeDocumentRepository,
 } from "../../../../packages/database-service/repositories/index";
 
 export const repositories = {
@@ -16,6 +17,7 @@ export const repositories = {
   user: new UserRepository(),
   challengeTeam: new ChallengeTeamRepository(),
   onboardingProgress: new OnboardingProgressRepository(),
+  challengeDocument: new ChallengeDocumentRepository(),
 };
 
 export type Repositories = typeof repositories;

@@ -54,6 +54,7 @@ export class ChallengeRepository {
     if (validated.description !== undefined) dbData.description = validated.description || null;
     if (validated.roadmap !== undefined) dbData.roadmap = validated.roadmap || null;
     if (validated.contribution_points_reward !== undefined) dbData.contribution_points_reward = validated.contribution_points_reward;
+    if (validated.type !== undefined) dbData.type = validated.type;
     if (validated.project_id) dbData.project_id = validated.project_id;
 
     const [updated] = await db.update(challenges)

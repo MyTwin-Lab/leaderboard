@@ -5,7 +5,7 @@ import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/c
 import { TaskList } from './TaskList';
 import { TaskForm } from './TaskForm';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
-import { Plus } from 'lucide-react';
+import { Plus, Code2, BrainCircuit } from 'lucide-react';
 import type { Challenge, Project, Task } from '../../../../../packages/database-service/domain/entities';
 
 interface ChallengeFormProps {
@@ -19,6 +19,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
   const [formData, setFormData] = useState({
     title: challenge?.title ?? '',
     status: challenge?.status ?? 'draft',
+    type: (challenge as any)?.type ?? 'code',
     start_date: challenge?.start_date ? new Date(challenge.start_date).toISOString().split('T')[0] : '',
     end_date: challenge?.end_date ? new Date(challenge.end_date).toISOString().split('T')[0] : '',
     description: challenge?.description ?? '',
@@ -128,19 +129,50 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     <form onSubmit={handleSubmit} className="space-y-6 p-4">
       {/* Section: Identité */}
       <FormSection title="General">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField label="Title" required>
-            <input
-              type="text"
-              required
-              value={formData.title}
-              onChange={set('title')}
-              className={inputClass}
-              placeholder="Challenge title"
-              autoFocus
-            />
-          </FormField>
+        <FormField label="Title" required>
+          <input
+            type="text"
+            required
+            value={formData.title}
+            onChange={set('title')}
+            className={inputClass}
+            placeholder="Challenge title"
+            autoFocus
+          />
+        </FormField>
 
+        {/* Type picker */}
+        <FormField label="Type">
+          <div className="flex gap-2">
+            {([
+              { value: 'code', label: 'Code', icon: Code2, desc: 'Tasks, Kanban, GitHub' },
+              { value: 'ml',   label: 'ML',   icon: BrainCircuit, desc: 'Dataset, Model, API' },
+            ] as const).map(opt => {
+              const Icon = opt.icon;
+              const active = formData.type === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFormData(p => ({ ...p, type: opt.value }))}
+                  className={`flex flex-1 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
+                    active
+                      ? 'border-brandCP/40 bg-brandCP/10 ring-1 ring-brandCP/20'
+                      : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-brandCP' : 'text-white/30'}`} />
+                  <div>
+                    <p className={`text-sm font-semibold ${active ? 'text-white' : 'text-white/50'}`}>{opt.label}</p>
+                    <p className="text-[10px] text-white/30">{opt.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </FormField>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField label="Status" required>
             <select required value={formData.status} onChange={set('status')} className={selectClass}>
               <option value="draft">Draft</option>

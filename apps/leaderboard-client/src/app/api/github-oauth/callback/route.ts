@@ -5,7 +5,8 @@ import { verifyRequestToken } from '@/lib/auth';
 import { config } from '../../../../../../../packages/config/index.js';
 
 const appSettingsRepo = new AppSettingsRepository();
-const ERROR_BASE = '/contributors/me';
+const SUCCESS_URL = '/contributors/me?tab=integrations';
+const ERROR_BASE = '/contributors/me?tab=integrations&github_error=';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
   // Verify CSRF state
   const storedState = request.cookies.get('gh_oauth_state')?.value;
   if (!storedState || state !== storedState) {
-    const res = NextResponse.redirect(new URL(`${ERROR_BASE}?github_error=csrf`, request.url));
+    const res = NextResponse.redirect(new URL(`${ERROR_BASE}csrf`, request.url));
     res.cookies.delete('gh_oauth_state');
     return res;
   }
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     if (!tokenData.access_token) throw new Error('no access_token');
     accessToken = tokenData.access_token;
   } catch {
-    const res = NextResponse.redirect(new URL(`${ERROR_BASE}?github_error=exchange_failed`, request.url));
+    const res = NextResponse.redirect(new URL(`${ERROR_BASE}exchange_failed`, request.url));
     res.cookies.delete('gh_oauth_state');
     return res;
   }
@@ -58,13 +59,13 @@ export async function GET(request: NextRequest) {
       .map(m => m.organization.login)
       .sort();
     if (adminOrgs.length === 0) {
-      const res = NextResponse.redirect(new URL(`${ERROR_BASE}?github_error=no_org_admin`, request.url));
+      const res = NextResponse.redirect(new URL(`${ERROR_BASE}no_org_admin`, request.url));
       res.cookies.delete('gh_oauth_state');
       return res;
     }
     orgSlug = adminOrgs[0];
   } catch {
-    const res = NextResponse.redirect(new URL(`${ERROR_BASE}?github_error=exchange_failed`, request.url));
+    const res = NextResponse.redirect(new URL(`${ERROR_BASE}exchange_failed`, request.url));
     res.cookies.delete('gh_oauth_state');
     return res;
   }
@@ -74,15 +75,22 @@ export async function GET(request: NextRequest) {
   const connectedBy = payload?.userId ?? '';
 
   // Encrypt and persist
-  const { enc, iv } = encryptToken(accessToken);
-  await appSettingsRepo.updateGithubConnection({
-    github_token_enc: enc,
-    github_token_iv: iv,
-    github_org: orgSlug,
-    github_connected_by: connectedBy,
-  });
+  try {
+    const { enc, iv } = encryptToken(accessToken);
+    await appSettingsRepo.updateGithubConnection({
+      github_token_enc: enc,
+      github_token_iv: iv,
+      github_org: orgSlug,
+      github_connected_by: connectedBy,
+    });
+  } catch (err) {
+    console.error('[github-oauth/callback] Failed to encrypt/persist token:', err);
+    const res = NextResponse.redirect(new URL(`${ERROR_BASE}exchange_failed`, request.url));
+    res.cookies.delete('gh_oauth_state');
+    return res;
+  }
 
-  const res = NextResponse.redirect(new URL(ERROR_BASE, request.url));
+  const res = NextResponse.redirect(new URL(SUCCESS_URL, request.url));
   res.cookies.delete('gh_oauth_state');
   return res;
 }

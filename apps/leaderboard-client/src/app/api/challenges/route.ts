@@ -55,8 +55,22 @@ export async function GET(request: NextRequest) {
 // POST /api/challenges - Créer un nouveau challenge
 export async function POST(request: NextRequest) {
   try {
+    const token = request.cookies.get('access_token')?.value;
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    const userId = payload.userId as string;
+    const userRole = payload.role as string;
+
     const body = await request.json();
     const validated = createChallengeSchema.parse(body);
+
+    if (userRole !== 'admin') {
+      const project = await repositories.project.findById(validated.project_id);
+      if (!project || project.manager_id !== userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
     
     const challenge = await challengeRepo.create({
       ...validated,

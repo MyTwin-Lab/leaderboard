@@ -30,7 +30,7 @@ export default async function HomePage() {
           background starts at the very top of the viewport.
           Inner div restores the correct top padding for content.      */}
       <section
-        className="-mt-20 overflow-hidden rounded-b-3xl md:-mt-24"
+        className="hidden -mt-20 overflow-hidden rounded-b-3xl md:-mt-24"
         style={{
           width: "100vw",
           marginLeft: "calc(50% - 50vw)",

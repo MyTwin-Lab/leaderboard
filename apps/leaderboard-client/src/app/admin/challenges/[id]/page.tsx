@@ -7,13 +7,14 @@ import {
   CheckCircle2, Circle, Clock3, BarChart2, Activity,
   Medal, Video, ExternalLink, GitBranch, GitPullRequest,
   GitCommit, MessageSquare,
-  Database, Package, Cpu, FlaskConical, ChevronDown, Loader2, Plus,
+  Database, Package, Cpu, FlaskConical, ChevronDown, Loader2, Plus, FileText,
 } from 'lucide-react';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import { TeamAvatars } from '@/components/ui/TeamAvatars';
 import { Badge } from '@/components/ui/Badge';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 import { CreateMeetingDrawer } from '@/components/admin/CreateMeetingDrawer';
+import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -142,7 +143,7 @@ function StatusPicker({ challengeId, status, onUpdate }: {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 w-36 rounded-xl border border-white/10 bg-[#0d1117] p-1 shadow-xl">
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-36 rounded-xl border border-white/10 bg-backgroundDark p-1 shadow-xl">
           {STATUS_OPTIONS.map(opt => (
             <button
               key={opt.value}
@@ -498,11 +499,13 @@ const ML_STEP_CONFIG = [
 ];
 
 function TabMLSubmissions({ mlData, team }: {
-  mlData: { currentUserId: string | null; repos: MLRepo[] } | null;
+  mlData: { currentUserId: string | null; repos: MLRepo[]; users?: Record<string, { fullName: string; avatarUrl?: string }> } | null;
   team: TeamMember[];
 }) {
-  const userMap = Object.fromEntries(team.map(m => [m.id, m.fullName]));
-  const avatarMap = Object.fromEntries(team.map(m => [m.id, m.avatarUrl]));
+  const teamUserMap = Object.fromEntries(team.map(m => [m.id, m.fullName]));
+  const teamAvatarMap = Object.fromEntries(team.map(m => [m.id, m.avatarUrl]));
+  const userMap = (uid: string) => mlData?.users?.[uid]?.fullName ?? teamUserMap[uid] ?? uid;
+  const avatarMap = (uid: string) => mlData?.users?.[uid]?.avatarUrl ?? teamAvatarMap[uid];
 
   if (!mlData) return <p className="text-xs text-white/25">Loading…</p>;
 
@@ -525,9 +528,9 @@ function TabMLSubmissions({ mlData, team }: {
                   ) : urls.map(([uid, url]) => (
                     <div key={uid} className="flex items-center gap-3 px-4 py-3">
                       <div className="shrink-0">
-                        <InitialsAvatar name={userMap[uid] ?? '?'} size={28} avatarUrl={avatarMap[uid]} />
+                        <InitialsAvatar name={userMap(uid)} size={28} avatarUrl={avatarMap(uid)} />
                       </div>
-                      <span className="text-sm text-white/60 flex-1">{userMap[uid] ?? uid}</span>
+                      <span className="text-sm text-white/60 flex-1">{userMap(uid)}</span>
                       <a href={url} target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1 truncate max-w-xs text-xs text-brandCP hover:underline">
                         {url.replace(/^https?:\/\//, '')}
@@ -811,10 +814,11 @@ export default function ChallengeManagerPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [mlData, setMlData] = useState<{ currentUserId: string | null; repos: MLRepo[] } | null>(null);
+  const [mlData, setMlData] = useState<{ currentUserId: string | null; repos: MLRepo[]; users?: Record<string, { fullName: string; avatarUrl?: string }> } | null>(null);
   const [repoActivity, setRepoActivity] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
   const [meetingDrawerOpen, setMeetingDrawerOpen] = useState(false);
+  const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
 
   useEffect(() => { if (challengeId) fetchAll(); }, [challengeId]);
 
@@ -918,7 +922,17 @@ export default function ChallengeManagerPage() {
             </span>
           </div>
 
-          <h1 className="mb-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">{challenge.title}</h1>
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="mb-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">{challenge.title}</h1>
+            <button
+              onClick={() => setDocsDrawerOpen(true)}
+              title="Documents"
+              className="mt-1 flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-brandCP/30 hover:bg-brandCP/[0.07] hover:text-brandCP/70 hover:shadow-[0_4px_16px_rgba(10,247,193,0.1)] active:translate-y-0"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Docs
+            </button>
+          </div>
           {challenge.description && (
             <p className="max-w-2xl text-sm leading-relaxed text-white/50">{challenge.description}</p>
           )}
@@ -962,6 +976,12 @@ export default function ChallengeManagerPage() {
           }}
         />
       )}
+      <DocumentsDrawer
+        challengeId={challengeId}
+        isAdmin={true}
+        open={docsDrawerOpen}
+        onClose={() => setDocsDrawerOpen(false)}
+      />
     </>
   );
 }

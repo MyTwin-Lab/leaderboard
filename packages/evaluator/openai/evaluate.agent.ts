@@ -163,10 +163,15 @@ export async function runEvaluateAgent(
       if (toolCall.name === "read_file") {
         try {
           const args = JSON.parse(toolCall.arguments);
-          const filePath = path.join(workspace, args.path);
-          console.log("Lecture du fichier: ", filePath);
-          const content = await fs.readFile(filePath, "utf-8");
-          output = content;
+          const resolvedWorkspace = path.resolve(workspace);
+          const filePath = path.resolve(workspace, args.path);
+          if (!filePath.startsWith(resolvedWorkspace + path.sep) && filePath !== resolvedWorkspace) {
+            output = "Erreur: accès refusé, le chemin est en dehors du workspace autorisé";
+          } else {
+            console.log("Lecture du fichier: ", filePath);
+            const content = await fs.readFile(filePath, "utf-8");
+            output = content;
+          }
         } catch (error) {
           output = `Erreur lors de la lecture du fichier: ${error instanceof Error ? error.message : String(error)}`;
         }

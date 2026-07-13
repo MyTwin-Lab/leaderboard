@@ -121,6 +121,7 @@ export async function proxy(request: NextRequest) {
       // Routes accessibles aux managers de projet (auth vérifiée dans le handler)
       const isManagerAccessibleRoute =
         (pathname.match(/^\/api\/challenges\/[^/]+$/) && ['PUT', 'PATCH'].includes(method)) ||
+        (pathname === '/api/challenges' && method === 'POST') ||
         (pathname.startsWith('/api/repos') && ['POST', 'PUT'].includes(method)) ||
         pathname.includes('/documents');
 

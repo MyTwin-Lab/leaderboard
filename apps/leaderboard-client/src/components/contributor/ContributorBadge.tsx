@@ -1,31 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
 
 interface ContributorBadgeProps {
   fullName: string;
   githubUsername: string;
   role: string;
+  avatarUrl?: string;
 }
 
-export function ContributorBadge({ fullName, githubUsername, role }: ContributorBadgeProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+export function ContributorBadge({ fullName, avatarUrl }: ContributorBadgeProps) {
+  const initials = fullName
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("");
 
   return (
-    <div ref={containerRef} className="relative">
-      <Link
-        href="/contributors/me"
-        className="cursor-pointer flex items-center gap-2 rounded-full text-sm text-white transition"
-      >
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-brandCP text-s font-semibold hover:bg-white/15">
-          {fullName
-            .split(" ")
-            .map((part) => part[0])
-            .slice(0, 2)
-            .join("")}
+    <Link
+      href="/contributors/me"
+      className="flex h-10 w-10 items-center justify-center rounded-2xl overflow-hidden transition hover:opacity-85"
+      aria-label="My profile"
+    >
+      {avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-white/10 text-brandCP text-sm font-semibold">
+          {initials}
         </div>
-      </Link>
-    </div>
+      )}
+    </Link>
   );
 }

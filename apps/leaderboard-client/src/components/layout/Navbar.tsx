@@ -104,11 +104,14 @@ export const Navbar = ({ session }: NavbarProps) => {
           <div
             style={{
               borderRadius: `${lerp(0, 999, p)}px`,
+              backgroundColor: p > 0.05
+                ? `color-mix(in srgb, var(--background) ${Math.round(lerp(0, 88, p))}%, transparent)`
+                : undefined,
               backdropFilter: p > 0.05 ? `blur(${lerp(0, 10, p)}px) saturate(${lerp(100, 160, p)}%)` : undefined,
               WebkitBackdropFilter: p > 0.05 ? `blur(${lerp(0, 10, p)}px) saturate(${lerp(100, 160, p)}%)` : undefined,
               border: invertNav
                 ? `1px solid rgba(0, 0, 0, ${lerp(0, 0.12, p)})`
-                : `1px solid rgba(255, 255, 255, ${lerp(0, 0.1, p)})`,
+                : `1px solid color-mix(in srgb, var(--foreground) ${lerp(0, 10, p).toFixed(0)}%, transparent)`,
               boxShadow: p > 0.05
                 ? `0 ${lerp(0, 6, p)}px ${lerp(0, 28, p)}px rgba(0,0,0,${lerp(0, 0.55, p)})`
                 : "none",
@@ -143,7 +146,7 @@ export const Navbar = ({ session }: NavbarProps) => {
                       key={link.path}
                       href={link.path}
                       className={cn(
-                        "group relative pb-0.5 font-medium transition-all duration-300",
+                        "group relative pb-0.5 font-medium",
                         isActive(link.path)
                           ? "text-[15px]"
                           : "text-[13px] hover:text-brandCP hover:text-[15px]"
@@ -154,9 +157,9 @@ export const Navbar = ({ session }: NavbarProps) => {
                             ? "var(--background)"
                             : "color-mix(in srgb, var(--background) 60%, transparent)"
                           : isActive(link.path)
-                            ? "white"
-                            : "rgba(255,255,255,0.6)",
-                        transition: "color 0.3s ease",
+                            ? "var(--foreground)"
+                            : "color-mix(in srgb, var(--foreground) 60%, transparent)",
+                        transition: "font-size 300ms cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease",
                       }}
                     >
                       {link.name}
@@ -185,7 +188,9 @@ export const Navbar = ({ session }: NavbarProps) => {
                     href="/api/google-auth/authorize?from=/contributors/me"
                     className="flex items-center rounded-xl p-2 transition-colors"
                     style={{
-                      background: invertNav ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.1)",
+                      background: invertNav
+                        ? "rgba(0,0,0,0.08)"
+                        : "color-mix(in srgb, var(--foreground) 10%, transparent)",
                     }}
                   >
                     <Image
@@ -194,9 +199,9 @@ export const Navbar = ({ session }: NavbarProps) => {
                       width={20}
                       height={20}
                       style={{
-                        // Hero is light in dark mode → invert white icon to black
-                        // Hero is dark in light mode → keep white icon as-is
-                        filter: invertNav ? (isLightMode ? "none" : "invert(1)") : undefined,
+                        filter: invertNav
+                          ? (isLightMode ? "none" : "invert(1)")
+                          : (isLightMode ? "invert(1)" : undefined),
                         transition: "filter 0.3s ease",
                       }}
                     />

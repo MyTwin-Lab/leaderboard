@@ -53,10 +53,12 @@ export async function fetchContributorProfile(userId: string): Promise<Contribut
     return null;
   }
 
-  const [contributions, challenges, projects] = await Promise.all([
+  const [contributions, challenges, projects, allContributions, allUsers] = await Promise.all([
     repositories.contribution.findByUser(userId),
     repositories.challenge.findAll(),
     repositories.project.findAll(),
+    repositories.contribution.findAll(),
+    repositories.user.findAll(),
   ]);
 
   const challengeById = new Map(challenges.map((challenge) => [challenge.uuid, challenge]));
@@ -89,6 +91,7 @@ export async function fetchContributorProfile(userId: string): Promise<Contribut
       title: contribution.title,
       description: contribution.description ?? null,
       reward,
+      submittedAt: contribution.submitted_at ? contribution.submitted_at.toISOString() : null,
     });
 
     entry.reward += reward;
@@ -101,11 +104,24 @@ export async function fetchContributorProfile(userId: string): Promise<Contribut
   const aggregated = Array.from(aggregatedMap.values());
   const totalCP = aggregated.reduce((acc, item) => acc + item.reward, 0);
 
+  // Calculate global rank
+  const globalAggregated = aggregateUsersByContribution({
+    contributions: allContributions,
+    challenges,
+    users: allUsers,
+    projectId: null,
+    timePeriod: "all",
+  });
+  const rankedEntries = rankEntries(globalAggregated);
+  const globalRank = rankedEntries.find(entry => entry.userId === userId)?.rank;
+
   return {
     userId: user.uuid,
     displayName: user.full_name,
     githubUsername: user.github_username,
+    avatarUrl: user.avatar_url,
     totalCP,
     challenges: aggregated,
+    globalRank,
   } satisfies ContributorProfile;
 }
