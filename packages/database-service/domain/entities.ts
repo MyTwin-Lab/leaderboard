@@ -305,6 +305,25 @@ export interface AppSettings {
   github_connected_at?: Date | null;
   github_connected_by?: string | null;
   github_is_connected: boolean; // derived: !!github_token_enc in DB
+  kaggle_username?: string | null;
+  kaggle_connected_at?: Date | null;
+  kaggle_connected_by?: string | null;
+  kaggle_is_connected: boolean; // derived: !!kaggle_key_enc in DB
+  modules_meetings_enabled: boolean;
+  modules_onboarding_enabled: boolean;
+}
+
+// --- ONBOARDING PROGRESS WITH USER ---
+export interface OnboardingProgressWithUser {
+  user_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  clicked_challenge: boolean;
+  assigned_task: boolean;
+  evaluated_contribution: boolean;
+  validated_task: boolean;
+  joined_meeting: boolean;
+  completed_at?: Date;
 }
 
 // --- ONBOARDING PROGRESS ---

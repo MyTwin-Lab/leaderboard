@@ -8,6 +8,7 @@ import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import {
   ArrowLeft, Video, CheckCircle2, Circle, CalendarDays, BrainCircuit,
   GitBranch, GitPullRequest, Trophy, BarChart2, FlaskConical, Medal, FileText,
+  Database, Cpu, ExternalLink,
 } from 'lucide-react';
 import type { TeamMember } from '@/lib/types';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
@@ -16,19 +17,6 @@ import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 
 const ML_REPO_TYPES = ['kaggle_dataset', 'kaggle_model'];
 
-// ─── Mock activity data ────────────────────────────────────────────────────
-
-const MOCK_COMMITS = [
-  { id: '1', message: 'feat: add data preprocessing pipeline', author: 'You', date: '2026-07-08T10:22:00Z', sha: 'a3f1c2d' },
-  { id: '2', message: 'fix: handle missing values in dataset loader', author: 'You', date: '2026-07-07T16:45:00Z', sha: 'b9e4f1a' },
-  { id: '3', message: 'refactor: extract validation logic into utils', author: 'Alex M.', date: '2026-07-06T09:12:00Z', sha: 'c2d8e3b' },
-  { id: '4', message: 'docs: update README with setup instructions', author: 'You', date: '2026-07-05T14:30:00Z', sha: 'd7f2a9c' },
-];
-
-const MOCK_PRS = [
-  { id: '1', title: 'Add model evaluation metrics', author: 'You', status: 'merged', date: '2026-07-09T11:00:00Z', number: 12 },
-  { id: '2', title: 'Improve training loop performance', author: 'Alex M.', status: 'open', date: '2026-07-08T15:20:00Z', number: 13 },
-];
 
 interface Challenge {
   uuid: string;
@@ -300,11 +288,13 @@ export default function ChallengeDetailPage() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [tasks, setTasks] = useState<TaskWithAssignees[]>([]);
   const [meetings, setMeetings] = useState<SyncMeeting[]>([]);
+  const [meetingsEnabled, setMeetingsEnabled] = useState(true);
   const [repoTypes, setRepoTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigningTaskId, setAssigningTaskId] = useState<string | null>(null);
   const [barWidth, setBarWidth] = useState(0);
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
+  const [repoActivity, setRepoActivity] = useState<Record<string, any> | null>(null);
 
   const isML = challenge?.type === 'ml' || repoTypes.some(t => ML_REPO_TYPES.includes(t));
 
@@ -315,10 +305,18 @@ export default function ChallengeDetailPage() {
     }
   }, [challengeId]);
 
+  const fetchModules = async () => {
+    const res = await fetch('/api/modules');
+    if (res.ok) {
+      const data = await res.json();
+      setMeetingsEnabled(data.meetings_enabled !== false);
+    }
+  };
+
   const fetchAll = async () => {
     setLoading(true);
     try {
-      await Promise.all([fetchChallenge(), fetchTeam(), fetchTasks(), fetchMeetings(), fetchRepos()]);
+      await Promise.all([fetchChallenge(), fetchTeam(), fetchTasks(), fetchMeetings(), fetchRepos(), fetchRepoActivity(), fetchModules()]);
     } catch {}
     finally { setLoading(false); }
   };
@@ -362,6 +360,14 @@ export default function ChallengeDetailPage() {
     if (res.ok) {
       const data = await res.json();
       setRepoTypes((Array.isArray(data) ? data : []).map((r: any) => r.repo_type ?? r.type ?? ''));
+    }
+  };
+
+  const fetchRepoActivity = async () => {
+    const res = await fetch(`/api/challenges/${challengeId}/repo-activity`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.activities) setRepoActivity(data.activities);
     }
   };
 
@@ -422,7 +428,13 @@ export default function ChallengeDetailPage() {
       <div className="mb-10">
         {/* Status + dates row */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Badge label={challenge.status} />
+          <span className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-3 py-1 text-xs font-medium text-white/70">
+            <span className={`h-2 w-2 rounded-full ${{
+              active: 'bg-brandCP', completed: 'bg-green-500',
+              draft: 'bg-white/30', archived: 'bg-white/15',
+            }[challenge.status] ?? 'bg-white/20'}`} />
+            {challenge.status.charAt(0).toUpperCase() + challenge.status.slice(1)}
+          </span>
           <span className="text-white/20">·</span>
           <span className="flex items-center gap-1 text-xs text-white/40">
             <CalendarDays className="h-3 w-3 text-primary-100/50" />
@@ -506,11 +518,11 @@ export default function ChallengeDetailPage() {
       <ContributorTabs tabs={isML ? [
         {
           label: 'Submission',
-          panel: <TabMLSubmission challengeId={challengeId} meetings={meetings} upcomingMeetings={upcomingMeetings} pastMeetings={pastMeetings} router={router} />,
+          panel: <TabMLSubmission challengeId={challengeId} meetings={meetings} upcomingMeetings={upcomingMeetings} pastMeetings={pastMeetings} router={router} meetingsEnabled={meetingsEnabled} />,
         },
         {
           label: 'Metrics',
-          panel: <TabMLMetrics />,
+          panel: <TabMLMetrics repoActivity={repoActivity} />,
         },
       ] : [
         {
@@ -527,12 +539,13 @@ export default function ChallengeDetailPage() {
               assigningTaskId={assigningTaskId}
               onAssign={handleAssignTask}
               router={router}
+              meetingsEnabled={meetingsEnabled}
             />
           ),
         },
         {
           label: 'Activity',
-          panel: <TabActivity />,
+          panel: <TabActivity repoActivity={repoActivity} />,
         },
       ]} />
 
@@ -554,7 +567,7 @@ export default function ChallengeDetailPage() {
 function TabTasks({
   tasks, parentTasks, doneTasks, completion,
   meetings, upcomingMeetings, pastMeetings,
-  assigningTaskId, onAssign, router,
+  assigningTaskId, onAssign, router, meetingsEnabled,
 }: {
   tasks: TaskWithAssignees[];
   parentTasks: TaskWithAssignees[];
@@ -566,13 +579,16 @@ function TabTasks({
   assigningTaskId: string | null;
   onAssign: (id: string) => void;
   router: ReturnType<typeof import('next/navigation').useRouter>;
+  meetingsEnabled: boolean;
 }) {
   return (
-    <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
+    <div className={meetingsEnabled ? "grid gap-8 lg:grid-cols-[300px_1fr]" : ""}>
       {/* Meetings */}
-      <div className="min-w-0">
-      <MeetingsSidebar meetings={meetings} upcomingMeetings={upcomingMeetings} pastMeetings={pastMeetings} router={router} />
-      </div>
+      {meetingsEnabled && (
+        <div className="min-w-0">
+          <MeetingsSidebar meetings={meetings} upcomingMeetings={upcomingMeetings} pastMeetings={pastMeetings} router={router} />
+        </div>
+      )}
 
       {/* Tasks */}
       <div className="min-w-0 space-y-3">
@@ -632,11 +648,41 @@ function TabTasks({
   );
 }
 
-// ─── Tab: Activity (code, mock) ───────────────────────────────────────────
+// ─── Tab: Activity ────────────────────────────────────────────────────────────
 
-function TabActivity() {
+function TabActivity({ repoActivity }: { repoActivity: Record<string, any> | null }) {
   function fmtDate(iso: string) {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  const githubActivity = repoActivity
+    ? Object.values(repoActivity).find((a: any) => a?.type === 'github')
+    : undefined;
+
+  const commits = (githubActivity?.events ?? []).filter((e: any) => e.type === 'commit');
+  const prs = (githubActivity?.events ?? []).filter((e: any) => e.type === 'pull_request');
+
+  // Still loading
+  if (repoActivity === null) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        {[1, 2].map(i => (
+          <div key={i} className="space-y-2">
+            <div className="h-3 w-24 rounded-full bg-white/8" />
+            {[1, 2, 3].map(j => <div key={j} className="h-14 rounded-xl bg-white/5" />)}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!githubActivity) {
+    return (
+      <div className="rounded-xl border border-dashed border-white/[0.06] px-5 py-12 text-center space-y-1">
+        <GitBranch className="mx-auto h-7 w-7 text-white/15" />
+        <p className="text-sm text-white/20">No GitHub repository linked to this challenge</p>
+      </div>
+    );
   }
 
   return (
@@ -646,20 +692,33 @@ function TabActivity() {
         <h3 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-white/30">
           <GitBranch className="h-3.5 w-3.5 text-primary-100/35" />
           Commits
-          <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">{MOCK_COMMITS.length}</span>
+          <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">{commits.length}</span>
         </h3>
-        <div className="space-y-1.5">
-          {MOCK_COMMITS.map((c, i) => (
-            <div key={c.id} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-fade-up" style={{ animationDelay: `${i * 30}ms` }}>
-              <GitBranch className="h-3.5 w-3.5 shrink-0 text-white/20" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white">{c.message}</p>
-                <p className="text-xs text-white/30">{c.author} · {fmtDate(c.date)}</p>
-              </div>
-              <span className="shrink-0 rounded bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-white/25">{c.sha}</span>
-            </div>
-          ))}
-        </div>
+        {commits.length === 0 ? (
+          <p className="text-xs text-white/25 px-1">No commits yet</p>
+        ) : (
+          <div className="space-y-1.5">
+            {commits.map((c: any, i: number) => (
+              <a
+                key={c.id}
+                href={c.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-fade-up transition-colors hover:border-white/12 hover:bg-white/[0.04]"
+                style={{ animationDelay: `${i * 20}ms` }}
+              >
+                <GitBranch className="h-3.5 w-3.5 shrink-0 text-white/20" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-white">{c.title}</p>
+                  <p className="text-xs text-white/30">{c.author} · {fmtDate(c.date)}</p>
+                </div>
+                <span className="shrink-0 rounded bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-white/25">
+                  {c.metadata?.sha?.slice(0, 7)}
+                </span>
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Pull Requests */}
@@ -667,31 +726,40 @@ function TabActivity() {
         <h3 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-white/30">
           <GitPullRequest className="h-3.5 w-3.5 text-primary-100/35" />
           Pull Requests
-          <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">{MOCK_PRS.length}</span>
+          <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">{prs.length}</span>
         </h3>
-        <div className="space-y-1.5">
-          {MOCK_PRS.map((pr, i) => (
-            <div key={pr.id} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-fade-up" style={{ animationDelay: `${i * 30}ms` }}>
-              <GitPullRequest className={`h-3.5 w-3.5 shrink-0 ${pr.status === 'merged' ? 'text-purple-400' : 'text-green-400'}`} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white">#{pr.number} {pr.title}</p>
-                <p className="text-xs text-white/30">{pr.author} · {fmtDate(pr.date)}</p>
-              </div>
-              <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-                pr.status === 'merged'
-                  ? 'bg-purple-500/15 text-purple-400'
-                  : 'bg-green-500/15 text-green-400'
-              }`}>
-                {pr.status}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-dashed border-white/[0.06] px-5 py-6 text-center space-y-1">
-        <p className="text-sm text-white/20">GitHub integration coming soon</p>
-        <p className="text-xs text-white/15">Real commits and PR reviews will appear here</p>
+        {prs.length === 0 ? (
+          <p className="text-xs text-white/25 px-1">No pull requests yet</p>
+        ) : (
+          <div className="space-y-1.5">
+            {prs.map((pr: any, i: number) => {
+              const state: string = pr.metadata?.state ?? 'open';
+              return (
+                <a
+                  key={pr.id}
+                  href={pr.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-fade-up transition-colors hover:border-white/12 hover:bg-white/[0.04]"
+                  style={{ animationDelay: `${i * 20}ms` }}
+                >
+                  <GitPullRequest className={`h-3.5 w-3.5 shrink-0 ${state === 'merged' ? 'text-purple-400' : state === 'open' ? 'text-green-400' : 'text-white/30'}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white">#{pr.metadata?.prNumber} {pr.title}</p>
+                    <p className="text-xs text-white/30">{pr.author} · {fmtDate(pr.date)}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+                    state === 'merged' ? 'bg-purple-500/15 text-purple-400'
+                    : state === 'open' ? 'bg-green-500/15 text-green-400'
+                    : 'bg-white/8 text-white/40'
+                  }`}>
+                    {state}
+                  </span>
+                </a>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -700,19 +768,22 @@ function TabActivity() {
 // ─── Tab: ML Submission ───────────────────────────────────────────────────
 
 function TabMLSubmission({
-  challengeId, meetings, upcomingMeetings, pastMeetings, router,
+  challengeId, meetings, upcomingMeetings, pastMeetings, router, meetingsEnabled,
 }: {
   challengeId: string;
   meetings: SyncMeeting[];
   upcomingMeetings: SyncMeeting[];
   pastMeetings: SyncMeeting[];
   router: ReturnType<typeof import('next/navigation').useRouter>;
+  meetingsEnabled: boolean;
 }) {
   return (
-    <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
-      <div className="min-w-0">
-        <MeetingsSidebar meetings={meetings} upcomingMeetings={upcomingMeetings} pastMeetings={pastMeetings} router={router} />
-      </div>
+    <div className={meetingsEnabled ? "grid gap-8 lg:grid-cols-[300px_1fr]" : ""}>
+      {meetingsEnabled && (
+        <div className="min-w-0">
+          <MeetingsSidebar meetings={meetings} upcomingMeetings={upcomingMeetings} pastMeetings={pastMeetings} router={router} />
+        </div>
+      )}
       <div className="min-w-0 space-y-4">
         <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
           <BrainCircuit className="h-3.5 w-3.5 text-primary-100/35" />
@@ -724,50 +795,166 @@ function TabMLSubmission({
   );
 }
 
+// ─── ML Metrics chart ────────────────────────────────────────────────────────
+
+function MetricsLineChart({ versions }: {
+  versions: Array<{ versionNumber: number; metrics: { auc?: number; f1?: number; accuracy?: number } }>;
+}) {
+  const W = 320, H = 140;
+  const PAD = { top: 12, right: 16, bottom: 28, left: 36 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+  const xs = versions.map(v => v.versionNumber);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const xRange = maxX - minX || 1;
+  const toSVGX = (x: number) => PAD.left + ((x - minX) / xRange) * innerW;
+  const toSVGY = (y: number) => PAD.top + (1 - y) * innerH;
+  const LINES = [
+    { key: 'auc'      as const, color: 'var(--color-brandCP, #6366f1)', label: 'AUC' },
+    { key: 'f1'       as const, color: '#22c55e',                        label: 'F1' },
+    { key: 'accuracy' as const, color: '#3b82f6',                        label: 'Accuracy' },
+  ];
+  const toPath = (key: 'auc' | 'f1' | 'accuracy') => {
+    const pts = versions.filter(v => v.metrics[key] !== undefined);
+    if (!pts.length) return '';
+    return pts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toSVGX(v.versionNumber).toFixed(1)} ${toSVGY(v.metrics[key]!).toFixed(1)}`).join(' ');
+  };
+  return (
+    <div className="overflow-x-auto">
+      <svg width={W} height={H} className="text-white/20">
+        {[0, 0.25, 0.5, 0.75, 1.0].map(t => (
+          <g key={t}>
+            <line x1={PAD.left} y1={toSVGY(t)} x2={PAD.left + innerW} y2={toSVGY(t)} stroke="currentColor" strokeWidth={0.5} strokeDasharray="2 3" />
+            <text x={PAD.left - 4} y={toSVGY(t) + 4} textAnchor="end" fontSize={8} fill="currentColor">{t.toFixed(2)}</text>
+          </g>
+        ))}
+        {versions.map(v => (
+          <text key={v.versionNumber} x={toSVGX(v.versionNumber)} y={H - 8} textAnchor="middle" fontSize={8} fill="currentColor">v{v.versionNumber}</text>
+        ))}
+        {LINES.map(({ key, color }) => { const d = toPath(key); return d ? <path key={key} d={d} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" /> : null; })}
+        {LINES.map(({ key, color }) => versions.filter(v => v.metrics[key] !== undefined).map(v => (
+          <circle key={`${key}-${v.versionNumber}`} cx={toSVGX(v.versionNumber)} cy={toSVGY(v.metrics[key]!)} r={3} fill={color} />
+        )))}
+      </svg>
+      <div className="mt-2 flex gap-4">
+        {LINES.map(({ key, color, label }) => (
+          <div key={key} className="flex items-center gap-1.5">
+            <span className="h-2 w-4 rounded-full" style={{ backgroundColor: color }} />
+            <span className="text-[10px] text-white/40">{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab: ML Metrics ──────────────────────────────────────────────────────
 
-function TabMLMetrics() {
-  const metrics = [
-    { key: 'AUC',      label: 'AUC',      icon: BarChart2,    desc: 'Area Under the ROC Curve' },
-    { key: 'F1',       label: 'F1 Score', icon: FlaskConical, desc: 'Harmonic mean of precision & recall' },
-    { key: 'ACCURACY', label: 'Accuracy', icon: CheckCircle2, desc: 'Overall classification accuracy' },
-  ];
+function TabMLMetrics({ repoActivity }: { repoActivity: Record<string, any> | null }) {
+  if (repoActivity === null) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        {[1, 2].map(i => <div key={i} className="h-24 rounded-xl bg-white/[0.03]" />)}
+      </div>
+    );
+  }
+
+  const datasetEntry = Object.values(repoActivity).find((a: any) => a?.type === 'kaggle_dataset');
+  const modelEntry   = Object.values(repoActivity).find((a: any) => a?.type === 'kaggle_model');
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-dashed border-brandCP/15 bg-brandCP/[0.02] px-5 py-4 flex items-center gap-3">
-        <BrainCircuit className="h-5 w-5 shrink-0 text-brandCP/50" />
-        <div>
-          <p className="text-sm font-medium text-white/70">Kaggle sync — coming soon</p>
-          <p className="text-xs text-white/30">Your metrics will be fetched automatically from the linked Kaggle competition</p>
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        {metrics.map(m => {
-          const Icon = m.icon;
-          return (
-            <div key={m.key} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <Icon className="h-4 w-4 text-white/30" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-white/30">{m.label}</span>
+    <div className="space-y-8">
+      {/* Dataset card */}
+      {datasetEntry?.datasetMeta && (() => {
+        const meta = datasetEntry.datasetMeta;
+        return (
+          <div className="space-y-3">
+            <h3 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-white/30">
+              <Database className="h-3.5 w-3.5 text-primary-100/35" />
+              Dataset
+            </h3>
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-semibold text-white">{meta.title}</p>
+                {meta.url && (
+                  <a href={meta.url} target="_blank" rel="noopener noreferrer"
+                    className="flex shrink-0 items-center gap-1 text-xs text-brandCP hover:underline">
+                    Kaggle <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
               </div>
-              <div className="text-3xl font-bold text-white/15">—</div>
-              <p className="text-xs text-white/20">{m.desc}</p>
+              {meta.description && <p className="text-xs text-white/40 line-clamp-3">{meta.description}</p>}
+              {meta.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {meta.tags.slice(0, 8).map((tag: string) => (
+                    <span key={tag} className="rounded-full bg-white/[0.05] px-2 py-0.5 text-[10px] text-white/40">{tag}</span>
+                  ))}
+                </div>
+              )}
+              {meta.lastUpdated && (
+                <p className="text-[11px] text-white/25">
+                  Updated {new Date(meta.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+              )}
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })()}
 
-      <div className="space-y-3">
-        <h3 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-white/30">
-          <Medal className="h-3.5 w-3.5 text-primary-100/35" />
-          Kaggle Leaderboard
-        </h3>
+      {/* Model metrics */}
+      {modelEntry && (() => {
+        const modelVersions: Array<{ ref: string; versions: any[] }> = modelEntry.modelVersions ?? [];
+        return (
+          <div className="space-y-4">
+            <h3 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-white/30">
+              <Cpu className="h-3.5 w-3.5 text-primary-100/35" />
+              Model Metrics
+            </h3>
+            {modelVersions.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-white/[0.05] py-12 text-center">
+                <p className="text-sm text-white/20">No model versions found</p>
+              </div>
+            ) : modelVersions.map(({ ref, versions }) => {
+              const hasMetrics = versions.some(v =>
+                v.metrics.auc !== undefined || v.metrics.f1 !== undefined || v.metrics.accuracy !== undefined
+              );
+              return (
+                <div key={ref} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-white/70">{ref}</p>
+                    <span className="text-[10px] text-white/25">{versions.length} version{versions.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  {!hasMetrics ? (
+                    <p className="text-xs text-white/25">No metrics found in model card</p>
+                  ) : versions.length === 1 ? (
+                    <div className="flex flex-wrap gap-3">
+                      {(['auc', 'f1', 'accuracy'] as const).map(key => {
+                        const val = versions[0].metrics[key];
+                        if (val === undefined) return null;
+                        return (
+                          <div key={key} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2 text-center">
+                            <p className="text-[10px] uppercase tracking-widest text-white/30">{key.toUpperCase()}</p>
+                            <p className="text-lg font-bold text-white">{val.toFixed(3)}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <MetricsLineChart versions={versions} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      {!datasetEntry && !modelEntry && (
         <div className="rounded-xl border border-dashed border-white/[0.05] py-12 text-center">
-          <p className="text-sm text-white/20">Leaderboard data will appear here once Kaggle sync is active</p>
+          <BrainCircuit className="mx-auto mb-2 h-7 w-7 text-white/15" />
+          <p className="text-sm text-white/20">No Kaggle data available for this challenge</p>
         </div>
-      </div>
+      )}
     </div>
   );
 }

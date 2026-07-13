@@ -632,5 +632,11 @@ export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>):
     github_connected_at: row.github_connected_at ?? null,
     github_connected_by: row.github_connected_by ?? null,
     github_is_connected: !!row.github_token_enc,
+    kaggle_username: row.kaggle_username ?? null,
+    kaggle_connected_at: row.kaggle_connected_at ?? null,
+    kaggle_connected_by: row.kaggle_connected_by ?? null,
+    kaggle_is_connected: !!row.kaggle_key_enc,
+    modules_meetings_enabled: row.modules_meetings_enabled ?? true,
+    modules_onboarding_enabled: row.modules_onboarding_enabled ?? true,
   };
 }

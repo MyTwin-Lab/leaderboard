@@ -449,6 +449,14 @@ export const app_settings = pgTable("app_settings", {
   github_org: varchar("github_org", { length: 255 }),
   github_connected_at: timestamp("github_connected_at"),
   github_connected_by: uuid("github_connected_by").references(() => users.uuid),
+  // Kaggle API key connection
+  kaggle_username: varchar("kaggle_username", { length: 255 }),
+  kaggle_key_enc: text("kaggle_key_enc"),
+  kaggle_key_iv: varchar("kaggle_key_iv", { length: 64 }),
+  kaggle_connected_at: timestamp("kaggle_connected_at"),
+  kaggle_connected_by: uuid("kaggle_connected_by").references(() => users.uuid),
+  modules_meetings_enabled: boolean("modules_meetings_enabled").notNull().default(true),
+  modules_onboarding_enabled: boolean("modules_onboarding_enabled").notNull().default(true),
 });
 
 // --- SYNC MEETINGS ---

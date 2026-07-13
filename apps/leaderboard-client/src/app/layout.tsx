@@ -66,13 +66,13 @@ export default async function RootLayout({
   return (
     <html lang="fr" style={themeVars} data-mode={settings.theme_mode}>
       <head />
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <GradientBackground>
           <Navbar session={session} />
           <main className="mx-auto w-full max-w-6xl px-4 pt-20 pb-16 sm:px-6 md:pt-24">
             {children}
           </main>
-          {session && onboarding && !onboarding.completed_at && (
+          {session && onboarding && !onboarding.completed_at && settings.modules_onboarding_enabled && (
             <OnboardingDrawer initialProgress={onboarding} />
           )}
         </GradientBackground>

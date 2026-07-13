@@ -8,6 +8,8 @@ export interface AppSettingsUpdate {
   primary_color?: string | null;
   background_color?: string | null;
   theme_mode?: string;
+  modules_meetings_enabled?: boolean;
+  modules_onboarding_enabled?: boolean;
 }
 
 export class AppSettingsRepository {
@@ -28,6 +30,8 @@ export class AppSettingsRepository {
     if (patch.primary_color !== undefined) set.primary_color = patch.primary_color;
     if (patch.background_color !== undefined) set.background_color = patch.background_color;
     if (patch.theme_mode !== undefined) set.theme_mode = patch.theme_mode;
+    if (patch.modules_meetings_enabled !== undefined) set.modules_meetings_enabled = patch.modules_meetings_enabled;
+    if (patch.modules_onboarding_enabled !== undefined) set.modules_onboarding_enabled = patch.modules_onboarding_enabled;
 
     const [upserted] = await db
       .insert(app_settings)
@@ -66,6 +70,40 @@ export class AppSettingsRepository {
         github_org: null,
         github_connected_at: null,
         github_connected_by: null,
+        updated_at: new Date(),
+      })
+      .where(eq(app_settings.id, 1));
+  }
+
+  async updateKaggleConnection(data: {
+    kaggle_username: string;
+    kaggle_key_enc: string;
+    kaggle_key_iv: string;
+    kaggle_connected_by: string;
+  }): Promise<void> {
+    const set = {
+      kaggle_username: data.kaggle_username,
+      kaggle_key_enc: data.kaggle_key_enc,
+      kaggle_key_iv: data.kaggle_key_iv,
+      kaggle_connected_at: new Date(),
+      kaggle_connected_by: data.kaggle_connected_by,
+      updated_at: new Date(),
+    };
+    await db
+      .insert(app_settings)
+      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .onConflictDoUpdate({ target: app_settings.id, set });
+  }
+
+  async clearKaggleConnection(): Promise<void> {
+    await db
+      .update(app_settings)
+      .set({
+        kaggle_username: null,
+        kaggle_key_enc: null,
+        kaggle_key_iv: null,
+        kaggle_connected_at: null,
+        kaggle_connected_by: null,
         updated_at: new Date(),
       })
       .where(eq(app_settings.id, 1));

@@ -13,15 +13,19 @@ import { AdminButton } from "@/components/contributor/AdminButton";
 import { ProfileEditForm } from "@/components/contributor/ProfileEditForm";
 import { ClickableAvatarUpload } from "@/components/contributor/ClickableAvatarUpload";
 import { GitHubConnectionCard } from "@/components/contributor/GitHubConnectionCard";
-import { AppSettingsRepository } from "@packages/database-service/repositories";
+import { KaggleConnectionCard } from "@/components/contributor/KaggleConnectionCard";
+import { AppSettingsRepository, OnboardingProgressRepository } from "@packages/database-service/repositories";
 import { isValidThemeKey, DEFAULT_THEME_KEY } from "@/lib/themes";
+import { ModulesSettings } from "@/components/contributor/ModulesSettings";
+import { OnboardingProgressTable } from "@/components/contributor/OnboardingProgressTable";
 
 const appSettingsRepo = new AppSettingsRepository();
+const onboardingProgressRepo = new OnboardingProgressRepository();
 
 export default async function ContributorSelfPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ github_error?: string }>;
+  searchParams?: Promise<{ github_error?: string; tab?: string }>;
 }) {
   const session = await fetchContributorSession();
 
@@ -37,6 +41,7 @@ export default async function ContributorSelfPage({
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const githubError = resolvedSearchParams.github_error ?? null;
+  const initialTab = resolvedSearchParams.tab ?? undefined;
 
   const [firstName, ...lastNameParts] = session.fullName.split(" ");
   const lastName = lastNameParts.join(" ");
@@ -77,7 +82,10 @@ export default async function ContributorSelfPage({
   ];
 
   if (session.role === "admin") {
-    const settings = await appSettingsRepo.get();
+    const [settings, onboardingRows] = await Promise.all([
+      appSettingsRepo.get(),
+      onboardingProgressRepo.findAllWithUsers(),
+    ]);
     const themeKey = isValidThemeKey(settings.theme_key) ? settings.theme_key : DEFAULT_THEME_KEY;
     tabs.push({
       label: "Appearance",
@@ -95,8 +103,38 @@ export default async function ContributorSelfPage({
     tabs.push({
       label: "Integrations",
       panel: (
+        <div className="mx-auto max-w-lg py-2 space-y-8">
+          <div>
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
+              Integrations
+            </h2>
+            <div className="space-y-3">
+              <GitHubConnectionCard initialError={githubError} />
+              <KaggleConnectionCard />
+            </div>
+          </div>
+        </div>
+      ),
+    });
+    tabs.push({
+      label: "Modules",
+      panel: (
         <div className="mx-auto max-w-lg py-2">
-          <GitHubConnectionCard initialError={githubError} />
+          <ModulesSettings
+            meetingsEnabled={settings.modules_meetings_enabled}
+            onboardingEnabled={settings.modules_onboarding_enabled}
+          />
+        </div>
+      ),
+    });
+    tabs.push({
+      label: "Onboarding",
+      panel: (
+        <div className="mx-auto max-w-2xl py-2">
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-white/30">
+            Onboarding Progress
+          </h2>
+          <OnboardingProgressTable rows={onboardingRows} />
         </div>
       ),
     });
@@ -124,7 +162,7 @@ export default async function ContributorSelfPage({
         </div>
       </div>
 
-      <ContributorTabs tabs={tabs} />
+      <ContributorTabs tabs={tabs} initialTab={initialTab} />
     </div>
   );
 }
