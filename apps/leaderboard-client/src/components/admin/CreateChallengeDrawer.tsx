@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
-  CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Github,
+  CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit,
 } from 'lucide-react';
+import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
 
 interface Project {

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Github, AlertCircle, Loader2, Unlink } from 'lucide-react';
+import { AlertCircle, Loader2, Unlink } from 'lucide-react';
+import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 
 interface GithubStatus {
   connected: boolean;

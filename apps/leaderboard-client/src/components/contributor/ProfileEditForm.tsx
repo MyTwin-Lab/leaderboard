@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
-import { CheckCircle2, AlertCircle, Loader2, User, Github } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, User } from "lucide-react";
+import { GitHubIcon as Github } from "@/components/ui/GitHubIcon";
 
 type EditableField = "firstName" | "lastName" | "githubUsername";
 
