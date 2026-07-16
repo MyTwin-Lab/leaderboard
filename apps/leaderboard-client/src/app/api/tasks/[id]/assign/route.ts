@@ -100,24 +100,7 @@ export async function POST(
       const cr = challengeRepos.find(r => r.repo_id === task.repo_id);
 
       if (cr) {
-        const isKaggle = cr.repo_type === 'kaggle_model' || cr.repo_type === 'kaggle_dataset';
-
-        if (isKaggle) {
-          // Kaggle workspaces are user-submitted — no automatic provisioning
-          const existingWorkspace = await taskWorkspaceRepo.findByTaskAndRepo(taskId, cr.repo_id);
-          if (!existingWorkspace) {
-            await taskWorkspaceRepo.create({
-              task_id: taskId,
-              repo_id: cr.repo_id,
-              workspace_provider: 'kaggle',
-              workspace_status: 'pending',
-              workspace_meta: { type: cr.repo_type },
-            });
-          }
-          provisioningResults.push({ repo_id: cr.repo_id, status: 'pending_user_submission' });
-          console.log(`[task-assign] Kaggle repo ${cr.repo_id} — workspace pending user URL submission`);
-
-        } else if (cr.repo_external_id) {
+        if (cr.repo_external_id) {
           // Vérifier si un workspace existe déjà pour cette task/repo
           const existingWorkspace = await taskWorkspaceRepo.findByTaskAndRepo(taskId, cr.repo_id);
           if (existingWorkspace && existingWorkspace.workspace_status === 'ready') {

@@ -77,9 +77,6 @@ export default function TaskDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [completing, setCompleting] = useState(false);
-  const [kaggleUrls, setKaggleUrls] = useState<Record<string, string>>({});
-  const [submittingKaggle, setSubmittingKaggle] = useState<Record<string, boolean>>({});
-  const [kaggleErrors, setKaggleErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchDetails();
@@ -94,15 +91,6 @@ export default function TaskDetailPage() {
       }
       const json: TaskDetails = await res.json();
       setData(json);
-      // Pre-fill Kaggle inputs with the current user's already-submitted URLs
-      if (json.currentUserId) {
-        const prefilled: Record<string, string> = {};
-        for (const ws of json.workspaces) {
-          const myUrl = ws.workspace_meta?.userUrls?.[json.currentUserId];
-          if (myUrl) prefilled[ws.repo_id] = myUrl;
-        }
-        setKaggleUrls(prefilled);
-      }
     } catch {
       setError('Failed to load task');
     } finally {
@@ -144,30 +132,6 @@ export default function TaskDetailPage() {
     }
   };
 
-  const handleKaggleSubmit = async (repoId: string) => {
-    const url = kaggleUrls[repoId]?.trim();
-    if (!url) return;
-    setSubmittingKaggle(prev => ({ ...prev, [repoId]: true }));
-    setKaggleErrors(prev => ({ ...prev, [repoId]: '' }));
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/workspace`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_id: repoId, workspace_url: url }),
-      });
-      if (res.ok) {
-        await fetchDetails();
-      } else {
-        const err = await res.json();
-        setKaggleErrors(prev => ({ ...prev, [repoId]: err.error || 'Failed to save URL' }));
-      }
-    } catch {
-      setKaggleErrors(prev => ({ ...prev, [repoId]: 'Failed to save URL' }));
-    } finally {
-      setSubmittingKaggle(prev => ({ ...prev, [repoId]: false }));
-    }
-  };
-
   if (loading) {
     return (
       <div className="mx-auto max-w-5xl animate-pulse space-y-6 pt-2">
@@ -201,11 +165,8 @@ export default function TaskDetailPage() {
     );
   }
 
-  const { currentUserId, task, challenge, assignees, workspaces, subTasks, contribution } = data;
+  const { task, challenge, assignees, workspaces, subTasks, contribution } = data;
   const isDone = task.status === 'done';
-  const kaggleWorkspaces = workspaces.filter(
-    ws => ws.repo_type === 'kaggle_model' || ws.repo_type === 'kaggle_dataset'
-  );
 
   return (
     <div className="mx-auto max-w-5xl animate-fade-up">
@@ -349,7 +310,7 @@ export default function TaskDetailPage() {
           )}
         </div>
 
-        {/* ── Right column: Workspaces + Kaggle + Evaluation ── */}
+        {/* ── Right column: Workspaces + Evaluation ── */}
         <div className="space-y-8">
 
           {/* Workspaces */}
@@ -404,51 +365,6 @@ export default function TaskDetailPage() {
               </div>
             )}
           </div>
-
-          {/* Kaggle submissions */}
-          {kaggleWorkspaces.map(ws => {
-            const mySubmittedUrl = currentUserId ? ws.workspace_meta?.userUrls?.[currentUserId] : undefined;
-            const isSubmitted = !!mySubmittedUrl;
-            const label = ws.repo_type === 'kaggle_model' ? 'Kaggle Model' : 'Kaggle Dataset';
-            return (
-              <div key={ws.repo_id} className="space-y-3">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30">{label}</h2>
-                <p className="text-xs text-white/40">
-                  Submit your {label.toLowerCase()} link to include it in the evaluation.
-                  {task.type === 'concurrent' && (
-                    <span className="ml-1 text-white/25">Each contributor submits their own.</span>
-                  )}
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={kaggleUrls[ws.repo_id] ?? ''}
-                    onChange={e => setKaggleUrls(prev => ({ ...prev, [ws.repo_id]: e.target.value }))}
-                    placeholder={ws.repo_type === 'kaggle_model' ? 'https://www.kaggle.com/models/...' : 'https://www.kaggle.com/datasets/...'}
-                    className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white placeholder-white/20 transition focus:border-brandCP/40 focus:outline-none focus:ring-1 focus:ring-brandCP/20"
-                  />
-                  <button
-                    onClick={() => handleKaggleSubmit(ws.repo_id)}
-                    disabled={submittingKaggle[ws.repo_id] || !kaggleUrls[ws.repo_id]?.trim()}
-                    className="rounded-xl bg-brandCP/15 px-4 py-2 text-sm font-semibold text-brandCP transition hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {submittingKaggle[ws.repo_id] ? '…' : isSubmitted ? 'Update' : 'Submit'}
-                  </button>
-                </div>
-                {isSubmitted && !kaggleErrors[ws.repo_id] && (
-                  <p className="flex items-center gap-1.5 text-xs text-green-400">
-                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                    <a href={mySubmittedUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-300 truncate">
-                      {mySubmittedUrl}
-                    </a>
-                  </p>
-                )}
-                {kaggleErrors[ws.repo_id] && (
-                  <p className="text-xs text-red-400">{kaggleErrors[ws.repo_id]}</p>
-                )}
-              </div>
-            );
-          })}
 
           {/* Evaluation */}
           <div className="space-y-3">

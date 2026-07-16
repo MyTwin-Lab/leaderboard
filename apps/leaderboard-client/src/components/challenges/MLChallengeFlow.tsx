@@ -3,15 +3,18 @@
 import { useState, useEffect } from 'react';
 import {
   Database, BrainCircuit, Package, CheckCircle2,
-  ExternalLink, Users, ChevronRight, Loader2, AlertCircle,
+  ExternalLink, Users, ChevronRight, Loader2, AlertCircle, Coins,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+type MLRepoRole = 'dataset' | 'model' | 'model_code' | 'api';
 
 interface MLRepo {
   repo_id: string;
   repo_type: 'kaggle_dataset' | 'kaggle_model' | 'github' | string;
   repo_external_id?: string;
+  role: MLRepoRole | null;
   workspace_meta: { userUrls?: Record<string, string>; [key: string]: unknown };
 }
 
@@ -28,18 +31,18 @@ interface StepRepos {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * The model step owns two repos — the Kaggle model and its optional GitHub —
+ * so a repo's step comes from its explicit role, never from its type.
+ */
 function assignReposToSteps(repos: MLRepo[]): StepRepos {
-  const hasKaggleModel = repos.some(r => r.repo_type === 'kaggle_model');
-  const githubRepos = repos.filter(r => r.repo_type === 'github');
+  const byRole = (...roles: MLRepoRole[]) =>
+    repos.filter(r => r.role && roles.includes(r.role));
 
   return {
-    dataset: repos.filter(r => r.repo_type === 'kaggle_dataset'),
-    model: [
-      ...repos.filter(r => r.repo_type === 'kaggle_model'),
-      // If no kaggle_model repo, first github repo is treated as the model repo
-      ...(hasKaggleModel ? [] : githubRepos.slice(0, 1)),
-    ],
-    api: hasKaggleModel ? githubRepos : githubRepos.slice(1),
+    dataset: byRole('dataset'),
+    model: byRole('model', 'model_code'),
+    api: byRole('api'),
   };
 }
 
@@ -55,12 +58,52 @@ function getCommunityUrls(repo: MLRepo, currentUserId: string | null): { userId:
     .map(([userId, url]) => ({ userId, url }));
 }
 
+/**
+ * A step is done once every *required* repo has a URL. The model's GitHub is
+ * optional — it unlocks the other half of the reward — so it must not gate the
+ * step, and the mandatory Kaggle model must not be satisfied by it either.
+ */
 function isStepComplete(repos: MLRepo[], userId: string | null): boolean {
   if (!userId || repos.length === 0) return false;
-  return repos.some(r => !!getUserUrl(r, userId));
+  const required = repos.filter(r => r.role && !ROLE_META[r.role].optional);
+  if (required.length === 0) return false;
+  return required.every(r => !!getUserUrl(r, userId));
 }
 
-// ─── Step config ─────────────────────────────────────────────────────────────
+// ─── Role & step config ──────────────────────────────────────────────────────
+
+/** What each repo slot asks of the contributor, and what it is worth. */
+const ROLE_META: Record<MLRepoRole, {
+  label: string;
+  placeholder: string;
+  optional: boolean;
+  hint: string;
+}> = {
+  dataset: {
+    label: 'Kaggle dataset',
+    placeholder: 'https://www.kaggle.com/datasets/...',
+    optional: false,
+    hint: 'Scored by the evaluator. Reusing someone else\'s dataset earns you nothing here — but costs you nothing to build either.',
+  },
+  model: {
+    label: 'Kaggle model',
+    placeholder: 'https://www.kaggle.com/models/...',
+    optional: false,
+    hint: 'Required. Your metric is read from the model card and drives half of the model reward.',
+  },
+  model_code: {
+    label: 'GitHub repository',
+    placeholder: 'https://github.com/your-org/your-model',
+    optional: true,
+    hint: 'Optional. Unlocks the other half of the model reward — the evaluator scores your preprocessing, train split, and so on.',
+  },
+  api: {
+    label: 'GitHub repository',
+    placeholder: 'https://github.com/your-org/your-api',
+    optional: false,
+    hint: 'Scored by the evaluator as code.',
+  },
+};
 
 const STEP_CONFIG = [
   {
@@ -69,20 +112,13 @@ const STEP_CONFIG = [
     sublabel: 'Kaggle dataset',
     icon: Database,
     description: 'Share your Kaggle dataset or pick one already submitted by the community.',
-    allowKaggle: true,
-    allowGithub: false,
-    kagglePlaceholder: 'https://www.kaggle.com/datasets/...',
   },
   {
     key: 'model' as const,
     label: 'Model',
-    sublabel: 'Kaggle model or GitHub',
+    sublabel: 'Kaggle model + optional GitHub',
     icon: BrainCircuit,
-    description: 'Share your trained model via Kaggle or link your GitHub repository.',
-    allowKaggle: true,
-    allowGithub: true,
-    kagglePlaceholder: 'https://www.kaggle.com/models/...',
-    githubPlaceholder: 'https://github.com/your-org/your-model',
+    description: 'Publish your trained model on Kaggle, and link its GitHub repository to unlock the full reward.',
   },
   {
     key: 'api' as const,
@@ -90,9 +126,6 @@ const STEP_CONFIG = [
     sublabel: 'GitHub repo only',
     icon: Package,
     description: 'Share the GitHub repository containing your packaged API.',
-    allowKaggle: false,
-    allowGithub: true,
-    githubPlaceholder: 'https://github.com/your-org/your-api',
   },
 ] as const;
 
@@ -100,8 +133,15 @@ type StepKey = 'dataset' | 'model' | 'api';
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+interface PoolState {
+  pool: number;
+  distributed: number;
+  remaining: number;
+}
+
 export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
   const [data, setData] = useState<MLWorkspaceData | null>(null);
+  const [pool, setPool] = useState<PoolState | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeStep, setActiveStep] = useState(0);
 
@@ -109,8 +149,14 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
 
   const fetchData = async () => {
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/ml-workspace`);
-      if (res.ok) setData(await res.json());
+      const [wsRes, poolRes] = await Promise.all([
+        fetch(`/api/challenges/${challengeId}/ml-workspace`),
+        fetch(`/api/challenges/${challengeId}/ml-rewards`),
+      ]);
+      if (wsRes.ok) setData(await wsRes.json());
+      // A challenge with no reward rules yet still renders — the pool banner
+      // simply stays hidden rather than blocking the flow.
+      if (poolRes.ok) setPool(await poolRes.json());
     } finally {
       setLoading(false);
     }
@@ -145,6 +191,9 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
 
   return (
     <div className="space-y-6 animate-fade-up">
+
+      {/* ── Pool remainder ── */}
+      {pool && pool.pool > 0 && <PoolBanner pool={pool} />}
 
       {/* ── Stepper header ── */}
       <div className="flex items-center">
@@ -261,18 +310,14 @@ function StepPanel({
 
       <p className="text-sm text-white/50">{step.description}</p>
 
-      {/* One submission form per repo */}
+      {/* One submission form per repo — the model step renders two */}
       {step.repos.map(repo => (
         <RepoSubmission
           key={repo.repo_id}
           repo={repo}
           challengeId={challengeId}
           currentUserId={currentUserId}
-          allowKaggle={step.allowKaggle}
-          allowGithub={'allowGithub' in step ? step.allowGithub : false}
           showCommunityPicker={step.key === 'dataset'}
-          kagglePlaceholder={'kagglePlaceholder' in step ? step.kagglePlaceholder : undefined}
-          githubPlaceholder={'githubPlaceholder' in step ? step.githubPlaceholder : undefined}
           onSaved={onSaved}
         />
       ))}
@@ -293,45 +338,75 @@ function StepPanel({
   );
 }
 
+// ─── Pool remainder ───────────────────────────────────────────────────────────
+
+/**
+ * Points are awarded live from a finite pool, in arrival order. Showing what is
+ * left is the only way a contributor can tell whether it is still worth racing.
+ */
+function PoolBanner({ pool }: { pool: PoolState }) {
+  const claimedPct = pool.pool > 0 ? Math.min(100, (pool.distributed / pool.pool) * 100) : 0;
+  const empty = pool.remaining <= 0;
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-baseline gap-1.5">
+          <Coins className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-brandCP/60" />
+          <span className={`text-sm font-semibold ${empty ? 'text-white/40' : 'text-brandCP'}`}>
+            {pool.remaining.toLocaleString()} CP
+          </span>
+          <span className="text-xs text-white/35">
+            {empty ? 'left — the pool is empty' : 'left to claim'}
+          </span>
+        </div>
+        <span className="text-xs text-white/25">
+          {pool.distributed.toLocaleString()} / {pool.pool.toLocaleString()} awarded
+        </span>
+      </div>
+
+      <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${empty ? 'bg-white/20' : 'bg-brandCP/60'}`}
+          style={{ width: `${claimedPct}%` }}
+        />
+      </div>
+
+      {empty && (
+        <p className="text-xs text-white/30">
+          Later submissions still get evaluated, but there are no points left to award.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Per-repo submission form ─────────────────────────────────────────────────
 
 function RepoSubmission({
   repo,
   challengeId,
   currentUserId,
-  allowKaggle,
-  allowGithub,
   showCommunityPicker = false,
-  kagglePlaceholder,
-  githubPlaceholder,
   onSaved,
 }: {
   repo: MLRepo;
   challengeId: string;
   currentUserId: string | null;
-  allowKaggle: boolean;
-  allowGithub: boolean;
   showCommunityPicker?: boolean;
-  kagglePlaceholder?: string;
-  githubPlaceholder?: string;
   onSaved: () => void;
 }) {
   const myUrl = getUserUrl(repo, currentUserId);
   const community = getCommunityUrls(repo, currentUserId);
+  const meta = repo.role ? ROLE_META[repo.role] : null;
 
   const [urlInput, setUrlInput] = useState(myUrl ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [showCommunity, setShowCommunity] = useState(false);
-  // For model step: toggle between kaggle and github
-  const [mode, setMode] = useState<'kaggle' | 'github'>(
-    allowKaggle ? 'kaggle' : 'github'
-  );
 
   // Keep input in sync after refresh
   useEffect(() => { setUrlInput(myUrl ?? ''); }, [myUrl]);
-
-  const placeholder = mode === 'github' ? githubPlaceholder : kagglePlaceholder;
 
   const handleSubmit = async () => {
     const url = urlInput.trim();
@@ -383,22 +458,20 @@ function RepoSubmission({
   return (
     <div className="space-y-3">
 
-      {/* Mode toggle (only when both kaggle & github allowed) */}
-      {allowKaggle && allowGithub && (
-        <div className="flex items-center gap-1 rounded-lg bg-white/[0.04] p-1 w-fit">
-          {(['kaggle', 'github'] as const).map(m => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-all duration-200 ${
-                mode === m
-                  ? 'bg-brandCP/20 text-brandCP'
-                  : 'text-white/35 hover:text-white/60'
-              }`}
-            >
-              {m === 'kaggle' ? 'Kaggle' : 'GitHub'}
-            </button>
-          ))}
+      {/* What this slot is and what it is worth */}
+      {meta && (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-white/70">{meta.label}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              meta.optional
+                ? 'bg-white/[0.06] text-white/40'
+                : 'bg-brandCP/12 text-brandCP/80'
+            }`}>
+              {meta.optional ? 'Optional' : 'Required'}
+            </span>
+          </div>
+          <p className="text-xs text-white/35">{meta.hint}</p>
         </div>
       )}
 
@@ -409,7 +482,7 @@ function RepoSubmission({
           value={urlInput}
           onChange={e => setUrlInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          placeholder={placeholder}
+          placeholder={meta?.placeholder}
           className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white placeholder:text-white/20 transition-all duration-200 focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
         />
         <button

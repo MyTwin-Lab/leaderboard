@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChallengeRepoRepository, UserRepository, ContributionRepository } from '../../../../../../../../packages/database-service/repositories';
+import type { ChallengeRepoRole } from '../../../../../../../../packages/database-service/domain/entities';
+import { normalizeArtifactUrl } from '../../../../../../../../packages/services/challenge/artifactUrl';
 import { jwtVerify } from 'jose';
 
-const REPO_TYPE_TO_CONTRIBUTION: Record<string, { type: string; title: string }> = {
-  kaggle_dataset: { type: 'dataset',       title: 'Dataset Submission'       },
-  kaggle_model:   { type: 'model',         title: 'Model Submission'         },
-  github:         { type: 'api_packaging', title: 'API Packaging Submission' },
+/**
+ * Rôle du repo → contribution qu'il alimente.
+ *
+ * L'étape modèle a deux repos (Kaggle + GitHub) mais une seule contribution :
+ * les deux notes s'additionnent sur la même ligne, jusqu'à `model.cap`.
+ * `isArtifact` désigne l'URL qui identifie l'étape — c'est elle qui sert à
+ * détecter la réutilisation, donc le code du modèle n'en est pas une.
+ */
+const ROLE_CONFIG: Record<ChallengeRepoRole, {
+  contributionType: string;
+  title: string;
+  isArtifact: boolean;
+}> = {
+  dataset:    { contributionType: 'dataset',       title: 'Dataset Submission',       isArtifact: true  },
+  model:      { contributionType: 'model',         title: 'Model Submission',         isArtifact: true  },
+  model_code: { contributionType: 'model',         title: 'Model Submission',         isArtifact: false },
+  api:        { contributionType: 'api_packaging', title: 'API Packaging Submission', isArtifact: true  },
 };
 
 const challengeRepoRepo = new ChallengeRepoRepository();
@@ -55,6 +70,7 @@ export async function GET(
         repo_id: r.repo_id,
         repo_type: r.repo_type,
         repo_external_id: r.repo_external_id,
+        role: r.role ?? null,
         workspace_meta: r.workspace_meta ?? {},
       })),
       users: usersMap,
@@ -110,31 +126,67 @@ export async function PATCH(
       workspace_meta: updatedMeta,
     });
 
-    // Create or update contribution immediately when a URL is submitted
-    if (workspace_url !== null) {
-      const allRepos = await challengeRepoRepo.findByChallengeWithRepo(challengeId);
-      const thisRepo = allRepos.find(r => r.repo_id === repo_id);
-      const cfg = thisRepo ? REPO_TYPE_TO_CONTRIBUTION[thisRepo.repo_type] : null;
-
+    // Create or update the contribution backing this step
+    if (workspace_url !== null && existing.role) {
+      const cfg = ROLE_CONFIG[existing.role];
       if (cfg) {
+        const url = workspace_url.trim();
         const challengeContribs = await contributionRepo.findByChallenge(challengeId);
-        const existing = challengeContribs.find(
-          c => c.user_id === session.userId && c.type === cfg.type
+        const contribution = challengeContribs.find(
+          c => c.user_id === session.userId && c.type === cfg.contributionType
         );
 
-        if (existing) {
-          await contributionRepo.update(existing.uuid, { description: workspace_url });
+        // The step's description gathers every repo of that step, so a model
+        // shows both its Kaggle and GitHub links on one contribution.
+        const allRepos = await challengeRepoRepo.findByChallengeWithRepo(challengeId);
+        const stepRepos = allRepos.filter(
+          r => r.role && ROLE_CONFIG[r.role]?.contributionType === cfg.contributionType
+        );
+        const description = stepRepos
+          .map(r => {
+            const urls = (r.workspace_meta as { userUrls?: Record<string, string> } | null)?.userUrls ?? {};
+            const u = r.repo_id === repo_id ? url : urls[session.userId];
+            return u ? `${r.role}: ${u}` : null;
+          })
+          .filter(Boolean)
+          .join('\n');
+
+        const artifactPatch = cfg.isArtifact
+          ? { artifact_url: normalizeArtifactUrl(url) }
+          : {};
+
+        if (contribution) {
+          await contributionRepo.update(contribution.uuid, {
+            description,
+            evaluation_status: 'pending',
+            ...artifactPatch,
+          });
         } else {
           await contributionRepo.create({
             title: cfg.title,
-            type: cfg.type,
-            description: workspace_url,
+            type: cfg.contributionType,
+            description,
             reward: 0,
             user_id: session.userId,
             challenge_id: challengeId,
             submitted_at: new Date(),
+            evaluation_status: 'pending',
+            ...artifactPatch,
           });
         }
+
+        // Points are awarded live, but the agent call takes tens of seconds —
+        // far past this request's budget. Progress is tracked on the
+        // contribution's evaluation_status instead.
+        const { MlRewardsService } = await import(
+          '../../../../../../../../packages/services/challenge/ml-rewards.service'
+        );
+        new MlRewardsService().scheduleAward({
+          challengeId,
+          userId: session.userId,
+          repoId: repo_id,
+          url,
+        });
       }
     }
 

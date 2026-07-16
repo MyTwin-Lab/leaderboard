@@ -108,9 +108,7 @@ export async function proxy(request: NextRequest) {
         (pathname.endsWith('/assign') || pathname.endsWith('/complete'));
 
       // Routes ML accessibles aux contributeurs pour soumettre leur travail
-      const isMLContributorRoute =
-        pathname.includes('/ml-workspace') ||
-        pathname.includes('/ml-validate');
+      const isMLContributorRoute = pathname.includes('/ml-workspace');
 
       // Rejoindre un challenge
       const isChallengeJoinRoute = pathname.endsWith('/join');

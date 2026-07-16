@@ -6,6 +6,8 @@ import { TaskList } from './TaskList';
 import { TaskForm } from './TaskForm';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Plus, Code2, BrainCircuit } from 'lucide-react';
+import { MlRewardRulesEditor } from './MlRewardRulesEditor';
+import { DEFAULT_ML_REWARD_RULES, type MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
 import type { Challenge, Project, Task } from '../../../../../packages/database-service/domain/entities';
 
 interface ChallengeFormProps {
@@ -27,6 +29,10 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     contribution_points_reward: challenge?.contribution_points_reward ?? 0,
     project_id: challenge?.project_id ?? '',
   });
+
+  const [rewardRules, setRewardRules] = useState<MlRewardRules>(
+    challenge?.reward_rules ?? DEFAULT_ML_REWARD_RULES
+  );
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -115,7 +121,12 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    // Reward rules are meaningless on code challenges — send null so a type
+    // switch does not leave stale ML rules behind on the record.
+    onSubmit({
+      ...formData,
+      reward_rules: formData.type === 'ml' ? rewardRules : null,
+    });
   };
 
   const set = (field: keyof typeof formData) =>
@@ -203,6 +214,14 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
             />
           </FormField>
         </div>
+
+        {formData.type === 'ml' && (
+          <MlRewardRulesEditor
+            value={rewardRules}
+            pool={formData.contribution_points_reward}
+            onChange={setRewardRules}
+          />
+        )}
 
         <FormField label="Description">
           <textarea

@@ -7,6 +7,11 @@ import {
 } from 'lucide-react';
 import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
+import { MlRewardRulesEditor } from '@/components/admin/MlRewardRulesEditor';
+import {
+  DEFAULT_ML_REWARD_RULES,
+  type MlRewardRules,
+} from '../../../../../packages/database-service/domain/mlRewardRules';
 
 interface Project {
   id: string;
@@ -44,6 +49,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
   const [roadmap, setRoadmap] = useState('');
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [githubRepo, setGithubRepo] = useState('');
+  const [rewardRules, setRewardRules] = useState<MlRewardRules>(DEFAULT_ML_REWARD_RULES);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -78,6 +84,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
     setRoadmap('');
     setShowRoadmap(false);
     setGithubRepo('');
+    setRewardRules(DEFAULT_ML_REWARD_RULES);
   };
 
   const handleSubmit = async () => {
@@ -107,6 +114,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
           description: description.trim() || undefined,
           roadmap: roadmap.trim() || undefined,
           github_repo: type === 'code' && githubRepo.trim() ? githubRepo.trim() : undefined,
+          // Without rules an ML challenge awards nothing — the service has
+          // nothing to score against.
+          reward_rules: type === 'ml' ? rewardRules : null,
         }),
       });
 
@@ -285,6 +295,16 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
               </div>
             </div>
           </Field>
+
+          {/* ── ML reward rules ── */}
+          {type === 'ml' && (
+            <MlRewardRulesEditor
+              value={rewardRules}
+              pool={cp}
+              onChange={setRewardRules}
+              dense
+            />
+          )}
 
           {/* ── Description ── */}
           <Field icon={<AlignLeft className="h-3.5 w-3.5" />} label="Description">

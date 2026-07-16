@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { formatCP } from "@/lib/formatters";
 import type { ContributorProfile } from "@/lib/types";
 import { ChevronRight, Award } from "lucide-react";
+import { ContributionRewardBreakdown } from "./ContributionRewardBreakdown";
 
 interface ChallengeListProps {
   challenges: ContributorProfile["challenges"];
@@ -52,10 +53,18 @@ function ChallengeRow({
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(0);
 
+  // Contributions expand to reveal their reward breakdown, so this panel's
+  // height changes after mount. A one-shot scrollHeight read would clip them.
   useEffect(() => {
-    if (contentRef.current) {
-      setContentHeight(contentRef.current.scrollHeight + 4);
-    }
+    const el = contentRef.current;
+    if (!el) return;
+
+    const measure = () => setContentHeight(el.scrollHeight + 4);
+    measure();
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [isExpanded, challenge.contributions]);
 
   const sharePercent = Math.round(challenge.contributionShare * 100);
@@ -115,20 +124,13 @@ function ChallengeRow({
             <p className="text-xs text-white/25 py-2">No contributions listed</p>
           ) : (
             challenge.contributions.map((c, i) => (
-              <div
+              <ContributionRewardBreakdown
                 key={c.id}
-                className="animate-slide-in-left flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.04]"
-                style={{ animationDelay: `${i * 40}ms`, animationFillMode: 'both' }}
-              >
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brandCP/40" />
-                <p className="min-w-0 flex-1 text-sm text-white/70 truncate">{c.title}</p>
-                {c.reward > 0 && (
-                  <span className="shrink-0 animate-count-in text-xs font-medium text-brandCP"
-                    style={{ animationDelay: `${i * 40 + 60}ms`, animationFillMode: 'both' }}>
-                    +{formatCP(c.reward)} CP
-                  </span>
-                )}
-              </div>
+                contributionId={c.id}
+                title={c.title}
+                reward={c.reward}
+                index={i}
+              />
             ))
           )}
         </div>

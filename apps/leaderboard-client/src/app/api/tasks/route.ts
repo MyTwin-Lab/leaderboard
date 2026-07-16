@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TaskRepository } from '../../../../../../packages/database-service/repositories';
+import { TaskRepository, ChallengeRepository } from '../../../../../../packages/database-service/repositories';
 import { z } from 'zod';
 
 const taskRepo = new TaskRepository();
+const challengeRepo = new ChallengeRepository();
 
 const createTaskSchema = z.object({
   challenge_id: z.string().uuid(),
@@ -48,6 +49,19 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validated = createTaskSchema.parse(body);
+
+    // ML challenges use the dataset/model/API submission flow, not tasks.
+    // Their reward pipeline assumes no task ever points at a Kaggle repo.
+    const challenge = await challengeRepo.findById(validated.challenge_id);
+    if (!challenge) {
+      return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
+    }
+    if (challenge.type === 'ml') {
+      return NextResponse.json(
+        { error: 'ML challenges cannot have tasks' },
+        { status: 400 }
+      );
+    }
 
     const task = await taskRepo.create({
       ...validated,

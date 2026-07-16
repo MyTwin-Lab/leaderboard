@@ -5,6 +5,8 @@ import {
   RepoRepository,
   ChallengeRepoRepository,
 } from '../../../../../../packages/database-service/repositories';
+import type { ChallengeRepoRole } from '../../../../../../packages/database-service/domain/entities';
+import { mlRewardRulesSchema } from '../../../../../../packages/database-service/domain/mlRewardRules';
 import { repositories } from '@/lib/db';
 import { z } from 'zod';
 
@@ -23,6 +25,7 @@ const createChallengeSchema = z.object({
   contribution_points_reward: z.number().int().nonnegative(),
   project_id: z.string().uuid(),
   github_repo: z.string().optional(),
+  reward_rules: mlRewardRulesSchema.nullish(),
 });
 
 // GET /api/challenges - Liste tous les challenges
@@ -91,20 +94,29 @@ export async function POST(request: NextRequest) {
 
     const githubSlug = validated.github_repo ? parseGithubSlug(validated.github_repo) : undefined;
 
-    // Auto-create repos based on challenge type and link them
-    const repoDefinitions: { title: string; type: string; external_repo_id?: string }[] =
+    // Auto-create repos based on challenge type and link them.
+    // ML repos carry an explicit role: the model step has two repos (Kaggle +
+    // GitHub) and both are typed 'github'/'kaggle_model', so the type alone can
+    // no longer tell the model's code repo from the API packaging one.
+    const repoDefinitions: {
+      title: string;
+      type: string;
+      role?: ChallengeRepoRole;
+      external_repo_id?: string;
+    }[] =
       validated.type === 'ml'
         ? [
-            { title: `${validated.title} — Dataset`, type: 'kaggle_dataset' },
-            { title: `${validated.title} — Model`,   type: 'kaggle_model'   },
-            { title: `${validated.title} — API`,     type: 'github'         },
+            { title: `${validated.title} — Dataset`,    type: 'kaggle_dataset', role: 'dataset'    },
+            { title: `${validated.title} — Model`,      type: 'kaggle_model',   role: 'model'      },
+            { title: `${validated.title} — Model Code`, type: 'github',         role: 'model_code' },
+            { title: `${validated.title} — API`,        type: 'github',         role: 'api'        },
           ]
         : [{ title: `${validated.title} — Code`, type: 'github', external_repo_id: githubSlug }];
 
     await Promise.all(
-      repoDefinitions.map(async ({ title, type, external_repo_id }) => {
+      repoDefinitions.map(async ({ title, type, role, external_repo_id }) => {
         const repo = await repoRepo.create({ title, type, project_id: validated.project_id, external_repo_id });
-        await challengeRepoRepo.create({ challenge_id: challenge.uuid, repo_id: repo.uuid });
+        await challengeRepoRepo.create({ challenge_id: challenge.uuid, repo_id: repo.uuid, role });
       })
     );
 

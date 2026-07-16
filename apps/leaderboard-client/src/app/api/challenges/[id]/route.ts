@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChallengeRepository } from '../../../../../../../packages/database-service/repositories';
+import { mlRewardRulesSchema } from '../../../../../../../packages/database-service/domain/mlRewardRules';
 import { verifyRequestToken } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { z } from 'zod';
@@ -9,12 +10,14 @@ const challengeRepo = new ChallengeRepository();
 const updateChallengeSchema = z.object({
   title: z.string().min(1).optional(),
   status: z.string().optional(),
+  type: z.string().optional(),
   start_date: z.string().optional(),
   end_date: z.string().optional(),
   description: z.string().optional(),
   roadmap: z.string().optional(),
   contribution_points_reward: z.number().int().nonnegative().optional(),
   project_id: z.string().uuid().optional(),
+  reward_rules: mlRewardRulesSchema.nullish(),
 });
 
 // GET /api/challenges/[id] - Récupérer un challenge

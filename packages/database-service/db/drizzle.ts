@@ -40,6 +40,7 @@ export const challenges = pgTable("challenges", {
   contribution_points_reward: integer("contribution_points_reward").default(0),
   completion: real("completion").default(0),
   project_id: uuid("project_id").references(() => projects.uuid, { onDelete: "cascade" }),
+  reward_rules: json("reward_rules"), // ML challenges only — see domain/mlRewardRules.ts
 }, (table) => ({
   projectIdIdx: index("idx_challenges_project_id").on(table.project_id),
   statusIdx: index("idx_challenges_status").on(table.status),
@@ -49,6 +50,10 @@ export const challenges = pgTable("challenges", {
 export const challenge_repos = pgTable("challenge_repos", {
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
   repo_id: uuid("repo_id").references(() => repos.uuid, { onDelete: "cascade" }),
+  // Rôle du repo dans le flow ML: dataset | model | model_code | api.
+  // Explicite plutôt que déduit du type, car l'étape modèle a deux repos
+  // (kaggle_model + github) et le type ne suffit plus à les distinguer.
+  role: varchar("role", { length: 20 }),
   // Workspace provisioning fields
   workspace_provider: varchar("workspace_provider", { length: 32 }), // github, huggingface, figma...
   workspace_ref: varchar("workspace_ref", { length: 200 }), // ex: refs/heads/challenge/007-admin-experience
@@ -100,11 +105,38 @@ export const contributions = pgTable("contributions", {
   user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }),
   challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }),
   task_id: uuid("task_id").references(() => tasks.uuid, { onDelete: "set null" }),
+  // URL normalisée de l'artefact soumis (Kaggle/GitHub). Indexée: c'est la clé
+  // de détection de réutilisation entre contributeurs d'un même challenge.
+  artifact_url: varchar("artifact_url", { length: 500 }),
+  // pending | running | done | failed | skipped_reuse
+  evaluation_status: varchar("evaluation_status", { length: 20 }),
   submitted_at: timestamp("submitted_at").defaultNow().notNull(),
 }, (table) => ({
   challengeIdIdx: index("idx_contributions_challenge_id").on(table.challenge_id),
   userIdIdx: index("idx_contributions_user_id").on(table.user_id),
   taskIdIdx: index("idx_contributions_task_id").on(table.task_id),
+  artifactUrlIdx: index("idx_contributions_artifact_url").on(table.challenge_id, table.artifact_url),
+}));
+
+// --- REWARD_ENTRIES ---
+// Ledger append-only des attributions de points sur les challenges ML.
+// Chaque ligne est immuable : une amélioration de modèle ajoute un delta, elle
+// ne met pas à jour l'existant. `contributions.reward` est l'agrégat de ces lignes.
+export const reward_entries = pgTable("reward_entries", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  contribution_id: uuid("contribution_id").references(() => contributions.uuid, { onDelete: "cascade" }),
+  // dataset | model_metric | model_code | beat_best | api_packaging | reuse_dataset | reuse_model
+  rule_key: varchar("rule_key", { length: 40 }).notNull(),
+  points: integer("points").notNull(), // négatif pour un prélèvement
+  source_user_id: uuid("source_user_id").references(() => users.uuid, { onDelete: "set null" }),
+  meta: json("meta"), // { metricValue, agentScore, rawPoints, clampedTo, ... }
+  created_at: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  challengeIdIdx: index("idx_reward_entries_challenge_id").on(table.challenge_id),
+  userIdIdx: index("idx_reward_entries_user_id").on(table.user_id),
+  contributionIdIdx: index("idx_reward_entries_contribution_id").on(table.contribution_id),
 }));
 
 // --- TASKS ---
@@ -325,7 +357,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   challenge_teams: many(challenge_teams),
 }));
 
-export const contributionsRelations = relations(contributions, ({ one }) => ({
+export const contributionsRelations = relations(contributions, ({ one, many }) => ({
   user: one(users, {
     fields: [contributions.user_id],
     references: [users.uuid],
@@ -337,6 +369,22 @@ export const contributionsRelations = relations(contributions, ({ one }) => ({
   task: one(tasks, {
     fields: [contributions.task_id],
     references: [tasks.uuid],
+  }),
+  reward_entries: many(reward_entries),
+}));
+
+export const rewardEntriesRelations = relations(reward_entries, ({ one }) => ({
+  challenge: one(challenges, {
+    fields: [reward_entries.challenge_id],
+    references: [challenges.uuid],
+  }),
+  user: one(users, {
+    fields: [reward_entries.user_id],
+    references: [users.uuid],
+  }),
+  contribution: one(contributions, {
+    fields: [reward_entries.contribution_id],
+    references: [contributions.uuid],
   }),
 }));
 

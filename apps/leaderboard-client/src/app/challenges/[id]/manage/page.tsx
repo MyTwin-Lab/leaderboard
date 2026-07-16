@@ -47,6 +47,7 @@ interface Meeting {
 
 interface MLRepo {
   repo_id: string; repo_type: string; repo_external_id?: string;
+  role: 'dataset' | 'model' | 'model_code' | 'api' | null;
   workspace_meta: { userUrls?: Record<string, string> };
 }
 
@@ -494,10 +495,13 @@ function TabActivity({ contributions, meetings, team, repoActivity, meetingsEnab
 
 // ─── ML Submissions Tab ───────────────────────────────────────────────────────
 
+// Grouped by role, not repo type: the model's GitHub and the API package are
+// both typed 'github' and would otherwise collapse into one section.
 const ML_STEP_CONFIG = [
-  { key: 'kaggle_dataset', label: 'Dataset',     icon: Database },
-  { key: 'kaggle_model',   label: 'Model',       icon: Cpu },
-  { key: 'github',         label: 'API Package', icon: Package },
+  { key: 'dataset',    label: 'Dataset',     icon: Database },
+  { key: 'model',      label: 'Model',       icon: Cpu },
+  { key: 'model_code', label: 'Model Code',  icon: GitBranch },
+  { key: 'api',        label: 'API Package', icon: Package },
 ];
 
 function TabMLSubmissions({ mlData, team }: {
@@ -515,7 +519,7 @@ function TabMLSubmissions({ mlData, team }: {
     <div className="space-y-6">
       {ML_STEP_CONFIG.map(step => {
         const Icon = step.icon;
-        const repos = mlData.repos.filter(r => r.repo_type === step.key);
+        const repos = mlData.repos.filter(r => r.role === step.key);
         if (repos.length === 0) return null;
 
         return (

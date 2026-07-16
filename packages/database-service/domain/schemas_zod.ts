@@ -1,5 +1,6 @@
 // domain/schemas.ts
 import { z } from "zod";
+import { mlRewardRulesSchema } from "./mlRewardRules.js";
 
 export const projectSchema = z.object({
   uuid: z.string().uuid(),
@@ -17,9 +18,12 @@ export const repoSchema = z.object({
   project_id: z.string().uuid(),
 });
 
+export const challengeRepoRoleSchema = z.enum(['dataset', 'model', 'model_code', 'api']);
+
 export const challengeRepoSchema = z.object({
   challenge_id: z.string().uuid(),
   repo_id: z.string().uuid(),
+  role: challengeRepoRoleSchema.optional(),
 });
 
 export const challengeTeamSchema = z.object({
@@ -40,6 +44,7 @@ export const challengeSchema = z.object({
   contribution_points_reward: z.number().int().nonnegative(),
   completion: z.number().int().nonnegative().default(0),
   project_id: z.string().uuid(),
+  reward_rules: mlRewardRulesSchema.nullish(),
 });
 
 export const contributionSchema = z.object({
@@ -53,7 +58,33 @@ export const contributionSchema = z.object({
   user_id: z.string().uuid(),
   challenge_id: z.string().uuid(),
   task_id: z.string().uuid().optional(),
+  artifact_url: z.string().max(500).optional(),
+  evaluation_status: z
+    .enum(['pending', 'running', 'done', 'failed', 'skipped_reuse'])
+    .optional(),
   submitted_at: z.coerce.date(),
+});
+
+export const rewardRuleKeySchema = z.enum([
+  'dataset',
+  'model_metric',
+  'model_code',
+  'beat_best',
+  'api_packaging',
+  'reuse_dataset',
+  'reuse_model',
+]);
+
+export const rewardEntrySchema = z.object({
+  uuid: z.string().uuid(),
+  challenge_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  contribution_id: z.string().uuid().optional(),
+  rule_key: rewardRuleKeySchema,
+  points: z.number().int(),
+  source_user_id: z.string().uuid().optional(),
+  meta: z.record(z.string(), z.any()).optional(),
+  created_at: z.coerce.date(),
 });
 
 export const userSchema = z.object({

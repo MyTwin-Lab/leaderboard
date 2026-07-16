@@ -1,5 +1,7 @@
 // domain/entities.ts
 
+import type { MlRewardRules } from "./mlRewardRules.js";
+
 export interface Project {
   uuid: string;
   title: string;
@@ -16,9 +18,13 @@ export interface Repo {
   project_id: string; // FK -> projects.uuid
 }
 
+/** Rôle d'un repo dans le flow ML. Null pour les challenges de type code. */
+export type ChallengeRepoRole = 'dataset' | 'model' | 'model_code' | 'api';
+
 export interface ChallengeRepo {
   challenge_id: string; // FK -> challenges.uuid
   repo_id: string;      // FK -> repos.uuid
+  role?: ChallengeRepoRole;
   workspace_provider?: string;
   workspace_ref?: string;
   workspace_url?: string;
@@ -44,6 +50,7 @@ export interface Challenge {
   contribution_points_reward: number;
   completion: number;
   project_id: string; // FK -> projects.uuid
+  reward_rules?: MlRewardRules | null; // ML uniquement
 }
 
 export interface ChallengeDocument {
@@ -54,6 +61,13 @@ export interface ChallengeDocument {
   uploaded_by?: string; // FK -> users.uuid
   created_at: Date;
 }
+
+export type ContributionEvaluationStatus =
+  | 'pending'
+  | 'running'
+  | 'done'
+  | 'failed'
+  | 'skipped_reuse';
 
 export interface Contribution {
   uuid: string;
@@ -66,7 +80,41 @@ export interface Contribution {
   user_id: string;      // FK -> users.uuid
   challenge_id: string; // FK -> challenges.uuid
   task_id?: string;     // FK -> tasks.uuid
+  artifact_url?: string;
+  evaluation_status?: ContributionEvaluationStatus;
   submitted_at: Date;
+}
+
+// --- REWARD ENTRIES (ledger ML) ---
+
+export type RewardRuleKey =
+  | 'dataset'
+  | 'model_metric'
+  | 'model_code'
+  | 'beat_best'
+  | 'api_packaging'
+  | 'reuse_dataset'
+  | 'reuse_model';
+
+export interface RewardEntryMeta {
+  metricValue?: number;
+  agentScore?: number;
+  rawPoints?: number;
+  clampedTo?: number;
+  sourceContributionId?: string;
+  [key: string]: unknown;
+}
+
+export interface RewardEntry {
+  uuid: string;
+  challenge_id: string;
+  user_id: string;
+  contribution_id?: string;
+  rule_key: RewardRuleKey;
+  points: number; // négatif pour un prélèvement
+  source_user_id?: string;
+  meta?: RewardEntryMeta;
+  created_at: Date;
 }
 
 export interface User {

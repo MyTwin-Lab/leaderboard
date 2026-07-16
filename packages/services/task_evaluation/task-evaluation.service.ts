@@ -191,8 +191,6 @@ export class TaskEvaluationService {
 
   private static readonly REPO_TYPE_TO_GRID: Record<string, string> = {
     github: 'code',
-    kaggle_dataset: 'dataset',
-    kaggle_model: 'model',
   };
 
   /**

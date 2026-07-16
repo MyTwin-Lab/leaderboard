@@ -27,12 +27,15 @@ import {
   onboarding_progress,
   app_settings,
   challenge_documents,
+  reward_entries,
 } from "./drizzle.js";
+import { parseMlRewardRules } from "../domain/mlRewardRules.js";
 import type {
   Project,
   Repo,
   Challenge,
   ChallengeRepo,
+  ChallengeRepoRole,
   ChallengeTeam,
   ChallengeDocument,
   User,
@@ -60,6 +63,10 @@ import type {
   MeetingAnalysisStatus,
   OnboardingProgress,
   AppSettings,
+  ContributionEvaluationStatus,
+  RewardEntry,
+  RewardEntryMeta,
+  RewardRuleKey,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -70,6 +77,7 @@ type DbChallengeRepo = InferSelectModel<typeof challenge_repos>;
 type DbChallengeTeam = InferSelectModel<typeof challenge_teams>;
 type DbUser = InferSelectModel<typeof users>;
 type DbContribution = InferSelectModel<typeof contributions>;
+type DbRewardEntry = InferSelectModel<typeof reward_entries>;
 type DbRefreshToken = InferSelectModel<typeof refresh_tokens>;
 type DbTask = InferSelectModel<typeof tasks>;
 type DbTaskAssignee = InferSelectModel<typeof task_assignees>;
@@ -118,6 +126,7 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     contribution_points_reward: row.contribution_points_reward ?? 0,
     completion: row.completion ?? 0,
     project_id: row.project_id ?? "",
+    reward_rules: parseMlRewardRules(row.reward_rules),
   };
 }
 
@@ -125,6 +134,7 @@ export function toDomainChallengeRepo(row: DbChallengeRepo): ChallengeRepo {
   return {
     challenge_id: row.challenge_id ?? "",
     repo_id: row.repo_id ?? "",
+    role: (row.role as ChallengeRepoRole) ?? undefined,
     workspace_provider: row.workspace_provider ?? undefined,
     workspace_ref: row.workspace_ref ?? undefined,
     workspace_url: row.workspace_url ?? undefined,
@@ -166,7 +176,23 @@ export function toDomainContribution(row: DbContribution): Contribution {
     user_id: row.user_id ?? "",
     challenge_id: row.challenge_id ?? "",
     task_id: row.task_id ?? undefined,
+    artifact_url: row.artifact_url ?? undefined,
+    evaluation_status: (row.evaluation_status as ContributionEvaluationStatus) ?? undefined,
     submitted_at: new Date(row.submitted_at),
+  };
+}
+
+export function toDomainRewardEntry(row: DbRewardEntry): RewardEntry {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challenge_id,
+    user_id: row.user_id,
+    contribution_id: row.contribution_id ?? undefined,
+    rule_key: row.rule_key as RewardRuleKey,
+    points: row.points,
+    source_user_id: row.source_user_id ?? undefined,
+    meta: (row.meta as RewardEntryMeta) ?? undefined,
+    created_at: new Date(row.created_at),
   };
 }
 
@@ -204,6 +230,7 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenge
     contribution_points_reward: entity.contribution_points_reward,
     completion: entity.completion ?? 0,
     project_id: entity.project_id || null,
+    reward_rules: entity.reward_rules ?? null,
   };
 }
 
@@ -229,6 +256,8 @@ export function toDbContribution(entity: Omit<Contribution, "uuid">): typeof con
     user_id: entity.user_id || null,
     challenge_id: entity.challenge_id || null,
     task_id: entity.task_id || null,
+    artifact_url: entity.artifact_url || null,
+    evaluation_status: entity.evaluation_status ?? null,
     submitted_at: entity.submitted_at,
   };
 }

@@ -1,0 +1,54 @@
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  ChallengeRepository,
+  RewardEntryRepository,
+} from '../../../../../../../../packages/database-service/repositories';
+
+export const dynamic = 'force-dynamic';
+
+const challengeRepo = new ChallengeRepository();
+const rewardRepo = new RewardEntryRepository();
+
+// GET /api/challenges/[id]/ml-rewards
+// Pool state + per-user breakdown for an ML challenge.
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: challengeId } = await params;
+
+    const challenge = await challengeRepo.findById(challengeId);
+    if (!challenge) {
+      return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
+    }
+    if (challenge.type !== 'ml') {
+      return NextResponse.json({ error: 'Not an ML challenge' }, { status: 400 });
+    }
+
+    const entries = await rewardRepo.findByChallenge(challengeId);
+
+    // Reuse rows cancel out (−40 to the reuser, +40 to the author), so summing
+    // every row still yields exactly what the pool has paid out.
+    const distributed = entries.reduce((sum, e) => sum + e.points, 0);
+    const pool = challenge.contribution_points_reward;
+
+    const byUser = new Map<string, number>();
+    for (const e of entries) {
+      byUser.set(e.user_id, (byUser.get(e.user_id) ?? 0) + e.points);
+    }
+
+    return NextResponse.json({
+      pool,
+      distributed,
+      remaining: Math.max(0, pool - distributed),
+      rules: challenge.reward_rules ?? null,
+      breakdown: [...byUser.entries()]
+        .map(([userId, points]) => ({ userId, points }))
+        .sort((a, b) => b.points - a.points),
+    });
+  } catch (error) {
+    console.error('Error fetching ML rewards:', error);
+    return NextResponse.json({ error: 'Failed to fetch ML rewards' }, { status: 500 });
+  }
+}

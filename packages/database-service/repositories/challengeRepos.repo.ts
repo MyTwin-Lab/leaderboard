@@ -2,7 +2,7 @@ import { db } from "../db/drizzle";
 import { challenge_repos, challenges, repos } from "../db/drizzle";
 import { eq, and } from "drizzle-orm";
 import { toDomainChallengeRepo, toDomainChallenge } from "../db/mappers";
-import type { ChallengeRepo, Challenge, WorkspaceStatus, WorkspaceMeta } from "../domain/entities";
+import type { ChallengeRepo, ChallengeRepoRole, Challenge, WorkspaceStatus, WorkspaceMeta } from "../domain/entities";
 import { challengeRepoSchema } from "../domain/schemas_zod";
 
 export class ChallengeRepoRepository {
@@ -41,8 +41,27 @@ export class ChallengeRepoRepository {
     const [inserted] = await db.insert(challenge_repos).values({
       challenge_id: validated.challenge_id,
       repo_id: validated.repo_id,
+      role: validated.role ?? null,
     }).returning();
     return toDomainChallengeRepo(inserted);
+  }
+
+  /** Récupère les repos d'un challenge portant un rôle ML donné. */
+  async findByChallengeAndRole(challengeId: string, role: ChallengeRepoRole): Promise<ChallengeRepo[]> {
+    const rows = await db
+      .select()
+      .from(challenge_repos)
+      .where(and(eq(challenge_repos.challenge_id, challengeId), eq(challenge_repos.role, role)));
+    return rows.map(toDomainChallengeRepo);
+  }
+
+  async updateRole(challengeId: string, repoId: string, role: ChallengeRepoRole | null): Promise<ChallengeRepo | null> {
+    const [updated] = await db
+      .update(challenge_repos)
+      .set({ role })
+      .where(and(eq(challenge_repos.challenge_id, challengeId), eq(challenge_repos.repo_id, repoId)))
+      .returning();
+    return updated ? toDomainChallengeRepo(updated) : null;
   }
 
   async findByChallengeAndRepo(challengeId: string, repoId: string): Promise<ChallengeRepo | null> {
@@ -101,7 +120,7 @@ export class ChallengeRepoRepository {
   /**
    * Récupère les repos d'un challenge avec les infos du repo
    */
-  async findByChallengeWithRepo(challengeId: string): Promise<(ChallengeRepo & { repo_type: string; repo_external_id?: string })[]> {
+  async findByChallengeWithRepo(challengeId: string): Promise<(ChallengeRepo & { repo_type: string; repo_external_id?: string; repo_title: string })[]> {
     const results = await db
       .select({
         challenge_repo: challenge_repos,
@@ -117,6 +136,7 @@ export class ChallengeRepoRepository {
         ...toDomainChallengeRepo(r.challenge_repo),
         repo_type: r.repo!.type,
         repo_external_id: r.repo!.external_repo_id ?? undefined,
+        repo_title: r.repo!.title,
       }));
   }
 
