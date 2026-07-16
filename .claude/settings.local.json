@@ -26,7 +26,8 @@
       "WebFetch(domain:mytwinlab.io)",
       "Bash(npx tsx:*)",
       "Bash(echo \"--- TSC EXIT: $? ---\")",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(echo \"--- EXIT: $? ---\")"
     ]
   }
 }

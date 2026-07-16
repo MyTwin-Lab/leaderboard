@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
-  CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit,
+  CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock,
 } from 'lucide-react';
 import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
@@ -18,12 +18,37 @@ interface Project {
   name: string;
 }
 
+/** An existing challenge being edited, as returned by GET /api/challenges/:id. */
+export interface EditableChallenge {
+  uuid: string;
+  title: string;
+  status: string;
+  type: string;
+  start_date: string | Date;
+  end_date: string | Date;
+  description?: string | null;
+  roadmap?: string | null;
+  contribution_points_reward: number;
+  project_id: string;
+  reward_rules?: MlRewardRules | null;
+}
+
 interface CreateChallengeDrawerProps {
   open: boolean;
   onClose: () => void;
   projects: Project[];
   onCreated: (challengeId: string) => void;
+  /**
+   * Present = edit mode. The project, the reward pool and the repo are locked:
+   * they define the challenge's shape and its budget, and contributors are
+   * already racing against both.
+   */
+  challenge?: EditableChallenge;
 }
+
+/** Date inputs need YYYY-MM-DD; the API hands back ISO strings or Dates. */
+const toDateInput = (d: string | Date | undefined): string =>
+  d ? new Date(d).toISOString().split('T')[0] : '';
 
 const STATUS_OPTIONS = [
   { value: 'draft',     label: 'Draft',     dot: 'bg-white/25',   ring: 'ring-white/15'     },
@@ -37,7 +62,9 @@ function fgAt(opacity: number) {
   return `color-mix(in srgb, var(--foreground) ${Math.round(opacity * 100)}%, transparent)`;
 }
 
-export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: CreateChallengeDrawerProps) {
+export function CreateChallengeDrawer({ open, onClose, projects, onCreated, challenge }: CreateChallengeDrawerProps) {
+  const isEdit = !!challenge;
+
   const [title, setTitle] = useState('');
   const [projectId, setProjectId] = useState(projects[0]?.id ?? '');
   const [status, setStatus] = useState('draft');
@@ -55,14 +82,28 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
   const [success, setSuccess] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
-  // Focus title on open
+  // Focus title on open, and load the challenge being edited
   useEffect(() => {
-    if (open) {
-      setTimeout(() => titleRef.current?.focus(), 80);
-      setSuccess(false);
-      setError('');
+    if (!open) return;
+
+    setSuccess(false);
+    setError('');
+    setTimeout(() => titleRef.current?.focus(), 80);
+
+    if (challenge) {
+      setTitle(challenge.title);
+      setProjectId(challenge.project_id);
+      setStatus(challenge.status);
+      setType(challenge.type === 'ml' ? 'ml' : 'code');
+      setStartDate(toDateInput(challenge.start_date));
+      setEndDate(toDateInput(challenge.end_date));
+      setCp(challenge.contribution_points_reward);
+      setDescription(challenge.description ?? '');
+      setRoadmap(challenge.roadmap ?? '');
+      setShowRoadmap(!!challenge.roadmap);
+      setRewardRules(challenge.reward_rules ?? DEFAULT_ML_REWARD_RULES);
     }
-  }, [open]);
+  }, [open, challenge]);
 
   // Close on Escape
   useEffect(() => {
@@ -100,37 +141,51 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
     setSaving(true);
     setError('');
     try {
-      const res = await fetch('/api/challenges', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          project_id: projectId,
-          status,
-          type,
-          start_date: startDate,
-          end_date: endDate,
-          contribution_points_reward: cp,
-          description: description.trim() || undefined,
-          roadmap: roadmap.trim() || undefined,
-          github_repo: type === 'code' && githubRepo.trim() ? githubRepo.trim() : undefined,
-          // Without rules an ML challenge awards nothing — the service has
-          // nothing to score against.
-          reward_rules: type === 'ml' ? rewardRules : null,
-        }),
-      });
+      const shared = {
+        title: title.trim(),
+        status,
+        type,
+        start_date: startDate,
+        end_date: endDate,
+        description: description.trim() || undefined,
+        roadmap: roadmap.trim() || undefined,
+        // Without rules an ML challenge awards nothing — the service has
+        // nothing to score against.
+        reward_rules: type === 'ml' ? rewardRules : null,
+      };
+
+      // Editing never touches the project, the pool or the repo: they are the
+      // challenge's shape and budget, and contributors are already racing
+      // against both. Omitting them means the API cannot change them either.
+      const res = await fetch(
+        isEdit ? `/api/challenges/${challenge!.uuid}` : '/api/challenges',
+        {
+          method: isEdit ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            isEdit
+              ? shared
+              : {
+                  ...shared,
+                  project_id: projectId,
+                  contribution_points_reward: cp,
+                  github_repo: type === 'code' && githubRepo.trim() ? githubRepo.trim() : undefined,
+                }
+          ),
+        }
+      );
 
       if (res.ok) {
         const data = await res.json();
         setSuccess(true);
         setTimeout(() => {
-          resetForm();
-          onCreated(data.uuid ?? data.id);
+          if (!isEdit) resetForm();
+          onCreated(data.uuid ?? data.id ?? challenge!.uuid);
           onClose();
         }, 900);
       } else {
         const d = await res.json();
-        setError(d.error || 'Failed to create challenge');
+        setError(d.error || `Failed to ${isEdit ? 'update' : 'create'} challenge`);
       }
     } catch {
       setError('Network error');
@@ -158,9 +213,13 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
         <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brandCP/15">
-              <Plus className="h-4 w-4 text-brandCP" />
+              {isEdit
+                ? <Pencil className="h-3.5 w-3.5 text-brandCP" />
+                : <Plus className="h-4 w-4 text-brandCP" />}
             </div>
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>New challenge</h2>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
+              {isEdit ? 'Edit challenge' : 'New challenge'}
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -189,6 +248,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
           </div>
 
           {/* ── Type ── */}
+          {/* Locked on edit: the type decides which repos are created, and they
+              only get created once, at creation. */}
           <Field label="Type">
             <div className="flex gap-2">
               {([
@@ -197,15 +258,17 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
               ] as const).map(opt => {
                 const Icon = opt.icon;
                 const active = type === opt.value;
+                if (isEdit && !active) return null;
                 return (
                   <button
                     key={opt.value}
-                    onClick={() => setType(opt.value)}
+                    onClick={() => !isEdit && setType(opt.value)}
+                    disabled={isEdit}
                     className={`flex flex-1 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
                       active
                         ? 'border-brandCP/40 bg-brandCP/10 ring-1 ring-brandCP/20'
                         : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'
-                    }`}
+                    } ${isEdit ? 'cursor-default' : ''}`}
                   >
                     <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-brandCP' : ''}`} style={active ? undefined : { color: fgAt(0.3) }} />
                     <div>
@@ -220,11 +283,15 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
 
           {/* ── Project ── */}
           <Field icon={<ChevronDown className="h-3.5 w-3.5" />} label="Project">
-            <SelectDropdown
-              options={projectOptions}
-              value={projectId}
-              onChange={setProjectId}
-            />
+            {isEdit ? (
+              <LockedValue text={projects.find(p => p.id === projectId)?.name ?? '—'} />
+            ) : (
+              <SelectDropdown
+                options={projectOptions}
+                value={projectId}
+                onChange={setProjectId}
+              />
+            )}
           </Field>
 
           {/* ── Status ── */}
@@ -277,18 +344,20 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
           </Field>
 
           {/* ── CP Reward ── */}
+          {/* Locked on edit: contributors are already racing against this pool. */}
           <Field icon={<Trophy className="h-3.5 w-3.5" />} label="CP Reward">
             <div className="flex items-center gap-4">
-              <input
-                type="number"
-                min={0}
-                step={10}
-                value={cp}
-                onChange={e => setCp(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-28 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-                style={{ color: 'var(--foreground)' }}
-              />
-              {/* Live preview */}
+              {!isEdit && (
+                <input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={cp}
+                  onChange={e => setCp(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-28 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
+                  style={{ color: 'var(--foreground)' }}
+                />
+              )}
               <div className="flex items-baseline gap-1.5 animate-fade-up">
                 <span className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{cp.toLocaleString()}</span>
                 <span className="text-sm font-semibold text-brandCP">CP</span>
@@ -318,8 +387,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
             />
           </Field>
 
-          {/* ── GitHub repo (code only) ── */}
-          {type === 'code' && (
+          {/* ── GitHub repo (code only, creation only) ── */}
+          {type === 'code' && !isEdit && (
             <Field icon={<Github className="h-3.5 w-3.5" />} label="GitHub Repository">
               <input
                 type="url"
@@ -385,11 +454,26 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated }: Cr
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {success && <CheckCircle2 className="h-4 w-4" />}
-            {success ? 'Created!' : saving ? 'Creating…' : 'Create challenge'}
+            {isEdit
+              ? (success ? 'Saved!' : saving ? 'Saving…' : 'Save changes')
+              : (success ? 'Created!' : saving ? 'Creating…' : 'Create challenge')}
           </button>
         </div>
       </div>
     </>
+  );
+}
+
+/** A value shown but not editable, styled to read as deliberate, not broken. */
+function LockedValue({ text }: { text: string }) {
+  return (
+    <div
+      className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-sm"
+      style={{ color: fgAt(0.5) }}
+    >
+      <Lock className="h-3 w-3 shrink-0" style={{ color: fgAt(0.25) }} />
+      {text}
+    </div>
   );
 }
 

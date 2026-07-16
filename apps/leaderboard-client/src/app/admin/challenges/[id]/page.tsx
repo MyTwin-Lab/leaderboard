@@ -7,8 +7,10 @@ import {
   CheckCircle2, Circle, Clock3, BarChart2, Activity,
   Medal, Video, ExternalLink, GitBranch, GitPullRequest,
   GitCommit, MessageSquare,
-  Database, Package, Cpu, FlaskConical, ChevronDown, Loader2, Plus, FileText,
+  Database, Package, Cpu, FlaskConical, ChevronDown, Loader2, Plus, FileText, Pencil,
 } from 'lucide-react';
+import { CreateChallengeDrawer } from '@/components/admin/CreateChallengeDrawer';
+import type { MlRewardRules } from '../../../../../../../packages/database-service/domain/mlRewardRules';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import { TeamAvatars } from '@/components/ui/TeamAvatars';
 import { Badge } from '@/components/ui/Badge';
@@ -21,6 +23,8 @@ import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 interface Challenge {
   uuid: string; title: string; description?: string;
   status: string; type: string;
+  roadmap?: string;
+  reward_rules?: MlRewardRules | null;
   start_date: string; end_date: string;
   contribution_points_reward: number; completion: number;
   project_id: string;
@@ -823,6 +827,8 @@ export default function ChallengeManagerPage() {
   const [loading, setLoading] = useState(true);
   const [meetingDrawerOpen, setMeetingDrawerOpen] = useState(false);
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => { if (challengeId) fetchAll(); }, [challengeId]);
 
@@ -847,6 +853,10 @@ export default function ChallengeManagerPage() {
       ),
       fetch(`/api/challenges/${challengeId}/ml-workspace`).then(r => r.ok && r.json()).then(d => d && setMlData(d)),
       fetch(`/api/challenges/${challengeId}/repo-activity`).then(r => r.ok && r.json()).then(d => d?.activities && setRepoActivity(d.activities)),
+      // Only used to name the (locked) project in the edit drawer.
+      fetch('/api/projects').then(r => r.ok && r.json()).then(d =>
+        Array.isArray(d) && setProjects(d.map((p: any) => ({ id: p.uuid, name: p.title })))
+      ),
     ]);
     setLoading(false);
   };
@@ -857,6 +867,9 @@ export default function ChallengeManagerPage() {
   );
 
   const isML = challenge.type === 'ml';
+  // A closed challenge is a record: its rules and dates decided points that
+  // have already been awarded, so editing them would rewrite history.
+  const isOpen = !['completed', 'archived'].includes(status);
   const doneTasks = tasks.filter(t => ['done', 'completed'].includes(t.status)).length;
   const completion = tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0;
 
@@ -915,6 +928,15 @@ export default function ChallengeManagerPage() {
         <div>
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <StatusPicker challengeId={challengeId} status={status} onUpdate={setStatus} />
+            {isOpen && (
+              <button
+                onClick={() => setEditDrawerOpen(true)}
+                className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-xs font-medium text-white/50 transition-colors hover:border-white/20 hover:text-white/80"
+              >
+                <Pencil className="h-3 w-3" />
+                Edit
+              </button>
+            )}
             <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-xs font-medium text-white/50">
               <TypeIcon className="h-3 w-3" />
               {isML ? 'Machine Learning' : 'Code'}
@@ -986,6 +1008,18 @@ export default function ChallengeManagerPage() {
         open={docsDrawerOpen}
         onClose={() => setDocsDrawerOpen(false)}
       />
+      {editDrawerOpen && (
+        <CreateChallengeDrawer
+          open={editDrawerOpen}
+          onClose={() => setEditDrawerOpen(false)}
+          projects={projects}
+          // `status` is the live one: StatusPicker only updates that state, so
+          // challenge.status is stale after a status change and saving would
+          // silently revert it.
+          challenge={{ ...challenge, status }}
+          onCreated={() => fetchAll()}
+        />
+      )}
     </>
   );
 }
