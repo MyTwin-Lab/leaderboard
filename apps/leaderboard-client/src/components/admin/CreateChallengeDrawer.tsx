@@ -166,7 +166,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       const res = await fetch(
         isEdit ? `/api/challenges/${challenge!.uuid}` : '/api/challenges',
         {
-          method: isEdit ? 'PATCH' : 'POST',
+          method: isEdit ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
             isEdit
