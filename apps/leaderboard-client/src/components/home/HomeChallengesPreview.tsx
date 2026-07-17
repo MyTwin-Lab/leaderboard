@@ -21,7 +21,6 @@ export function HomeChallengesPreview({ challenges }: HomeChallengesPreviewProps
           key={challenge.id}
           index={i}
           challengeId={challenge.id}
-          challengeIndex={challenge.index}
           challengeTitle={challenge.title}
           challengeType={challenge.type}
           projectName={challenge.projectName}
@@ -31,8 +30,6 @@ export function HomeChallengesPreview({ challenges }: HomeChallengesPreviewProps
           isMember={false}
           isAdmin={false}
           teamMembers={challenge.teamMembers}
-          startDate={challenge.startDate}
-          endDate={challenge.endDate}
         />
       ))}
     </div>

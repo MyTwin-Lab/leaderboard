@@ -49,8 +49,8 @@ export class ChallengeRepository {
     if (validated.index !== undefined) dbData.index = validated.index;
     if (validated.title) dbData.title = validated.title;
     if (validated.status) dbData.status = validated.status;
-    if (validated.start_date) dbData.start_date = validated.start_date.toISOString().split("T")[0];
-    if (validated.end_date) dbData.end_date = validated.end_date.toISOString().split("T")[0];
+    if (validated.start_date !== undefined) dbData.start_date = validated.start_date?.toISOString().split("T")[0] ?? null;
+    if (validated.end_date !== undefined) dbData.end_date = validated.end_date?.toISOString().split("T")[0] ?? null;
     if (validated.description !== undefined) dbData.description = validated.description || null;
     if (validated.roadmap !== undefined) dbData.roadmap = validated.roadmap || null;
     if (validated.contribution_points_reward !== undefined) dbData.contribution_points_reward = validated.contribution_points_reward;

@@ -43,8 +43,8 @@ export interface Challenge {
   title: string;
   status: string;
   type: string; // 'code' | 'ml' | ...
-  start_date: Date;
-  end_date: Date;
+  start_date?: Date | null;
+  end_date?: Date | null;
   description?: string;
   roadmap?: string;
   contribution_points_reward: number;

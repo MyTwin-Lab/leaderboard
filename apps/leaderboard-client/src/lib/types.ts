@@ -65,14 +65,15 @@ export type ProjectChallengeSummary = {
   id: string;
   index: number;
   title: string;
+  description: string | null;
   status: string;
   type: string;
   rewardPool: number;
   contributionsCount: number;
   completion: number;
   teamMembers: TeamMember[];
-  startDate: string;
-  endDate: string;
+  startDate: string | null;
+  endDate: string | null;
 };
 
 export type ProjectWithChallenges = {
@@ -92,7 +93,7 @@ export type TrendingChallenge = {
   rewardPool: number;
   completion: number; // 0–100 (already multiplied)
   teamMembers: TeamMember[];
-  startDate: string; // ISO string
-  endDate: string;   // ISO string
+  startDate: string | null; // ISO string
+  endDate: string | null;   // ISO string
   recentContributions: number;
 };

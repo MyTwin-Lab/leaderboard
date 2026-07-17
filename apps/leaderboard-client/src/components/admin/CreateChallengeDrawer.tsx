@@ -24,8 +24,8 @@ export interface EditableChallenge {
   title: string;
   status: string;
   type: string;
-  start_date: string | Date;
-  end_date: string | Date;
+  start_date?: string | Date | null;
+  end_date?: string | Date | null;
   description?: string | null;
   roadmap?: string | null;
   contribution_points_reward: number;
@@ -47,7 +47,7 @@ interface CreateChallengeDrawerProps {
 }
 
 /** Date inputs need YYYY-MM-DD; the API hands back ISO strings or Dates. */
-const toDateInput = (d: string | Date | undefined): string =>
+const toDateInput = (d: string | Date | null | undefined): string =>
   d ? new Date(d).toISOString().split('T')[0] : '';
 
 const STATUS_OPTIONS = [
@@ -82,9 +82,14 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [success, setSuccess] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
-  // Focus title on open, and load the challenge being edited
+  // Fires on the false → true transition only. Callers pass a freshly spread
+  // `challenge` object, so keying this on its identity would refill the form —
+  // and wipe whatever is being typed — on every parent re-render.
+  const wasOpen = useRef(false);
   useEffect(() => {
-    if (!open) return;
+    const justOpened = open && !wasOpen.current;
+    wasOpen.current = open;
+    if (!justOpened) return;
 
     setSuccess(false);
     setError('');
@@ -129,11 +134,12 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   };
 
   const handleSubmit = async () => {
-    if (!title.trim() || !projectId || !startDate || !endDate) {
-      setError('Title, project, start date and end date are required.');
+    if (!title.trim() || !projectId) {
+      setError('Title and project are required.');
       return;
     }
-    if (new Date(endDate) <= new Date(startDate)) {
+    // Dates are optional, but an ordering that makes no sense still is one.
+    if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
       setError('End date must be after start date.');
       return;
     }
@@ -145,8 +151,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         title: title.trim(),
         status,
         type,
-        start_date: startDate,
-        end_date: endDate,
+        start_date: startDate || null,
+        end_date: endDate || null,
         description: description.trim() || undefined,
         roadmap: roadmap.trim() || undefined,
         // Without rules an ML challenge awards nothing — the service has

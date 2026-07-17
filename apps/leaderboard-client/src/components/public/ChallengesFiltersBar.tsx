@@ -31,7 +31,7 @@ export function ChallengesFiltersBar({
 }: ChallengesFiltersBarProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [projectId, setProjectId] = useState("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);

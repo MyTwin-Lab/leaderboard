@@ -18,8 +18,10 @@ const createChallengeSchema = z.object({
   title: z.string().min(1),
   status: z.string(),
   type: z.string().default('code'),
-  start_date: z.string(),
-  end_date: z.string(),
+  // Optional: a challenge can be created before its schedule is known.
+  // '' from an empty date input means "no date", same as omitting the field.
+  start_date: z.string().nullish(),
+  end_date: z.string().nullish(),
   description: z.string().optional(),
   roadmap: z.string().optional(),
   contribution_points_reward: z.number().int().nonnegative(),
@@ -77,8 +79,8 @@ export async function POST(request: NextRequest) {
     
     const challenge = await challengeRepo.create({
       ...validated,
-      start_date: new Date(validated.start_date),
-      end_date: new Date(validated.end_date),
+      start_date: validated.start_date ? new Date(validated.start_date) : null,
+      end_date: validated.end_date ? new Date(validated.end_date) : null,
       completion: 0,
     });
 

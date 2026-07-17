@@ -119,8 +119,8 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     title: row.title,
     status: row.status,
     type: row.type ?? 'code',
-    start_date: row.start_date ? new Date(row.start_date) : new Date(),
-    end_date: row.end_date ? new Date(row.end_date) : new Date(),
+    start_date: row.start_date ? new Date(row.start_date) : undefined,
+    end_date: row.end_date ? new Date(row.end_date) : undefined,
     description: row.description ?? "",
     roadmap: row.roadmap ?? "",
     contribution_points_reward: row.contribution_points_reward ?? 0,
@@ -223,8 +223,8 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenge
     title: entity.title,
     status: entity.status,
     type: entity.type ?? 'code',
-    start_date: entity.start_date.toISOString().split("T")[0], // YYYY-MM-DD
-    end_date: entity.end_date.toISOString().split("T")[0],
+    start_date: entity.start_date?.toISOString().split("T")[0] ?? null, // YYYY-MM-DD
+    end_date: entity.end_date?.toISOString().split("T")[0] ?? null,
     description: entity.description || null,
     roadmap: entity.roadmap || null,
     contribution_points_reward: entity.contribution_points_reward,

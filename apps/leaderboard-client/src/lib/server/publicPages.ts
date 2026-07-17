@@ -50,7 +50,7 @@ export async function fetchProjectsWithChallenges(
         .filter((challenge) => challenge.project_id === project.uuid)
         .filter((challenge) =>
           isAdmin ||
-          challenge.status !== 'draft' ||
+          !['draft', 'archived'].includes(challenge.status) ||
           managedProjectIds.includes(challenge.project_id)
         )
         .map((challenge) => ({
@@ -59,14 +59,15 @@ export async function fetchProjectsWithChallenges(
           // Normalize here so UI types can rely on `index: number`.
           index: challenge.index ?? 0,
           title: challenge.title,
+          description: challenge.description || null,
           status: challenge.status,
           type: challenge.type ?? 'code',
           rewardPool: challenge.contribution_points_reward ?? 0,
           contributionsCount: contributionsCountByChallenge.get(challenge.uuid) ?? 0,
           completion: challenge.completion ?? 0,
           teamMembers: teamMembersByChallenge.get(challenge.uuid) ?? [],
-          startDate: challenge.start_date.toISOString(),
-          endDate: challenge.end_date.toISOString(),
+          startDate: challenge.start_date?.toISOString() ?? null,
+          endDate: challenge.end_date?.toISOString() ?? null,
         }));
 
       return {
@@ -130,12 +131,12 @@ export async function fetchTrendingChallenges(limit: number): Promise<TrendingCh
         title: c.title,
         type: c.type ?? "code",
         projectName: project?.title ?? "Unknown project",
-        description: project?.description ?? null,
+        description: c.description || null,
         rewardPool: c.contribution_points_reward ?? 0,
         completion: Math.round((c.completion ?? 0) * 100),
         teamMembers: teamMembersByChallenge.get(c.uuid) ?? [],
-        startDate: c.start_date.toISOString(),
-        endDate: c.end_date.toISOString(),
+        startDate: c.start_date?.toISOString() ?? null,
+        endDate: c.end_date?.toISOString() ?? null,
         recentContributions: recentCountByChallenge.get(c.uuid) ?? 0,
       };
     });

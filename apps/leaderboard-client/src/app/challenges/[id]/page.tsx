@@ -24,8 +24,8 @@ interface Challenge {
   description?: string;
   status: string;
   type: string;
-  start_date: string;
-  end_date: string;
+  start_date?: string | null;
+  end_date?: string | null;
   contribution_points_reward: number;
   project_id: string;
 }
@@ -435,13 +435,17 @@ export default function ChallengeDetailPage() {
             }[challenge.status] ?? 'bg-white/20'}`} />
             {challenge.status.charAt(0).toUpperCase() + challenge.status.slice(1)}
           </span>
-          <span className="text-white/20">·</span>
-          <span className="flex items-center gap-1 text-xs text-white/40">
-            <CalendarDays className="h-3 w-3 text-primary-100/50" />
-            {formatDate(challenge.start_date, { month: 'short', day: 'numeric' })}
-            {' → '}
-            {formatDate(challenge.end_date, { month: 'short', day: 'numeric', year: 'numeric' })}
-          </span>
+          {(challenge.start_date || challenge.end_date) && (
+            <>
+              <span className="text-white/20">·</span>
+              <span className="flex items-center gap-1 text-xs text-white/40">
+                <CalendarDays className="h-3 w-3 text-primary-100/50" />
+                {challenge.start_date ? formatDate(challenge.start_date, { month: 'short', day: 'numeric' }) : '—'}
+                {' → '}
+                {challenge.end_date ? formatDate(challenge.end_date, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Title */}

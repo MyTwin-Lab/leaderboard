@@ -8,7 +8,6 @@ import type { TeamMember } from "@/lib/types";
 
 interface ChallengeCardProps {
   challengeId: string;
-  challengeIndex: number;
   challengeTitle: string;
   challengeType?: string;
   projectName: string;
@@ -18,8 +17,6 @@ interface ChallengeCardProps {
   isMember?: boolean;
   isAdmin?: boolean;
   teamMembers: TeamMember[];
-  startDate: string;
-  endDate: string;
   index?: number; // for stagger animation
   onCardClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
@@ -37,13 +34,8 @@ function ChallengeTypeBadge({ type }: { type: string }) {
   );
 }
 
-function formatDate(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
 export function ChallengeCard({
   challengeId,
-  challengeIndex,
   challengeTitle,
   challengeType,
   projectName,
@@ -53,8 +45,6 @@ export function ChallengeCard({
   isMember = false,
   isAdmin = false,
   teamMembers,
-  startDate,
-  endDate,
   index = 0,
   onCardClick,
 }: ChallengeCardProps) {
@@ -97,7 +87,7 @@ export function ChallengeCard({
             {challengeTitle}
           </h3>
           <p className="text-xs text-white/50">
-            Challenge {challengeIndex} &middot; {projectName}
+            {projectName}
           </p>
         </div>
 
@@ -144,9 +134,6 @@ export function ChallengeCard({
         <div className="flex items-center gap-3">
           <ChallengeTypeBadge type={normalizedType} />
           <TeamAvatars members={teamMembers} />
-          <span className="text-[11px] text-white/30">
-            {formatDate(startDate)} → {formatDate(endDate)}
-          </span>
         </div>
 
         <span className="flex items-center gap-1 text-xs font-semibold text-brandCP transition-all duration-200 group-hover:gap-1.5">

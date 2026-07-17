@@ -237,20 +237,18 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       {/* Section: Planning */}
       <FormSection title="Planning">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField label="Start Date" required>
+          <FormField label="Start Date">
             <input
               type="date"
-              required
               value={formData.start_date}
               onChange={set('start_date')}
               className={inputClass}
             />
           </FormField>
 
-          <FormField label="End Date" required>
+          <FormField label="End Date">
             <input
               type="date"
-              required
               value={formData.end_date}
               onChange={set('end_date')}
               className={inputClass}

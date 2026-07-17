@@ -30,15 +30,15 @@ type FlatChallenge = {
   rewardPool: number;
   completion: number;
   teamMembers: TeamMember[];
-  startDate: string;
-  endDate: string;
+  startDate: string | null;
+  endDate: string | null;
 };
 
 export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmin = false, managedProjectIds = [] }: ProjectChallengesExplorerProps) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [managerDrawerOpen, setManagerDrawerOpen] = useState(false);
   const [popup, setPopup] = useState<{ x: number; y: number; challengeId: string } | null>(null);
@@ -56,7 +56,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
           type: challenge.type,
           projectName: project.title,
           projectId: project.id,
-          description: project.description,
+          description: challenge.description,
           rewardPool: challenge.rewardPool,
           completion: Math.round(challenge.completion * 100),
           teamMembers: challenge.teamMembers,
@@ -64,7 +64,13 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
           endDate: challenge.endDate,
         }))
       )
-      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+      // Most recent first; undated challenges have no place on that axis, so
+      // they sink to the bottom rather than sorting as NaN.
+      .sort((a, b) => {
+        if (!a.startDate) return b.startDate ? 1 : 0;
+        if (!b.startDate) return -1;
+        return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+      });
   }, [projects]);
 
   const managedSet = useMemo(() => new Set(managedProjectIds), [managedProjectIds]);
@@ -148,7 +154,6 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
                 key={challenge.id}
                 index={i}
                 challengeId={challenge.id}
-                challengeIndex={challenge.index}
                 challengeTitle={challenge.title}
                 challengeType={challenge.type}
                 projectName={challenge.projectName}
@@ -158,8 +163,6 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
                 isMember={joinedSet.has(challenge.id)}
                 isAdmin={isAdmin}
                 teamMembers={challenge.teamMembers}
-                startDate={challenge.startDate}
-                endDate={challenge.endDate}
                 onCardClick={managedSet.has(challenge.projectId)
                   ? (e) => setPopup({ x: e.clientX, y: e.clientY, challengeId: challenge.id })
                   : undefined}

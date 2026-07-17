@@ -25,7 +25,7 @@ interface Challenge {
   status: string; type: string;
   roadmap?: string;
   reward_rules?: MlRewardRules | null;
-  start_date: string; end_date: string;
+  start_date?: string | null; end_date?: string | null;
   contribution_points_reward: number; completion: number;
   project_id: string;
 }
@@ -941,11 +941,15 @@ export default function ChallengeManagerPage() {
               <TypeIcon className="h-3 w-3" />
               {isML ? 'Machine Learning' : 'Code'}
             </span>
-            <span className="text-white/20">·</span>
-            <span className="flex items-center gap-1 text-xs text-white/40">
-              <CalendarDays className="h-3 w-3" />
-              {fmt(challenge.start_date, { month: 'short', day: 'numeric' })} → {fmt(challenge.end_date, { month: 'short', day: 'numeric', year: 'numeric' })}
-            </span>
+            {(challenge.start_date || challenge.end_date) && (
+              <>
+                <span className="text-white/20">·</span>
+                <span className="flex items-center gap-1 text-xs text-white/40">
+                  <CalendarDays className="h-3 w-3" />
+                  {challenge.start_date ? fmt(challenge.start_date, { month: 'short', day: 'numeric' }) : '—'} → {challenge.end_date ? fmt(challenge.end_date, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                </span>
+              </>
+            )}
           </div>
 
           <div className="flex items-start justify-between gap-4">
@@ -1008,18 +1012,19 @@ export default function ChallengeManagerPage() {
         open={docsDrawerOpen}
         onClose={() => setDocsDrawerOpen(false)}
       />
-      {editDrawerOpen && (
-        <CreateChallengeDrawer
-          open={editDrawerOpen}
-          onClose={() => setEditDrawerOpen(false)}
-          projects={projects}
-          // `status` is the live one: StatusPicker only updates that state, so
-          // challenge.status is stale after a status change and saving would
-          // silently revert it.
-          challenge={{ ...challenge, status }}
-          onCreated={() => fetchAll()}
-        />
-      )}
+      {/* Mounted unconditionally: the drawer slides in off `open`, so gating the
+          mount on it would render it already at translate-x-0 and skip the
+          animation entirely. */}
+      <CreateChallengeDrawer
+        open={editDrawerOpen}
+        onClose={() => setEditDrawerOpen(false)}
+        projects={projects}
+        // `status` is the live one: StatusPicker only updates that state, so
+        // challenge.status is stale after a status change and saving would
+        // silently revert it.
+        challenge={{ ...challenge, status }}
+        onCreated={() => fetchAll()}
+      />
     </>
   );
 }

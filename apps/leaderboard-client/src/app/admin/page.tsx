@@ -197,8 +197,10 @@ export default function AdminPage() {
         upcomingMeetings: meetings.filter((m: any) => new Date(m.start_time) > now).length,
       });
 
+      // This list is "what ends soonest": a challenge without an end date has
+      // no deadline to rank on, so it has nothing to say here.
       setActiveChallenges(
-        challenges.filter((c: any) => c.status === 'active')
+        challenges.filter((c: any) => c.status === 'active' && c.end_date)
           .sort((a: any, b: any) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime())
       );
 

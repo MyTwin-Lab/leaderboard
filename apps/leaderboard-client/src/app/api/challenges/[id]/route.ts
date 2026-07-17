@@ -11,8 +11,8 @@ const updateChallengeSchema = z.object({
   title: z.string().min(1).optional(),
   status: z.string().optional(),
   type: z.string().optional(),
-  start_date: z.string().optional(),
-  end_date: z.string().optional(),
+  start_date: z.string().nullish(),
+  end_date: z.string().nullish(),
   description: z.string().optional(),
   roadmap: z.string().optional(),
   contribution_points_reward: z.number().int().nonnegative().optional(),
@@ -67,9 +67,10 @@ export async function PUT(
     const validated = updateChallengeSchema.parse(body);
     
     const updateData: any = { ...validated };
-    if (validated.start_date) updateData.start_date = new Date(validated.start_date);
-    if (validated.end_date) updateData.end_date = new Date(validated.end_date);
-    
+    // Present but empty means "clear the date"; absent means "leave it alone".
+    if (validated.start_date !== undefined) updateData.start_date = validated.start_date ? new Date(validated.start_date) : null;
+    if (validated.end_date !== undefined) updateData.end_date = validated.end_date ? new Date(validated.end_date) : null;
+
     const challenge = await challengeRepo.update(id, updateData);
     return NextResponse.json(challenge);
   } catch (error) {
