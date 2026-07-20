@@ -14,6 +14,7 @@ import type { TeamMember } from '@/lib/types';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
 import { MLChallengeFlow } from '@/components/challenges/MLChallengeFlow';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
+import { ContributorTaskBoard, type BoardContribution } from '@/components/contributor/ContributorTaskBoard';
 
 const ML_REPO_TYPES = ['kaggle_dataset', 'kaggle_model'];
 
@@ -63,20 +64,6 @@ function formatTime(iso: string) {
 
 function durationMin(start: string, end: string) {
   return Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000);
-}
-
-const TASK_STATUS: Record<string, { dot: string; label: string; order: number }> = {
-  in_progress: { dot: 'bg-yellow-400 ring-2 ring-yellow-400/30', label: 'In progress', order: 0 },
-  todo:        { dot: 'bg-white/25',                              label: 'Todo',        order: 1 },
-  open:        { dot: 'bg-white/25',                              label: 'Open',        order: 1 },
-  scheduled:   { dot: 'bg-white/25',                              label: 'Scheduled',   order: 1 },
-  backlog:     { dot: 'bg-white/15',                              label: 'Backlog',     order: 2 },
-  done:        { dot: 'bg-green-500',                             label: 'Done',        order: 3 },
-  completed:   { dot: 'bg-green-500',                             label: 'Done',        order: 3 },
-};
-
-function taskStatusInfo(status: string) {
-  return TASK_STATUS[status] ?? { dot: 'bg-white/20', label: status, order: 2 };
 }
 
 // ─── Loading skeleton ─────────────────────────────────────────────────────
@@ -209,74 +196,6 @@ function PastMeetingRow({ meeting, onClick }: { meeting: SyncMeeting; onClick: (
   );
 }
 
-// ─── Task row ─────────────────────────────────────────────────────────────
-
-function TaskRow({
-  task,
-  isSubtask = false,
-  onAssign,
-  assigning,
-}: {
-  task: TaskWithAssignees;
-  isSubtask?: boolean;
-  onAssign: () => void;
-  assigning: boolean;
-}) {
-  const si = taskStatusInfo(task.status);
-  const isDone = task.status === 'done' || task.status === 'completed';
-  const canAssign = task.type === 'concurrent' || task.assignees.length === 0;
-
-  return (
-    <div
-      className={`group flex items-center gap-3 rounded-xl transition-all duration-200
-        hover:bg-white/[0.04]
-        ${isSubtask ? 'py-2 pl-3 pr-3' : 'py-3 px-3'}`}
-    >
-      {/* Status dot */}
-      <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${si.dot} ${task.status === 'in_progress' ? 'animate-pulse' : ''}`} />
-
-      {/* Title + description */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className={`text-sm font-medium leading-snug transition-colors ${
-          isDone ? 'text-white/35 line-through decoration-white/20' : 'text-white group-hover:text-white'
-        }`}>
-          {task.title}
-        </span>
-        {task.description && !isSubtask && (
-          <span className="mt-0.5 line-clamp-1 text-xs text-white/30">{task.description}</span>
-        )}
-      </div>
-
-      {/* Badges */}
-      <div className="flex shrink-0 items-center gap-2">
-        {task.type === 'concurrent' && (
-          <span className="hidden rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/30 sm:inline">
-            concurrent
-          </span>
-        )}
-        {task.assignees.length > 0 && (
-          <TeamAvatars members={task.assignees} maxDisplay={3} />
-        )}
-        {canAssign && (
-          <button
-            onClick={onAssign}
-            disabled={assigning || isDone}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCP/40
-              disabled:cursor-not-allowed disabled:opacity-50
-              ${isDone
-                ? 'bg-white/5 text-white/30 cursor-not-allowed'
-                : 'bg-brandCP/10 text-brandCP hover:bg-brandCP/20 hover:shadow-[0_0_12px_rgba(10,247,193,0.1)]'
-              }`}
-          >
-            {assigning ? '…' : 'Assign'}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────
 
 export default function ChallengeDetailPage() {
@@ -290,9 +209,10 @@ export default function ChallengeDetailPage() {
   const [meetings, setMeetings] = useState<SyncMeeting[]>([]);
   const [meetingsEnabled, setMeetingsEnabled] = useState(false);
   const [repoTypes, setRepoTypes] = useState<string[]>([]);
+  const [contributions, setContributions] = useState<BoardContribution[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [assigningTaskId, setAssigningTaskId] = useState<string | null>(null);
-  const [barWidth, setBarWidth] = useState(0);
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
   const [repoActivity, setRepoActivity] = useState<Record<string, any> | null>(null);
 
@@ -316,9 +236,31 @@ export default function ChallengeDetailPage() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      await Promise.all([fetchChallenge(), fetchTeam(), fetchTasks(), fetchMeetings(), fetchRepos(), fetchRepoActivity(), fetchModules()]);
+      await Promise.all([fetchChallenge(), fetchTeam(), fetchTasks(), fetchMeetings(), fetchRepos(), fetchRepoActivity(), fetchModules(), fetchContributions(), fetchMe()]);
     } catch {}
     finally { setLoading(false); }
+  };
+
+  // Silent refresh after a board mutation — no skeleton flash.
+  const reloadBoard = async () => {
+    await Promise.all([fetchTasks(), fetchContributions()]);
+  };
+
+  const fetchContributions = async () => {
+    const res = await fetch(`/api/contributions/challenge/${challengeId}`);
+    if (res.ok) {
+      const data = await res.json();
+      setContributions(Array.isArray(data) ? data : []);
+    }
+  };
+
+  const fetchMe = async () => {
+    const res = await fetch('/api/contributors/me');
+    if (res.ok) {
+      const data = await res.json();
+      setCurrentUserId(data?.user?.id ?? null);
+      setIsAdmin(data?.user?.role === 'admin');
+    }
   };
 
   const fetchChallenge = async () => {
@@ -371,21 +313,6 @@ export default function ChallengeDetailPage() {
     }
   };
 
-  const handleAssignTask = async (taskId: string) => {
-    setAssigningTaskId(taskId);
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/assign`, { method: 'POST' });
-      if (res.ok) {
-        trackOnboardingStep('assigned_task');
-        router.push(`/tasks/${taskId}`);
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to assign');
-      }
-    } catch { alert('Network error'); }
-    finally { setAssigningTaskId(null); }
-  };
-
   if (loading) return <Skeleton />;
 
   if (!challenge) {
@@ -398,10 +325,6 @@ export default function ChallengeDetailPage() {
 
   const doneTasks = tasks.filter(t => t.status === 'done' || t.status === 'completed').length;
   const completion = tasks.length === 0 ? 0 : Math.round((doneTasks / tasks.length) * 100);
-
-  const parentTasks = tasks
-    .filter(t => !t.parent_task_id)
-    .sort((a, b) => taskStatusInfo(a.status).order - taskStatusInfo(b.status).order);
 
   const upcomingMeetings = meetings
     .filter(m => ['scheduled', 'in_progress'].includes(m.status))
@@ -533,15 +456,17 @@ export default function ChallengeDetailPage() {
           label: 'Tasks',
           panel: (
             <TabTasks
+              challengeId={challengeId}
               tasks={tasks}
-              parentTasks={parentTasks}
+              contributions={contributions}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
+              onReload={reloadBoard}
               doneTasks={doneTasks}
               completion={completion}
               meetings={meetings}
               upcomingMeetings={upcomingMeetings}
               pastMeetings={pastMeetings}
-              assigningTaskId={assigningTaskId}
-              onAssign={handleAssignTask}
               router={router}
               meetingsEnabled={meetingsEnabled}
             />
@@ -569,33 +494,33 @@ export default function ChallengeDetailPage() {
 // ─── Tab: Tasks (code) ────────────────────────────────────────────────────
 
 function TabTasks({
-  tasks, parentTasks, doneTasks, completion,
-  meetings, upcomingMeetings, pastMeetings,
-  assigningTaskId, onAssign, router, meetingsEnabled,
+  challengeId, tasks, contributions, currentUserId, isAdmin, onReload,
+  doneTasks, completion,
+  meetings, upcomingMeetings, pastMeetings, router, meetingsEnabled,
 }: {
+  challengeId: string;
   tasks: TaskWithAssignees[];
-  parentTasks: TaskWithAssignees[];
+  contributions: BoardContribution[];
+  currentUserId: string | null;
+  isAdmin: boolean;
+  onReload: () => Promise<void> | void;
   doneTasks: number;
   completion: number;
   meetings: SyncMeeting[];
   upcomingMeetings: SyncMeeting[];
   pastMeetings: SyncMeeting[];
-  assigningTaskId: string | null;
-  onAssign: (id: string) => void;
   router: ReturnType<typeof import('next/navigation').useRouter>;
   meetingsEnabled: boolean;
 }) {
+  const parentCount = tasks.filter(t => !t.parent_task_id).length;
   return (
-    <div className={meetingsEnabled ? "grid gap-8 lg:grid-cols-[300px_1fr]" : ""}>
-      {/* Meetings */}
+    <div className="space-y-6">
+      {/* Meetings — placed above the board on this tab so the 3 columns keep their width */}
       {meetingsEnabled && (
-        <div className="min-w-0">
-          <MeetingsSidebar meetings={meetings} upcomingMeetings={upcomingMeetings} pastMeetings={pastMeetings} router={router} />
-        </div>
+        <MeetingsSidebar meetings={meetings} upcomingMeetings={upcomingMeetings} pastMeetings={pastMeetings} router={router} />
       )}
 
-      {/* Tasks */}
-      <div className="min-w-0 space-y-3">
+      <div className="space-y-3">
         <div className="flex items-center gap-3">
           <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
             <CheckCircle2 className="h-3.5 w-3.5 text-primary-100/35" />
@@ -611,41 +536,20 @@ function TabTasks({
           </div>
         </div>
 
-        {tasks.length === 0 ? (
+        {parentCount === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] py-12 text-center">
             <Circle className="h-7 w-7 text-white/15" />
             <p className="text-xs text-white/25">No tasks available</p>
           </div>
         ) : (
-          <div className="space-y-1">
-            {parentTasks.map((task, idx) => {
-              const subtasks = tasks
-                .filter(t => t.parent_task_id === task.uuid)
-                .sort((a, b) => taskStatusInfo(a.status).order - taskStatusInfo(b.status).order);
-              return (
-                <div key={task.uuid} className="animate-fade-up rounded-xl border border-white/[0.06] bg-white/[0.02]" style={{ animationDelay: `${idx * 40}ms` }}>
-                  <TaskRow task={task} onAssign={() => onAssign(task.uuid)} assigning={assigningTaskId === task.uuid} />
-                  {subtasks.length > 0 && (
-                    <div className="px-3 pb-1.5">
-                      <div className="flex items-center gap-2 border-t border-white/5 pt-1.5">
-                        <div className="ml-5 h-3 w-px bg-white/10" />
-                        <span className="text-[10px] text-white/25">
-                          {subtasks.filter(s => s.status === 'done' || s.status === 'completed').length}/{subtasks.length} subtasks done
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {subtasks.map((sub, si) => (
-                    <div key={sub.uuid} className="relative pl-5">
-                      <div className={`absolute left-6 top-0 w-px bg-white/[0.07] ${si === subtasks.length - 1 ? 'h-1/2' : 'h-full'}`} />
-                      <div className="absolute left-6 top-1/2 h-px w-2.5 bg-white/[0.07]" />
-                      <TaskRow task={sub} isSubtask onAssign={() => onAssign(sub.uuid)} assigning={assigningTaskId === sub.uuid} />
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
+          <ContributorTaskBoard
+            challengeId={challengeId}
+            tasks={tasks}
+            contributions={contributions}
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
+            onReload={onReload}
+          />
         )}
       </div>
     </div>
