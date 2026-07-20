@@ -9,9 +9,11 @@ interface ManagerRolePopupProps {
   y: number;
   challengeId: string;
   onClose: () => void;
+  /** Admins get the same choice, but the privileged view is the admin route. */
+  isAdmin?: boolean;
 }
 
-export function ManagerRolePopup({ x, y, challengeId, onClose }: ManagerRolePopupProps) {
+export function ManagerRolePopup({ x, y, challengeId, onClose, isAdmin = false }: ManagerRolePopupProps) {
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -44,11 +46,11 @@ export function ManagerRolePopup({ x, y, challengeId, onClose }: ManagerRolePopu
         Open as Contributor
       </button>
       <button
-        onClick={() => { onClose(); router.push(`/challenges/${challengeId}/manage`); }}
+        onClick={() => { onClose(); router.push(isAdmin ? `/admin/challenges/${challengeId}` : `/challenges/${challengeId}/manage`); }}
         className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-purple-400 transition-colors hover:bg-purple-500/[0.08] hover:text-purple-300"
       >
         <Settings className="h-4 w-4 shrink-0 text-purple-400/70" />
-        Open as Manager
+        {isAdmin ? 'Open as Admin' : 'Open as Manager'}
       </button>
     </div>
   );

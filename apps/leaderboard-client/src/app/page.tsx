@@ -15,7 +15,7 @@ const ArrowIcon = () => (
 export default async function HomePage() {
   const [leaderboardData, trendingChallenges] = await Promise.all([
     fetchLeaderboard("all"),
-    fetchTrendingChallenges(3),
+    fetchTrendingChallenges(2),
   ]);
 
   const top5 = leaderboardData.entries.slice(0, 5);

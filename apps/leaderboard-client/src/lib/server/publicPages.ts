@@ -119,25 +119,38 @@ export async function fetchTrendingChallenges(limit: number): Promise<TrendingCh
     new Map()
   );
 
-  return challenges
+  const toTrending = (c: (typeof challenges)[number]): TrendingChallenge => {
+    const project = projectsMap.get(c.project_id);
+    return {
+      id: c.uuid,
+      index: c.index ?? 0,
+      title: c.title,
+      type: c.type ?? "code",
+      projectName: project?.title ?? "Unknown project",
+      description: c.description || null,
+      rewardPool: c.contribution_points_reward ?? 0,
+      completion: Math.round((c.completion ?? 0) * 100),
+      teamMembers: teamMembersByChallenge.get(c.uuid) ?? [],
+      startDate: c.start_date?.toISOString() ?? null,
+      endDate: c.end_date?.toISOString() ?? null,
+      recentContributions: recentCountByChallenge.get(c.uuid) ?? 0,
+    };
+  };
+
+  const trending = challenges
     .filter((c) => c.status !== "draft" && recentCountByChallenge.has(c.uuid))
     .sort((a, b) => (recentCountByChallenge.get(b.uuid) ?? 0) - (recentCountByChallenge.get(a.uuid) ?? 0))
     .slice(0, limit)
-    .map((c) => {
-      const project = projectsMap.get(c.project_id);
-      return {
-        id: c.uuid,
-        index: c.index ?? 0,
-        title: c.title,
-        type: c.type ?? "code",
-        projectName: project?.title ?? "Unknown project",
-        description: c.description || null,
-        rewardPool: c.contribution_points_reward ?? 0,
-        completion: Math.round((c.completion ?? 0) * 100),
-        teamMembers: teamMembersByChallenge.get(c.uuid) ?? [],
-        startDate: c.start_date?.toISOString() ?? null,
-        endDate: c.end_date?.toISOString() ?? null,
-        recentContributions: recentCountByChallenge.get(c.uuid) ?? 0,
-      };
-    });
+    .map(toTrending);
+
+  if (trending.length > 0) return trending;
+
+  // No activity in the last 7 days → fall back to the most recently created
+  // challenges. There is no created_at column, but `index` is a serial, so a
+  // higher index means a later creation. Drafts and archived stay hidden.
+  return challenges
+    .filter((c) => !["draft", "archived"].includes(c.status))
+    .sort((a, b) => (b.index ?? 0) - (a.index ?? 0))
+    .slice(0, limit)
+    .map(toTrending);
 }

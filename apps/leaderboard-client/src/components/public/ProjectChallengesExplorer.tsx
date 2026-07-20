@@ -163,7 +163,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
                 isMember={joinedSet.has(challenge.id)}
                 isAdmin={isAdmin}
                 teamMembers={challenge.teamMembers}
-                onCardClick={managedSet.has(challenge.projectId)
+                onCardClick={(isAdmin || managedSet.has(challenge.projectId))
                   ? (e) => setPopup({ x: e.clientX, y: e.clientY, challengeId: challenge.id })
                   : undefined}
               />
@@ -198,6 +198,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
           x={popup.x}
           y={popup.y}
           challengeId={popup.challengeId}
+          isAdmin={isAdmin}
           onClose={() => setPopup(null)}
         />
       )}

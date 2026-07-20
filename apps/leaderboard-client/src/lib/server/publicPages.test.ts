@@ -100,15 +100,20 @@ describe("fetchTrendingChallenges", () => {
     expect(result).toHaveLength(2);
   });
 
-  it("returns empty array when no recent contributions exist", async () => {
+  it("falls back to the most recently created challenges when there is no recent activity", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
 
     vi.spyOn(repositories.contribution, "findAll").mockResolvedValue([
+      // Only stale activity — nothing counts as trending.
       { uuid: "old", challenge_id: "c1", user_id: "u1", submitted_at: EIGHT_DAYS_AGO, reward: 1, title: "T", type: "code" },
     ] as any);
     vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([
       { uuid: "c1", title: "C1", status: "active", type: "code", index: 1, contribution_points_reward: 100, completion: 0, project_id: "p1", start_date: new Date(), end_date: new Date() },
+      { uuid: "c2", title: "C2", status: "active", type: "code", index: 3, contribution_points_reward: 100, completion: 0, project_id: "p1", start_date: new Date(), end_date: new Date() },
+      // Higher index but a draft → must stay hidden even in the fallback.
+      { uuid: "c3", title: "C3", status: "draft", type: "code", index: 4, contribution_points_reward: 100, completion: 0, project_id: "p1", start_date: new Date(), end_date: new Date() },
+      { uuid: "c4", title: "C4", status: "active", type: "code", index: 2, contribution_points_reward: 100, completion: 0, project_id: "p1", start_date: new Date(), end_date: new Date() },
     ] as any);
     vi.spyOn(repositories.project, "findAll").mockResolvedValue([
       { uuid: "p1", title: "P", description: null, created_at: new Date() },
@@ -116,7 +121,12 @@ describe("fetchTrendingChallenges", () => {
     vi.spyOn(repositories.challengeTeam, "findAll").mockResolvedValue([] as any);
     vi.spyOn(repositories.user, "findAll").mockResolvedValue([] as any);
 
-    const result = await fetchTrendingChallenges(3);
-    expect(result).toHaveLength(0);
+    const result = await fetchTrendingChallenges(2);
+
+    // Newest first by index (draft excluded): c2 (3), c4 (2).
+    expect(result).toHaveLength(2);
+    expect(result.map(r => r.id)).toEqual(["c2", "c4"]);
+    expect(result[0].recentContributions).toBe(0);
+    expect(result.find(r => r.id === "c3")).toBeUndefined();
   });
 });
