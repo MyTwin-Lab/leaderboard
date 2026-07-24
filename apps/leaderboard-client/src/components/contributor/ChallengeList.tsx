@@ -5,6 +5,7 @@ import { formatCP } from "@/lib/formatters";
 import type { ContributorProfile } from "@/lib/types";
 import { ChevronRight, Award } from "lucide-react";
 import { ContributionRewardBreakdown } from "./ContributionRewardBreakdown";
+import { getSignalIcon } from "@/components/ui/signalIcons";
 
 interface ChallengeListProps {
   challenges: ContributorProfile["challenges"];
@@ -132,6 +133,31 @@ function ChallengeRow({
                 index={i}
               />
             ))
+          )}
+
+          {/* Slack discussion signals — aggregated chips, not a list */}
+          {challenge.discussion && challenge.discussion.signals.length > 0 && (
+            <div className="pt-2">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-white/20">
+                Discussion · <span className="text-brandCP/70">{formatCP(challenge.discussion.totalCp)} CP</span>
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {challenge.discussion.signals.map(signal => {
+                  const SignalIcon = getSignalIcon(signal.icon);
+                  return (
+                    <span
+                      key={signal.signalId}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-white/60"
+                    >
+                      <SignalIcon className="h-3 w-3 text-brandCP/70" />
+                      <span>{signal.label}</span>
+                      {signal.count > 1 && <span className="text-white/30">×{signal.count}</span>}
+                      <span className="font-semibold text-brandCP">{formatCP(signal.totalCp)} CP</span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
       </div>

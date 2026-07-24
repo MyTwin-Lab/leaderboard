@@ -20,3 +20,5 @@ export { MeetingAnalysisRepository } from "./meetingAnalysis.repo.js";
 export { OnboardingProgressRepository } from "./onboardingProgress.repo.js";
 export { AppSettingsRepository } from "./appSettings.repo.js";
 export { ChallengeDocumentRepository } from "./challengeDocument.repo.js";
+export { ChallengeSignalRepository } from "./challengeSignal.repo.js";
+export { ChallengeSlackConfigRepository } from "./challengeSlackConfig.repo.js";

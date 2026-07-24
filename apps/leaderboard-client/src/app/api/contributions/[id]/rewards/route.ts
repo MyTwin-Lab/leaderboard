@@ -20,6 +20,7 @@ const RULE_LABEL: Record<string, string> = {
   api_packaging: 'API packaging',
   reuse_dataset: 'Dataset reuse',
   reuse_model: 'Model reuse',
+  slack_signal: 'Slack signal',
 };
 
 // GET /api/contributions/[id]/rewards
@@ -55,7 +56,12 @@ export async function GET(
         .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
         .map(e => ({
           ruleKey: e.rule_key,
-          label: RULE_LABEL[e.rule_key] ?? e.rule_key,
+          // Slack signals are named by the manager — the ledger meta carries
+          // the label, unlike ML rules whose labels are static.
+          label:
+            e.rule_key === 'slack_signal' && typeof e.meta?.signal_label === 'string'
+              ? e.meta.signal_label
+              : RULE_LABEL[e.rule_key] ?? e.rule_key,
           points: e.points,
           counterparty: e.source_user_id ? nameById[e.source_user_id] ?? null : null,
           meta: e.meta ?? null,

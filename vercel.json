@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/check-meetings",
       "schedule": "*/1 * * * *"
+    },
+    {
+      "path": "/api/cron/slack-signals",
+      "schedule": "0 6 * * *"
     }
   ]
 }

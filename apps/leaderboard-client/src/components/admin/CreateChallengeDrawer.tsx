@@ -9,6 +9,7 @@ import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
 import { MlRewardRulesEditor } from '@/components/admin/MlRewardRulesEditor';
 import { ChallengeTasksEditor } from '@/components/admin/ChallengeTasksEditor';
+import { ChallengeSlackSignalsEditor } from '@/components/admin/ChallengeSlackSignalsEditor';
 import {
   DEFAULT_ML_REWARD_RULES,
   type MlRewardRules,
@@ -397,6 +398,11 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           {/* ── Tasks (code only, edit only) — independent CRUD via the tasks API ── */}
           {type === 'code' && isEdit && (
             <ChallengeTasksEditor challengeId={challenge!.uuid} open={open} />
+          )}
+
+          {/* ── Slack discussion signals (edit only, both types) — independent CRUD ── */}
+          {isEdit && (
+            <ChallengeSlackSignalsEditor challengeId={challenge!.uuid} open={open} />
           )}
 
           {/* ── GitHub repo (code only, creation only) ── */}

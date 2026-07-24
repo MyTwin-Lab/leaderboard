@@ -1,6 +1,6 @@
 import { db } from "../db/drizzle";
 import { reward_entries, contributions } from "../db/drizzle";
-import { eq, and, ne, sql, inArray } from "drizzle-orm";
+import { eq, and, ne, sql, inArray, notInArray } from "drizzle-orm";
 import { toDomainRewardEntry } from "../db/mappers";
 import type { RewardEntry } from "../domain/entities";
 import { rewardEntrySchema } from "../domain/schemas_zod";
@@ -43,12 +43,23 @@ export class RewardEntryRepository {
     return rows.map(toDomainRewardEntry);
   }
 
-  /** Somme des points déjà distribués sur un challenge — sert au calcul du reliquat. */
-  async sumByChallenge(challengeId: string): Promise<number> {
+  /**
+   * Somme des points déjà distribués sur un challenge — sert au calcul du reliquat.
+   * `excludeRuleKeys` permet d'ignorer les lignes hors pool (ex: 'slack_signal',
+   * dont la récompense fixe ne consomme pas le pool du challenge).
+   */
+  async sumByChallenge(
+    challengeId: string,
+    opts?: { excludeRuleKeys?: string[] }
+  ): Promise<number> {
+    const filters = [eq(reward_entries.challenge_id, challengeId)];
+    if (opts?.excludeRuleKeys?.length) {
+      filters.push(notInArray(reward_entries.rule_key, opts.excludeRuleKeys));
+    }
     const [row] = await db
       .select({ total: sql<number>`COALESCE(SUM(${reward_entries.points}), 0)::int` })
       .from(reward_entries)
-      .where(eq(reward_entries.challenge_id, challengeId));
+      .where(and(...filters));
     return row?.total ?? 0;
   }
 

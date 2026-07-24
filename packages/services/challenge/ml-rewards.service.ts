@@ -190,9 +190,14 @@ export class MlRewardsService {
     }
   }
 
-  /** CP encore à prendre sur le challenge. */
+  /**
+   * CP encore à prendre sur le challenge. Les récompenses de signaux Slack
+   * sont hors pool (montant fixe par signal), donc exclues du décompte.
+   */
   async remainingPool(challenge: Challenge): Promise<number> {
-    const distributed = await this.deps.rewardRepo.sumByChallenge(challenge.uuid);
+    const distributed = await this.deps.rewardRepo.sumByChallenge(challenge.uuid, {
+      excludeRuleKeys: ['slack_signal'],
+    });
     return Math.max(0, challenge.contribution_points_reward - distributed);
   }
 

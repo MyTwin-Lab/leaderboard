@@ -8,6 +8,8 @@ import {
   ChallengeTeamRepository,
   OnboardingProgressRepository,
   ChallengeDocumentRepository,
+  ChallengeSignalRepository,
+  RewardEntryRepository,
 } from "../../../../packages/database-service/repositories/index";
 
 export const repositories = {
@@ -18,6 +20,8 @@ export const repositories = {
   challengeTeam: new ChallengeTeamRepository(),
   onboardingProgress: new OnboardingProgressRepository(),
   challengeDocument: new ChallengeDocumentRepository(),
+  challengeSignal: new ChallengeSignalRepository(),
+  rewardEntry: new RewardEntryRepository(),
 };
 
 export type Repositories = typeof repositories;

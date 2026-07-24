@@ -3,9 +3,7 @@ import { Contribution, Evaluation, ToMergeContribution, EvaluateContext } from "
 import { EvaluationGridTemplate, DetailedEvaluationGridTemplate } from "../grids/index.js";
 import fs from "fs/promises";
 import path from "path";
-import { config } from "../../config/index.js";
-
-const client = new OpenAI({ apiKey: config.openai.apiKey });
+import { getClient } from "./client.js";
 
 // Helper pour vérifier si la réponse contient des tool calls
 function hasToolCalls(response: OpenAI.Responses.Response): boolean {
@@ -62,6 +60,7 @@ export async function runEvaluateAgent(
   contribution: Contribution | ToMergeContribution, 
   context: EvaluateContext
 ): Promise<Evaluation> {
+  const client = await getClient();
   const { snapshot, grid } = context;
   const workspace = snapshot.workspacePath || "";
 

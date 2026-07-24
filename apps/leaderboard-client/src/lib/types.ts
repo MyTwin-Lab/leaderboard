@@ -23,6 +23,21 @@ export type ContributorContribution = {
   submittedAt: string | null;
 };
 
+export type ContributorDiscussionSignal = {
+  signalId: string;
+  label: string;
+  /** Clé d'icône lucide (voir components/ui/signalIcons) */
+  icon: string | null;
+  count: number;
+  totalCp: number;
+};
+
+export type ContributorDiscussion = {
+  contributionId: string;
+  totalCp: number;
+  signals: ContributorDiscussionSignal[];
+};
+
 export type ContributorChallenge = {
   id: string;
   title: string;
@@ -30,6 +45,8 @@ export type ContributorChallenge = {
   reward: number;
   contributionShare: number;
   contributions: ContributorContribution[];
+  /** Signaux Slack agrégés — affichés en chips, pas dans la liste. */
+  discussion?: ContributorDiscussion;
 };
 
 export type ContributorProfile = {

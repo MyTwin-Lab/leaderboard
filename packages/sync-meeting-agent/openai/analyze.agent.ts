@@ -1,12 +1,13 @@
 import OpenAI from 'openai';
+import { getOpenAIApiKey } from '../../config/openaiCredentials.js';
 import { MeetingAnalysisContext, MeetingAnalysisResult } from '../types.js';
 import { buildAnalysisPrompt } from '../prompts.js';
 import { MeetingAnalysisResultSchema } from '../schemas.js';
 
 export async function runAnalyzeAgent(context: MeetingAnalysisContext): Promise<MeetingAnalysisResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = await getOpenAIApiKey();
   if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is not configured');
+    throw new Error('OpenAI API key is not configured (connect it in Integrations or set OPENAI_API_KEY)');
   }
 
   const openai = new OpenAI({ apiKey });

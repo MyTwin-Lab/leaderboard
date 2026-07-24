@@ -2,8 +2,10 @@ import type { Repo } from "../database-service/domain/entities.js";
 import type { ExternalConnector } from "./interfaces.js";
 import { GitHubExternalConnector } from "./implementation/Github.connector.js";
 import { KaggleConnector } from "./implementation/Kaggle.connector.js";
+import { SlackConnector } from "./implementation/Slack.connector.js";
 import { getGithubToken } from "../config/githubToken.js";
 import { getKaggleCredentials } from "../config/kaggleCredentials.js";
+import { getSlackToken } from "../config/slackCredentials.js";
 // Future: import { HuggingFaceConnector } from "./implementation/HuggingFace.connector.js";
 
 /**
@@ -16,6 +18,7 @@ export class ConnectorRegistry {
   // Exposed for tests to swap implementation
   static GitHubConnectorClass = GitHubExternalConnector;
   static KaggleConnectorClass = KaggleConnector;
+  static SlackConnectorClass = SlackConnector;
 
   /**
    * Crée un connecteur basé sur le type du repo
@@ -73,10 +76,18 @@ export class ConnectorRegistry {
         });
       }
 
-      case 'slack':
-        // Future: return new HuggingFaceConnector({ ... });
-        console.warn(`[ConnectorRegistry] Type '${repo.type}' not yet implemented for repo: ${repo.title}`);
-        return null;
+      case 'slack': {
+        const slackToken = await getSlackToken();
+        if (!slackToken) {
+          console.error('[ConnectorRegistry] No Slack token available (DB or .env)');
+          return null;
+        }
+
+        return new this.SlackConnectorClass({
+          token: slackToken,
+          channelId: repo.external_repo_id,
+        });
+      }
 
       case 'google_drive':
         // Google Drive n'est pas utilisé dans l'orchestrateur (seulement pour sync)

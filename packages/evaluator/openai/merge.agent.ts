@@ -1,10 +1,8 @@
-import { config } from "../../config/index.js";
-import OpenAI from "openai";
 import { Contribution, OldContribution, ToMergeContribution } from "../types.js";
-
-const client = new OpenAI({ apiKey: config.openai.apiKey });
+import { getClient } from "./client.js";
 
 export async function runMergeAgent(newContributions: Contribution[], oldContributions: OldContribution[]): Promise<ToMergeContribution[]> {
+    const client = await getClient();
     const prompt = `
         ROLE :
         Tu es l’agent « ContributionMergeEvaluator » du système MyTwin Leaderboard.

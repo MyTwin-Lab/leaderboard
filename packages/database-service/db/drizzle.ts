@@ -291,6 +291,37 @@ export const evaluation_grid_subcriteria = pgTable('evaluation_grid_subcriteria'
   positionIdx: index('idx_evaluation_grid_subcriteria_position').on(table.category_id, table.position),
 }));
 
+// --- CHALLENGE SIGNALS ---
+// Signaux de contribution détectables dans les canaux de discussion (Slack).
+// Chaque signal a une définition écrite (envoyée au LLM) et une récompense CP fixe.
+export const challenge_signals = pgTable("challenge_signals", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  challenge_id: uuid("challenge_id").notNull().references(() => challenges.uuid, { onDelete: "cascade" }),
+  label: varchar("label", { length: 120 }).notNull(),
+  description: text("description"),
+  reward_cp: integer("reward_cp").notNull().default(0),
+  icon: varchar("icon", { length: 32 }), // clé d'icône lucide (ex: 'lightbulb')
+  position: integer("position").default(0),
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  challengeIdIdx: index("idx_challenge_signals_challenge_id").on(table.challenge_id),
+}));
+
+// --- CHALLENGE SLACK CONFIGS ---
+// Canal Slack surveillé pour un challenge + état opérationnel du cron d'ingestion.
+// `last_ts` est le ts Slack (string décimale) du dernier message traité — jamais
+// converti en number pour ne pas perdre de précision.
+export const challenge_slack_configs = pgTable("challenge_slack_configs", {
+  challenge_id: uuid("challenge_id").primaryKey().references(() => challenges.uuid, { onDelete: "cascade" }),
+  channel_id: varchar("channel_id", { length: 32 }).notNull(),
+  channel_name: varchar("channel_name", { length: 120 }),
+  last_ts: varchar("last_ts", { length: 32 }),
+  last_run_at: timestamp("last_run_at"),
+  last_error: text("last_error"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
 // --- CHALLENGE DOCUMENTS ---
 export const challenge_documents = pgTable("challenge_documents", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
@@ -328,6 +359,22 @@ export const challengesRelations = relations(challenges, ({ one, many }) => ({
   contributions: many(contributions),
   tasks: many(tasks),
   documents: many(challenge_documents),
+  signals: many(challenge_signals),
+  slack_config: one(challenge_slack_configs),
+}));
+
+export const challengeSignalsRelations = relations(challenge_signals, ({ one }) => ({
+  challenge: one(challenges, {
+    fields: [challenge_signals.challenge_id],
+    references: [challenges.uuid],
+  }),
+}));
+
+export const challengeSlackConfigsRelations = relations(challenge_slack_configs, ({ one }) => ({
+  challenge: one(challenges, {
+    fields: [challenge_slack_configs.challenge_id],
+    references: [challenges.uuid],
+  }),
 }));
 
 export const challengeDocumentsRelations = relations(challenge_documents, ({ one }) => ({
@@ -503,6 +550,17 @@ export const app_settings = pgTable("app_settings", {
   kaggle_key_iv: varchar("kaggle_key_iv", { length: 64 }),
   kaggle_connected_at: timestamp("kaggle_connected_at"),
   kaggle_connected_by: uuid("kaggle_connected_by").references(() => users.uuid),
+  // OpenAI API key connection
+  openai_key_enc: text("openai_key_enc"),
+  openai_key_iv: varchar("openai_key_iv", { length: 64 }),
+  openai_connected_at: timestamp("openai_connected_at"),
+  openai_connected_by: uuid("openai_connected_by").references(() => users.uuid),
+  // Slack bot token connection
+  slack_token_enc: text("slack_token_enc"),
+  slack_token_iv: varchar("slack_token_iv", { length: 64 }),
+  slack_team_name: varchar("slack_team_name", { length: 255 }),
+  slack_connected_at: timestamp("slack_connected_at"),
+  slack_connected_by: uuid("slack_connected_by").references(() => users.uuid),
   modules_meetings_enabled: boolean("modules_meetings_enabled").notNull().default(true),
   modules_onboarding_enabled: boolean("modules_onboarding_enabled").notNull().default(true),
 });
@@ -630,7 +688,11 @@ export const db = drizzle(pool, {
     projectsRelations,
     reposRelations,
     challenge_documents,
+    challenge_signals,
+    challenge_slack_configs,
   challengeDocumentsRelations,
+  challengeSignalsRelations,
+  challengeSlackConfigsRelations,
   challengesRelations,
     challengeReposRelations,
     challengeTeamsRelations,

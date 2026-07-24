@@ -65,6 +65,9 @@ export async function fetchContributorProfile(userId: string): Promise<Contribut
   const projectById = new Map(projects.map((project) => [project.uuid, project]));
 
   const aggregatedMap = new Map<string, ContributorProfile["challenges"][number]>();
+  // CP gagnés via les signaux Slack, par challenge. Ils comptent dans le total
+  // du contributeur mais pas dans sa part du pool (ils sont hors pool).
+  const discussionCpByChallenge = new Map<string, number>();
 
   for (const contribution of contributions) {
     const challenge = challengeById.get(contribution.challenge_id);
@@ -86,22 +89,64 @@ export async function fetchContributorProfile(userId: string): Promise<Contribut
       aggregatedMap.set(challenge.uuid, entry);
     }
 
-    entry.contributions.push({
-      id: contribution.uuid,
-      title: contribution.title,
-      description: contribution.description ?? null,
-      reward,
-      submittedAt: contribution.submitted_at ? contribution.submitted_at.toISOString() : null,
-    });
+    if (contribution.type === "discussion") {
+      // Affichée en chips agrégées, pas dans la liste des contributions.
+      entry.discussion = { contributionId: contribution.uuid, totalCp: reward, signals: [] };
+      discussionCpByChallenge.set(challenge.uuid, reward);
+    } else {
+      entry.contributions.push({
+        id: contribution.uuid,
+        title: contribution.title,
+        description: contribution.description ?? null,
+        reward,
+        submittedAt: contribution.submitted_at ? contribution.submitted_at.toISOString() : null,
+      });
+    }
 
     entry.reward += reward;
+    const poolReward = entry.reward - (discussionCpByChallenge.get(challenge.uuid) ?? 0);
     entry.contributionShare =
       challenge.contribution_points_reward > 0
-        ? entry.reward / challenge.contribution_points_reward
+        ? poolReward / challenge.contribution_points_reward
         : 0;
   }
 
   const aggregated = Array.from(aggregatedMap.values());
+
+  // Détail des signaux par challenge : agrégat du ledger (count + CP par
+  // signal), libellés depuis les définitions du challenge, avec repli sur le
+  // label historisé dans le ledger si le signal a été supprimé depuis.
+  await Promise.all(
+    aggregated
+      .filter((entry) => entry.discussion)
+      .map(async (entry) => {
+        const [ledgerEntries, definitions] = await Promise.all([
+          repositories.rewardEntry.findByContribution(entry.discussion!.contributionId),
+          repositories.challengeSignal.findByChallenge(entry.id),
+        ]);
+        const definitionById = new Map(definitions.map((d) => [d.uuid, d]));
+
+        const bySignal = new Map<string, { label: string; icon: string | null; count: number; totalCp: number }>();
+        for (const ledgerEntry of ledgerEntries) {
+          if (ledgerEntry.rule_key !== "slack_signal") continue;
+          const signalId = String(ledgerEntry.meta?.signal_id ?? "unknown");
+          const definition = definitionById.get(signalId);
+          const existing = bySignal.get(signalId) ?? {
+            label: definition?.label ?? String(ledgerEntry.meta?.signal_label ?? "Signal"),
+            icon: definition?.icon ?? null,
+            count: 0,
+            totalCp: 0,
+          };
+          existing.count += 1;
+          existing.totalCp += ledgerEntry.points;
+          bySignal.set(signalId, existing);
+        }
+
+        entry.discussion!.signals = [...bySignal.entries()]
+          .map(([signalId, s]) => ({ signalId, ...s }))
+          .sort((a, b) => b.totalCp - a.totalCp);
+      })
+  );
   const totalCP = aggregated.reduce((acc, item) => acc + item.reward, 0);
 
   // Calculate global rank

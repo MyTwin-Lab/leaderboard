@@ -53,6 +53,30 @@ export interface Challenge {
   reward_rules?: MlRewardRules | null; // ML uniquement
 }
 
+/** Signal de contribution détectable dans un canal de discussion (Slack). */
+export interface ChallengeSignal {
+  uuid: string;
+  challenge_id: string; // FK -> challenges.uuid
+  label: string;
+  description?: string;
+  reward_cp: number;
+  icon?: string | null; // clé d'icône lucide (ex: 'lightbulb')
+  position: number;
+  created_at: Date;
+}
+
+/** Canal Slack surveillé pour un challenge + état du cron d'ingestion. */
+export interface ChallengeSlackConfig {
+  challenge_id: string; // PK, FK -> challenges.uuid
+  channel_id: string;
+  channel_name?: string | null;
+  last_ts?: string | null; // ts Slack (string décimale), curseur exclusif
+  last_run_at?: Date | null;
+  last_error?: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export interface ChallengeDocument {
   uuid: string;
   challenge_id: string; // FK -> challenges.uuid
@@ -94,7 +118,8 @@ export type RewardRuleKey =
   | 'beat_best'
   | 'api_packaging'
   | 'reuse_dataset'
-  | 'reuse_model';
+  | 'reuse_model'
+  | 'slack_signal';
 
 export interface RewardEntryMeta {
   metricValue?: number;
@@ -357,6 +382,13 @@ export interface AppSettings {
   kaggle_connected_at?: Date | null;
   kaggle_connected_by?: string | null;
   kaggle_is_connected: boolean; // derived: !!kaggle_key_enc in DB
+  openai_connected_at?: Date | null;
+  openai_connected_by?: string | null;
+  openai_is_connected: boolean; // derived: !!openai_key_enc in DB
+  slack_team_name?: string | null;
+  slack_connected_at?: Date | null;
+  slack_connected_by?: string | null;
+  slack_is_connected: boolean; // derived: !!slack_token_enc in DB
   modules_meetings_enabled: boolean;
   modules_onboarding_enabled: boolean;
 }

@@ -14,6 +14,8 @@ import { ProfileEditForm } from "@/components/contributor/ProfileEditForm";
 import { ClickableAvatarUpload } from "@/components/contributor/ClickableAvatarUpload";
 import { GitHubConnectionCard } from "@/components/contributor/GitHubConnectionCard";
 import { KaggleConnectionCard } from "@/components/contributor/KaggleConnectionCard";
+import { SlackConnectionCard } from "@/components/contributor/SlackConnectionCard";
+import { OpenAIConnectionCard } from "@/components/contributor/OpenAIConnectionCard";
 import { AppSettingsRepository, OnboardingProgressRepository } from "@packages/database-service/repositories";
 import { isValidThemeKey, DEFAULT_THEME_KEY } from "@/lib/themes";
 import { ModulesSettings } from "@/components/contributor/ModulesSettings";
@@ -103,14 +105,16 @@ export default async function ContributorSelfPage({
     tabs.push({
       label: "Integrations",
       panel: (
-        <div className="mx-auto max-w-lg py-2 space-y-8">
+        <div className="mx-auto max-w-lg lg:max-w-4xl py-2 space-y-8">
           <div>
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
               Integrations
             </h2>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
               <GitHubConnectionCard initialError={githubError} />
               <KaggleConnectionCard />
+              <SlackConnectionCard />
+              <OpenAIConnectionCard />
             </div>
           </div>
         </div>

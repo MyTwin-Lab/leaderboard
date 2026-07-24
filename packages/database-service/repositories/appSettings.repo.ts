@@ -95,6 +95,71 @@ export class AppSettingsRepository {
       .onConflictDoUpdate({ target: app_settings.id, set });
   }
 
+  async updateOpenAIConnection(data: {
+    openai_key_enc: string;
+    openai_key_iv: string;
+    openai_connected_by: string;
+  }): Promise<void> {
+    const set = {
+      openai_key_enc: data.openai_key_enc,
+      openai_key_iv: data.openai_key_iv,
+      openai_connected_at: new Date(),
+      openai_connected_by: data.openai_connected_by,
+      updated_at: new Date(),
+    };
+    await db
+      .insert(app_settings)
+      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .onConflictDoUpdate({ target: app_settings.id, set });
+  }
+
+  async clearOpenAIConnection(): Promise<void> {
+    await db
+      .update(app_settings)
+      .set({
+        openai_key_enc: null,
+        openai_key_iv: null,
+        openai_connected_at: null,
+        openai_connected_by: null,
+        updated_at: new Date(),
+      })
+      .where(eq(app_settings.id, 1));
+  }
+
+  async updateSlackConnection(data: {
+    slack_token_enc: string;
+    slack_token_iv: string;
+    slack_team_name: string;
+    slack_connected_by: string;
+  }): Promise<void> {
+    const set = {
+      slack_token_enc: data.slack_token_enc,
+      slack_token_iv: data.slack_token_iv,
+      slack_team_name: data.slack_team_name,
+      slack_connected_at: new Date(),
+      slack_connected_by: data.slack_connected_by,
+      updated_at: new Date(),
+    };
+    await db
+      .insert(app_settings)
+      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .onConflictDoUpdate({ target: app_settings.id, set });
+  }
+
+  async clearSlackConnection(): Promise<void> {
+    await db
+      .update(app_settings)
+      .set({
+        slack_token_enc: null,
+        slack_token_iv: null,
+        slack_team_name: null,
+        slack_connected_at: null,
+        slack_connected_by: null,
+        updated_at: new Date(),
+      })
+      .where(eq(app_settings.id, 1));
+  }
+
   async clearKaggleConnection(): Promise<void> {
     await db
       .update(app_settings)

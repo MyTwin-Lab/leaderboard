@@ -47,6 +47,28 @@ export const challengeSchema = z.object({
   reward_rules: mlRewardRulesSchema.nullish(),
 });
 
+export const challengeSignalSchema = z.object({
+  uuid: z.string().uuid(),
+  challenge_id: z.string().uuid(),
+  label: z.string().min(1).max(120),
+  description: z.string().optional(),
+  reward_cp: z.number().int().nonnegative(),
+  icon: z.string().max(32).nullish(),
+  position: z.number().int().nonnegative().default(0),
+  created_at: z.coerce.date(),
+});
+
+export const challengeSlackConfigSchema = z.object({
+  challenge_id: z.string().uuid(),
+  channel_id: z.string().min(1).max(32),
+  channel_name: z.string().max(120).nullish(),
+  last_ts: z.string().max(32).nullish(),
+  last_run_at: z.coerce.date().nullish(),
+  last_error: z.string().nullish(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+});
+
 export const contributionSchema = z.object({
   uuid: z.string().uuid(),
   title: z.string(),
@@ -73,6 +95,7 @@ export const rewardRuleKeySchema = z.enum([
   'api_packaging',
   'reuse_dataset',
   'reuse_model',
+  'slack_signal',
 ]);
 
 export const rewardEntrySchema = z.object({

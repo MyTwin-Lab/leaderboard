@@ -27,6 +27,8 @@ import {
   onboarding_progress,
   app_settings,
   challenge_documents,
+  challenge_signals,
+  challenge_slack_configs,
   reward_entries,
 } from "./drizzle.js";
 import { parseMlRewardRules } from "../domain/mlRewardRules.js";
@@ -38,6 +40,8 @@ import type {
   ChallengeRepoRole,
   ChallengeTeam,
   ChallengeDocument,
+  ChallengeSignal,
+  ChallengeSlackConfig,
   User,
   Contribution,
   RefreshToken,
@@ -647,6 +651,52 @@ export function toDbChallengeDocument(
 }
 
 // ============================================================
+// CHALLENGE SIGNALS & SLACK CONFIG MAPPERS
+// ============================================================
+
+type DbChallengeSignal = InferSelectModel<typeof challenge_signals>;
+type DbChallengeSlackConfig = InferSelectModel<typeof challenge_slack_configs>;
+
+export function toDomainChallengeSignal(row: DbChallengeSignal): ChallengeSignal {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challenge_id,
+    label: row.label,
+    description: row.description ?? undefined,
+    reward_cp: row.reward_cp ?? 0,
+    icon: row.icon ?? null,
+    position: row.position ?? 0,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbChallengeSignal(
+  entity: Omit<ChallengeSignal, "uuid" | "created_at">
+): typeof challenge_signals.$inferInsert {
+  return {
+    challenge_id: entity.challenge_id,
+    label: entity.label,
+    description: entity.description || null,
+    reward_cp: entity.reward_cp,
+    icon: entity.icon || null,
+    position: entity.position ?? 0,
+  };
+}
+
+export function toDomainChallengeSlackConfig(row: DbChallengeSlackConfig): ChallengeSlackConfig {
+  return {
+    challenge_id: row.challenge_id,
+    channel_id: row.channel_id,
+    channel_name: row.channel_name ?? null,
+    last_ts: row.last_ts ?? null,
+    last_run_at: row.last_run_at ?? null,
+    last_error: row.last_error ?? null,
+    created_at: new Date(row.created_at ?? Date.now()),
+    updated_at: new Date(row.updated_at ?? Date.now()),
+  };
+}
+
+// ============================================================
 // APP SETTINGS MAPPERS
 // ============================================================
 
@@ -665,6 +715,13 @@ export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>):
     kaggle_connected_at: row.kaggle_connected_at ?? null,
     kaggle_connected_by: row.kaggle_connected_by ?? null,
     kaggle_is_connected: !!row.kaggle_key_enc,
+    openai_connected_at: row.openai_connected_at ?? null,
+    openai_connected_by: row.openai_connected_by ?? null,
+    openai_is_connected: !!row.openai_key_enc,
+    slack_team_name: row.slack_team_name ?? null,
+    slack_connected_at: row.slack_connected_at ?? null,
+    slack_connected_by: row.slack_connected_by ?? null,
+    slack_is_connected: !!row.slack_token_enc,
     modules_meetings_enabled: row.modules_meetings_enabled ?? true,
     modules_onboarding_enabled: row.modules_onboarding_enabled ?? true,
   };
