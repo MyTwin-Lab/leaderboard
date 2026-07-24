@@ -27,9 +27,13 @@ Variables it validates:
 - `JWT_SECRET` — required, must be 32+ characters
 - `JWT_ACCESS_EXPIRY` / `JWT_REFRESH_EXPIRY` — optional (defaults: `15m` / `7d`)
 - `OPENAI_API_KEY` — required in full prod mode
-- `GITHUB_TOKEN`, `GITHUB_WEBHOOK_SECRET` — optional
+- `GITHUB_TOKEN` — optional (static fallback token)
+- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_OAUTH_REDIRECT_URI` / `GITHUB_TOKEN_ENCRYPTION_KEY` — optional (in-app GitHub OAuth connection, see [`github-setup.md`](./github-setup.md))
+- `KAGGLE_USERNAME` / `KAGGLE_KEY` — optional (fallback Kaggle credentials, see [`admin-settings.md`](./admin-settings.md))
+- `SLACK_BOT_TOKEN` — optional (fallback Slack bot token, see [`admin-settings.md`](./admin-settings.md))
 - `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` / `GOOGLE_OAUTH_REDIRECT_URI` — required (used for login via Google OAuth)
 - Other `GOOGLE_*` — Google Workspace / Drive credentials (optional, for sync meetings and connectors)
+- `CRON_SECRET` — optional (secures the meeting-polling cron endpoint)
 - `OTEL_*` — observability config (optional)
 
 **Key file:** `packages/config/index.ts`
@@ -48,7 +52,7 @@ What it provides:
 - **Repositories** (`repositories/`) — one repository per domain area, with typed CRUD and query methods
 
 Repositories available:
-`project`, `repo`, `challenge`, `challengeRepos`, `challengeTeam`, `user`, `contribution`, `task`, `taskAssignee`, `taskWorkspace`, `evaluationGrids`, `evaluationRuns`, `evaluationRunContributions`, `syncMeeting`, `meetingParticipant`, `meetingAnalysis`, `onboardingProgress`, `refreshToken`
+`project`, `repo`, `challenge`, `challengeRepos`, `challengeTeam`, `challengeDocument`, `challengeSignal`, `challengeSlackConfig`, `user`, `contribution`, `rewardEntry`, `task`, `taskAssignee`, `taskWorkspace`, `evaluationGrids`, `evaluationRuns`, `evaluationRunContributions`, `syncMeeting`, `meetingParticipant`, `meetingAnalysis`, `onboardingProgress`, `refreshToken`, `appSettings`
 
 **Key file:** `packages/database-service/db/drizzle.ts`
 
@@ -57,18 +61,20 @@ Repositories available:
 ## `packages/evaluator`
 
 **Optional** — requires `OPENAI_API_KEY`
-**Purpose:** AI scoring engine. Takes a contribution (metadata + code snapshot) and a grid, and returns a structured evaluation with per-criterion scores and a global score (0–100).
+**Purpose:** AI scoring engine for code challenges, plus the pure scoring functions behind ML challenge rewards.
 
 The evaluator exposes one active agent:
 - **Evaluate** (`openai/evaluate.agent.ts`) — scores a contribution against a grid (0–9 per criterion, aggregated to 0–100)
 
 Scoring grids (in `grids/`):
 - `code.grid.ts` — technical quality, architecture, security, maintainability, documentation, impact
-- `model.grid.ts` — ML model contributions
+- `model.grid.ts` — kept but currently unused (see [`ml-rewards.md`](./ml-rewards.md) — Kaggle models are scored from their metric, not by this grid)
 - `dataset.grid.ts` — dataset contributions
 - `docs.grid.ts` — documentation contributions
 
 Each agent call is wrapped with 3-retry logic (1-second backoff).
+
+`reward.ts` distributes a fixed pool proportionally at challenge close (code challenges). `ml-reward.ts` computes live, absolute point awards for ML challenges (caps, metric normalization, lead bonus, reuse deductions) — see [`ml-rewards.md`](./ml-rewards.md).
 
 > The package also contains `openai/identify.agent.ts` and `openai/merge.agent.ts` from the old challenge-level pipeline — these are **no longer used**.
 
@@ -78,16 +84,20 @@ Each agent call is wrapped with 3-retry logic (1-second backoff).
 
 ## `packages/connectors`
 
-**Optional** — requires GitHub/Google credentials
+**Optional** — requires GitHub/Kaggle/Google credentials
 **Purpose:** Fetches raw content from external data sources. All connectors implement a common `ExternalConnector` interface.
 
 Available connectors:
-- **GitHub** — fetch commits, file contents, repository metadata via Octokit
+- **GitHub** — fetch commits, file contents, repository metadata, and live activity (commits/PRs/reviews/branches) via Octokit
+- **Kaggle** — fetch dataset metadata and versioned model metrics (AUC/F1/accuracy) via the Kaggle API
 - **Google Drive** — list and read files from a Drive folder via OAuth2
+- **Slack** — fetch channel messages (with a `ts` cursor), resolve author profiles/emails, and list public channels via the Slack Web API — see [`slack-signals.md`](./slack-signals.md)
 
-Interface methods: `connect()`, `testConnection()`, `fetchItems()`, `fetchItemContent()`, `disconnect()`
+Interface methods: `connect()`, `testConnection()`, `fetchItems()`, `fetchItemContent()`, `fetchRepoActivity()` (GitHub/Kaggle only), `disconnect()`
 
-**Key files:** `packages/connectors/github/`, `packages/connectors/google-drive/`
+GitHub, Kaggle and Slack credentials can come from an admin-connected account (encrypted, stored in `app_settings`) or fall back to `.env` — see [`admin-settings.md`](./admin-settings.md).
+
+**Key files:** `packages/connectors/github/`, `packages/connectors/kaggle/`, `packages/connectors/google-drive/`
 
 ---
 
@@ -97,18 +107,19 @@ Interface methods: `connect()`, `testConnection()`, `fetchItems()`, `fetchItemCo
 **Purpose:** Business logic and orchestration that combines database access, connectors, and the evaluator. The app calls these services from Route Handlers rather than calling the lower-level packages directly.
 
 Key services:
-- **`task_evaluation/task-evaluation.service.ts`** — main evaluation pipeline: task context → commits → snapshot → score → upsert contribution
+- **`task_evaluation/task-evaluation.service.ts`** — main evaluation pipeline: task context → commits → snapshot → score → upsert contribution (code challenges only)
 - **`task_evaluation/task-context.service.ts`** — loads the task, its parent challenge, assignees, and workspace branches
 - **`challenge.service.ts`** — challenge CRUD and state transitions
-- **`rewards.service.ts`** — distributes CP across contributors based on evaluation scores
+- **`rewards.service.ts`** — distributes CP across contributors based on evaluation scores (code challenges)
+- **`challenge/ml-rewards.service.ts`** — orchestrates ML challenge scoring and the point ledger; **`challenge/artifactUrl.ts`** and **`challenge/lineage.ts`** support reuse detection — see [`ml-rewards.md`](./ml-rewards.md)
 - **`google-auth.service.ts`** — manages Google OAuth2 tokens (used for login and Google integrations)
 - **`google-calendar.service.ts`** — creates and manages Google Calendar events
 - **`google-meet.service.ts`** — provisions Google Meet links
 - **`evaluation-grid.service.ts`** — CRUD for evaluation grids stored in the DB
-- **`webhook.service.ts`** — handles incoming GitHub webhooks
 - **`sync-meeting/`** — full sync meeting lifecycle (creation → polling → ingestion → analysis)
+- **`slack/`** — daily Slack signal ingestion: `slack-signals.service.ts` (per-challenge cursor, author resolution, LLM detection, ledger writes) and `cron-slack-signals.ts` (loops over configured challenges) — see [`slack-signals.md`](./slack-signals.md)
 
-> `challenge-context.service.ts` and `sync-evaluation.service.ts` are still in the codebase but are **no longer used** — they belonged to the old challenge-level identify/merge/evaluate pipeline.
+> `challenge-context.service.ts` and `sync-evaluation.service.ts` are still in the codebase but are **no longer used** — they belonged to the old challenge-level identify/merge/evaluate pipeline. `webhook.service.ts` also remains but is orphaned: the `POST /api/webhooks/github` route that used to call it has been removed, so nothing in the app invokes it anymore.
 
 ---
 
@@ -143,6 +154,21 @@ Output schema (validated with Zod):
 - Contribution signals extracted (who did what)
 
 **Key file:** `packages/sync-meeting-agent/meeting-analyzer.ts`
+
+---
+
+## `packages/slack-signal-agent`
+
+**Optional** — requires `OPENAI_API_KEY` + a connected Slack bot
+**Purpose:** AI agent that detects the contribution signals defined on a challenge inside a batch of Slack messages. Receives the challenge context, the participants (already resolved by email), the signal definitions, and the messages; returns per-message detections attributed to participants.
+
+Output schema (validated with Zod, plus post-parse guards):
+- One detection per (signal, message, user) triple: `signal_id`, `user_id`, `message_ts`, `justification`
+- Detections with unknown signal/user/message identifiers are dropped
+
+See [`slack-signals.md`](./slack-signals.md) for the full pipeline.
+
+**Key file:** `packages/slack-signal-agent/openai/detect.agent.ts`
 
 ---
 

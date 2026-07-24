@@ -42,6 +42,11 @@ Create a root `.env` file:
 DATABASE_URL=postgresql://leaderboard_user:leaderboard_password@localhost:5432/mytwin_leaderboard
 JWT_SECRET=replace-with-a-32+char-secret-at-least
 
+# Required — Google OAuth (used for login, see docs/google-setup.md)
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/api/google-auth/callback
+
 # Optional (only needed for connectors / evaluator / API usage)
 OPENAI_API_KEY=
 GITHUB_TOKEN=
@@ -50,7 +55,13 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_REFRESH_TOKEN=
 GOOGLE_REDIRECT_URI=
 GOOGLE_FOLDER_ID=
+
+# Optional — only needed for ML challenges (Kaggle), see docs/admin-settings.md
+KAGGLE_USERNAME=
+KAGGLE_KEY=
 ```
+
+See [`docs/getting-started.md`](./docs/getting-started.md) for the full list of optional env vars (GitHub OAuth connection, sync meetings, observability).
 
 Then copy it for the Next.js app:
 
@@ -218,6 +229,8 @@ GitHub will ask you to authorize the app. The account must be an **owner or admi
 - All connectors (`ConnectorRegistry`) automatically use the database token when available, falling back to `GITHUB_TOKEN` in `.env` if not connected.
 - Admins can disconnect at any time from the same Appearance tab; connectors immediately revert to the `.env` fallback.
 - The token is never returned raw in any API response.
+
+Kaggle accounts (used for ML challenges) can be connected the same way, from the same Appearance tab. See [`docs/admin-settings.md`](./docs/admin-settings.md) for both, and [`docs/github-setup.md`](./docs/github-setup.md) for registering the GitHub OAuth App itself.
 
 ## Troubleshooting
 

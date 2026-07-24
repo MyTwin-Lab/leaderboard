@@ -46,9 +46,18 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/api/google-auth/callback
 # Optional — only needed for AI evaluation
 OPENAI_API_KEY=
 
-# Optional — only needed for GitHub integration
+# Optional — only needed for GitHub integration (static token option — see github-setup.md)
 GITHUB_TOKEN=
-GITHUB_WEBHOOK_SECRET=
+
+# Optional — only needed for the in-app GitHub OAuth connection (see github-setup.md)
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/api/github-oauth/callback
+GITHUB_TOKEN_ENCRYPTION_KEY=
+
+# Optional — only needed for Kaggle (ML challenges) if not connected via the UI
+KAGGLE_USERNAME=
+KAGGLE_KEY=
 
 # Optional — only needed for Google Drive connector
 GOOGLE_CLIENT_ID=
@@ -60,6 +69,9 @@ GOOGLE_FOLDER_ID=
 GOOGLE_WORKSPACE_SERVICE_ACCOUNT_EMAIL=
 GOOGLE_WORKSPACE_SERVICE_ACCOUNT_KEY=
 GOOGLE_WORKSPACE_ADMIN_EMAIL=
+
+# Optional — secures the meeting-polling cron endpoint
+CRON_SECRET=
 
 # Optional — observability (Grafana Cloud)
 OTEL_EXPORTER_OTLP_ENDPOINT=

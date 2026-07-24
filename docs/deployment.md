@@ -131,6 +131,34 @@ GOOGLE_OAUTH_REDIRECT_URI=...
 CRON_SECRET=...
 ```
 
+Optional, only if you want the in-app GitHub OAuth connection, Kaggle-backed ML challenges, or Slack contribution signals (see [`admin-settings.md`](./admin-settings.md)):
+```env
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+GITHUB_OAUTH_REDIRECT_URI=...
+GITHUB_TOKEN_ENCRYPTION_KEY=...
+KAGGLE_USERNAME=...
+KAGGLE_KEY=...
+SLACK_BOT_TOKEN=...
+```
+
+---
+
+## Cron jobs
+
+Two endpoints must be hit on a schedule, both secured by `Authorization: Bearer $CRON_SECRET`:
+
+| Endpoint | Schedule | Purpose |
+|----------|----------|---------|
+| `/api/cron/check-meetings` | every minute | Detect completed meetings and trigger analysis |
+| `/api/cron/slack-signals` | daily | Detect Slack contribution signals (see [`slack-signals.md`](./slack-signals.md)) |
+
+On **Vercel**, `vercel.json` declares both crons and nothing else is needed. On **Scalingo / PM2**, there is no built-in scheduler: use the Scalingo Scheduler addon, a system crontab, or an external service (e.g. cron-job.org) to `curl` the endpoints:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/slack-signals
+```
+
 ---
 
 ## Observability

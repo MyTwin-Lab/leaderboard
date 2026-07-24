@@ -57,30 +57,46 @@ When the access token expires, the client calls `POST /api/auth/refresh`. The se
 
 ## Route protection
 
-The middleware at `apps/leaderboard-client/src/middleware.ts` checks the `access_token` cookie on every request.
+The proxy at `apps/leaderboard-client/src/proxy.ts` (Next.js middleware, runs at the Edge) checks the `access_token` cookie on every request.
 
 | Path | Who can access |
 |------|----------------|
 | `/admin/**` | `admin` role only |
 | `/contributors/me` | `admin` or `contributor` |
+| `/challenges/**` | `admin` or `contributor` |
 | `/api/google-auth/**` | Public (OAuth flow) |
 | `/api/auth/refresh` | Cookie (any authenticated user) |
 | `/api/auth/logout` | Cookie (any authenticated user) |
 | `GET /api/**` (most) | Public or authenticated depending on route |
-| `POST/PUT/DELETE /api/**` | Generally requires `admin` role |
+| `POST/PUT/DELETE /api/**` | Generally requires `admin` role, with a few named exceptions (self-assigning a task, joining a challenge, submitting ML work, editing your own profile, and the project-manager actions below) |
+
+Since the proxy runs at the Edge, it cannot query the database — it only checks the JWT (role, user ID). Anything that depends on database state (e.g. "is this user the manager of this project?") is checked inside the route handler itself, not the proxy.
 
 ---
 
 ## Roles
 
-Roles are stored in `users.role` and set when the user is created.
+Roles are stored in `users.role` and set when the user is created. There are only two:
 
 | Role | Description |
 |------|-------------|
-| `admin` | Full access — manage challenges, tasks, contributions, users, evaluation grids, trigger evaluations |
+| `admin` | Full access — manage challenges, tasks, contributions, users, evaluation grids, trigger evaluations, app-wide settings (theme, integrations, module toggles) |
 | `contributor` | View leaderboard and profile, participate in onboarding, work on tasks |
 
 New users registered via Google OAuth get the `contributor` role by default. Admins must be promoted manually in the database.
+
+### Project managers (not a role)
+
+A contributor can additionally be set as the **manager** of one or more projects (`projects.manager_id`, assigned by an admin in `/admin/projects`). This is a per-project relationship, not a value of `users.role` — a manager's `role` stays `contributor`.
+
+Being the manager of a project's parent grants extra access to that project's challenges, without admin access anywhere else:
+
+- Edit challenge details and status
+- Create sync meetings
+- Add/remove challenge documents
+- Create or update repos linked to their project
+
+Managers cannot open `/admin/**`, create or delete challenges, or manage users. They access their challenges through a dedicated `/challenges/[id]/manage` view (separate from the public `/challenges/[id]` page contributors see). See [`challenges-and-tasks.md`](./challenges-and-tasks.md) for how this fits into the challenge workflow.
 
 ---
 
@@ -107,7 +123,8 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/api/google-auth/callback
 | File | Purpose |
 |------|---------|
 | `apps/leaderboard-client/src/lib/auth.ts` | JWT sign/verify helpers, cookie helpers |
-| `apps/leaderboard-client/src/middleware.ts` | Route protection middleware |
+| `apps/leaderboard-client/src/proxy.ts` | Route protection (Next.js middleware, Edge runtime) |
+| `apps/leaderboard-client/src/lib/server/managerAuth.ts` | `isManagerOfChallenge()` — resolves project-manager status for a route handler |
 | `apps/leaderboard-client/src/app/api/google-auth/authorize/route.ts` | Redirects to Google consent screen |
 | `apps/leaderboard-client/src/app/api/google-auth/callback/route.ts` | Handles OAuth callback, creates/links user, issues JWT |
 | `apps/leaderboard-client/src/app/api/auth/refresh/route.ts` | Token refresh handler |

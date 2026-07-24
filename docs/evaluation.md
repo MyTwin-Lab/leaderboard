@@ -15,6 +15,8 @@ Triggered via: `POST /api/tasks/:id/evaluate`
 
 Can be called by an admin or the contributor assigned to the task.
 
+> This pipeline only applies to `type: 'code'` challenges — tasks only exist on code challenges. `type: 'ml'` challenges (datasets, models, packaging) use a separate, live reward system with no AI-scored "evaluation run" step in the same sense — see [`ml-rewards.md`](./ml-rewards.md).
+
 ---
 
 ## Pipeline
@@ -93,6 +95,19 @@ After evaluation, CP rewards are computed from the contribution score and the ch
 Formula: `contributor_reward = (contributor_score / total_challenge_scores) × reward_pool`
 
 The result is written to `contributions.reward`.
+
+---
+
+## Reviewing past evaluation runs
+
+Every sync/evaluation triggers an `evaluation_runs` record (trigger type, time window, status, error details if it failed). Admins can browse and retry these from the admin panel:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/evaluation-runs` | List runs, filterable by challenge and status. Admin. |
+| `GET` | `/api/evaluation-runs/:id` | Get a single run's detail. |
+| `DELETE` | `/api/evaluation-runs/:id` | Delete a run record. |
+| `POST` | `/api/evaluation-runs/:id/retry` | Re-run the evaluation for that run's challenge. Admin. |
 
 ---
 

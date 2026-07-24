@@ -8,7 +8,7 @@ Sync meetings are team synchronization meetings that are **created directly from
 
 ## What it does
 
-1. An admin creates a sync meeting from the app — this provisions a Google Calendar event with a Google Meet link for the team.
+1. An admin, or the manager of the challenge's project, creates a sync meeting from the app — this provisions a Google Calendar event with a Google Meet link for the team.
 2. The team meets using that Google Meet link.
 3. After the meeting, the system (via cron or manual trigger) detects that the meeting has ended and ingests the content.
 4. The AI analysis agent processes the meeting and produces a structured report.
@@ -18,7 +18,7 @@ Sync meetings are team synchronization meetings that are **created directly from
 ## Full flow
 
 ```
-Admin creates meeting in app
+Admin or project manager creates meeting in app
         ↓
 Google Calendar event created (via service account)
 Google Meet link provisioned
@@ -91,6 +91,12 @@ The request must include the header:
 ```
 Authorization: Bearer your-secret-value
 ```
+
+---
+
+## Hiding the meetings module
+
+An admin can hide the meetings sidebar from challenge pages instance-wide, from the Modules tab in `/contributors/me` — see [`admin-settings.md`](./admin-settings.md). This only affects visibility; meetings can still be created and accessed directly.
 
 ---
 
