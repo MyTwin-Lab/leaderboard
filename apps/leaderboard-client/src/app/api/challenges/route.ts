@@ -28,6 +28,8 @@ const createChallengeSchema = z.object({
   project_id: z.string().uuid(),
   github_repo: z.string().optional(),
   reward_rules: mlRewardRulesSchema.nullish(),
+  source_challenge_id: z.string().uuid().optional(),
+  cp_per_validation: z.number().int().positive().optional(),
 });
 
 // GET /api/challenges - Liste tous les challenges
@@ -76,12 +78,34 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
-    
+
+    if (validated.type === 'validation') {
+      if (!validated.source_challenge_id) {
+        return NextResponse.json({ error: 'source_challenge_id is required for validation challenges' }, { status: 400 });
+      }
+      if (!validated.cp_per_validation) {
+        return NextResponse.json({ error: 'cp_per_validation is required for validation challenges' }, { status: 400 });
+      }
+      const source = await challengeRepo.findById(validated.source_challenge_id);
+      if (!source || source.type !== 'ml') {
+        return NextResponse.json({ error: 'source_challenge_id must reference an ML challenge' }, { status: 400 });
+      }
+      const allChallenges = await challengeRepo.findAll();
+      const alreadyLinked = allChallenges.some(
+        c => c.type === 'validation' && c.source_challenge_id === validated.source_challenge_id
+      );
+      if (alreadyLinked) {
+        return NextResponse.json({ error: 'This ML challenge already has a validation challenge' }, { status: 409 });
+      }
+    }
+
     const challenge = await challengeRepo.create({
       ...validated,
       start_date: validated.start_date ? new Date(validated.start_date) : null,
       end_date: validated.end_date ? new Date(validated.end_date) : null,
       completion: 0,
+      source_challenge_id: validated.type === 'validation' ? validated.source_challenge_id : null,
+      cp_per_validation: validated.type === 'validation' ? validated.cp_per_validation : null,
     });
 
     // Extract owner/repo slug from a GitHub URL or plain slug
@@ -100,6 +124,8 @@ export async function POST(request: NextRequest) {
     // ML repos carry an explicit role: the model step has two repos (Kaggle +
     // GitHub) and both are typed 'github'/'kaggle_model', so the type alone can
     // no longer tell the model's code repo from the API packaging one.
+    // Validation challenges never own repos of their own — they reference an
+    // existing ML challenge's submissions instead.
     const repoDefinitions: {
       title: string;
       type: string;
@@ -113,7 +139,9 @@ export async function POST(request: NextRequest) {
             { title: `${validated.title} — Model Code`, type: 'github',         role: 'model_code' },
             { title: `${validated.title} — API`,        type: 'github',         role: 'api'        },
           ]
-        : [{ title: `${validated.title} — Code`, type: 'github', external_repo_id: githubSlug }];
+        : validated.type === 'validation'
+          ? []
+          : [{ title: `${validated.title} — Code`, type: 'github', external_repo_id: githubSlug }];
 
     await Promise.all(
       repoDefinitions.map(async ({ title, type, role, external_repo_id }) => {
