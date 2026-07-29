@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { BrainCircuit, Code2 } from "lucide-react";
+import { BrainCircuit, Code2, ShieldCheck } from "lucide-react";
 import { TeamAvatars } from "../ui/TeamAvatars";
 import type { TeamMember } from "@/lib/types";
 
@@ -21,15 +21,17 @@ interface ChallengeCardProps {
   onCardClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
+const CHALLENGE_TYPE_BADGE: Record<string, { icon: typeof Code2; label: string }> = {
+  ml: { icon: BrainCircuit, label: 'ML' },
+  validation: { icon: ShieldCheck, label: 'Validation' },
+};
+
 function ChallengeTypeBadge({ type }: { type: string }) {
-  const isML = type === 'ml';
+  const { icon: Icon, label } = CHALLENGE_TYPE_BADGE[type] ?? { icon: Code2, label: 'Code' };
   return (
     <span className="flex items-center gap-1 text-[11px] text-white/30">
-      {isML
-        ? <BrainCircuit className="h-3 w-3" />
-        : <Code2 className="h-3 w-3" />
-      }
-      {isML ? 'ML' : 'Code'}
+      <Icon className="h-3 w-3" />
+      {label}
     </span>
   );
 }

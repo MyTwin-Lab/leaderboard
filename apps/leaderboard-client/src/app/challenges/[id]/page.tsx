@@ -13,6 +13,7 @@ import {
 import type { TeamMember } from '@/lib/types';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
 import { MLChallengeFlow } from '@/components/challenges/MLChallengeFlow';
+import { ValidationChallengeFlow } from '@/components/challenges/ValidationChallengeFlow';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { ContributorTaskBoard, type BoardContribution } from '@/components/contributor/ContributorTaskBoard';
 
@@ -217,6 +218,7 @@ export default function ChallengeDetailPage() {
   const [repoActivity, setRepoActivity] = useState<Record<string, any> | null>(null);
 
   const isML = challenge?.type === 'ml' || repoTypes.some(t => ML_REPO_TYPES.includes(t));
+  const isValidation = challenge?.type === 'validation';
 
   useEffect(() => {
     if (challengeId) {
@@ -403,7 +405,7 @@ export default function ChallengeDetailPage() {
             <span className="text-sm font-semibold text-brandCP">CP</span>
           </div>
 
-          {!isML && (
+          {!isML && !isValidation && (
             <>
               <div className="h-6 w-px bg-primary-100/12" />
 
@@ -430,8 +432,8 @@ export default function ChallengeDetailPage() {
           </div>
         </div>
 
-        {/* Progress bar — hidden for ML challenges */}
-        {!isML && (
+        {/* Progress bar — hidden for ML and validation challenges */}
+        {!isML && !isValidation && (
           <div className="mt-4 h-1 w-full max-w-sm overflow-hidden rounded-full bg-white/8">
             <div
               className="h-full rounded-full bg-gradient-to-r from-brandCP/60 to-brandCP transition-[width] duration-700 ease-out"
@@ -442,7 +444,12 @@ export default function ChallengeDetailPage() {
       </div>
 
       {/* ── Tabs ─────────────────────────────────────────── */}
-      <ContributorTabs tabs={isML ? [
+      <ContributorTabs tabs={isValidation ? [
+        {
+          label: 'Validate',
+          panel: <ValidationChallengeFlow challengeId={challengeId} />,
+        },
+      ] : isML ? [
         {
           label: 'Submission',
           panel: <TabMLSubmission challengeId={challengeId} meetings={meetings} upcomingMeetings={upcomingMeetings} pastMeetings={pastMeetings} router={router} meetingsEnabled={meetingsEnabled} />,
