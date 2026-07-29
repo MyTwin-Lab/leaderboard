@@ -171,7 +171,7 @@ export class ValidationChallengeService {
 
   private async callEndpointDefault(url: string, file: ValidationFile): Promise<EndpointCallResponse> {
     const form = new FormData();
-    form.append("file", new Blob([file.buffer], { type: file.mimeType }), file.filename);
+    form.append("file", new Blob([new Uint8Array(file.buffer)], { type: file.mimeType }), file.filename);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
