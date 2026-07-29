@@ -95,13 +95,21 @@ export async function PATCH(
 
     const { id: challengeId } = await params;
     const body = await request.json();
-    const { repo_id, workspace_url } = body;
+    const { repo_id, workspace_url, live_endpoint_url } = body;
 
     if (!repo_id || typeof repo_id !== 'string') {
       return NextResponse.json({ error: 'repo_id is required' }, { status: 400 });
     }
-    if (workspace_url !== null && (typeof workspace_url !== 'string' || !workspace_url.trim())) {
+    const hasWorkspaceUrl = Object.prototype.hasOwnProperty.call(body, 'workspace_url');
+    const hasEndpointUrl = Object.prototype.hasOwnProperty.call(body, 'live_endpoint_url');
+    if (!hasWorkspaceUrl && !hasEndpointUrl) {
+      return NextResponse.json({ error: 'workspace_url or live_endpoint_url is required' }, { status: 400 });
+    }
+    if (hasWorkspaceUrl && workspace_url !== null && (typeof workspace_url !== 'string' || !workspace_url.trim())) {
       return NextResponse.json({ error: 'workspace_url must be a non-empty string or null' }, { status: 400 });
+    }
+    if (hasEndpointUrl && live_endpoint_url !== null && (typeof live_endpoint_url !== 'string' || !live_endpoint_url.trim())) {
+      return NextResponse.json({ error: 'live_endpoint_url must be a non-empty string or null' }, { status: 400 });
     }
 
     const existing = await challengeRepoRepo.findByChallengeAndRepo(challengeId, repo_id);
@@ -109,25 +117,56 @@ export async function PATCH(
       return NextResponse.json({ error: 'Repo not found for this challenge' }, { status: 404 });
     }
 
-    const existingMeta = (existing.workspace_meta as Record<string, unknown>) ?? {};
-    const existingUserUrls = (existingMeta.userUrls as Record<string, string>) ?? {};
+    let current = existing;
 
-    // null = remove the user's URL (reset step)
-    const updatedUserUrls = { ...existingUserUrls };
-    if (workspace_url === null) {
-      delete updatedUserUrls[session.userId];
-    } else {
-      updatedUserUrls[session.userId] = workspace_url.trim();
+    if (hasWorkspaceUrl) {
+      const existingMeta = (current.workspace_meta as Record<string, unknown>) ?? {};
+      const existingUserUrls = (existingMeta.userUrls as Record<string, string>) ?? {};
+
+      // null = remove the user's URL (reset step)
+      const updatedUserUrls = { ...existingUserUrls };
+      if (workspace_url === null) {
+        delete updatedUserUrls[session.userId];
+      } else {
+        updatedUserUrls[session.userId] = workspace_url.trim();
+      }
+
+      const updatedMeta = { ...existingMeta, userUrls: updatedUserUrls };
+
+      current = (await challengeRepoRepo.updateWorkspace(challengeId, repo_id, {
+        workspace_meta: updatedMeta,
+      })) ?? current;
     }
 
-    const updatedMeta = { ...existingMeta, userUrls: updatedUserUrls };
+    if (hasEndpointUrl && existing.role === 'api') {
+      const existingMeta = (current.workspace_meta as Record<string, unknown>) ?? {};
+      const existingEndpoints = (existingMeta.userEndpoints as Record<string, string>) ?? {};
 
-    const updated = await challengeRepoRepo.updateWorkspace(challengeId, repo_id, {
-      workspace_meta: updatedMeta,
-    });
+      const updatedEndpoints = { ...existingEndpoints };
+      if (live_endpoint_url === null) {
+        delete updatedEndpoints[session.userId];
+      } else {
+        updatedEndpoints[session.userId] = live_endpoint_url.trim();
+      }
+
+      const updatedMeta = { ...existingMeta, userEndpoints: updatedEndpoints };
+      current = (await challengeRepoRepo.updateWorkspace(challengeId, repo_id, {
+        workspace_meta: updatedMeta,
+      })) ?? current;
+
+      const challengeContribsForEndpoint = await contributionRepo.findByChallenge(challengeId);
+      const contributionForEndpoint = challengeContribsForEndpoint.find(
+        c => c.user_id === session.userId && c.type === 'api_packaging'
+      );
+      if (contributionForEndpoint) {
+        await contributionRepo.update(contributionForEndpoint.uuid, {
+          live_endpoint_url: live_endpoint_url === null ? '' : live_endpoint_url.trim(),
+        });
+      }
+    }
 
     // Create or update the contribution backing this step
-    if (workspace_url !== null && existing.role) {
+    if (hasWorkspaceUrl && workspace_url !== null && existing.role) {
       const cfg = ROLE_CONFIG[existing.role];
       if (cfg) {
         const url = workspace_url.trim();
@@ -190,7 +229,7 @@ export async function PATCH(
       }
     }
 
-    return NextResponse.json({ repo: updated });
+    return NextResponse.json({ repo: current });
   } catch (error) {
     console.error('Error updating ML workspace:', error);
     return NextResponse.json({ error: 'Failed to update ML workspace' }, { status: 500 });
