@@ -1,6 +1,7 @@
 import { config } from "../../config/index.js";
 import "dotenv/config";
 import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial, real, index, uniqueIndex, boolean } from "drizzle-orm/pg-core";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -32,7 +33,7 @@ export const challenges = pgTable("challenges", {
   index: serial("index"),
   title: varchar("title", { length: 255 }).notNull(),
   status: varchar("status", { length: 100 }).notNull(),
-  type: varchar("type", { length: 50 }).default("code"), // 'code' | 'ml' | ...
+  type: varchar("type", { length: 50 }).default("code"), // 'code' | 'ml' | 'validation'
   start_date: date("start_date"),
   end_date: date("end_date"),
   description: text("description"),
@@ -41,6 +42,12 @@ export const challenges = pgTable("challenges", {
   completion: real("completion").default(0),
   project_id: uuid("project_id").references(() => projects.uuid, { onDelete: "cascade" }),
   reward_rules: json("reward_rules"), // ML challenges only — see domain/mlRewardRules.ts
+  // Validation challenges only: the ML challenge this one validates. 1:1,
+  // enforced at the service layer (a source challenge can back at most one).
+  source_challenge_id: uuid("source_challenge_id").references((): AnyPgColumn => challenges.uuid, { onDelete: "cascade" }),
+  // Validation challenges only: fixed CP a validator earns per first-time
+  // (validator, target) validation. Locked after creation.
+  cp_per_validation: integer("cp_per_validation"),
 }, (table) => ({
   projectIdIdx: index("idx_challenges_project_id").on(table.project_id),
   statusIdx: index("idx_challenges_status").on(table.status),
@@ -108,6 +115,11 @@ export const contributions = pgTable("contributions", {
   // URL normalisée de l'artefact soumis (Kaggle/GitHub). Indexée: c'est la clé
   // de détection de réutilisation entre contributeurs d'un même challenge.
   artifact_url: varchar("artifact_url", { length: 500 }),
+  // Deployed API endpoint for an `api_packaging` contribution — distinct from
+  // `artifact_url` (the GitHub packaging repo). Set via the ML workspace's
+  // API packaging step. Only contributions with this set can be exposed on a
+  // validation challenge.
+  live_endpoint_url: varchar("live_endpoint_url", { length: 500 }),
   // pending | running | done | failed | skipped_reuse
   evaluation_status: varchar("evaluation_status", { length: 20 }),
   submitted_at: timestamp("submitted_at").defaultNow().notNull(),
@@ -137,6 +149,36 @@ export const reward_entries = pgTable("reward_entries", {
   challengeIdIdx: index("idx_reward_entries_challenge_id").on(table.challenge_id),
   userIdIdx: index("idx_reward_entries_user_id").on(table.user_id),
   contributionIdIdx: index("idx_reward_entries_contribution_id").on(table.contribution_id),
+}));
+
+// --- VALIDATION_TARGETS ---
+// What an admin exposed on a validation challenge: one row per api_packaging
+// contribution selected for manual testing.
+export const validation_targets = pgTable("validation_targets", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  validation_challenge_id: uuid("validation_challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  contribution_id: uuid("contribution_id").references(() => contributions.uuid, { onDelete: "cascade" }).notNull(),
+  position: integer("position").default(0),
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  challengeIdIdx: index("idx_validation_targets_challenge_id").on(table.validation_challenge_id),
+  uniqueTargetIdx: uniqueIndex("idx_validation_targets_unique").on(table.validation_challenge_id, table.contribution_id),
+}));
+
+// --- VALIDATION_ATTEMPTS ---
+// One row the first time a validator successfully validates a given target.
+// No file, no response body — just enough to dedupe CP and audit who tested
+// what. The unique index is the actual dedupe guarantee under races.
+export const validation_attempts = pgTable("validation_attempts", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  validation_challenge_id: uuid("validation_challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  contribution_id: uuid("contribution_id").references(() => contributions.uuid, { onDelete: "cascade" }).notNull(),
+  validator_user_id: uuid("validator_user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  challengeIdIdx: index("idx_validation_attempts_challenge_id").on(table.validation_challenge_id),
+  validatorIdx: index("idx_validation_attempts_validator_id").on(table.validator_user_id),
+  uniqueAttemptIdx: uniqueIndex("idx_validation_attempts_unique").on(table.validation_challenge_id, table.contribution_id, table.validator_user_id),
 }));
 
 // --- TASKS ---
