@@ -90,10 +90,13 @@ function makeDeps(over: Partial<ValidationRunDeps> = {}): ValidationRunDeps {
     },
     rewardRepo: {
       sumByChallenge: vi.fn(async () => entries.reduce((s, e) => s + e.points, 0)),
-      create: vi.fn(async (entity) => {
-        const row: RewardEntry = { uuid: `re-${entries.length + 1}`, created_at: new Date(), ...entity } as RewardEntry;
-        entries.push(row);
-        return row;
+      createManyAndSyncRewards: vi.fn(async (drafts) => {
+        const rows: RewardEntry[] = drafts.map((entity: any) => {
+          const row: RewardEntry = { uuid: `re-${entries.length + 1}`, created_at: new Date(), ...entity } as RewardEntry;
+          entries.push(row);
+          return row;
+        });
+        return rows;
       }),
     },
     callEndpoint: vi.fn(async () => ({ status: 200, contentType: "application/json", body: Buffer.from('{"label":"cat"}') })),
@@ -116,7 +119,7 @@ describe("ValidationChallengeService.validate", () => {
     expect(result.status).toBe(200);
     expect(result.cpAwarded).toBe(5);
     expect(result.alreadyValidated).toBe(false);
-    expect(deps.rewardRepo.create).toHaveBeenCalledTimes(1);
+    expect(deps.rewardRepo.createManyAndSyncRewards).toHaveBeenCalledTimes(1);
     expect(deps.attemptRepo.create).toHaveBeenCalledTimes(1);
   });
 
@@ -129,7 +132,7 @@ describe("ValidationChallengeService.validate", () => {
 
     expect(second.cpAwarded).toBe(0);
     expect(second.alreadyValidated).toBe(true);
-    expect(deps.rewardRepo.create).toHaveBeenCalledTimes(1); // still just the first call
+    expect(deps.rewardRepo.createManyAndSyncRewards).toHaveBeenCalledTimes(1); // still just the first call
   });
 
   it("awards nothing when the proxied call fails (non-2xx)", async () => {
@@ -142,7 +145,7 @@ describe("ValidationChallengeService.validate", () => {
 
     expect(result.status).toBe(500);
     expect(result.cpAwarded).toBe(0);
-    expect(deps.rewardRepo.create).not.toHaveBeenCalled();
+    expect(deps.rewardRepo.createManyAndSyncRewards).not.toHaveBeenCalled();
   });
 
   it("clamps the award to whatever remains in the pool", async () => {

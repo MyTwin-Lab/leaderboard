@@ -57,7 +57,10 @@ export class ValidationAttemptRepository {
         .returning();
       return toDomainValidationAttempt(row);
     } catch (error: any) {
-      if (error?.code === POSTGRES_UNIQUE_VIOLATION) return null;
+      // drizzle-orm wraps the raw pg error in a DrizzleQueryError — the actual
+      // code lives on .cause, not on the wrapper itself.
+      const code = error?.code ?? error?.cause?.code;
+      if (code === POSTGRES_UNIQUE_VIOLATION) return null;
       throw error;
     }
   }

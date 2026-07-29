@@ -44,7 +44,7 @@ export interface ValidationRunDeps {
     create: (entity: { validation_challenge_id: string; contribution_id: string; validator_user_id: string }) => Promise<unknown>;
   };
   contributionRepo: Pick<ContributionRepository, "findById" | "findByChallenge" | "create" | "update">;
-  rewardRepo: Pick<RewardEntryRepository, "sumByChallenge" | "create">;
+  rewardRepo: Pick<RewardEntryRepository, "sumByChallenge" | "createManyAndSyncRewards">;
   callEndpoint: (url: string, file: ValidationFile) => Promise<EndpointCallResponse>;
 }
 
@@ -124,14 +124,17 @@ export class ValidationChallengeService {
         });
         if (attempt) {
           const validatorContribution = await this.findOrCreateValidatorContribution(challenge, validatorUserId);
-          await this.deps.rewardRepo.create({
+          // createManyAndSyncRewards (not a bare insert) — it recomputes
+          // contributions.reward from the ledger in the same transaction, so
+          // the cache never drifts from what the rows actually sum to.
+          await this.deps.rewardRepo.createManyAndSyncRewards([{
             challenge_id: validationChallengeId,
             user_id: validatorUserId,
             contribution_id: validatorContribution.uuid,
             rule_key: "validation",
             points: grant,
             meta: { targetContributionId: contributionId },
-          });
+          }]);
           cpAwarded = grant;
         } else {
           raceLost = true;
