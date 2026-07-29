@@ -8,10 +8,11 @@
 
 ### Challenge types
 
-A challenge has a `type`: `code` (the default) or `ml`.
+A challenge has a `type`: `code` (the default), `ml`, or `validation`.
 
 - **`code`** challenges work as described in this document — tasks, assignees, workspaces, and the task-evaluation pipeline in [`evaluation.md`](./evaluation.md).
 - **`ml`** challenges are for dataset/model/packaging work. They have **no tasks at all** — contributors submit directly through a dedicated ML workspace flow, scored and rewarded live. See [`ml-rewards.md`](./ml-rewards.md) for that entire flow; it does not follow the task-based model described below.
+- **`validation`** challenges have no tasks and no repos of their own — they link 1:1 to an existing `ml` challenge (`source_challenge_id`) and let contributors manually test its submitted API packagings by dropping a file and seeing the live output. See [`validation-challenges.md`](./validation-challenges.md).
 
 ---
 
