@@ -30,6 +30,8 @@ import {
   challenge_signals,
   challenge_slack_configs,
   reward_entries,
+  validation_targets,
+  validation_attempts,
 } from "./drizzle.js";
 import { parseMlRewardRules } from "../domain/mlRewardRules.js";
 import type {
@@ -42,6 +44,8 @@ import type {
   ChallengeDocument,
   ChallengeSignal,
   ChallengeSlackConfig,
+  ValidationTarget,
+  ValidationAttempt,
   User,
   Contribution,
   RefreshToken,
@@ -131,6 +135,8 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     completion: row.completion ?? 0,
     project_id: row.project_id ?? "",
     reward_rules: parseMlRewardRules(row.reward_rules),
+    source_challenge_id: row.source_challenge_id ?? null,
+    cp_per_validation: row.cp_per_validation ?? null,
   };
 }
 
@@ -181,6 +187,7 @@ export function toDomainContribution(row: DbContribution): Contribution {
     challenge_id: row.challenge_id ?? "",
     task_id: row.task_id ?? undefined,
     artifact_url: row.artifact_url ?? undefined,
+    live_endpoint_url: row.live_endpoint_url ?? undefined,
     evaluation_status: (row.evaluation_status as ContributionEvaluationStatus) ?? undefined,
     submitted_at: new Date(row.submitted_at),
   };
@@ -235,6 +242,8 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenge
     completion: entity.completion ?? 0,
     project_id: entity.project_id || null,
     reward_rules: entity.reward_rules ?? null,
+    source_challenge_id: entity.source_challenge_id ?? null,
+    cp_per_validation: entity.cp_per_validation ?? null,
   };
 }
 
@@ -261,6 +270,7 @@ export function toDbContribution(entity: Omit<Contribution, "uuid">): typeof con
     challenge_id: entity.challenge_id || null,
     task_id: entity.task_id || null,
     artifact_url: entity.artifact_url || null,
+    live_endpoint_url: entity.live_endpoint_url || null,
     evaluation_status: entity.evaluation_status ?? null,
     submitted_at: entity.submitted_at,
   };
@@ -680,6 +690,49 @@ export function toDbChallengeSignal(
     reward_cp: entity.reward_cp,
     icon: entity.icon || null,
     position: entity.position ?? 0,
+  };
+}
+
+type DbValidationTarget = InferSelectModel<typeof validation_targets>;
+type DbValidationAttempt = InferSelectModel<typeof validation_attempts>;
+
+export function toDomainValidationTarget(row: DbValidationTarget): ValidationTarget {
+  return {
+    uuid: row.uuid,
+    validation_challenge_id: row.validation_challenge_id,
+    contribution_id: row.contribution_id,
+    position: row.position ?? 0,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbValidationTarget(
+  entity: Omit<ValidationTarget, "uuid" | "created_at">
+): typeof validation_targets.$inferInsert {
+  return {
+    validation_challenge_id: entity.validation_challenge_id,
+    contribution_id: entity.contribution_id,
+    position: entity.position ?? 0,
+  };
+}
+
+export function toDomainValidationAttempt(row: DbValidationAttempt): ValidationAttempt {
+  return {
+    uuid: row.uuid,
+    validation_challenge_id: row.validation_challenge_id,
+    contribution_id: row.contribution_id,
+    validator_user_id: row.validator_user_id,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbValidationAttempt(
+  entity: Omit<ValidationAttempt, "uuid" | "created_at">
+): typeof validation_attempts.$inferInsert {
+  return {
+    validation_challenge_id: entity.validation_challenge_id,
+    contribution_id: entity.contribution_id,
+    validator_user_id: entity.validator_user_id,
   };
 }
 
