@@ -51,6 +51,8 @@ export interface Challenge {
   completion: number;
   project_id: string; // FK -> projects.uuid
   reward_rules?: MlRewardRules | null; // ML uniquement
+  source_challenge_id?: string | null; // Validation uniquement — le challenge ML validé
+  cp_per_validation?: number | null;   // Validation uniquement — CP fixe par validation
 }
 
 /** Signal de contribution détectable dans un canal de discussion (Slack). */
@@ -105,6 +107,7 @@ export interface Contribution {
   challenge_id: string; // FK -> challenges.uuid
   task_id?: string;     // FK -> tasks.uuid
   artifact_url?: string;
+  live_endpoint_url?: string; // api_packaging uniquement — endpoint déployé
   evaluation_status?: ContributionEvaluationStatus;
   submitted_at: Date;
 }
@@ -119,7 +122,8 @@ export type RewardRuleKey =
   | 'api_packaging'
   | 'reuse_dataset'
   | 'reuse_model'
-  | 'slack_signal';
+  | 'slack_signal'
+  | 'validation';
 
 export interface RewardEntryMeta {
   metricValue?: number;
@@ -139,6 +143,26 @@ export interface RewardEntry {
   points: number; // négatif pour un prélèvement
   source_user_id?: string;
   meta?: RewardEntryMeta;
+  created_at: Date;
+}
+
+// --- VALIDATION CHALLENGES ---
+
+/** Une soumission api_packaging exposée pour validation manuelle. */
+export interface ValidationTarget {
+  uuid: string;
+  validation_challenge_id: string; // FK -> challenges.uuid
+  contribution_id: string;         // FK -> contributions.uuid (la soumission api_packaging)
+  position: number;
+  created_at: Date;
+}
+
+/** Trace qu'un validateur a déjà été payé pour une cible donnée. */
+export interface ValidationAttempt {
+  uuid: string;
+  validation_challenge_id: string; // FK -> challenges.uuid
+  contribution_id: string;         // FK -> contributions.uuid (la cible validée)
+  validator_user_id: string;       // FK -> users.uuid
   created_at: Date;
 }
 

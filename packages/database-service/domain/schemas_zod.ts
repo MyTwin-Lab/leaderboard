@@ -45,6 +45,8 @@ export const challengeSchema = z.object({
   completion: z.number().int().nonnegative().default(0),
   project_id: z.string().uuid(),
   reward_rules: mlRewardRulesSchema.nullish(),
+  source_challenge_id: z.string().uuid().nullish(),
+  cp_per_validation: z.number().int().nonnegative().nullish(),
 });
 
 export const challengeSignalSchema = z.object({
@@ -81,6 +83,7 @@ export const contributionSchema = z.object({
   challenge_id: z.string().uuid(),
   task_id: z.string().uuid().optional(),
   artifact_url: z.string().max(500).optional(),
+  live_endpoint_url: z.string().max(500).optional(),
   evaluation_status: z
     .enum(['pending', 'running', 'done', 'failed', 'skipped_reuse'])
     .optional(),
@@ -96,6 +99,7 @@ export const rewardRuleKeySchema = z.enum([
   'reuse_dataset',
   'reuse_model',
   'slack_signal',
+  'validation',
 ]);
 
 export const rewardEntrySchema = z.object({
@@ -107,6 +111,22 @@ export const rewardEntrySchema = z.object({
   points: z.number().int(),
   source_user_id: z.string().uuid().optional(),
   meta: z.record(z.string(), z.any()).optional(),
+  created_at: z.coerce.date(),
+});
+
+export const validationTargetSchema = z.object({
+  uuid: z.string().uuid(),
+  validation_challenge_id: z.string().uuid(),
+  contribution_id: z.string().uuid(),
+  position: z.number().int().nonnegative().default(0),
+  created_at: z.coerce.date(),
+});
+
+export const validationAttemptSchema = z.object({
+  uuid: z.string().uuid(),
+  validation_challenge_id: z.string().uuid(),
+  contribution_id: z.string().uuid(),
+  validator_user_id: z.string().uuid(),
   created_at: z.coerce.date(),
 });
 
