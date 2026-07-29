@@ -5,8 +5,9 @@ import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/c
 import { TaskList } from './TaskList';
 import { TaskForm } from './TaskForm';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
-import { Plus, Code2, BrainCircuit } from 'lucide-react';
+import { Plus, Code2, BrainCircuit, ShieldCheck } from 'lucide-react';
 import { MlRewardRulesEditor } from './MlRewardRulesEditor';
+import { ValidationTargetsEditor } from './ValidationTargetsEditor';
 import { DEFAULT_ML_REWARD_RULES, type MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
 import type { Challenge, Project, Task } from '../../../../../packages/database-service/domain/entities';
 
@@ -34,6 +35,10 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     challenge?.reward_rules ?? DEFAULT_ML_REWARD_RULES
   );
 
+  const [sourceChallengeId, setSourceChallengeId] = useState((challenge as any)?.source_challenge_id ?? '');
+  const [cpPerValidation, setCpPerValidation] = useState((challenge as any)?.cp_per_validation ?? 5);
+  const [mlChallenges, setMlChallenges] = useState<{ id: string; title: string }[]>([]);
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
@@ -48,6 +53,18 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       fetchTasks();
       fetchChallengeRepos();
     }
+  }, [challenge?.uuid]);
+
+  // Only needed to populate the source-challenge picker when creating a new
+  // validation challenge — editing never touches this field (locked).
+  useEffect(() => {
+    if (challenge?.uuid) return;
+    fetch('/api/challenges')
+      .then(res => res.ok ? res.json() : [])
+      .then((all: any[]) => setMlChallenges(
+        (Array.isArray(all) ? all : []).filter(c => c.type === 'ml').map(c => ({ id: c.uuid, title: c.title }))
+      ))
+      .catch(() => {});
   }, [challenge?.uuid]);
 
   const fetchTasks = async () => {
@@ -123,9 +140,14 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     e.preventDefault();
     // Reward rules are meaningless on code challenges — send null so a type
     // switch does not leave stale ML rules behind on the record.
+    // source_challenge_id / cp_per_validation are creation-only (locked after,
+    // like the pool/project) — only sent when creating a new challenge.
     onSubmit({
       ...formData,
       reward_rules: formData.type === 'ml' ? rewardRules : null,
+      ...(formData.type === 'validation' && !challenge?.uuid
+        ? { source_challenge_id: sourceChallengeId, cp_per_validation: cpPerValidation }
+        : {}),
     });
   };
 
@@ -156,8 +178,9 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
         <FormField label="Type">
           <div className="flex gap-2">
             {([
-              { value: 'code', label: 'Code', icon: Code2, desc: 'Tasks, Kanban, GitHub' },
-              { value: 'ml',   label: 'ML',   icon: BrainCircuit, desc: 'Dataset, Model, API' },
+              { value: 'code',       label: 'Code',       icon: Code2,        desc: 'Tasks, Kanban, GitHub' },
+              { value: 'ml',         label: 'ML',         icon: BrainCircuit, desc: 'Dataset, Model, API' },
+              { value: 'validation', label: 'Validation', icon: ShieldCheck,  desc: 'Test a submitted API live' },
             ] as const).map(opt => {
               const Icon = opt.icon;
               const active = formData.type === opt.value;
@@ -223,6 +246,45 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
           />
         )}
 
+        {formData.type === 'validation' && (
+          <FormField label="Source ML challenge" required>
+            {challenge?.uuid ? (
+              <p className="text-sm" style={{ color: 'var(--foreground)' }}>
+                {mlChallenges.find(c => c.id === sourceChallengeId)?.title ?? 'ML challenge (locked)'}
+              </p>
+            ) : (
+              <select
+                required
+                value={sourceChallengeId}
+                onChange={e => setSourceChallengeId(e.target.value)}
+                className={selectClass}
+              >
+                <option value="">Select an ML challenge</option>
+                {mlChallenges.map(c => (
+                  <option key={c.id} value={c.id}>{c.title}</option>
+                ))}
+              </select>
+            )}
+          </FormField>
+        )}
+
+        {formData.type === 'validation' && (
+          <FormField label="CP per validation" required>
+            {challenge?.uuid ? (
+              <p className="text-sm" style={{ color: 'var(--foreground)' }}>{cpPerValidation} CP</p>
+            ) : (
+              <input
+                type="number"
+                required
+                min={1}
+                value={cpPerValidation}
+                onChange={e => setCpPerValidation(Math.max(1, parseInt(e.target.value) || 1))}
+                className={inputClass}
+              />
+            )}
+          </FormField>
+        )}
+
         <FormField label="Description">
           <textarea
             rows={3}
@@ -266,6 +328,13 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
           />
         </FormField>
       </FormSection>
+
+      {/* Section: Validation targets — edit only */}
+      {challenge?.uuid && formData.type === 'validation' && (
+        <FormSection title="Validation targets">
+          <ValidationTargetsEditor challengeId={challenge.uuid} open />
+        </FormSection>
+      )}
 
       {/* Section: Tasks — seulement en mode édition */}
       {challenge?.uuid && (

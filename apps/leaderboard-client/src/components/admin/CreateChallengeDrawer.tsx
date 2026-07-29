@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
-  CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock,
+  CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck,
 } from 'lucide-react';
 import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
 import { MlRewardRulesEditor } from '@/components/admin/MlRewardRulesEditor';
 import { ChallengeTasksEditor } from '@/components/admin/ChallengeTasksEditor';
 import { ChallengeSlackSignalsEditor } from '@/components/admin/ChallengeSlackSignalsEditor';
+import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
 import {
   DEFAULT_ML_REWARD_RULES,
   type MlRewardRules,
@@ -33,6 +34,8 @@ export interface EditableChallenge {
   contribution_points_reward: number;
   project_id: string;
   reward_rules?: MlRewardRules | null;
+  source_challenge_id?: string | null;
+  cp_per_validation?: number | null;
 }
 
 interface CreateChallengeDrawerProps {
@@ -70,7 +73,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [title, setTitle] = useState('');
   const [projectId, setProjectId] = useState(projects[0]?.id ?? '');
   const [status, setStatus] = useState('draft');
-  const [type, setType] = useState<'code' | 'ml'>('code');
+  const [type, setType] = useState<'code' | 'ml' | 'validation'>('code');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [cp, setCp] = useState(100);
@@ -79,6 +82,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [githubRepo, setGithubRepo] = useState('');
   const [rewardRules, setRewardRules] = useState<MlRewardRules>(DEFAULT_ML_REWARD_RULES);
+  const [sourceChallengeId, setSourceChallengeId] = useState('');
+  const [cpPerValidation, setCpPerValidation] = useState(5);
+  const [mlChallenges, setMlChallenges] = useState<{ id: string; title: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -101,7 +107,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setTitle(challenge.title);
       setProjectId(challenge.project_id);
       setStatus(challenge.status);
-      setType(challenge.type === 'ml' ? 'ml' : 'code');
+      setType(challenge.type === 'ml' ? 'ml' : challenge.type === 'validation' ? 'validation' : 'code');
       setStartDate(toDateInput(challenge.start_date));
       setEndDate(toDateInput(challenge.end_date));
       setCp(challenge.contribution_points_reward);
@@ -109,8 +115,22 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setRoadmap(challenge.roadmap ?? '');
       setShowRoadmap(!!challenge.roadmap);
       setRewardRules(challenge.reward_rules ?? DEFAULT_ML_REWARD_RULES);
+      setSourceChallengeId(challenge.source_challenge_id ?? '');
+      setCpPerValidation(challenge.cp_per_validation ?? 5);
     }
   }, [open, challenge]);
+
+  // Only needed to populate the source-challenge picker when creating a new
+  // validation challenge — editing never touches this field (locked).
+  useEffect(() => {
+    if (!open || isEdit) return;
+    fetch('/api/challenges')
+      .then(r => r.ok ? r.json() : [])
+      .then((all: any[]) => setMlChallenges(
+        (Array.isArray(all) ? all : []).filter(c => c.type === 'ml').map(c => ({ id: c.uuid, title: c.title }))
+      ))
+      .catch(() => {});
+  }, [open, isEdit]);
 
   // Close on Escape
   useEffect(() => {
@@ -133,6 +153,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     setShowRoadmap(false);
     setGithubRepo('');
     setRewardRules(DEFAULT_ML_REWARD_RULES);
+    setSourceChallengeId('');
+    setCpPerValidation(5);
   };
 
   const handleSubmit = async () => {
@@ -143,6 +165,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     // Dates are optional, but an ordering that makes no sense still is one.
     if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
       setError('End date must be after start date.');
+      return;
+    }
+    if (type === 'validation' && !isEdit && !sourceChallengeId) {
+      setError('Pick the ML challenge this validation challenge tests.');
       return;
     }
 
@@ -162,9 +188,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         reward_rules: type === 'ml' ? rewardRules : null,
       };
 
-      // Editing never touches the project, the pool or the repo: they are the
-      // challenge's shape and budget, and contributors are already racing
-      // against both. Omitting them means the API cannot change them either.
+      // Editing never touches the project, the pool, the repo, or (for
+      // validation challenges) the source challenge / CP rate: they define the
+      // challenge's shape and budget, and contributors/validators are already
+      // racing against them. Omitting them means the API cannot change them.
       const res = await fetch(
         isEdit ? `/api/challenges/${challenge!.uuid}` : '/api/challenges',
         {
@@ -178,6 +205,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                   project_id: projectId,
                   contribution_points_reward: cp,
                   github_repo: type === 'code' && githubRepo.trim() ? githubRepo.trim() : undefined,
+                  source_challenge_id: type === 'validation' ? sourceChallengeId : undefined,
+                  cp_per_validation: type === 'validation' ? cpPerValidation : undefined,
                 }
           ),
         }
@@ -261,8 +290,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           <Field label="Type">
             <div className="flex gap-2">
               {([
-                { value: 'code', label: 'Code', icon: Code2, desc: 'Tasks, Kanban, GitHub' },
-                { value: 'ml',   label: 'ML',   icon: BrainCircuit, desc: 'Dataset, Model, API' },
+                { value: 'code',       label: 'Code',       icon: Code2,        desc: 'Tasks, Kanban, GitHub' },
+                { value: 'ml',         label: 'ML',         icon: BrainCircuit, desc: 'Dataset, Model, API' },
+                { value: 'validation', label: 'Validation', icon: ShieldCheck,  desc: 'Test a submitted API live' },
               ] as const).map(opt => {
                 const Icon = opt.icon;
                 const active = type === opt.value;
@@ -383,6 +413,44 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             />
           )}
 
+          {/* ── Validation: source challenge (creation only, locked after) ── */}
+          {type === 'validation' && (
+            <Field icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Source ML challenge">
+              {isEdit ? (
+                <LockedValue text={mlChallenges.find(c => c.id === sourceChallengeId)?.title ?? 'ML challenge'} />
+              ) : (
+                <>
+                  <SelectDropdown
+                    options={mlChallenges.map(c => ({ value: c.id, label: c.title }))}
+                    value={sourceChallengeId}
+                    onChange={setSourceChallengeId}
+                  />
+                  <p className="text-[11px] mt-1.5" style={{ color: fgAt(0.25) }}>
+                    Only ML challenges without a validation challenge yet will actually save — the API rejects duplicates.
+                  </p>
+                </>
+              )}
+            </Field>
+          )}
+
+          {/* ── Validation: CP per validation (locked after creation) ── */}
+          {type === 'validation' && (
+            <Field icon={<Trophy className="h-3.5 w-3.5" />} label="CP per validation">
+              {isEdit ? (
+                <LockedValue text={`${cpPerValidation} CP`} />
+              ) : (
+                <input
+                  type="number"
+                  min={1}
+                  value={cpPerValidation}
+                  onChange={e => setCpPerValidation(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-28 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
+                  style={{ color: 'var(--foreground)' }}
+                />
+              )}
+            </Field>
+          )}
+
           {/* ── Description ── */}
           <Field icon={<AlignLeft className="h-3.5 w-3.5" />} label="Description">
             <textarea
@@ -403,6 +471,11 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           {/* ── Slack discussion signals (edit only, both types) — independent CRUD ── */}
           {isEdit && (
             <ChallengeSlackSignalsEditor challengeId={challenge!.uuid} open={open} />
+          )}
+
+          {/* ── Validation targets (edit only) — independent CRUD ── */}
+          {type === 'validation' && isEdit && (
+            <ValidationTargetsEditor challengeId={challenge!.uuid} open={open} />
           )}
 
           {/* ── GitHub repo (code only, creation only) ── */}
