@@ -22,3 +22,5 @@ export { AppSettingsRepository } from "./appSettings.repo.js";
 export { ChallengeDocumentRepository } from "./challengeDocument.repo.js";
 export { ChallengeSignalRepository } from "./challengeSignal.repo.js";
 export { ChallengeSlackConfigRepository } from "./challengeSlackConfig.repo.js";
+export { ValidationTargetRepository } from "./validationTarget.repo.js";
+export { ValidationAttemptRepository } from "./validationAttempt.repo.js";

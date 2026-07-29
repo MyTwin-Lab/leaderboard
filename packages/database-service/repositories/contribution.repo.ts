@@ -74,6 +74,7 @@ export class ContributionRepository {
     if (validated.user_id) dbData.user_id = validated.user_id;
     if (validated.challenge_id) dbData.challenge_id = validated.challenge_id;
     if (validated.artifact_url !== undefined) dbData.artifact_url = validated.artifact_url || null;
+    if (validated.live_endpoint_url !== undefined) dbData.live_endpoint_url = validated.live_endpoint_url || null;
     if (validated.evaluation_status !== undefined) dbData.evaluation_status = validated.evaluation_status;
 
     const [updated] = await db.update(contributions)
