@@ -176,7 +176,21 @@ export class ValidationChallengeService {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(url, { method: "POST", body: form, signal: controller.signal });
+      // `redirect: "manual"` is load-bearing for the SSRF guard: `assertPublicHttpUrl`
+      // only validates the URL we were given, not wherever a 3xx response might
+      // point. Following redirects automatically would let a malicious target
+      // redirect this server-side call to a private address after the check
+      // already passed. Node's fetch returns the raw redirect response (not an
+      // opaque one) under "manual", so we can detect and reject it explicitly.
+      const res = await fetch(url, {
+        method: "POST",
+        body: form,
+        signal: controller.signal,
+        redirect: "manual",
+      });
+      if (res.status >= 300 && res.status < 400) {
+        throw new Error(`Endpoint responded with a redirect (${res.status}) — redirects are not followed`);
+      }
       const contentType = res.headers.get("content-type") ?? "application/octet-stream";
       const arrayBuffer = await res.arrayBuffer();
       if (arrayBuffer.byteLength > MAX_RESPONSE_BYTES) {
