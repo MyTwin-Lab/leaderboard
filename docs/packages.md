@@ -35,6 +35,7 @@ Variables it validates:
 - Other `GOOGLE_*` — Google Workspace / Drive credentials (optional, for sync meetings and connectors)
 - `CRON_SECRET` — optional (secures the meeting-polling cron endpoint)
 - `OTEL_*` — observability config (optional)
+- `VALIDATION_ALLOW_PRIVATE_ENDPOINTS` — optional, **local dev only** (lets the validation-challenge SSRF guard accept localhost/private endpoints — see [`validation-challenges.md`](./validation-challenges.md))
 
 **Key file:** `packages/config/index.ts`
 

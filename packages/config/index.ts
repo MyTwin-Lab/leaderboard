@@ -51,6 +51,13 @@ const envSchema = z
     GITHUB_CLIENT_SECRET: z.string().optional(),
     GITHUB_OAUTH_REDIRECT_URI: z.string().optional(),
     GITHUB_TOKEN_ENCRYPTION_KEY: z.string().optional(),
+    // Validation challenges — local dev only, never set in production. Lets
+    // the SSRF guard accept localhost/private endpoints so a test model API
+    // running on the same machine as the app can be validated.
+    VALIDATION_ALLOW_PRIVATE_ENDPOINTS: z
+      .string()
+      .optional()
+      .transform((v) => v === "true"),
   })
   .strict();
 
@@ -85,6 +92,7 @@ const envInput = {
   GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
   GITHUB_OAUTH_REDIRECT_URI: process.env.GITHUB_OAUTH_REDIRECT_URI,
   GITHUB_TOKEN_ENCRYPTION_KEY: process.env.GITHUB_TOKEN_ENCRYPTION_KEY,
+  VALIDATION_ALLOW_PRIVATE_ENDPOINTS: process.env.VALIDATION_ALLOW_PRIVATE_ENDPOINTS,
 };
 
 const parsedEnv = envSchema.safeParse(envInput);
@@ -154,6 +162,9 @@ export const config = {
     clientSecret: env.GITHUB_CLIENT_SECRET,
     redirectUri: env.GITHUB_OAUTH_REDIRECT_URI,
     encryptionKey: env.GITHUB_TOKEN_ENCRYPTION_KEY,
+  },
+  validation: {
+    allowPrivateEndpoints: env.VALIDATION_ALLOW_PRIVATE_ENDPOINTS,
   },
 } as const;
 

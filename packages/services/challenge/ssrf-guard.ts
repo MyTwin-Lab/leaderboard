@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { config } from "../../config/index.js";
 
 export class UnsafeEndpointError extends Error {}
 
@@ -44,6 +45,11 @@ function isPrivateIPv6(ip: string): boolean {
  * attacker who changes the record between this check and the actual `fetch`
  * call in ValidationChallengeService could still slip through; that gap is a
  * known v1 limitation, not something this guard tries to close.
+ *
+ * `VALIDATION_ALLOW_PRIVATE_ENDPOINTS=true` skips the private/loopback block
+ * entirely — local dev only (see packages/config), so a test model API
+ * running on the same machine as the app can be validated. Never set in
+ * production: this is the one thing standing between a validator and SSRF.
  */
 export async function assertPublicHttpUrl(rawUrl: string): Promise<URL> {
   let url: URL;
@@ -56,6 +62,11 @@ export async function assertPublicHttpUrl(rawUrl: string): Promise<URL> {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new UnsafeEndpointError(`Unsupported scheme: ${url.protocol}`);
   }
+
+  if (config.validation.allowPrivateEndpoints) {
+    return url;
+  }
+
   if (url.hostname === "localhost") {
     throw new UnsafeEndpointError("Endpoint resolves to a local address");
   }

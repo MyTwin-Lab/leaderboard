@@ -62,6 +62,16 @@ Unlike Slack discussion signals (fixed, but explicitly *outside* the ML pool), v
 
 ---
 
+## Testing locally
+
+The SSRF guard blocks `localhost` and private addresses by design — including when the endpoint and the app are running on the same machine. To test with a model API running locally (e.g. in Docker on `localhost:8080`), set in your local `.env`:
+
+```
+VALIDATION_ALLOW_PRIVATE_ENDPOINTS=true
+```
+
+This skips the private/loopback block entirely. **Local dev only — never set this in production**; it's the one thing standing between a validator and SSRF. See `packages/config/index.ts` and `packages/services/challenge/ssrf-guard.ts`.
+
 ## Limitations (v1)
 
 - Only `ml` challenges' `api_packaging` submissions — no other submission type, and no path to extend this to `code` challenges yet.

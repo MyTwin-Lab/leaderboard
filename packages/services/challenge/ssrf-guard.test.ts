@@ -4,13 +4,21 @@ vi.mock("node:dns/promises", () => ({
   lookup: vi.fn(),
 }));
 
+vi.mock("../../config/index.js", () => ({
+  config: { validation: { allowPrivateEndpoints: false } },
+}));
+
 import { lookup } from "node:dns/promises";
+import { config } from "../../config/index.js";
 import { assertPublicHttpUrl, UnsafeEndpointError } from "./ssrf-guard.js";
 
 const mockLookup = vi.mocked(lookup);
 
 describe("assertPublicHttpUrl", () => {
-  beforeEach(() => mockLookup.mockReset());
+  beforeEach(() => {
+    mockLookup.mockReset();
+    config.validation.allowPrivateEndpoints = false;
+  });
 
   it("rejects a non-http(s) scheme", async () => {
     await expect(assertPublicHttpUrl("ftp://example.com/x")).rejects.toThrow(UnsafeEndpointError);
@@ -50,5 +58,26 @@ describe("assertPublicHttpUrl", () => {
       { address: "192.168.1.1", family: 4 },
     ] as any);
     await expect(assertPublicHttpUrl("https://model.example.com/predict")).rejects.toThrow(UnsafeEndpointError);
+  });
+
+  describe("with VALIDATION_ALLOW_PRIVATE_ENDPOINTS enabled", () => {
+    beforeEach(() => {
+      config.validation.allowPrivateEndpoints = true;
+    });
+
+    it("accepts localhost", async () => {
+      const url = await assertPublicHttpUrl("http://localhost:8080/predict");
+      expect(url.hostname).toBe("localhost");
+      expect(mockLookup).not.toHaveBeenCalled();
+    });
+
+    it("accepts a private IPv4 literal", async () => {
+      const url = await assertPublicHttpUrl("http://192.168.1.50:8080/predict");
+      expect(url.hostname).toBe("192.168.1.50");
+    });
+
+    it("still rejects a non-http(s) scheme", async () => {
+      await expect(assertPublicHttpUrl("ftp://example.com/x")).rejects.toThrow(UnsafeEndpointError);
+    });
   });
 });

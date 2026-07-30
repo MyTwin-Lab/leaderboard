@@ -56,9 +56,11 @@ export async function POST(
     });
   } catch (error) {
     if (error instanceof ValidationTargetError) {
+      console.error('Validation target error:', error.message);
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     if (error instanceof EndpointCallError) {
+      console.error('Validation endpoint call error:', error.message);
       return NextResponse.json({ error: `The API didn't respond correctly: ${error.message}` }, { status: 502 });
     }
     console.error('Error running validation:', error);
