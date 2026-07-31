@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft, Users, Trophy, CalendarDays, Code2, BrainCircuit,
+  ArrowLeft, Users, Trophy, CalendarDays, Code2, BrainCircuit, ShieldCheck,
   CheckCircle2, Circle, Clock3, BarChart2, Activity,
   Medal, Video, ExternalLink, GitBranch, GitPullRequest,
   GitCommit, MessageSquare,
   Database, Package, Cpu, FlaskConical, ChevronDown, Loader2, Plus, FileText, Pencil,
 } from 'lucide-react';
 import { CreateChallengeDrawer } from '@/components/admin/CreateChallengeDrawer';
+import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
+import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
 import type { MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import { ContributionRewardBreakdown } from '@/components/contributor/ContributionRewardBreakdown';
@@ -863,13 +865,14 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   );
 
   const isML = challenge.type === 'ml';
+  const isValidation = challenge.type === 'validation';
   // A closed challenge is a record: its rules and dates decided points that
   // have already been awarded, so editing them would rewrite history.
   const isOpen = !['completed', 'archived'].includes(status);
   const doneTasks = tasks.filter(t => ['done', 'completed'].includes(t.status)).length;
   const completion = tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0;
 
-  const TypeIcon = isML ? BrainCircuit : Code2;
+  const TypeIcon = isML ? BrainCircuit : isValidation ? ShieldCheck : Code2;
 
   const tabs = isML ? [
     {
@@ -883,6 +886,24 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
     {
       label: 'Metrics',
       panel: <TabMLMetrics repoActivity={repoActivity} />,
+    },
+    {
+      label: 'Rankings',
+      panel: <TabRankings contributions={contributions} team={team} />,
+    },
+  ] : isValidation ? [
+    {
+      label: 'Overview',
+      panel: <TabOverview challenge={challenge} team={team} meetings={meetings} contributions={contributions} onNewMeeting={() => setMeetingDrawerOpen(true)} meetingsEnabled={meetingsEnabled} />,
+    },
+    {
+      label: 'Targets',
+      panel: (
+        <div className="space-y-6">
+          <ValidationTargetsEditor challengeId={challengeId} open />
+          <ValidationRewardsPanel challengeId={challengeId} open />
+        </div>
+      ),
     },
     {
       label: 'Rankings',
@@ -935,7 +956,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
             )}
             <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-xs font-medium text-white/50">
               <TypeIcon className="h-3 w-3" />
-              {isML ? 'Machine Learning' : 'Code'}
+              {isML ? 'Machine Learning' : isValidation ? 'Validation' : 'Code'}
             </span>
             {(challenge.start_date || challenge.end_date) && (
               <>
