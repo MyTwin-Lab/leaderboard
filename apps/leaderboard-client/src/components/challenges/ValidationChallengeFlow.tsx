@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { UploadCloud, CheckCircle2, Loader2, AlertCircle, Coins, ShieldCheck } from 'lucide-react';
+import { UploadCloud, CheckCircle2, XCircle, Loader2, AlertCircle, Coins, ShieldCheck } from 'lucide-react';
 import { ValidationOutputViewer } from './ValidationOutputViewer';
 
 interface TargetItem {
@@ -11,6 +11,9 @@ interface TargetItem {
   submitterName: string;
   submitterAvatarUrl: string | null;
   alreadyValidatedByMe: boolean;
+  verdictCount: number;
+  outcome: 'pending' | 'works' | 'broken';
+  resolvedAt: string | null;
 }
 
 interface PoolState {
@@ -18,6 +21,7 @@ interface PoolState {
   distributed: number;
   remaining: number;
   cpPerValidation: number;
+  requiredValidations: number;
 }
 
 export function ValidationChallengeFlow({ challengeId }: { challengeId: string }) {
@@ -62,7 +66,9 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
             <div className="flex items-baseline gap-1.5">
               <Coins className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-brandCP/60" />
               <span className="text-sm font-semibold text-brandCP">{pool.remaining.toLocaleString()} CP</span>
-              <span className="text-xs text-white/35">left — {pool.cpPerValidation} CP per first-time validation</span>
+              <span className="text-xs text-white/35">
+                left — {pool.cpPerValidation} CP to each validator on the winning side, once {pool.requiredValidations} verdicts are in
+              </span>
             </div>
           </div>
         </div>
@@ -73,10 +79,11 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
           <TargetCard
             key={t.id}
             target={t}
+            requiredValidations={pool?.requiredValidations ?? 0}
             challengeId={challengeId}
             expanded={activeContributionId === t.contributionId}
             onToggle={() => setActiveContributionId(activeContributionId === t.contributionId ? null : t.contributionId)}
-            onValidated={fetchData}
+            onResolved={fetchData}
           />
         ))}
       </div>
@@ -84,28 +91,58 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
   );
 }
 
+function StatusBadge({ target, requiredValidations }: { target: TargetItem; requiredValidations: number }) {
+  if (target.outcome === 'works') {
+    return (
+      <span className="flex items-center gap-1 rounded-full bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-400">
+        <CheckCircle2 className="h-3 w-3" /> Fonctionne ({target.verdictCount}/{requiredValidations})
+      </span>
+    );
+  }
+  if (target.outcome === 'broken') {
+    return (
+      <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-medium text-red-400">
+        <XCircle className="h-3 w-3" /> Défectueux ({target.verdictCount}/{requiredValidations})
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full bg-white/8 px-2.5 py-0.5 text-xs font-medium text-white/40">
+      {target.verdictCount}/{requiredValidations} validations reçues
+    </span>
+  );
+}
+
 function TargetCard({
   target,
+  requiredValidations,
   challengeId,
   expanded,
   onToggle,
-  onValidated,
+  onResolved,
 }: {
   target: TargetItem;
+  requiredValidations: number;
   challengeId: string;
   expanded: boolean;
   onToggle: () => void;
-  onValidated: () => void;
+  onResolved: () => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<{ blob: Blob; contentType: string; cpAwarded: number; alreadyValidated: boolean } | null>(null);
+  const [output, setOutput] = useState<{ blob: Blob; contentType: string } | null>(null);
+  const [verdict, setVerdict] = useState<'works' | 'broken' | null>(null);
+  const [description, setDescription] = useState('');
+  const [submittingVerdict, setSubmittingVerdict] = useState(false);
+  const [verdictResult, setVerdictResult] = useState<{ resolved: boolean; outcome: string; cpAwarded: number } | null>(null);
 
   const runValidation = async (file: File) => {
     setUploading(true);
     setError('');
-    setResult(null);
+    setOutput(null);
+    setVerdict(null);
+    setVerdictResult(null);
     try {
       const form = new FormData();
       form.append('contribution_id', target.contributionId);
@@ -117,18 +154,39 @@ function TargetCard({
         return;
       }
       const blob = await res.blob();
-      const cpAwarded = Number(res.headers.get('x-validation-cp-awarded') ?? 0);
-      setResult({
-        blob,
-        contentType: res.headers.get('content-type') ?? 'text/plain',
-        cpAwarded,
-        alreadyValidated: res.headers.get('x-validation-already-validated') === 'true',
-      });
-      if (cpAwarded > 0) onValidated();
+      setOutput({ blob, contentType: res.headers.get('content-type') ?? 'text/plain' });
     } catch {
       setError('Network error');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const submitVerdict = async () => {
+    if (!verdict) return;
+    if (verdict === 'broken' && !description.trim()) {
+      setError('A description is required when marking a submission as Défectueux');
+      return;
+    }
+    setSubmittingVerdict(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/challenges/${challengeId}/validation-verdicts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contribution_id: target.contributionId, verdict, description: description.trim() || null }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || 'Failed to submit verdict');
+        return;
+      }
+      setVerdictResult(d);
+      onResolved();
+    } catch {
+      setError('Network error');
+    } finally {
+      setSubmittingVerdict(false);
     }
   };
 
@@ -139,6 +197,8 @@ function TargetCard({
     if (file) runValidation(file);
   };
 
+  const canVote = !target.alreadyValidatedByMe && !verdictResult;
+
   return (
     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
       <button
@@ -146,12 +206,12 @@ function TargetCard({
         className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.02]"
       >
         <span className="text-sm font-medium text-white/80">{target.submitterName}</span>
-        {target.alreadyValidatedByMe && (
-          <span className="flex items-center gap-1 rounded-full bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-400">
-            <CheckCircle2 className="h-3 w-3" />
-            Validated by you
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {target.alreadyValidatedByMe && (
+            <span className="text-xs text-white/30">Vous avez déjà voté</span>
+          )}
+          <StatusBadge target={target} requiredValidations={requiredValidations} />
+        </div>
       </button>
 
       {expanded && (
@@ -189,12 +249,59 @@ function TargetCard({
             </div>
           )}
 
-          {result && (
-            <div className="space-y-2">
-              {result.cpAwarded > 0 && (
-                <p className="text-xs font-semibold text-brandCP">+{result.cpAwarded} CP earned</p>
+          {output && <ValidationOutputViewer blob={output.blob} contentType={output.contentType} />}
+
+          {output && canVote && !verdictResult && (
+            <div className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setVerdict('works')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                    verdict === 'works' ? 'border-green-500/40 bg-green-500/15 text-green-400' : 'border-white/10 text-white/50 hover:border-white/20'
+                  }`}
+                >
+                  ✅ Fonctionne
+                </button>
+                <button
+                  onClick={() => setVerdict('broken')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                    verdict === 'broken' ? 'border-red-500/40 bg-red-500/15 text-red-400' : 'border-white/10 text-white/50 hover:border-white/20'
+                  }`}
+                >
+                  ❌ Défectueux
+                </button>
+              </div>
+              {verdict && (
+                <>
+                  <textarea
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    placeholder={verdict === 'broken' ? 'What went wrong? (required)' : 'Notes (optional)'}
+                    className="w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/70"
+                    rows={2}
+                  />
+                  <button
+                    onClick={submitVerdict}
+                    disabled={submittingVerdict || (verdict === 'broken' && !description.trim())}
+                    className="w-full rounded-lg bg-brandCP/20 px-3 py-2 text-xs font-medium text-brandCP transition-colors hover:bg-brandCP/30 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {submittingVerdict ? 'Envoi…' : 'Envoyer le verdict'}
+                  </button>
+                </>
               )}
-              <ValidationOutputViewer blob={result.blob} contentType={result.contentType} />
+            </div>
+          )}
+
+          {verdictResult && (
+            <div className="space-y-1 text-xs">
+              {verdictResult.cpAwarded > 0 && (
+                <p className="font-semibold text-brandCP">+{verdictResult.cpAwarded} CP earned</p>
+              )}
+              <p className="text-white/40">
+                {verdictResult.resolved
+                  ? `Résolu : ${verdictResult.outcome === 'works' ? 'Fonctionne' : 'Défectueux'}`
+                  : 'Verdict enregistré — en attente des autres validateurs'}
+              </p>
             </div>
           )}
         </div>
