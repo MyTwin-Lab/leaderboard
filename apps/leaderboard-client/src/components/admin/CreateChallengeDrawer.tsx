@@ -85,6 +85,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [rewardRules, setRewardRules] = useState<MlRewardRules>(DEFAULT_ML_REWARD_RULES);
   const [sourceChallengeId, setSourceChallengeId] = useState('');
   const [cpPerValidation, setCpPerValidation] = useState(5);
+  const [requiredValidations, setRequiredValidations] = useState(3);
   const [mlChallenges, setMlChallenges] = useState<{ id: string; title: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -156,6 +157,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     setRewardRules(DEFAULT_ML_REWARD_RULES);
     setSourceChallengeId('');
     setCpPerValidation(5);
+    setRequiredValidations(3);
   };
 
   const handleSubmit = async () => {
@@ -208,6 +210,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                   github_repo: type === 'code' && githubRepo.trim() ? githubRepo.trim() : undefined,
                   source_challenge_id: type === 'validation' ? sourceChallengeId : undefined,
                   cp_per_validation: type === 'validation' ? cpPerValidation : undefined,
+                  required_validations: type === 'validation' ? requiredValidations : undefined,
                 }
           ),
         }
@@ -448,6 +451,33 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                   className="w-28 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
                   style={{ color: 'var(--foreground)' }}
                 />
+              )}
+            </Field>
+          )}
+
+          {/* ── Validation: required validations (locked after creation) ── */}
+          {type === 'validation' && (
+            <Field icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Required validations">
+              {isEdit ? (
+                <LockedValue text={`${requiredValidations} validators must agree`} />
+              ) : (
+                <div className="space-y-1.5">
+                  <input
+                    type="number"
+                    min={1}
+                    step={2}
+                    value={requiredValidations}
+                    onChange={e => {
+                      const n = parseInt(e.target.value) || 1;
+                      setRequiredValidations(n % 2 === 0 ? n + 1 : n);
+                    }}
+                    className="w-28 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
+                    style={{ color: 'var(--foreground)' }}
+                  />
+                  <p className="text-[11px]" style={{ color: fgAt(0.25) }}>
+                    Must be odd — majority wins once this many validators have voted.
+                  </p>
+                </div>
               )}
             </Field>
           )}
