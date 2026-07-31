@@ -36,8 +36,8 @@ export class ValidationTargetRepository {
     return row ? toDomainValidationTarget(row) : null;
   }
 
-  async create(entity: Omit<ValidationTarget, "uuid" | "created_at">): Promise<ValidationTarget> {
-    const validated = validationTargetSchema.omit({ uuid: true, created_at: true }).parse(entity);
+  async create(entity: Omit<ValidationTarget, "uuid" | "created_at" | "outcome" | "resolved_at">): Promise<ValidationTarget> {
+    const validated = validationTargetSchema.omit({ uuid: true, created_at: true, outcome: true, resolved_at: true }).parse(entity);
     const [row] = await db
       .insert(validation_targets)
       .values(toDbValidationTarget(validated))
@@ -47,5 +47,20 @@ export class ValidationTargetRepository {
 
   async delete(uuid: string): Promise<void> {
     await db.delete(validation_targets).where(eq(validation_targets.uuid, uuid));
+  }
+
+  /**
+   * Marks a target resolved — but only if it's still 'pending'. Returns null
+   * if another concurrent request already resolved it first, mirroring the
+   * null-on-race contract `ValidationAttemptRepository.create` already uses:
+   * the WHERE clause is the actual race guard, not an app-level check.
+   */
+  async resolve(uuid: string, outcome: 'works' | 'broken'): Promise<ValidationTarget | null> {
+    const [row] = await db
+      .update(validation_targets)
+      .set({ outcome, resolved_at: new Date() })
+      .where(and(eq(validation_targets.uuid, uuid), eq(validation_targets.outcome, 'pending')))
+      .returning();
+    return row ? toDomainValidationTarget(row) : null;
   }
 }

@@ -27,6 +27,28 @@ export class ValidationAttemptRepository {
     return !!row;
   }
 
+  /**
+   * Every verdict cast on one target, oldest first — used to count votes
+   * toward quorum, compute the majority, and pay out in the chronological
+   * order the verdicts were cast.
+   */
+  async findByChallengeAndContribution(
+    validationChallengeId: string,
+    contributionId: string
+  ): Promise<ValidationAttempt[]> {
+    const rows = await db
+      .select()
+      .from(validation_attempts)
+      .where(
+        and(
+          eq(validation_attempts.validation_challenge_id, validationChallengeId),
+          eq(validation_attempts.contribution_id, contributionId)
+        )
+      )
+      .orderBy(validation_attempts.created_at);
+    return rows.map(toDomainValidationAttempt);
+  }
+
   async findByChallengeAndValidator(
     validationChallengeId: string,
     validatorUserId: string
