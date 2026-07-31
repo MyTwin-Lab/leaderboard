@@ -86,14 +86,31 @@ export async function GET(
       : [];
     const validatedContributionIds = new Set(myAttempts.map(a => a.contribution_id));
 
+    const isManager = session
+      ? session.role === 'admin' || (await isManagerOfChallenge(session.id, challengeId))
+      : false;
+
+    const attemptsByTarget = await Promise.all(
+      targets.map(t => attemptRepo.findByChallengeAndContribution(challengeId, t.contribution_id))
+    );
+
     const pool = challenge.contribution_points_reward;
 
     return NextResponse.json({
       currentUserId: session?.id ?? null,
-      pool: { pool, distributed, remaining: Math.max(0, pool - distributed), cpPerValidation: challenge.cp_per_validation ?? 0 },
+      pool: {
+        pool,
+        distributed,
+        remaining: Math.max(0, pool - distributed),
+        cpPerValidation: challenge.cp_per_validation ?? 0,
+        requiredValidations: challenge.required_validations ?? 0,
+      },
       targets: targets.map((t, i) => {
         const c = contributions[i];
         const submitter = c ? submittersById.get(c.user_id) : undefined;
+        const attempts = attemptsByTarget[i];
+        const worksCount = attempts.filter(a => a.verdict === 'works').length;
+        const brokenCount = attempts.length - worksCount;
         return {
           id: t.uuid,
           contributionId: t.contribution_id,
@@ -101,6 +118,13 @@ export async function GET(
           submitterName: submitter?.full_name ?? 'Unknown',
           submitterAvatarUrl: submitter?.avatar_url ?? null,
           alreadyValidatedByMe: validatedContributionIds.has(t.contribution_id),
+          verdictCount: attempts.length,
+          outcome: t.outcome,
+          resolvedAt: t.resolved_at,
+          // Only the manager sees the live split before resolution — everyone
+          // else gets a blind participation count, so their own verdict is an
+          // independent judgment, not a reaction to the running tally.
+          ...(isManager ? { worksCount, brokenCount } : {}),
         };
       }),
     });

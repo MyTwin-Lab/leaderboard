@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ValidationTargetRepository } from '../../../../../../../../../packages/database-service/repositories';
+import { ValidationTargetRepository, ValidationAttemptRepository } from '../../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 
 const targetRepo = new ValidationTargetRepository();
+const attemptRepo = new ValidationAttemptRepository();
 
 // DELETE /api/challenges/[id]/validation-targets/[targetId] — admin/manager only
 export async function DELETE(
@@ -22,6 +23,14 @@ export async function DELETE(
     const existing = await targetRepo.findById(targetId);
     if (!existing || existing.validation_challenge_id !== challengeId) {
       return NextResponse.json({ error: 'Target not found' }, { status: 404 });
+    }
+
+    const attempts = await attemptRepo.findByChallengeAndContribution(challengeId, existing.contribution_id);
+    if (attempts.length > 0) {
+      return NextResponse.json(
+        { error: `Cannot remove a target that already has ${attempts.length} vote(s)` },
+        { status: 409 }
+      );
     }
 
     await targetRepo.delete(targetId);
