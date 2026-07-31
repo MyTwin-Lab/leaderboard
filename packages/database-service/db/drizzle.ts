@@ -48,6 +48,10 @@ export const challenges = pgTable("challenges", {
   // Validation challenges only: fixed CP a validator earns per first-time
   // (validator, target) validation. Locked after creation.
   cp_per_validation: integer("cp_per_validation"),
+  // Validation challenges only: how many verdicts a target must collect
+  // before it resolves. Must be odd (enforced at creation) so a majority
+  // always exists. Locked after creation, like cp_per_validation.
+  required_validations: integer("required_validations"),
 }, (table) => ({
   projectIdIdx: index("idx_challenges_project_id").on(table.project_id),
   statusIdx: index("idx_challenges_status").on(table.status),
@@ -159,6 +163,10 @@ export const validation_targets = pgTable("validation_targets", {
   validation_challenge_id: uuid("validation_challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
   contribution_id: uuid("contribution_id").references(() => contributions.uuid, { onDelete: "cascade" }).notNull(),
   position: integer("position").default(0),
+  // 'pending' until required_validations verdicts are collected, then
+  // permanently 'works' or 'broken'. Written only by the resolve step.
+  outcome: varchar("outcome", { length: 20 }).default("pending"),
+  resolved_at: timestamp("resolved_at"),
   created_at: timestamp("created_at").defaultNow(),
 }, (table) => ({
   challengeIdIdx: index("idx_validation_targets_challenge_id").on(table.validation_challenge_id),
@@ -174,6 +182,11 @@ export const validation_attempts = pgTable("validation_attempts", {
   validation_challenge_id: uuid("validation_challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
   contribution_id: uuid("contribution_id").references(() => contributions.uuid, { onDelete: "cascade" }).notNull(),
   validator_user_id: uuid("validator_user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  // 'works' | 'broken' — what the validator concluded after seeing the
+  // endpoint's output. Not nullable: a row only exists once a verdict is cast.
+  verdict: varchar("verdict", { length: 10 }).notNull(),
+  // Required by the API layer when verdict = 'broken', optional otherwise.
+  description: text("description"),
   created_at: timestamp("created_at").defaultNow(),
 }, (table) => ({
   challengeIdIdx: index("idx_validation_attempts_challenge_id").on(table.validation_challenge_id),
