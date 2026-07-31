@@ -905,10 +905,6 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
         </div>
       ),
     },
-    {
-      label: 'Rankings',
-      panel: <TabRankings contributions={contributions} team={team} />,
-    },
   ] : [
     {
       label: 'Overview',
