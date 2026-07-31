@@ -35,7 +35,7 @@ export default async function ContributorSelfPage({
     redirect("/api/google-auth/authorize?from=/contributors/me");
   }
 
-  const profile = await fetchContributorProfile(session.id);
+  const profile = await fetchContributorProfile(session.id, session.id);
 
   if (!profile) {
     redirect("/");

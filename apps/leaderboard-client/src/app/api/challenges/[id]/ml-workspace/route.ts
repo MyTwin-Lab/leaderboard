@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ChallengeRepoRepository, UserRepository, ContributionRepository } from '../../../../../../../../packages/database-service/repositories';
+import { ChallengeRepoRepository, UserRepository, ContributionRepository, ChallengeTeamRepository } from '../../../../../../../../packages/database-service/repositories';
 import type { ChallengeRepoRole } from '../../../../../../../../packages/database-service/domain/entities';
 import { normalizeArtifactUrl } from '../../../../../../../../packages/services/challenge/artifactUrl';
 import { jwtVerify } from 'jose';
@@ -26,6 +26,7 @@ const ROLE_CONFIG: Record<ChallengeRepoRole, {
 const challengeRepoRepo = new ChallengeRepoRepository();
 const contributionRepo = new ContributionRepository();
 const userRepo = new UserRepository();
+const challengeTeamRepo = new ChallengeTeamRepository();
 
 async function getSession(request: NextRequest) {
   const token = request.cookies.get('access_token')?.value;
@@ -96,6 +97,14 @@ export async function PATCH(
     const { id: challengeId } = await params;
     const body = await request.json();
     const { repo_id, workspace_url, live_endpoint_url } = body;
+
+    // ML challenges have no tasks to assign, so submitting through the
+    // workspace is what makes someone a participant — there's no other
+    // path that adds them to the challenge's team.
+    const existingTeam = await challengeTeamRepo.findByChallenge(challengeId);
+    if (!existingTeam.some(m => m.user_id === session.userId)) {
+      await challengeTeamRepo.create({ challenge_id: challengeId, user_id: session.userId });
+    }
 
     if (!repo_id || typeof repo_id !== 'string') {
       return NextResponse.json({ error: 'repo_id is required' }, { status: 400 });

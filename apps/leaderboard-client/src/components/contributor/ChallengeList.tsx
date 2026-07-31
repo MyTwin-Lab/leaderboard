@@ -131,6 +131,7 @@ function ChallengeRow({
                 title={c.title}
                 reward={c.reward}
                 index={i}
+                hasEvaluation={c.hasEvaluation}
               />
             ))
           )}

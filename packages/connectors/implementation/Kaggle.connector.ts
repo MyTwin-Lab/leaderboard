@@ -164,7 +164,7 @@ export class KaggleConnector implements ExternalConnector {
   async testConnection(): Promise<boolean> {
     try {
       if (this.subtype === "kaggle_dataset") {
-        await this.kaggleFetch(`/datasets/${this.owner}/${this.slug}`);
+        await this.kaggleFetch(`/datasets/view/${this.owner}/${this.slug}`);
       } else {
         await this.kaggleFetch(`/models/${this.owner}/${this.slug}/get`);
       }
@@ -188,7 +188,7 @@ export class KaggleConnector implements ExternalConnector {
   }
 
   private async fetchDatasetActivity(): Promise<import('../interfaces.js').KaggleRepoActivity> {
-    const metadata = await this.kaggleFetch(`/datasets/${this.owner}/${this.slug}`);
+    const metadata = await this.kaggleFetch(`/datasets/view/${this.owner}/${this.slug}`);
 
     return {
       type: 'kaggle_dataset',
@@ -203,45 +203,39 @@ export class KaggleConnector implements ExternalConnector {
   }
 
   private async fetchModelActivity(): Promise<import('../interfaces.js').KaggleRepoActivity> {
-    // 1. List model instances (one per framework)
-    let instances: any[] = [];
+    // The Kaggle API has no working "list instances" / "list versions" endpoints
+    // (both 404 in practice) — `/models/{owner}/{slug}/get` already returns
+    // everything available: the model's own description and each instance's
+    // current overview/usage. There's no exposed version history, so this
+    // reports the model's current state as a single version.
+    let metadata: any;
     try {
-      const resp = await this.kaggleFetch(`/models/${this.owner}/${this.slug}/instances`);
-      instances = Array.isArray(resp) ? resp : (resp.instances ?? []);
+      metadata = await this.kaggleFetch(`/models/${this.owner}/${this.slug}/get`);
     } catch {
       return { type: 'kaggle_model', modelVersions: [] };
     }
 
-    // 2. For each instance, fetch versions and parse metrics
-    const versionsPerInstance = await Promise.all(
-      instances.map(async (inst: any) => {
-        const framework = inst.framework ?? inst.modelFramework ?? 'unknown';
-        const instanceSlug = inst.overview ?? inst.instanceSlug ?? inst.slug ?? 'default';
-        try {
-          const resp = await this.kaggleFetch(
-            `/models/${this.owner}/${this.slug}/${framework}/${instanceSlug}/versions`
-          );
-          const raw: any[] = Array.isArray(resp) ? resp : (resp.versions ?? []);
-          return raw.map((v: any): import('../interfaces.js').KaggleModelVersion => ({
-            versionNumber: v.versionNumber ?? v.version ?? 0,
-            createdAt: v.createdAt ?? v.publishTime ?? new Date(0).toISOString(),
-            metrics: parseMetrics(v.overview ?? v.description ?? ''),
-          }));
-        } catch {
-          return [];
-        }
-      })
-    );
+    const instances: any[] = Array.isArray(metadata.instances) ? metadata.instances : [];
 
-    // 3. Flatten all versions under one ref, sorted by version number
-    const allVersions = versionsPerInstance.flat().sort(
-      (a, b) => a.versionNumber - b.versionNumber
-    );
+    // The metric is written wherever the contributor could put it — the
+    // model's top-level description (the field Kaggle's "New Model" flow
+    // actually exposes) or an instance's overview/usage — so all of it is
+    // searched together.
+    const combinedText = [
+      metadata.description,
+      ...instances.map((inst: any) => [inst.overview, inst.usage].filter(Boolean).join('\n')),
+    ].filter(Boolean).join('\n');
+
+    const version: import('../interfaces.js').KaggleModelVersion = {
+      versionNumber: instances[0]?.versionNumber ?? 0,
+      createdAt: metadata.updateTime ?? metadata.publishTime ?? new Date(0).toISOString(),
+      metrics: parseMetrics(combinedText),
+    };
 
     return {
       type: 'kaggle_model',
       modelVersions: [
-        { ref: `${this.owner}/${this.slug}`, versions: allVersions },
+        { ref: `${this.owner}/${this.slug}`, versions: [version] },
       ],
     };
   }
@@ -257,12 +251,12 @@ export class KaggleConnector implements ExternalConnector {
 
   private async fetchDatasetItem(): Promise<ExternalItem[]> {
     const metadata = await this.kaggleFetch(
-      `/datasets/${this.owner}/${this.slug}`
+      `/datasets/view/${this.owner}/${this.slug}`
     );
 
     // Find README among dataset files (case-insensitive)
     const filesData = await this.kaggleFetch(
-      `/datasets/${this.owner}/${this.slug}/files`
+      `/datasets/list/${this.owner}/${this.slug}`
     );
     const files: any[] = filesData.datasetFiles ?? filesData.files ?? [];
     const readmeFile = files.find((f: any) =>
@@ -347,16 +341,16 @@ export class KaggleConnector implements ExternalConnector {
     // Try README.md first, then readme.md, then fall back to description
     try {
       content = await this.kaggleFetchText(
-        `/datasets/${this.owner}/${this.slug}/download/README.md`
+        `/datasets/download/${this.owner}/${this.slug}/README.md`
       );
     } catch {
       try {
         content = await this.kaggleFetchText(
-          `/datasets/${this.owner}/${this.slug}/download/readme.md`
+          `/datasets/download/${this.owner}/${this.slug}/readme.md`
         );
       } catch {
         const metadata = await this.kaggleFetch(
-          `/datasets/${this.owner}/${this.slug}`
+          `/datasets/view/${this.owner}/${this.slug}`
         );
         content =
           metadata.description ||

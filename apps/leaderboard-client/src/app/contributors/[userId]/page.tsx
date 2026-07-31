@@ -6,6 +6,7 @@ import { ContributionHeatmap } from "@/components/contributor/ContributionHeatma
 import { ContributionDashboard } from "@/components/contributor/ContributionDashboard";
 import { ContributorTabs } from "@/components/contributor/ContributorTabs";
 import { fetchContributorProfile } from "@/lib/server/leaderboard";
+import { getSessionUser } from "@/lib/auth";
 
 interface ContributorPageProps {
   params: Promise<{
@@ -15,7 +16,8 @@ interface ContributorPageProps {
 
 export default async function ContributorPage({ params }: ContributorPageProps) {
   const { userId } = await params;
-  const profile = await fetchContributorProfile(userId);
+  const session = await getSessionUser();
+  const profile = await fetchContributorProfile(userId, session?.id);
 
   if (!profile) {
     notFound();

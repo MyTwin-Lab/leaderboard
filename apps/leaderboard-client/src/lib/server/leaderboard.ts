@@ -47,7 +47,7 @@ export async function fetchLeaderboard(
   } satisfies LeaderboardResponse;
 }
 
-export async function fetchContributorProfile(userId: string): Promise<ContributorProfile | null> {
+export async function fetchContributorProfile(userId: string, viewerId?: string | null): Promise<ContributorProfile | null> {
   const user = await repositories.user.findById(userId);
   if (!user) {
     return null;
@@ -100,6 +100,9 @@ export async function fetchContributorProfile(userId: string): Promise<Contribut
         description: contribution.description ?? null,
         reward,
         submittedAt: contribution.submitted_at ? contribution.submitted_at.toISOString() : null,
+        // Only the author can see the AI evaluation detail — everyone can see
+        // the contribution itself, so this hint is scoped to the viewer.
+        hasEvaluation: contribution.evaluation != null && viewerId === userId,
       });
     }
 

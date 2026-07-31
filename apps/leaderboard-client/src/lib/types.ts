@@ -21,6 +21,7 @@ export type ContributorContribution = {
   description: string | null;
   reward: number;
   submittedAt: string | null;
+  hasEvaluation: boolean;
 };
 
 export type ContributorDiscussionSignal = {

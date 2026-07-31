@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatCP } from "@/lib/formatters";
 import { ChevronRight, Loader2 } from "lucide-react";
+import { EvaluationModal } from "./EvaluationModal";
 
 interface RewardEntry {
   ruleKey: string;
@@ -30,18 +31,28 @@ export function ContributionRewardBreakdown({
   title,
   reward,
   index,
+  hasEvaluation,
 }: {
   contributionId: string;
   title: string;
   reward: number;
   index: number;
+  hasEvaluation?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<RewardsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [showEvaluation, setShowEvaluation] = useState(false);
 
   const toggle = async () => {
+    // Already open: a second click goes deeper — the full evaluation, when
+    // there is one — instead of just collapsing back.
+    if (open && hasEvaluation) {
+      setShowEvaluation(true);
+      return;
+    }
+
     const next = !open;
     setOpen(next);
     if (!next || data || loading) return;
@@ -93,7 +104,15 @@ export function ContributionRewardBreakdown({
           {error && <p className="py-1 text-xs text-red-400/70">Could not load the breakdown.</p>}
 
           {data && <BreakdownBody data={data} />}
+
+          {hasEvaluation && !loading && (
+            <p className="pt-1 text-[11px] text-white/20">Click again for the full evaluation</p>
+          )}
         </div>
+      )}
+
+      {showEvaluation && (
+        <EvaluationModal contributionId={contributionId} onClose={() => setShowEvaluation(false)} />
       )}
     </div>
   );
