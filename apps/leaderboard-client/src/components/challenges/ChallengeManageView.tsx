@@ -659,49 +659,10 @@ function TabMLMetrics({ repoActivity }: { repoActivity: Record<string, any> | nu
     );
   }
 
-  const datasetEntry = Object.values(repoActivity).find((a: any) => a?.type === 'kaggle_dataset');
-  const modelEntry   = Object.values(repoActivity).find((a: any) => a?.type === 'kaggle_model');
+  const modelEntry = Object.values(repoActivity).find((a: any) => a?.type === 'kaggle_model');
 
   return (
     <div className="space-y-8">
-
-      {/* Dataset card */}
-      {datasetEntry?.datasetMeta && (() => {
-        const meta = datasetEntry.datasetMeta;
-        return (
-          <div className="space-y-3">
-            {sectionHeader(<Database className="h-3.5 w-3.5" />, 'Dataset')}
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-semibold text-white">{meta.title}</p>
-                {meta.url && (
-                  <a href={meta.url} target="_blank" rel="noopener noreferrer"
-                    className="flex shrink-0 items-center gap-1 text-xs text-brandCP hover:underline">
-                    Kaggle <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
-              </div>
-              {meta.description && (
-                <p className="text-xs text-white/40 line-clamp-3">{meta.description}</p>
-              )}
-              {meta.tags && meta.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {meta.tags.slice(0, 8).map((tag: string) => (
-                    <span key={tag} className="rounded-full bg-white/[0.05] px-2 py-0.5 text-[10px] text-white/40">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {meta.lastUpdated && (
-                <p className="text-[11px] text-white/25">
-                  Updated {fmt(meta.lastUpdated, { month: 'short', day: 'numeric', year: 'numeric' })}
-                </p>
-              )}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Model metrics */}
       {modelEntry && (() => {
@@ -753,9 +714,9 @@ function TabMLMetrics({ repoActivity }: { repoActivity: Record<string, any> | nu
       })()}
 
       {/* Empty state */}
-      {!datasetEntry && !modelEntry && (
+      {!modelEntry && (
         <div className="rounded-xl border border-dashed border-white/[0.05] py-12 text-center">
-          <p className="text-sm text-white/20">No Kaggle data available for this challenge</p>
+          <p className="text-sm text-white/20">No model submissions yet</p>
         </div>
       )}
     </div>
