@@ -12,6 +12,9 @@ const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 // POST /api/challenges/[id]/validate — any logged-in contributor
 // multipart/form-data body: contribution_id (string), file (File)
+// Pure proxy: calls the target's endpoint and returns its raw response.
+// Casting a verdict on what came back is a separate call — see
+// POST .../validation-verdicts.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -41,7 +44,6 @@ export async function POST(
     const result = await service.validate({
       validationChallengeId: challengeId,
       contributionId,
-      validatorUserId: user.id,
       file: { buffer, filename: file.name, mimeType: file.type || 'application/octet-stream' },
     });
 
@@ -50,8 +52,6 @@ export async function POST(
       headers: {
         'Content-Type': result.contentType,
         'X-Validation-Status': String(result.status),
-        'X-Validation-Cp-Awarded': String(result.cpAwarded),
-        'X-Validation-Already-Validated': String(result.alreadyValidated),
       },
     });
   } catch (error) {
