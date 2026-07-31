@@ -52,7 +52,7 @@ export interface MlSubmissionEvent {
  * (Kaggle, OpenAI), ce qui rend le flux d'attribution testable de bout en bout.
  */
 export interface MlRewardsDeps {
-  challengeRepo: Pick<ChallengeRepository, 'findById'>;
+  challengeRepo: Pick<ChallengeRepository, 'findById' | 'update'>;
   challengeRepoRepo: Pick<ChallengeRepoRepository, 'findByChallengeAndRepo'>;
   contributionRepo: Pick<ContributionRepository, 'findByChallenge' | 'update'>;
   rewardRepo: Pick<RewardEntryRepository, 'sumByChallenge' | 'bestMetricValue' | 'createManyAndSyncRewards'>;
@@ -181,6 +181,12 @@ export class MlRewardsService {
 
       await this.deps.rewardRepo.createManyAndSyncRewards(drafts);
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation_status: 'done' });
+
+      const newRemaining = await this.remainingPool(challenge);
+      const completion = challenge.contribution_points_reward > 0
+        ? 1 - newRemaining / challenge.contribution_points_reward
+        : 0;
+      await this.deps.challengeRepo.update(challenge.uuid, { completion });
 
       const net = drafts.filter(d => d.user_id === userId).reduce((s, d) => s + d.points, 0);
       console.log(`[MlRewardsService] ${config.rule}: ${net} CP net to ${userId} (${drafts.length} ledger rows)`);
