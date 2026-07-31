@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { BarChart2, X } from "lucide-react";
 
 interface EvaluationScore {
@@ -33,6 +34,9 @@ export function EvaluationModal({
 }) {
   const [data, setData] = useState<ContributionEvaluation | null>(null);
   const [error, setError] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -49,13 +53,15 @@ export function EvaluationModal({
     return () => { cancelled = true; };
   }, [contributionId]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-[#1a1a2e] p-6 shadow-2xl"
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-background p-6 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -125,6 +131,7 @@ export function EvaluationModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

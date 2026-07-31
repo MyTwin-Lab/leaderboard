@@ -26,7 +26,7 @@ export interface ToMergeContribution {
  */
 export interface CriterionScore {
     criterion: string;
-    score: number;      // 0–100
+    score: number;      // 0–9
     weight: number;
     comment?: string;
 }

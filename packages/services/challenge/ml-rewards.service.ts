@@ -293,8 +293,8 @@ export class MlRewardsService {
 
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation });
 
-      // globalScore est sur 0–100, les caps se raisonnent en fraction.
-      return Math.min(1, Math.max(0, evaluation.globalScore / 100));
+      // globalScore est sur 0–9 (scores 0–9 × poids sommant à ~1).
+      return Math.min(1, Math.max(0, evaluation.globalScore / 9));
     } finally {
       await connector.disconnect?.();
     }

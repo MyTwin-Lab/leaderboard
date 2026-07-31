@@ -40,7 +40,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
       {children}
       {pending && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="w-full max-w-sm rounded-xl border border-white/10 bg-[#1a1a2e] shadow-2xl p-6 space-y-4">
+          <div className="w-full max-w-sm rounded-xl border border-white/10 bg-background shadow-2xl p-6 space-y-4">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500/10">
                 <AlertTriangle className="h-4 w-4 text-red-400" />
