@@ -3,6 +3,7 @@ import {
   ValidationChallengeService,
   ValidationTargetError,
   EndpointCallError,
+  SelfVoteError,
 } from '../../../../../../../../packages/services/challenge/validation-challenge.service';
 import { getSessionUser } from '@/lib/auth';
 
@@ -44,6 +45,7 @@ export async function POST(
     const result = await service.validate({
       validationChallengeId: challengeId,
       contributionId,
+      validatorUserId: user.id,
       file: { buffer, filename: file.name, mimeType: file.type || 'application/octet-stream' },
     });
 
@@ -55,6 +57,9 @@ export async function POST(
       },
     });
   } catch (error) {
+    if (error instanceof SelfVoteError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     if (error instanceof ValidationTargetError) {
       console.error('Validation target error:', error.message);
       return NextResponse.json({ error: error.message }, { status: 400 });

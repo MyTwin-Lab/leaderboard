@@ -96,9 +96,10 @@ export class ValidationChallengeService {
   async validate(input: {
     validationChallengeId: string;
     contributionId: string;
+    validatorUserId: string;
     file: ValidationFile;
   }): Promise<ValidationCallResult> {
-    const { validationChallengeId, contributionId, file } = input;
+    const { validationChallengeId, contributionId, validatorUserId, file } = input;
 
     const challenge = await this.deps.challengeRepo.findById(validationChallengeId);
     if (!challenge || challenge.type !== "validation") {
@@ -113,6 +114,10 @@ export class ValidationChallengeService {
     const contribution = await this.deps.contributionRepo.findById(contributionId);
     if (!contribution?.live_endpoint_url) {
       throw new ValidationTargetError("Submission has no deployed endpoint");
+    }
+
+    if (contribution.user_id === validatorUserId) {
+      throw new SelfVoteError("Cannot validate your own submission");
     }
 
     try {

@@ -27,6 +27,7 @@ interface PoolState {
 export function ValidationChallengeFlow({ challengeId }: { challengeId: string }) {
   const [targets, setTargets] = useState<TargetItem[]>([]);
   const [pool, setPool] = useState<PoolState | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeContributionId, setActiveContributionId] = useState<string | null>(null);
 
@@ -37,6 +38,7 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
         const data = await res.json();
         setTargets(data.targets ?? []);
         setPool(data.pool ?? null);
+        setCurrentUserId(data.currentUserId ?? null);
       }
     } finally {
       setLoading(false);
@@ -81,6 +83,7 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
             target={t}
             requiredValidations={pool?.requiredValidations ?? 0}
             challengeId={challengeId}
+            isOwnTarget={!!currentUserId && t.submitterUserId === currentUserId}
             expanded={activeContributionId === t.contributionId}
             onToggle={() => setActiveContributionId(activeContributionId === t.contributionId ? null : t.contributionId)}
             onResolved={fetchData}
@@ -117,6 +120,7 @@ function TargetCard({
   target,
   requiredValidations,
   challengeId,
+  isOwnTarget,
   expanded,
   onToggle,
   onResolved,
@@ -124,6 +128,7 @@ function TargetCard({
   target: TargetItem;
   requiredValidations: number;
   challengeId: string;
+  isOwnTarget: boolean;
   expanded: boolean;
   onToggle: () => void;
   onResolved: () => void;
@@ -202,19 +207,23 @@ function TargetCard({
   return (
     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
       <button
-        onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.02]"
+        onClick={isOwnTarget ? undefined : onToggle}
+        disabled={isOwnTarget}
+        className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors ${isOwnTarget ? 'cursor-default opacity-50' : 'hover:bg-white/[0.02]'}`}
       >
         <span className="text-sm font-medium text-white/80">{target.submitterName}</span>
         <div className="flex items-center gap-2">
-          {target.alreadyValidatedByMe && (
+          {isOwnTarget && (
+            <span className="text-xs text-white/30">Votre soumission</span>
+          )}
+          {!isOwnTarget && target.alreadyValidatedByMe && (
             <span className="text-xs text-white/30">Vous avez déjà voté</span>
           )}
           <StatusBadge target={target} requiredValidations={requiredValidations} />
         </div>
       </button>
 
-      {expanded && (
+      {!isOwnTarget && expanded && (
         <div className="space-y-3 border-t border-white/[0.06] p-4 animate-fade-up">
           <div
             onDragOver={e => { e.preventDefault(); setDragging(true); }}
