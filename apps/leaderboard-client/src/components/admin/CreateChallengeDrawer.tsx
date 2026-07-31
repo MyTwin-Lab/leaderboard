@@ -11,6 +11,7 @@ import { MlRewardRulesEditor } from '@/components/admin/MlRewardRulesEditor';
 import { ChallengeTasksEditor } from '@/components/admin/ChallengeTasksEditor';
 import { ChallengeSlackSignalsEditor } from '@/components/admin/ChallengeSlackSignalsEditor';
 import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
+import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
 import {
   DEFAULT_ML_REWARD_RULES,
   type MlRewardRules,
@@ -475,7 +476,12 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
           {/* ── Validation targets (edit only) — independent CRUD ── */}
           {type === 'validation' && isEdit && (
-            <ValidationTargetsEditor challengeId={challenge!.uuid} open={open} />
+            <>
+              <ValidationTargetsEditor challengeId={challenge!.uuid} open={open} />
+              <div className="mt-3">
+                <ValidationRewardsPanel challengeId={challenge!.uuid} open={open} />
+              </div>
+            </>
           )}
 
           {/* ── GitHub repo (code only, creation only) ── */}

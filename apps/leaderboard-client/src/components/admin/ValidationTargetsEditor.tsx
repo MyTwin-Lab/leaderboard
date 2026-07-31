@@ -14,6 +14,10 @@ interface TargetItem {
   id: string;
   contributionId: string;
   submitterName: string;
+  verdictCount: number;
+  outcome: 'pending' | 'works' | 'broken';
+  worksCount?: number;
+  brokenCount?: number;
 }
 
 function fgAt(opacity: number) {
@@ -51,7 +55,15 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
       ]);
       if (targetsRes.ok) {
         const d = await targetsRes.json();
-        setTargets((d.targets ?? []).map((t: any) => ({ id: t.id, contributionId: t.contributionId, submitterName: t.submitterName })));
+        setTargets((d.targets ?? []).map((t: any) => ({
+          id: t.id,
+          contributionId: t.contributionId,
+          submitterName: t.submitterName,
+          verdictCount: t.verdictCount ?? 0,
+          outcome: t.outcome ?? 'pending',
+          worksCount: t.worksCount,
+          brokenCount: t.brokenCount,
+        })));
       }
       if (eligibleRes.ok) {
         const d = await eligibleRes.json();
@@ -112,11 +124,21 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
             <div className="space-y-1.5">
               {targets.map(t => (
                 <div key={t.id} className="group flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-                  <span className="min-w-0 flex-1 truncate text-sm" style={{ color: fgAt(0.75) }}>{t.submitterName}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate text-sm" style={{ color: fgAt(0.75) }}>{t.submitterName}</span>
+                    <span className="block text-[10px]" style={{ color: fgAt(0.35) }}>
+                      {t.outcome === 'pending'
+                        ? (t.worksCount !== undefined
+                            ? `${t.verdictCount} votes (${t.worksCount} Fonctionne, ${t.brokenCount} Défectueux)`
+                            : `${t.verdictCount} votes`)
+                        : `${t.outcome === 'works' ? '✅ Fonctionne' : '❌ Défectueux'} (${t.verdictCount} votes)`}
+                    </span>
+                  </div>
                   <button
                     onClick={() => handleRemove(t.id)}
-                    disabled={deletingId === t.id}
-                    className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100 disabled:opacity-40"
+                    disabled={deletingId === t.id || t.verdictCount > 0}
+                    title={t.verdictCount > 0 ? 'Ce target a déjà reçu des votes — impossible de le retirer' : undefined}
+                    className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white/25"
                     aria-label="Remove submission"
                   >
                     {deletingId === t.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
