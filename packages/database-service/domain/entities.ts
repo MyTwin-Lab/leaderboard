@@ -53,6 +53,7 @@ export interface Challenge {
   reward_rules?: MlRewardRules | null; // ML uniquement
   source_challenge_id?: string | null; // Validation uniquement — le challenge ML validé
   cp_per_validation?: number | null;   // Validation uniquement — CP fixe par validation
+  required_validations?: number | null; // Validation uniquement — nb de verdicts requis avant résolution (impair)
 }
 
 /** Signal de contribution détectable dans un canal de discussion (Slack). */
@@ -154,15 +155,19 @@ export interface ValidationTarget {
   validation_challenge_id: string; // FK -> challenges.uuid
   contribution_id: string;         // FK -> contributions.uuid (la soumission api_packaging)
   position: number;
+  outcome: 'pending' | 'works' | 'broken';
+  resolved_at: Date | null;
   created_at: Date;
 }
 
-/** Trace qu'un validateur a déjà été payé pour une cible donnée. */
+/** Un verdict (works/broken) rendu par un validateur sur une cible donnée. */
 export interface ValidationAttempt {
   uuid: string;
   validation_challenge_id: string; // FK -> challenges.uuid
   contribution_id: string;         // FK -> contributions.uuid (la cible validée)
   validator_user_id: string;       // FK -> users.uuid
+  verdict: 'works' | 'broken';
+  description: string | null;      // requis côté API quand verdict = 'broken'
   created_at: Date;
 }
 

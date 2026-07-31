@@ -47,6 +47,7 @@ export const challengeSchema = z.object({
   reward_rules: mlRewardRulesSchema.nullish(),
   source_challenge_id: z.string().uuid().nullish(),
   cp_per_validation: z.number().int().nonnegative().nullish(),
+  required_validations: z.number().int().positive().nullish(),
 });
 
 export const challengeSignalSchema = z.object({
@@ -119,6 +120,8 @@ export const validationTargetSchema = z.object({
   validation_challenge_id: z.string().uuid(),
   contribution_id: z.string().uuid(),
   position: z.number().int().nonnegative().default(0),
+  outcome: z.enum(['pending', 'works', 'broken']).default('pending'),
+  resolved_at: z.coerce.date().nullish(),
   created_at: z.coerce.date(),
 });
 
@@ -127,6 +130,8 @@ export const validationAttemptSchema = z.object({
   validation_challenge_id: z.string().uuid(),
   contribution_id: z.string().uuid(),
   validator_user_id: z.string().uuid(),
+  verdict: z.enum(['works', 'broken']),
+  description: z.string().nullable(),
   created_at: z.coerce.date(),
 });
 
