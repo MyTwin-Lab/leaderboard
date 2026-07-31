@@ -137,6 +137,7 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     reward_rules: parseMlRewardRules(row.reward_rules),
     source_challenge_id: row.source_challenge_id ?? null,
     cp_per_validation: row.cp_per_validation ?? null,
+    required_validations: row.required_validations ?? null,
   };
 }
 
@@ -244,6 +245,7 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenge
     reward_rules: entity.reward_rules ?? null,
     source_challenge_id: entity.source_challenge_id ?? null,
     cp_per_validation: entity.cp_per_validation ?? null,
+    required_validations: entity.required_validations ?? null,
   };
 }
 
@@ -702,12 +704,14 @@ export function toDomainValidationTarget(row: DbValidationTarget): ValidationTar
     validation_challenge_id: row.validation_challenge_id,
     contribution_id: row.contribution_id,
     position: row.position ?? 0,
+    outcome: (row.outcome as ValidationTarget['outcome']) ?? 'pending',
+    resolved_at: row.resolved_at ? new Date(row.resolved_at) : null,
     created_at: new Date(row.created_at ?? Date.now()),
   };
 }
 
 export function toDbValidationTarget(
-  entity: Omit<ValidationTarget, "uuid" | "created_at">
+  entity: Omit<ValidationTarget, "uuid" | "created_at" | "outcome" | "resolved_at">
 ): typeof validation_targets.$inferInsert {
   return {
     validation_challenge_id: entity.validation_challenge_id,
@@ -722,6 +726,8 @@ export function toDomainValidationAttempt(row: DbValidationAttempt): ValidationA
     validation_challenge_id: row.validation_challenge_id,
     contribution_id: row.contribution_id,
     validator_user_id: row.validator_user_id,
+    verdict: row.verdict as ValidationAttempt['verdict'],
+    description: row.description ?? null,
     created_at: new Date(row.created_at ?? Date.now()),
   };
 }
@@ -733,6 +739,8 @@ export function toDbValidationAttempt(
     validation_challenge_id: entity.validation_challenge_id,
     contribution_id: entity.contribution_id,
     validator_user_id: entity.validator_user_id,
+    verdict: entity.verdict,
+    description: entity.description ?? null,
   };
 }
 
