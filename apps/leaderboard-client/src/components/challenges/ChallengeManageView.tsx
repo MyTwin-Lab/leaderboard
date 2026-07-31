@@ -12,6 +12,7 @@ import {
 import { CreateChallengeDrawer } from '@/components/admin/CreateChallengeDrawer';
 import type { MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
+import { ContributionRewardBreakdown } from '@/components/contributor/ContributionRewardBreakdown';
 import { TeamAvatars } from '@/components/ui/TeamAvatars';
 import { Badge } from '@/components/ui/Badge';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
@@ -196,6 +197,7 @@ function Skeleton() {
 function TabOverview({ challenge, team, meetings, contributions, onNewMeeting, meetingsEnabled }: {
   challenge: Challenge; team: TeamMember[]; meetings: Meeting[]; contributions: Contribution[]; onNewMeeting: () => void; meetingsEnabled: boolean;
 }) {
+  const isML = challenge.type === 'ml';
   const upcoming = meetings.filter(m => ['scheduled', 'in_progress'].includes(m.status))
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
   const past = meetings.filter(m => ['completed', 'processed'].includes(m.status));
@@ -292,7 +294,9 @@ function TabOverview({ challenge, team, meetings, contributions, onNewMeeting, m
                   <p className="text-xs text-white/30">{fmt(c.submitted_at, { month: 'short', day: 'numeric' })}</p>
                 </div>
                 <Badge label={c.type} variant="muted" />
-                <span className="text-sm font-semibold text-brandCP">{c.reward} CP</span>
+                {isML
+                  ? <ContributionRewardBreakdown contributionId={c.uuid} title={c.title} reward={c.reward} index={i} />
+                  : <span className="text-sm font-semibold text-brandCP">{c.reward} CP</span>}
               </div>
             ))}
           </div>
@@ -372,9 +376,9 @@ function TabKanban({ tasks }: { tasks: Task[] }) {
 
 // ─── Activity Tab (code) ─────────────────────────────────────────────────────
 
-function TabActivity({ contributions, meetings, team, repoActivity, meetingsEnabled }: {
+function TabActivity({ contributions, meetings, team, repoActivity, meetingsEnabled, isML }: {
   contributions: Contribution[]; meetings: Meeting[]; team: TeamMember[];
-  repoActivity: Record<string, any> | null; meetingsEnabled: boolean;
+  repoActivity: Record<string, any> | null; meetingsEnabled: boolean; isML: boolean;
 }) {
   const userMap = Object.fromEntries(team.map(m => [m.id, m.fullName]));
   const avatarMap = Object.fromEntries(team.map(m => [m.id, m.avatarUrl]));
@@ -401,7 +405,9 @@ function TabActivity({ contributions, meetings, team, repoActivity, meetingsEnab
                   <p className="text-xs text-white/35">{userMap[c.user_id] ?? c.user_id} · {fmt(c.submitted_at, { month: 'short', day: 'numeric' })}</p>
                 </div>
                 <Badge label={c.type} variant="muted" />
-                <span className="shrink-0 text-sm font-semibold text-brandCP">{c.reward} CP</span>
+                {isML
+                  ? <ContributionRewardBreakdown contributionId={c.uuid} title={c.title} reward={c.reward} index={i} />
+                  : <span className="shrink-0 text-sm font-semibold text-brandCP">{c.reward} CP</span>}
               </div>
             ))}
           </div>
@@ -932,7 +938,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
     },
     {
       label: 'Activity',
-      panel: <TabActivity contributions={contributions} meetings={meetings} team={team} repoActivity={repoActivity} meetingsEnabled={meetingsEnabled} />,
+      panel: <TabActivity contributions={contributions} meetings={meetings} team={team} repoActivity={repoActivity} meetingsEnabled={meetingsEnabled} isML={isML} />,
     },
     {
       label: 'Rankings',
