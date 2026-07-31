@@ -8,6 +8,7 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Plus, Code2, BrainCircuit, ShieldCheck } from 'lucide-react';
 import { MlRewardRulesEditor } from './MlRewardRulesEditor';
 import { ValidationTargetsEditor } from './ValidationTargetsEditor';
+import { ValidationRewardsPanel } from './ValidationRewardsPanel';
 import { DEFAULT_ML_REWARD_RULES, type MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
 import type { Challenge, Project, Task } from '../../../../../packages/database-service/domain/entities';
 
@@ -37,6 +38,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
 
   const [sourceChallengeId, setSourceChallengeId] = useState((challenge as any)?.source_challenge_id ?? '');
   const [cpPerValidation, setCpPerValidation] = useState((challenge as any)?.cp_per_validation ?? 5);
+  const [requiredValidations, setRequiredValidations] = useState((challenge as any)?.required_validations ?? 3);
   const [mlChallenges, setMlChallenges] = useState<{ id: string; title: string }[]>([]);
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -146,7 +148,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       ...formData,
       reward_rules: formData.type === 'ml' ? rewardRules : null,
       ...(formData.type === 'validation' && !challenge?.uuid
-        ? { source_challenge_id: sourceChallengeId, cp_per_validation: cpPerValidation }
+        ? { source_challenge_id: sourceChallengeId, cp_per_validation: cpPerValidation, required_validations: requiredValidations }
         : {}),
     });
   };
@@ -285,6 +287,32 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
           </FormField>
         )}
 
+        {formData.type === 'validation' && (
+          <FormField label="Required validations" required>
+            {challenge?.uuid ? (
+              <p className="text-sm" style={{ color: 'var(--foreground)' }}>{requiredValidations} validators must agree</p>
+            ) : (
+              <>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  step={2}
+                  value={requiredValidations}
+                  onChange={e => {
+                    const n = parseInt(e.target.value) || 1;
+                    setRequiredValidations(n % 2 === 0 ? n + 1 : n);
+                  }}
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  Must be odd — a target resolves once this many validators have voted, majority wins.
+                </p>
+              </>
+            )}
+          </FormField>
+        )}
+
         <FormField label="Description">
           <textarea
             rows={3}
@@ -333,6 +361,9 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       {challenge?.uuid && formData.type === 'validation' && (
         <FormSection title="Validation targets">
           <ValidationTargetsEditor challengeId={challenge.uuid} open />
+          <div className="mt-3">
+            <ValidationRewardsPanel challengeId={challenge.uuid} open />
+          </div>
         </FormSection>
       )}
 

@@ -30,6 +30,7 @@ const createChallengeSchema = z.object({
   reward_rules: mlRewardRulesSchema.nullish(),
   source_challenge_id: z.string().uuid().optional(),
   cp_per_validation: z.number().int().positive().optional(),
+  required_validations: z.number().int().positive().optional(),
 });
 
 // GET /api/challenges - Liste tous les challenges
@@ -86,6 +87,12 @@ export async function POST(request: NextRequest) {
       if (!validated.cp_per_validation) {
         return NextResponse.json({ error: 'cp_per_validation is required for validation challenges' }, { status: 400 });
       }
+      if (!validated.required_validations) {
+        return NextResponse.json({ error: 'required_validations is required for validation challenges' }, { status: 400 });
+      }
+      if (validated.required_validations % 2 === 0) {
+        return NextResponse.json({ error: 'required_validations must be odd' }, { status: 400 });
+      }
       const source = await challengeRepo.findById(validated.source_challenge_id);
       if (!source || source.type !== 'ml') {
         return NextResponse.json({ error: 'source_challenge_id must reference an ML challenge' }, { status: 400 });
@@ -106,6 +113,7 @@ export async function POST(request: NextRequest) {
       completion: 0,
       source_challenge_id: validated.type === 'validation' ? validated.source_challenge_id : null,
       cp_per_validation: validated.type === 'validation' ? validated.cp_per_validation : null,
+      required_validations: validated.type === 'validation' ? validated.required_validations : null,
     });
 
     // Extract owner/repo slug from a GitHub URL or plain slug
