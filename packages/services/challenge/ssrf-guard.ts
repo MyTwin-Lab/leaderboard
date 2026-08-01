@@ -29,8 +29,41 @@ function isPrivateIPv4(ip: string): boolean {
   });
 }
 
+/**
+ * Extracts the embedded IPv4 address from an IPv4-mapped (`::ffff:a.b.c.d` or
+ * its hex-compressed form `::ffff:xxxx:xxxx`) IPv6 literal, or `null` if the
+ * address isn't in that form.
+ */
+function extractIPv4Mapped(ip: string): string | null {
+  const dotted = ip.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (dotted) return dotted[1];
+
+  const hex = ip.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hex) {
+    const high = parseInt(hex[1], 16);
+    const low = parseInt(hex[2], 16);
+    return [
+      (high >> 8) & 0xff,
+      high & 0xff,
+      (low >> 8) & 0xff,
+      low & 0xff,
+    ].join(".");
+  }
+
+  return null;
+}
+
 function isPrivateIPv6(ip: string): boolean {
   const normalized = ip.toLowerCase();
+
+  // IPv4-mapped IPv6 literals (e.g. "::ffff:169.254.169.254") embed a real
+  // IPv4 address — evaluate it against the IPv4 private ranges rather than
+  // the IPv6 prefix rules below, which don't recognize this form.
+  const mapped = extractIPv4Mapped(normalized);
+  if (mapped) {
+    return isPrivateIPv4(mapped);
+  }
+
   return (
     normalized === "::1" ||         // loopback
     normalized.startsWith("fc") ||  // unique local

@@ -46,6 +46,18 @@ describe("assertPublicHttpUrl", () => {
     await expect(assertPublicHttpUrl("http://[::1]:8080/predict")).rejects.toThrow(UnsafeEndpointError);
   });
 
+  it("rejects an IPv4-mapped IPv6 literal pointing at the cloud metadata address", async () => {
+    await expect(
+      assertPublicHttpUrl("http://[::ffff:169.254.169.254]/latest/meta-data/")
+    ).rejects.toThrow(UnsafeEndpointError);
+  });
+
+  it("rejects an IPv4-mapped IPv6 literal in dotted-quad form", async () => {
+    await expect(assertPublicHttpUrl("http://[::ffff:127.0.0.1]:8080/predict")).rejects.toThrow(
+      UnsafeEndpointError
+    );
+  });
+
   it("accepts a hostname resolving only to public addresses", async () => {
     mockLookup.mockResolvedValue([{ address: "203.0.113.10", family: 4 }] as any);
     const url = await assertPublicHttpUrl("https://model.example.com/predict");
