@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ChallengeRepository } from '../../../../../../../packages/database-service/repositories';
+import { ChallengeRepository, ValidationAttemptRepository } from '../../../../../../../packages/database-service/repositories';
 import { mlRewardRulesSchema } from '../../../../../../../packages/database-service/domain/mlRewardRules';
 import { verifyRequestToken } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { z } from 'zod';
 
 const challengeRepo = new ChallengeRepository();
+const attemptRepo = new ValidationAttemptRepository();
 
 const updateChallengeSchema = z.object({
   title: z.string().min(1).optional(),
@@ -63,15 +64,29 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const before = await challengeRepo.findById(id);
+
     const body = await request.json();
     const validated = updateChallengeSchema.parse(body);
-    
+
     const updateData: any = { ...validated };
     // Present but empty means "clear the date"; absent means "leave it alone".
     if (validated.start_date !== undefined) updateData.start_date = validated.start_date ? new Date(validated.start_date) : null;
     if (validated.end_date !== undefined) updateData.end_date = validated.end_date ? new Date(validated.end_date) : null;
 
     const challenge = await challengeRepo.update(id, updateData);
+
+    // Purge the file/response blobs of every validation run once the
+    // validation challenge itself archives — verdict/description/metadata
+    // stay for the CP audit trail, only the binary content is dropped.
+    if (before?.type === 'validation' && before.status !== 'archived' && validated.status === 'archived') {
+      try {
+        await attemptRepo.purgeContentForChallenge(id);
+      } catch (err) {
+        console.error('Error purging validation attempt content on archive:', err);
+      }
+    }
+
     return NextResponse.json(challenge);
   } catch (error) {
     if (error instanceof z.ZodError) {

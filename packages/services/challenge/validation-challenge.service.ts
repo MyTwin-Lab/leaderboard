@@ -56,6 +56,12 @@ export interface ValidationRunDeps {
       validator_user_id: string;
       verdict: "works" | "broken";
       description: string | null;
+      file_bytes: Buffer;
+      file_filename: string;
+      file_content_type: string;
+      response_bytes: Buffer;
+      response_content_type: string;
+      response_status: number;
     }) => Promise<ValidationAttempt | null>;
     findByChallengeAndContribution: (validationChallengeId: string, contributionId: string) => Promise<ValidationAttempt[]>;
   };
@@ -134,8 +140,11 @@ export class ValidationChallengeService {
     validatorUserId: string;
     verdict: "works" | "broken";
     description: string | null;
+    /** Exactly what the validator dropped and exactly what they saw — persisted for manager review. */
+    file: ValidationFile;
+    response: ValidationCallResult;
   }): Promise<CastVerdictResult> {
-    const { validationChallengeId, contributionId, validatorUserId, verdict, description } = input;
+    const { validationChallengeId, contributionId, validatorUserId, verdict, description, file, response } = input;
 
     const challenge = await this.deps.challengeRepo.findById(validationChallengeId);
     if (!challenge || challenge.type !== "validation") {
@@ -168,6 +177,12 @@ export class ValidationChallengeService {
       validator_user_id: validatorUserId,
       verdict,
       description,
+      file_bytes: file.buffer,
+      file_filename: file.filename,
+      file_content_type: file.mimeType,
+      response_bytes: response.body,
+      response_content_type: response.contentType,
+      response_status: response.status,
     });
     if (!created) {
       // Lost a race against another request from the same validator.

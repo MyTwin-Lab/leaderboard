@@ -133,6 +133,13 @@ export const validationAttemptSchema = z.object({
   verdict: z.enum(['works', 'broken']),
   description: z.string().nullable(),
   created_at: z.coerce.date(),
+  file_bytes: z.instanceof(Buffer).nullable(),
+  file_filename: z.string().nullable(),
+  file_content_type: z.string().nullable(),
+  response_bytes: z.instanceof(Buffer).nullable(),
+  response_content_type: z.string().nullable(),
+  response_status: z.number().int().nullable(),
+  purged_at: z.coerce.date().nullable(),
 });
 
 export const userSchema = z.object({

@@ -1,10 +1,18 @@
 import { config } from "../../config/index.js";
 import "dotenv/config";
-import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial, real, index, uniqueIndex, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial, real, index, uniqueIndex, boolean, customType } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+
+// Drizzle has no built-in bytea column type — raw binary content (validation
+// run files/responses) is stored via this custom type instead of base64 text.
+const bytea = customType<{ data: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 // --- PROJECTS ---
 export const projects = pgTable("projects", {
@@ -175,8 +183,11 @@ export const validation_targets = pgTable("validation_targets", {
 
 // --- VALIDATION_ATTEMPTS ---
 // One row the first time a validator successfully validates a given target.
-// No file, no response body — just enough to dedupe CP and audit who tested
-// what. The unique index is the actual dedupe guarantee under races.
+// Also carries the exact file the validator dropped and the exact response
+// they saw, so a challenge manager can review the run later — nulled out via
+// purgeContentForChallenge once the validation challenge is archived, while
+// the verdict/description/metadata stay for the CP audit trail. The unique
+// index is the actual dedupe guarantee under races.
 export const validation_attempts = pgTable("validation_attempts", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   validation_challenge_id: uuid("validation_challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
@@ -188,6 +199,16 @@ export const validation_attempts = pgTable("validation_attempts", {
   // Required by the API layer when verdict = 'broken', optional otherwise.
   description: text("description"),
   created_at: timestamp("created_at").defaultNow(),
+  // The file the validator dropped, exactly as sent alongside their verdict.
+  file_bytes: bytea("file_bytes"),
+  file_filename: varchar("file_filename", { length: 255 }),
+  file_content_type: varchar("file_content_type", { length: 255 }),
+  // The target endpoint's raw response, exactly as the validator saw it.
+  response_bytes: bytea("response_bytes"),
+  response_content_type: varchar("response_content_type", { length: 255 }),
+  response_status: integer("response_status"),
+  // Set once the file/response bytes above are purged (challenge archived).
+  purged_at: timestamp("purged_at"),
 }, (table) => ({
   challengeIdIdx: index("idx_validation_attempts_challenge_id").on(table.validation_challenge_id),
   validatorIdx: index("idx_validation_attempts_validator_id").on(table.validator_user_id),

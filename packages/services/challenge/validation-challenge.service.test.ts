@@ -54,6 +54,7 @@ function makeContribution(over: Partial<Contribution> = {}): Contribution {
 }
 
 const file = { buffer: Buffer.from("fake-bytes"), filename: "cat.png", mimeType: "image/png" };
+const response = { status: 200, contentType: "application/json", body: Buffer.from('{"label":"cat"}') };
 
 function makeDeps(opts: {
   challenge?: Partial<Challenge>;
@@ -129,7 +130,7 @@ describe("ValidationChallengeService.validate", () => {
     const deps = makeDeps();
     const service = new ValidationChallengeService(deps);
 
-    const result = await service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", file });
+    const result = await service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", file });
 
     expect(result).toEqual({ status: 200, contentType: "application/json", body: Buffer.from('{"label":"cat"}') });
   });
@@ -140,7 +141,7 @@ describe("ValidationChallengeService.validate", () => {
     });
     const service = new ValidationChallengeService(deps);
 
-    const result = await service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", file });
+    const result = await service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", file });
 
     expect(result.status).toBe(500);
   });
@@ -151,7 +152,7 @@ describe("ValidationChallengeService.validate", () => {
     const service = new ValidationChallengeService(deps);
 
     await expect(
-      service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", file })
+      service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", file })
     ).rejects.toThrow(ValidationTargetError);
   });
 
@@ -161,7 +162,7 @@ describe("ValidationChallengeService.validate", () => {
     const service = new ValidationChallengeService(deps);
 
     await expect(
-      service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", file })
+      service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", file })
     ).rejects.toThrow(ValidationTargetError);
   });
 
@@ -170,7 +171,7 @@ describe("ValidationChallengeService.validate", () => {
     const service = new ValidationChallengeService(deps);
 
     await expect(
-      service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", file })
+      service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", file })
     ).rejects.toThrow(EndpointCallError);
   });
 });
@@ -186,6 +187,8 @@ describe("ValidationChallengeService.castVerdict", () => {
       validatorUserId: "bob",
       verdict: "works",
       description: null,
+      file,
+      response,
     });
 
     expect(result).toEqual({
@@ -199,6 +202,34 @@ describe("ValidationChallengeService.castVerdict", () => {
     expect(deps.rewardRepo.createManyAndSyncRewards).not.toHaveBeenCalled();
   });
 
+  it("persists exactly the file and response bytes/metadata passed in, alongside the verdict", async () => {
+    const deps = makeDeps();
+    const service = new ValidationChallengeService(deps);
+
+    await service.castVerdict({
+      validationChallengeId: "vch-1",
+      contributionId: "contrib-1",
+      validatorUserId: "bob",
+      verdict: "broken",
+      description: "It crashed on a 512x512 input",
+      file,
+      response,
+    });
+
+    expect(deps.attemptRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        verdict: "broken",
+        description: "It crashed on a 512x512 input",
+        file_bytes: file.buffer,
+        file_filename: "cat.png",
+        file_content_type: "image/png",
+        response_bytes: response.body,
+        response_content_type: "application/json",
+        response_status: 200,
+      })
+    );
+  });
+
   it("throws SelfVoteError when the validator owns the target submission", async () => {
     const deps = makeDeps();
     const service = new ValidationChallengeService(deps);
@@ -210,6 +241,8 @@ describe("ValidationChallengeService.castVerdict", () => {
         validatorUserId: "alice", // same as makeContribution()'s user_id
         verdict: "works",
         description: null,
+        file,
+        response,
       })
     ).rejects.toThrow(SelfVoteError);
   });
@@ -225,6 +258,13 @@ describe("ValidationChallengeService.castVerdict", () => {
           verdict: "works",
           description: null,
           created_at: new Date(),
+          file_bytes: null,
+          file_filename: null,
+          file_content_type: null,
+          response_bytes: null,
+          response_content_type: null,
+          response_status: null,
+          purged_at: null,
         },
       ],
     });
@@ -237,6 +277,8 @@ describe("ValidationChallengeService.castVerdict", () => {
         validatorUserId: "bob",
         verdict: "broken",
         description: "still bad",
+        file,
+        response,
       })
     ).rejects.toThrow(DuplicateVerdictError);
   });
@@ -245,9 +287,9 @@ describe("ValidationChallengeService.castVerdict", () => {
     const deps = makeDeps();
     const service = new ValidationChallengeService(deps);
 
-    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", verdict: "works", description: null });
-    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "carol", verdict: "broken", description: "bad output" });
-    const result = await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "dave", verdict: "works", description: null });
+    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", verdict: "works", description: null, file, response });
+    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "carol", verdict: "broken", description: "bad output", file, response });
+    const result = await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "dave", verdict: "works", description: null, file, response });
 
     expect(result.resolved).toBe(true);
     expect(result.outcome).toBe("works");
@@ -262,9 +304,9 @@ describe("ValidationChallengeService.castVerdict", () => {
     const deps = makeDeps({ challenge: { contribution_points_reward: 8, cp_per_validation: 5 } });
     const service = new ValidationChallengeService(deps);
 
-    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", verdict: "works", description: null });
-    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "carol", verdict: "works", description: null });
-    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "dave", verdict: "broken", description: "nope" });
+    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", verdict: "works", description: null, file, response });
+    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "carol", verdict: "works", description: null, file, response });
+    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "dave", verdict: "broken", description: "nope", file, response });
 
     const paid = vi.mocked(deps.rewardRepo.createManyAndSyncRewards).mock.calls[0][0] as any[];
     expect(paid.map(e => e.points)).toEqual([5, 3]); // bob gets the full 5, carol gets whatever's left
@@ -273,14 +315,14 @@ describe("ValidationChallengeService.castVerdict", () => {
   it("does not pay out twice if a concurrent request already resolved the target", async () => {
     const deps = makeDeps({
       existingAttempts: [
-        { uuid: "att-1", validation_challenge_id: "vch-1", contribution_id: "contrib-1", validator_user_id: "bob", verdict: "works", description: null, created_at: new Date() },
-        { uuid: "att-2", validation_challenge_id: "vch-1", contribution_id: "contrib-1", validator_user_id: "carol", verdict: "works", description: null, created_at: new Date() },
+        { uuid: "att-1", validation_challenge_id: "vch-1", contribution_id: "contrib-1", validator_user_id: "bob", verdict: "works", description: null, created_at: new Date(), file_bytes: null, file_filename: null, file_content_type: null, response_bytes: null, response_content_type: null, response_status: null, purged_at: null },
+        { uuid: "att-2", validation_challenge_id: "vch-1", contribution_id: "contrib-1", validator_user_id: "carol", verdict: "works", description: null, created_at: new Date(), file_bytes: null, file_filename: null, file_content_type: null, response_bytes: null, response_content_type: null, response_status: null, purged_at: null },
       ],
       overrideResolve: async () => null, // another request already resolved it
     });
     const service = new ValidationChallengeService(deps);
 
-    const result = await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "dave", verdict: "works", description: null });
+    const result = await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "dave", verdict: "works", description: null, file, response });
 
     expect(result.resolved).toBe(true);
     expect(result.cpAwarded).toBe(0);
@@ -291,7 +333,7 @@ describe("ValidationChallengeService.castVerdict", () => {
     const deps = makeDeps({ target: { outcome: "works" } });
     const service = new ValidationChallengeService(deps);
 
-    const result = await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "erin", verdict: "broken", description: "seems off" });
+    const result = await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "erin", verdict: "broken", description: "seems off", file, response });
 
     expect(result.verdictRecorded).toBe(true);
     expect(result.resolved).toBe(true);

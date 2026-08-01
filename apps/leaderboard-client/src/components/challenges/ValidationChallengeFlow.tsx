@@ -136,7 +136,8 @@ function TargetCard({
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
-  const [output, setOutput] = useState<{ blob: Blob; contentType: string } | null>(null);
+  const [lastFile, setLastFile] = useState<File | null>(null);
+  const [output, setOutput] = useState<{ blob: Blob; contentType: string; status: number } | null>(null);
   const [verdict, setVerdict] = useState<'works' | 'broken' | null>(null);
   const [description, setDescription] = useState('');
   const [submittingVerdict, setSubmittingVerdict] = useState(false);
@@ -145,6 +146,7 @@ function TargetCard({
   const runValidation = async (file: File) => {
     setUploading(true);
     setError('');
+    setLastFile(file);
     setOutput(null);
     setVerdict(null);
     setVerdictResult(null);
@@ -159,7 +161,8 @@ function TargetCard({
         return;
       }
       const blob = await res.blob();
-      setOutput({ blob, contentType: res.headers.get('content-type') ?? 'text/plain' });
+      const status = Number(res.headers.get('x-validation-status')) || res.status;
+      setOutput({ blob, contentType: res.headers.get('content-type') ?? 'text/plain', status });
     } catch {
       setError('Network error');
     } finally {
@@ -168,7 +171,7 @@ function TargetCard({
   };
 
   const submitVerdict = async () => {
-    if (!verdict) return;
+    if (!verdict || !lastFile || !output) return;
     if (verdict === 'broken' && !description.trim()) {
       setError('A description is required when marking a submission as Défectueux');
       return;
@@ -176,11 +179,15 @@ function TargetCard({
     setSubmittingVerdict(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-verdicts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contribution_id: target.contributionId, verdict, description: description.trim() || null }),
-      });
+      const form = new FormData();
+      form.append('contribution_id', target.contributionId);
+      form.append('verdict', verdict);
+      if (description.trim()) form.append('description', description.trim());
+      form.append('file', lastFile);
+      form.append('response', output.blob, 'response');
+      form.append('response_content_type', output.contentType);
+      form.append('response_status', String(output.status));
+      const res = await fetch(`/api/challenges/${challengeId}/validation-verdicts`, { method: 'POST', body: form });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(d.error || 'Failed to submit verdict');

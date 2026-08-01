@@ -720,7 +720,7 @@ export function toDbValidationTarget(
   };
 }
 
-export function toDomainValidationAttempt(row: DbValidationAttempt): ValidationAttempt {
+export function toDomainValidationAttempt(row: Partial<DbValidationAttempt> & Pick<DbValidationAttempt, "uuid" | "validation_challenge_id" | "contribution_id" | "validator_user_id" | "verdict">): ValidationAttempt {
   return {
     uuid: row.uuid,
     validation_challenge_id: row.validation_challenge_id,
@@ -729,11 +729,21 @@ export function toDomainValidationAttempt(row: DbValidationAttempt): ValidationA
     verdict: row.verdict as ValidationAttempt['verdict'],
     description: row.description ?? null,
     created_at: new Date(row.created_at ?? Date.now()),
+    // Undefined (rather than null) means these columns weren't selected —
+    // e.g. the narrow-column reads used everywhere except findById/create,
+    // which deliberately don't load the blob columns for performance.
+    file_bytes: row.file_bytes ?? null,
+    file_filename: row.file_filename ?? null,
+    file_content_type: row.file_content_type ?? null,
+    response_bytes: row.response_bytes ?? null,
+    response_content_type: row.response_content_type ?? null,
+    response_status: row.response_status ?? null,
+    purged_at: row.purged_at ? new Date(row.purged_at) : null,
   };
 }
 
 export function toDbValidationAttempt(
-  entity: Omit<ValidationAttempt, "uuid" | "created_at">
+  entity: Omit<ValidationAttempt, "uuid" | "created_at" | "purged_at">
 ): typeof validation_attempts.$inferInsert {
   return {
     validation_challenge_id: entity.validation_challenge_id,
@@ -741,6 +751,12 @@ export function toDbValidationAttempt(
     validator_user_id: entity.validator_user_id,
     verdict: entity.verdict,
     description: entity.description ?? null,
+    file_bytes: entity.file_bytes ?? null,
+    file_filename: entity.file_filename ?? null,
+    file_content_type: entity.file_content_type ?? null,
+    response_bytes: entity.response_bytes ?? null,
+    response_content_type: entity.response_content_type ?? null,
+    response_status: entity.response_status ?? null,
   };
 }
 

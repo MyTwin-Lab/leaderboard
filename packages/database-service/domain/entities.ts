@@ -169,6 +169,13 @@ export interface ValidationAttempt {
   verdict: 'works' | 'broken';
   description: string | null;      // requis côté API quand verdict = 'broken'
   created_at: Date;
+  file_bytes: Buffer | null;             // le fichier déposé par le validateur
+  file_filename: string | null;
+  file_content_type: string | null;
+  response_bytes: Buffer | null;         // la réponse brute de l'endpoint validé
+  response_content_type: string | null;
+  response_status: number | null;
+  purged_at: Date | null;                // non-null une fois le contenu purgé (challenge archivée)
 }
 
 export interface User {

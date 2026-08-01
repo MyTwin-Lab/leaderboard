@@ -12,6 +12,7 @@ import {
 import { CreateChallengeDrawer } from '@/components/admin/CreateChallengeDrawer';
 import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
 import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
+import { ValidationRunsPanel } from '@/components/admin/ValidationRunsPanel';
 import type { MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import { ContributionRewardBreakdown } from '@/components/contributor/ContributionRewardBreakdown';
@@ -904,6 +905,10 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
           <ValidationRewardsPanel challengeId={challengeId} open />
         </div>
       ),
+    },
+    {
+      label: 'Runs',
+      panel: <ValidationRunsPanel challengeId={challengeId} open />,
     },
   ] : [
     {
