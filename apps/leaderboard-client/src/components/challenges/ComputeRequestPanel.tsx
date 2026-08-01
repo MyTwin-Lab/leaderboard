@@ -1,0 +1,209 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { Cpu, Loader2, ExternalLink, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
+
+interface ComputeRequestData {
+  id: string;
+  status: 'pending' | 'rejected' | 'approved' | 'provisioning' | 'ready' | 'expired' | 'failed';
+  requested_at: string;
+  approved_at: string | null;
+  expires_at: string | null;
+  ready_at: string | null;
+  expired_at: string | null;
+  error_message: string | null;
+}
+
+const STATUS_LABEL: Record<ComputeRequestData['status'], string> = {
+  pending: 'En attente de validation',
+  approved: 'Approuvée — création en cours',
+  provisioning: 'Préparation de votre environnement...',
+  ready: 'Disponible',
+  rejected: 'Refusée',
+  expired: 'Expirée',
+  failed: 'Échec de la création, contactez un admin',
+};
+
+const STATUS_VARIANT: Record<ComputeRequestData['status'], 'success' | 'warning' | 'danger' | 'info' | 'muted'> = {
+  pending: 'warning',
+  approved: 'info',
+  provisioning: 'info',
+  ready: 'success',
+  rejected: 'danger',
+  expired: 'muted',
+  failed: 'danger',
+};
+
+const NON_TERMINAL: ComputeRequestData['status'][] = ['pending', 'approved', 'provisioning'];
+
+function formatRemaining(expiresAt: string): string {
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (ms <= 0) return '0h00';
+  const totalMinutes = Math.floor(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h${String(minutes).padStart(2, '0')}`;
+}
+
+/** Contributor-facing GPU compute request button/status — visible only on ML challenges once Scaleway is connected. */
+export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
+  const [scalewayConnected, setScalewayConnected] = useState<boolean | null>(null);
+  const [request, setRequest] = useState<ComputeRequestData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [confirming, setConfirming] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [error, setError] = useState('');
+  const [, forceTick] = useState(0);
+
+  const load = () => {
+    fetch(`/api/challenges/${challengeId}/compute-request`)
+      .then(res => (res.ok ? res.json() : { request: null }))
+      .then(d => setRequest(d.request ?? null));
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    fetch('/api/scaleway/status')
+      .then(r => (r.ok ? r.json() : { connected: false }))
+      .then(d => setScalewayConnected(!!d.connected))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (scalewayConnected) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scalewayConnected, challengeId]);
+
+  useEffect(() => {
+    if (!request || !NON_TERMINAL.includes(request.status)) return;
+    const interval = setInterval(load, 7000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request?.status]);
+
+  // Recompute the "expires in XhYY" countdown from expires_at client-side,
+  // without re-polling the server every minute just for a label.
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (request?.status !== 'ready' || !request.expires_at) return;
+    countdownRef.current = setInterval(() => forceTick(t => t + 1), 60000);
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
+  }, [request?.status, request?.expires_at]);
+
+  const handleRequest = async () => {
+    setRequesting(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/challenges/${challengeId}/compute-request`, { method: 'POST' });
+      if (res.ok) {
+        setConfirming(false);
+        load();
+      } else {
+        const d = await res.json();
+        setError(d.error === 'already_requested' ? 'Vous avez déjà fait une demande sur ce challenge.' : (d.error ?? 'Échec de la demande'));
+      }
+    } catch {
+      setError('Erreur réseau');
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleOpen = async () => {
+    setOpening(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/challenges/${challengeId}/compute-request/reveal-token`, { method: 'POST' });
+      const d = await res.json();
+      if (!res.ok) {
+        setError(d.error ?? 'Impossible de récupérer le jeton d\'accès');
+        return;
+      }
+      const url = d.jupyter_url ? `${d.jupyter_url}?token=${encodeURIComponent(d.token)}` : '';
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  if (loading) return null;
+
+  // Not masked entirely per SPEC §4.1.4 — the contributor sees a clear
+  // explanation of why the feature isn't available yet, rather than nothing.
+  if (!scalewayConnected) {
+    return (
+      <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: 'color-mix(in srgb, var(--foreground) 35%, transparent)' }}>
+        <Cpu className="h-3.5 w-3.5 shrink-0" />
+        La puissance de calcul GPU n&apos;est pas encore disponible — le service n&apos;a pas été connecté par un administrateur.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Cpu className="h-4 w-4 text-brandCP/80" />
+        <h3 className="text-sm font-semibold text-white">Puissance de calcul GPU</h3>
+        {request && <Badge label={STATUS_LABEL[request.status]} variant={STATUS_VARIANT[request.status]} />}
+      </div>
+
+      {!request && !confirming && (
+        <button
+          onClick={() => setConfirming(true)}
+          className="rounded-lg bg-brandCP/15 px-4 py-2 text-sm font-semibold text-brandCP transition-all hover:bg-brandCP/25"
+        >
+          Demander de la puissance de calcul
+        </button>
+      )}
+
+      {!request && confirming && (
+        <div className="space-y-2.5">
+          <p className="text-xs text-white/50">
+            Une seule demande possible sur ce challenge. Une fois validée par le manager, l&apos;instance
+            est disponible 24h avant coupure automatique — sans exception ni prolongation.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleRequest}
+              disabled={requesting}
+              className="rounded-lg bg-brandCP/15 px-4 py-2 text-sm font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:opacity-40"
+            >
+              {requesting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirmer la demande'}
+            </button>
+            <button
+              onClick={() => setConfirming(false)}
+              disabled={requesting}
+              className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/50 disabled:opacity-40"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+
+      {request?.status === 'ready' && (
+        <div className="space-y-2">
+          {request.expires_at && (
+            <p className="text-xs text-white/40">Expire dans {formatRemaining(request.expires_at)}</p>
+          )}
+          <button
+            onClick={handleOpen}
+            disabled={opening}
+            className="flex items-center gap-1.5 rounded-lg bg-brandCP/15 px-4 py-2 text-sm font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:opacity-40"
+          >
+            {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Ouvrir mon environnement <ExternalLink className="h-3.5 w-3.5" /></>}
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-center gap-1.5 text-xs text-red-400">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}

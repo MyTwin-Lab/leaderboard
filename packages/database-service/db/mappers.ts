@@ -32,6 +32,7 @@ import {
   reward_entries,
   validation_targets,
   validation_attempts,
+  compute_requests,
 } from "./drizzle.js";
 import { parseMlRewardRules } from "../domain/mlRewardRules.js";
 import type {
@@ -46,6 +47,7 @@ import type {
   ChallengeSlackConfig,
   ValidationTarget,
   ValidationAttempt,
+  ComputeRequest,
   User,
   Contribution,
   RefreshToken,
@@ -760,6 +762,47 @@ export function toDbValidationAttempt(
   };
 }
 
+type DbComputeRequest = InferSelectModel<typeof compute_requests>;
+
+export function toDomainComputeRequest(row: Partial<DbComputeRequest> & Pick<DbComputeRequest, "uuid" | "challenge_id" | "user_id" | "status">): ComputeRequest {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challenge_id,
+    user_id: row.user_id,
+    status: row.status as ComputeRequest['status'],
+    requested_at: new Date(row.requested_at ?? Date.now()),
+    decided_at: row.decided_at ? new Date(row.decided_at) : null,
+    decided_by: row.decided_by ?? null,
+    approved_at: row.approved_at ? new Date(row.approved_at) : null,
+    expires_at: row.expires_at ? new Date(row.expires_at) : null,
+    provisioning_started_at: row.provisioning_started_at ? new Date(row.provisioning_started_at) : null,
+    ready_at: row.ready_at ? new Date(row.ready_at) : null,
+    expired_at: row.expired_at ? new Date(row.expired_at) : null,
+    expire_reason: (row.expire_reason as ComputeRequest['expire_reason']) ?? null,
+    failed_at: row.failed_at ? new Date(row.failed_at) : null,
+    error_message: row.error_message ?? null,
+    provider_ref: row.provider_ref ?? null,
+    provider_parent_ref: row.provider_parent_ref ?? null,
+    jupyter_base_url: row.jupyter_base_url ?? null,
+    // Undefined (rather than null) means these columns weren't selected —
+    // the "summary" reads used everywhere except the service's internal
+    // findById deliberately don't load the encrypted token columns.
+    access_token_enc: row.access_token_enc ?? null,
+    access_token_iv: row.access_token_iv ?? null,
+    access_token_revealed_at: row.access_token_revealed_at ? new Date(row.access_token_revealed_at) : null,
+    updated_at: row.updated_at ? new Date(row.updated_at) : null,
+  };
+}
+
+export function toDbComputeRequest(
+  entity: Pick<ComputeRequest, "challenge_id" | "user_id">
+): typeof compute_requests.$inferInsert {
+  return {
+    challenge_id: entity.challenge_id,
+    user_id: entity.user_id,
+  };
+}
+
 export function toDomainChallengeSlackConfig(row: DbChallengeSlackConfig): ChallengeSlackConfig {
   return {
     challenge_id: row.challenge_id,
@@ -801,5 +844,11 @@ export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>):
     slack_is_connected: !!row.slack_token_enc,
     modules_meetings_enabled: row.modules_meetings_enabled ?? true,
     modules_onboarding_enabled: row.modules_onboarding_enabled ?? true,
+    scaleway_project_id: row.scaleway_project_id ?? null,
+    scaleway_zone: row.scaleway_zone ?? null,
+    scaleway_connected_at: row.scaleway_connected_at ?? null,
+    scaleway_connected_by: row.scaleway_connected_by ?? null,
+    scaleway_is_connected: !!row.scaleway_secret_key_enc && !row.scaleway_disconnect_requested_at,
+    scaleway_disconnect_requested_at: row.scaleway_disconnect_requested_at ?? null,
   };
 }

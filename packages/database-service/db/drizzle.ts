@@ -215,6 +215,44 @@ export const validation_attempts = pgTable("validation_attempts", {
   uniqueAttemptIdx: uniqueIndex("idx_validation_attempts_unique").on(table.validation_challenge_id, table.contribution_id, table.validator_user_id),
 }));
 
+// --- COMPUTE REQUESTS (Scaleway GPU) ---
+// One row per (challenge, contributor) request for a temporary GPU instance —
+// the unique index is what actually enforces "one request per ML challenge"
+// under races, not just the service-layer check.
+export const compute_requests = pgTable("compute_requests", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  // 'pending' | 'rejected' | 'approved' | 'provisioning' | 'ready' | 'expired' | 'failed'
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  requested_at: timestamp("requested_at").defaultNow().notNull(),
+  decided_at: timestamp("decided_at"),
+  decided_by: uuid("decided_by").references(() => users.uuid),
+  approved_at: timestamp("approved_at"),
+  // Fixed at approval time (approved_at + 24h) — not extended by anything.
+  expires_at: timestamp("expires_at"),
+  provisioning_started_at: timestamp("provisioning_started_at"),
+  ready_at: timestamp("ready_at"),
+  expired_at: timestamp("expired_at"),
+  // 'timeout' | 'challenge_closed' | 'challenge_deleted'
+  expire_reason: varchar("expire_reason", { length: 20 }),
+  failed_at: timestamp("failed_at"),
+  error_message: text("error_message"),
+  // Self-describing provisioner ref, e.g. "fr-par-2/<serverId>", so
+  // deprovision/getStatus never need extra context beyond this string.
+  provider_ref: varchar("provider_ref", { length: 128 }),
+  provider_parent_ref: varchar("provider_parent_ref", { length: 128 }),
+  jupyter_base_url: text("jupyter_base_url"), // never includes the access token
+  access_token_enc: text("access_token_enc"),
+  access_token_iv: varchar("access_token_iv", { length: 64 }),
+  access_token_revealed_at: timestamp("access_token_revealed_at"),
+  updated_at: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  challengeIdIdx: index("idx_compute_requests_challenge_id").on(table.challenge_id),
+  statusIdx: index("idx_compute_requests_status").on(table.status),
+  uniqueRequestIdx: uniqueIndex("idx_compute_requests_unique").on(table.challenge_id, table.user_id),
+}));
+
 // --- TASKS ---
 export const tasks = pgTable("tasks", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
@@ -639,6 +677,14 @@ export const app_settings = pgTable("app_settings", {
   slack_connected_by: uuid("slack_connected_by").references(() => users.uuid),
   modules_meetings_enabled: boolean("modules_meetings_enabled").notNull().default(true),
   modules_onboarding_enabled: boolean("modules_onboarding_enabled").notNull().default(true),
+  // Scaleway GPU compute connection
+  scaleway_secret_key_enc: text("scaleway_secret_key_enc"),
+  scaleway_secret_key_iv: varchar("scaleway_secret_key_iv", { length: 64 }),
+  scaleway_project_id: varchar("scaleway_project_id", { length: 64 }),
+  scaleway_zone: varchar("scaleway_zone", { length: 32 }),
+  scaleway_connected_at: timestamp("scaleway_connected_at"),
+  scaleway_connected_by: uuid("scaleway_connected_by").references(() => users.uuid),
+  scaleway_disconnect_requested_at: timestamp("scaleway_disconnect_requested_at"),
 });
 
 // --- SYNC MEETINGS ---
@@ -786,5 +832,6 @@ export const db = drizzle(pool, {
     meetingAnalysesRelations,
     onboardingProgressRelations,
     app_settings,
+    compute_requests,
   },
 });

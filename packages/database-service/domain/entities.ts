@@ -178,6 +178,35 @@ export interface ValidationAttempt {
   purged_at: Date | null;                // non-null une fois le contenu purgé (challenge archivée)
 }
 
+export type ComputeRequestStatus = 'pending' | 'rejected' | 'approved' | 'provisioning' | 'ready' | 'expired' | 'failed';
+export type ComputeRequestExpireReason = 'timeout' | 'challenge_closed' | 'challenge_deleted';
+
+/** Une demande de puissance de calcul GPU (Scaleway) sur un challenge ML. */
+export interface ComputeRequest {
+  uuid: string;
+  challenge_id: string; // FK -> challenges.uuid
+  user_id: string;      // FK -> users.uuid
+  status: ComputeRequestStatus;
+  requested_at: Date;
+  decided_at: Date | null;
+  decided_by: string | null;   // FK -> users.uuid (manager/admin)
+  approved_at: Date | null;
+  expires_at: Date | null;     // figé à approved_at + 24h
+  provisioning_started_at: Date | null;
+  ready_at: Date | null;
+  expired_at: Date | null;
+  expire_reason: ComputeRequestExpireReason | null;
+  failed_at: Date | null;
+  error_message: string | null;
+  provider_ref: string | null;         // ex: "fr-par-2/<serverId>"
+  provider_parent_ref: string | null;  // ex: le project_id Scaleway
+  jupyter_base_url: string | null;     // jamais le token
+  access_token_enc: string | null;
+  access_token_iv: string | null;
+  access_token_revealed_at: Date | null;
+  updated_at: Date | null;
+}
+
 export interface User {
   uuid: string;
   role: string;
@@ -427,6 +456,12 @@ export interface AppSettings {
   slack_is_connected: boolean; // derived: !!slack_token_enc in DB
   modules_meetings_enabled: boolean;
   modules_onboarding_enabled: boolean;
+  scaleway_project_id?: string | null;
+  scaleway_zone?: string | null;
+  scaleway_connected_at?: Date | null;
+  scaleway_connected_by?: string | null;
+  scaleway_is_connected: boolean; // derived: !!scaleway_secret_key_enc && !scaleway_disconnect_requested_at
+  scaleway_disconnect_requested_at?: Date | null;
 }
 
 // --- ONBOARDING PROGRESS WITH USER ---

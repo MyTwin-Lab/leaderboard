@@ -87,6 +87,26 @@ export async function PUT(
       }
     }
 
+    // Closing an ML challenge cuts any still-active GPU compute instance
+    // immediately, regardless of how much of its 24h window is left — same
+    // "completed/archived" set ChallengeManageView treats as closed.
+    const CLOSED_STATUSES = ['completed', 'archived'];
+    const wasOpen = !CLOSED_STATUSES.includes(before?.status ?? '');
+    const isNowClosed = CLOSED_STATUSES.includes(validated.status ?? '');
+    if (before?.type === 'ml' && wasOpen && isNowClosed) {
+      // Best-effort and fully isolated from the challenge update itself — a
+      // failure here (constructor throw, DB error, Scaleway API error) must
+      // never turn a successful status change into a 500.
+      try {
+        const { ComputeRequestService } = await import('../../../../../../../packages/services/compute/compute-request.service.js');
+        new ComputeRequestService().terminateForChallenge(id, 'challenge_closed').catch(err => {
+          console.error('Error terminating compute requests on challenge close:', err);
+        });
+      } catch (err) {
+        console.error('Error terminating compute requests on challenge close:', err);
+      }
+    }
+
     return NextResponse.json(challenge);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -111,6 +131,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    // Cut any active GPU compute instance *before* the challenge row is
+    // deleted — compute_requests.challenge_id cascades on delete, so doing
+    // this after would drop the rows before their instances could be reached.
+    const { ComputeRequestService } = await import('../../../../../../../packages/services/compute/compute-request.service.js');
+    await new ComputeRequestService().terminateForChallenge(id, 'challenge_deleted');
+
     await challengeRepo.delete(id);
     return NextResponse.json({ success: true });
   } catch (error) {

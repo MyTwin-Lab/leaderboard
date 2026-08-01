@@ -13,6 +13,7 @@ import { CreateChallengeDrawer } from '@/components/admin/CreateChallengeDrawer'
 import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
 import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
 import { ValidationRunsPanel } from '@/components/admin/ValidationRunsPanel';
+import { ComputeRequestsPanel } from '@/components/challenges/ComputeRequestsPanel';
 import type { MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import { ContributionRewardBreakdown } from '@/components/contributor/ContributionRewardBreakdown';
@@ -811,6 +812,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   // Admin view always shows meetings; manager view respects the global module flag.
   const [meetingsEnabled, setMeetingsEnabled] = useState(isAdmin);
+  const [computeEnabled, setComputeEnabled] = useState(false);
 
   useEffect(() => { if (challengeId) fetchAll(); }, [challengeId]);
 
@@ -850,6 +852,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
       ),
       fetch(`/api/challenges/${challengeId}/ml-workspace`).then(r => r.ok && r.json()).then(d => d && setMlData(d)),
       fetch(`/api/challenges/${challengeId}/repo-activity`).then(r => r.ok && r.json()).then(d => d?.activities && setRepoActivity(d.activities)),
+      fetch('/api/scaleway/status').then(r => r.ok && r.json()).then(d => d && setComputeEnabled(!!d.connected)),
       isAdmin ? Promise.resolve() : fetch('/api/modules').then(r => r.ok && r.json()).then(d => d && setMeetingsEnabled(d.meetings_enabled !== false)),
       // Only used to name the (locked) project in the edit drawer.
       fetch('/api/projects').then(r => r.ok && r.json()).then(d =>
@@ -892,6 +895,10 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
       label: 'Rankings',
       panel: <TabRankings contributions={contributions} team={team} />,
     },
+    ...(computeEnabled ? [{
+      label: 'Compute',
+      panel: <ComputeRequestsPanel challengeId={challengeId} open />,
+    }] : []),
   ] : isValidation ? [
     {
       label: 'Overview',

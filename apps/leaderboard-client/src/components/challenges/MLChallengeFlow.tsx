@@ -5,6 +5,7 @@ import {
   Database, BrainCircuit, Package, CheckCircle2,
   ExternalLink, Users, ChevronRight, Loader2, AlertCircle, Coins,
 } from 'lucide-react';
+import { ComputeRequestPanel } from './ComputeRequestPanel';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -256,6 +257,9 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
           onNext={activeStep < steps.length - 1 ? () => setActiveStep(activeStep + 1) : undefined}
         />
       </div>
+
+      {/* ── GPU compute request ── */}
+      <ComputeRequestPanel challengeId={challengeId} />
 
     </div>
   );

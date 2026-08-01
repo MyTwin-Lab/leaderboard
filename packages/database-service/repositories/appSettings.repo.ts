@@ -2,6 +2,7 @@ import { db, app_settings } from "../db/drizzle";
 import { eq } from "drizzle-orm";
 import { toDomainAppSettings } from "../db/mappers";
 import type { AppSettings } from "../domain/entities";
+import { ComputeRequestRepository } from "./computeRequest.repo";
 
 export interface AppSettingsUpdate {
   theme_key?: string;
@@ -169,6 +170,65 @@ export class AppSettingsRepository {
         kaggle_key_iv: null,
         kaggle_connected_at: null,
         kaggle_connected_by: null,
+        updated_at: new Date(),
+      })
+      .where(eq(app_settings.id, 1));
+  }
+
+  async updateScalewayConnection(data: {
+    scaleway_secret_key_enc: string;
+    scaleway_secret_key_iv: string;
+    scaleway_project_id: string;
+    scaleway_zone: string;
+    scaleway_connected_by: string;
+  }): Promise<void> {
+    const set = {
+      scaleway_secret_key_enc: data.scaleway_secret_key_enc,
+      scaleway_secret_key_iv: data.scaleway_secret_key_iv,
+      scaleway_project_id: data.scaleway_project_id,
+      scaleway_zone: data.scaleway_zone,
+      scaleway_connected_at: new Date(),
+      scaleway_connected_by: data.scaleway_connected_by,
+      // A fresh connection cancels any pending soft-disconnect.
+      scaleway_disconnect_requested_at: null,
+      updated_at: new Date(),
+    };
+    await db
+      .insert(app_settings)
+      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .onConflictDoUpdate({ target: app_settings.id, set });
+  }
+
+  /**
+   * Soft-disconnect: marks the connection as user-facing "disconnected"
+   * (scaleway_is_connected flips to false everywhere) without erasing the
+   * secret yet — an instance already approved before this call still needs
+   * it to be cut via the Scaleway API when its 24h window elapses. The
+   * secret is only actually purged once no request anywhere is still active
+   * (see purgeScalewaySecretIfSafe, called by the expiration cron).
+   */
+  async requestScalewayDisconnect(): Promise<void> {
+    await db
+      .update(app_settings)
+      .set({ scaleway_disconnect_requested_at: new Date(), updated_at: new Date() })
+      .where(eq(app_settings.id, 1));
+  }
+
+  async purgeScalewaySecretIfSafe(): Promise<void> {
+    const [row] = await db.select().from(app_settings).where(eq(app_settings.id, 1));
+    if (!row?.scaleway_disconnect_requested_at) return;
+    const activeCount = await new ComputeRequestRepository().countActiveGlobally();
+    if (activeCount > 0) return;
+    await db
+      .update(app_settings)
+      .set({
+        scaleway_secret_key_enc: null,
+        scaleway_secret_key_iv: null,
+        scaleway_project_id: null,
+        scaleway_zone: null,
+        scaleway_connected_at: null,
+        scaleway_connected_by: null,
+        scaleway_disconnect_requested_at: null,
         updated_at: new Date(),
       })
       .where(eq(app_settings.id, 1));

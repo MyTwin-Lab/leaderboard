@@ -16,6 +16,7 @@ import { GitHubConnectionCard } from "@/components/contributor/GitHubConnectionC
 import { KaggleConnectionCard } from "@/components/contributor/KaggleConnectionCard";
 import { SlackConnectionCard } from "@/components/contributor/SlackConnectionCard";
 import { OpenAIConnectionCard } from "@/components/contributor/OpenAIConnectionCard";
+import { ScalewayConnectionCard } from "@/components/contributor/ScalewayConnectionCard";
 import { AppSettingsRepository, OnboardingProgressRepository } from "@packages/database-service/repositories";
 import { isValidThemeKey, DEFAULT_THEME_KEY } from "@/lib/themes";
 import { ModulesSettings } from "@/components/contributor/ModulesSettings";
@@ -115,6 +116,7 @@ export default async function ContributorSelfPage({
               <KaggleConnectionCard />
               <SlackConnectionCard />
               <OpenAIConnectionCard />
+              <ScalewayConnectionCard />
             </div>
           </div>
         </div>

@@ -142,6 +142,31 @@ export const validationAttemptSchema = z.object({
   purged_at: z.coerce.date().nullable(),
 });
 
+export const computeRequestSchema = z.object({
+  uuid: z.string().uuid(),
+  challenge_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  status: z.enum(['pending', 'rejected', 'approved', 'provisioning', 'ready', 'expired', 'failed']),
+  requested_at: z.coerce.date(),
+  decided_at: z.coerce.date().nullable(),
+  decided_by: z.string().uuid().nullable(),
+  approved_at: z.coerce.date().nullable(),
+  expires_at: z.coerce.date().nullable(),
+  provisioning_started_at: z.coerce.date().nullable(),
+  ready_at: z.coerce.date().nullable(),
+  expired_at: z.coerce.date().nullable(),
+  expire_reason: z.enum(['timeout', 'challenge_closed', 'challenge_deleted']).nullable(),
+  failed_at: z.coerce.date().nullable(),
+  error_message: z.string().nullable(),
+  provider_ref: z.string().nullable(),
+  provider_parent_ref: z.string().nullable(),
+  jupyter_base_url: z.string().nullable(),
+  access_token_enc: z.string().nullable(),
+  access_token_iv: z.string().nullable(),
+  access_token_revealed_at: z.coerce.date().nullable(),
+  updated_at: z.coerce.date().nullable(),
+});
+
 export const userSchema = z.object({
   uuid: z.string().uuid(),
   role: z.string(),

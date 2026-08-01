@@ -57,9 +57,15 @@ export interface ProvisionResult {
   
   /** Métadonnées additionnelles */
   meta?: Record<string, unknown>;
-  
+
   /** Message d'erreur si status = 'failed' */
   error?: string;
+
+  /**
+   * Secret nécessaire pour accéder au workspace (ex: jeton d'instance).
+   * Ne jamais logger ni exposer à un rôle non autorisé à le consulter.
+   */
+  secret?: string;
 }
 
 /**

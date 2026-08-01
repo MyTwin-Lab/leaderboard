@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/slack-signals",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/compute-provisioning",
+      "schedule": "*/1 * * * *"
+    },
+    {
+      "path": "/api/cron/compute-expiration",
+      "schedule": "*/1 * * * *"
     }
   ]
 }
