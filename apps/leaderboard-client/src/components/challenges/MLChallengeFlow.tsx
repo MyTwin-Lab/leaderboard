@@ -197,7 +197,7 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
 
       {/* ── Pool remainder + metric to beat ── */}
       {pool && pool.pool > 0 && (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className={pool.metric && pool.metric.points.length > 0 ? 'min-w-0 sm:max-w-[50%] sm:flex-1' : 'min-w-0 flex-1'}>
             <PoolBanner pool={pool} />
           </div>
@@ -366,7 +366,7 @@ function PoolBanner({ pool }: { pool: PoolState }) {
   const empty = pool.remaining <= 0;
 
   return (
-    <div className="h-full rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-2">
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-2">
       <div className="flex items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-1.5">
           <Coins className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-brandCP/60" />

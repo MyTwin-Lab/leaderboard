@@ -32,7 +32,7 @@ export function MlMetricTimeline({ name, baseline, points }: MlMetricTimelinePro
   const leader = points[0];
 
   return (
-    <div className="h-full rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-5">
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-2">
       <div className="flex items-baseline justify-between gap-3">
         <span className="flex items-center gap-1.5 text-xs font-medium text-white/35">
           <Target className="h-3.5 w-3.5 shrink-0 text-brandCP/60" />
@@ -41,7 +41,7 @@ export function MlMetricTimeline({ name, baseline, points }: MlMetricTimelinePro
         <span className="text-sm font-semibold text-brandCP">{leader.toFixed(3)}</span>
       </div>
 
-      <div className="relative h-6">
+      <div className="relative h-3">
         {/* Track */}
         <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-white/[0.06]" />
 
