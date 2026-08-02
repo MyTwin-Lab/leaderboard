@@ -38,11 +38,31 @@ export async function GET(
       byUser.set(e.user_id, (byUser.get(e.user_id) ?? 0) + e.points);
     }
 
+    // Best reported metric per contributor — feeds the "beat the leader" timeline.
+    // No userId in the response: the timeline only plots values, never names.
+    const metric = challenge.reward_rules
+      ? (() => {
+          const best = new Map<string, number>();
+          for (const e of entries) {
+            if (e.rule_key !== 'model_metric') continue;
+            const value = e.meta?.metricValue;
+            if (typeof value !== 'number') continue;
+            if (!best.has(e.user_id) || value > best.get(e.user_id)!) best.set(e.user_id, value);
+          }
+          return {
+            name: challenge.reward_rules.model.metric.name,
+            baseline: challenge.reward_rules.model.metric.baseline,
+            points: [...best.values()].sort((a, b) => b - a),
+          };
+        })()
+      : null;
+
     return NextResponse.json({
       pool,
       distributed,
       remaining: Math.max(0, pool - distributed),
       rules: challenge.reward_rules ?? null,
+      metric,
       breakdown: [...byUser.entries()]
         .map(([userId, points]) => ({ userId, points }))
         .sort((a, b) => b.points - a.points),
