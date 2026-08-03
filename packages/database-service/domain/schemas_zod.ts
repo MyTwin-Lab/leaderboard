@@ -48,6 +48,7 @@ export const challengeSchema = z.object({
   source_challenge_id: z.string().uuid().nullish(),
   cp_per_validation: z.number().int().nonnegative().nullish(),
   required_validations: z.number().int().positive().nullish(),
+  compute_enabled: z.boolean().default(false),
 });
 
 export const challengeSignalSchema = z.object({

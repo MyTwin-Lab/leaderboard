@@ -19,6 +19,7 @@ const updateChallengeSchema = z.object({
   contribution_points_reward: z.number().int().nonnegative().optional(),
   project_id: z.string().uuid().optional(),
   reward_rules: mlRewardRulesSchema.nullish(),
+  compute_enabled: z.boolean().optional(),
 });
 
 // GET /api/challenges/[id] - Récupérer un challenge

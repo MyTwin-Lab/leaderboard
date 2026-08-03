@@ -60,6 +60,9 @@ export const challenges = pgTable("challenges", {
   // before it resolves. Must be odd (enforced at creation) so a majority
   // always exists. Locked after creation, like cp_per_validation.
   required_validations: integer("required_validations"),
+  // ML challenges only — activates GPU compute requests (Scaleway) on this
+  // specific challenge, on top of the global Scaleway connection.
+  compute_enabled: boolean("compute_enabled").notNull().default(false),
 }, (table) => ({
   projectIdIdx: index("idx_challenges_project_id").on(table.project_id),
   statusIdx: index("idx_challenges_status").on(table.status),

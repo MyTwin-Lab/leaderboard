@@ -35,6 +35,7 @@ function makeChallenge(over: Partial<Challenge> = {}): Challenge {
     source_challenge_id: "ml-ch-1",
     cp_per_validation: 5,
     required_validations: 3,
+    compute_enabled: false,
     ...over,
   };
 }

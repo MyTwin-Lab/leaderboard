@@ -54,6 +54,7 @@ export interface Challenge {
   source_challenge_id?: string | null; // Validation uniquement — le challenge ML validé
   cp_per_validation?: number | null;   // Validation uniquement — CP fixe par validation
   required_validations?: number | null; // Validation uniquement — nb de verdicts requis avant résolution (impair)
+  compute_enabled?: boolean; // ML uniquement — active la demande de puissance de calcul Scaleway sur ce challenge
 }
 
 /** Signal de contribution détectable dans un canal de discussion (Slack). */

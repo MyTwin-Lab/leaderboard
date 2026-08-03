@@ -140,6 +140,7 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     source_challenge_id: row.source_challenge_id ?? null,
     cp_per_validation: row.cp_per_validation ?? null,
     required_validations: row.required_validations ?? null,
+    compute_enabled: row.compute_enabled ?? false,
   };
 }
 
@@ -248,6 +249,7 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenge
     source_challenge_id: entity.source_challenge_id ?? null,
     cp_per_validation: entity.cp_per_validation ?? null,
     required_validations: entity.required_validations ?? null,
+    compute_enabled: entity.compute_enabled ?? false,
   };
 }
 

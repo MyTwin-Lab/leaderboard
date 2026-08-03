@@ -49,6 +49,7 @@ function formatRemaining(expiresAt: string): string {
 /** Contributor-facing GPU compute request button/status — visible only on ML challenges once Scaleway is connected. */
 export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
   const [scalewayConnected, setScalewayConnected] = useState<boolean | null>(null);
+  const [computeEnabled, setComputeEnabled] = useState<boolean | null>(null);
   const [request, setRequest] = useState<ComputeRequestData | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
@@ -65,16 +66,22 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch('/api/scaleway/status')
-      .then(r => (r.ok ? r.json() : { connected: false }))
-      .then(d => setScalewayConnected(!!d.connected))
+    Promise.all([
+      fetch('/api/scaleway/status').then(r => (r.ok ? r.json() : { connected: false })),
+      fetch(`/api/challenges/${challengeId}`).then(r => (r.ok ? r.json() : { compute_enabled: false })),
+    ])
+      .then(([status, challenge]) => {
+        setScalewayConnected(!!status.connected);
+        setComputeEnabled(!!challenge.compute_enabled);
+      })
       .finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [challengeId]);
 
   useEffect(() => {
-    if (scalewayConnected) load();
+    if (scalewayConnected && computeEnabled) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scalewayConnected, challengeId]);
+  }, [scalewayConnected, computeEnabled, challengeId]);
 
   useEffect(() => {
     if (!request || !NON_TERMINAL.includes(request.status)) return;
@@ -129,6 +136,11 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
   };
 
   if (loading) return null;
+
+  // Unlike the global Scaleway-disconnected case below, a challenge with the
+  // per-challenge toggle off shows nothing at all — the manager deliberately
+  // chose not to offer this on this challenge, there is nothing to explain.
+  if (!computeEnabled) return null;
 
   // Not masked entirely per SPEC §4.1.4 — the contributor sees a clear
   // explanation of why the feature isn't available yet, rather than nothing.

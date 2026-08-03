@@ -31,6 +31,7 @@ const createChallengeSchema = z.object({
   source_challenge_id: z.string().uuid().optional(),
   cp_per_validation: z.number().int().positive().optional(),
   required_validations: z.number().int().positive().optional(),
+  compute_enabled: z.boolean().optional(),
 });
 
 // GET /api/challenges - Liste tous les challenges
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
       source_challenge_id: validated.type === 'validation' ? validated.source_challenge_id : null,
       cp_per_validation: validated.type === 'validation' ? validated.cp_per_validation : null,
       required_validations: validated.type === 'validation' ? validated.required_validations : null,
+      compute_enabled: validated.type === 'ml' ? (validated.compute_enabled ?? false) : false,
     });
 
     // Extract owner/repo slug from a GitHub URL or plain slug

@@ -8,7 +8,7 @@ import { encryptToken, decryptToken } from '../../config/githubToken.js';
 import { isScalewayUserFacingConnected } from '../../config/scalewayCredentials.js';
 import { getScalewayProvider } from './scaleway-provider.helper.js';
 
-export type RequestComputeResult = { request: ComputeRequest } | { error: 'not_ml_challenge' | 'scaleway_not_connected' | 'already_requested' };
+export type RequestComputeResult = { request: ComputeRequest } | { error: 'not_ml_challenge' | 'compute_not_enabled' | 'scaleway_not_connected' | 'already_requested' };
 
 export class ComputeRequestService {
   private repo = new ComputeRequestRepository();
@@ -18,6 +18,7 @@ export class ComputeRequestService {
   async requestCompute(challengeId: string, userId: string): Promise<RequestComputeResult> {
     const challenge = await this.challengeRepo.findById(challengeId);
     if (!challenge || challenge.type !== 'ml') return { error: 'not_ml_challenge' };
+    if (!challenge.compute_enabled) return { error: 'compute_not_enabled' };
     if (!(await isScalewayUserFacingConnected())) return { error: 'scaleway_not_connected' };
 
     // Comme pour la soumission ML (ml-workspace/route.ts), demander de la

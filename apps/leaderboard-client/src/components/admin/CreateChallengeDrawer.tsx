@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
-  CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck,
+  CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck, Cpu,
 } from 'lucide-react';
 import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
+import { Toggle } from '@/components/ui/Toggle';
 import { MlRewardRulesEditor } from '@/components/admin/MlRewardRulesEditor';
 import { ChallengeTasksEditor } from '@/components/admin/ChallengeTasksEditor';
 import { ChallengeSlackSignalsEditor } from '@/components/admin/ChallengeSlackSignalsEditor';
@@ -37,6 +38,7 @@ export interface EditableChallenge {
   reward_rules?: MlRewardRules | null;
   source_challenge_id?: string | null;
   cp_per_validation?: number | null;
+  compute_enabled?: boolean | null;
 }
 
 interface CreateChallengeDrawerProps {
@@ -83,6 +85,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [githubRepo, setGithubRepo] = useState('');
   const [rewardRules, setRewardRules] = useState<MlRewardRules>(DEFAULT_ML_REWARD_RULES);
+  const [computeEnabled, setComputeEnabled] = useState(false);
   const [sourceChallengeId, setSourceChallengeId] = useState('');
   const [cpPerValidation, setCpPerValidation] = useState(5);
   const [requiredValidations, setRequiredValidations] = useState(3);
@@ -119,6 +122,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setRewardRules(challenge.reward_rules ?? DEFAULT_ML_REWARD_RULES);
       setSourceChallengeId(challenge.source_challenge_id ?? '');
       setCpPerValidation(challenge.cp_per_validation ?? 5);
+      setComputeEnabled(challenge.compute_enabled ?? false);
     }
   }, [open, challenge]);
 
@@ -158,6 +162,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     setSourceChallengeId('');
     setCpPerValidation(5);
     setRequiredValidations(3);
+    setComputeEnabled(false);
   };
 
   const handleSubmit = async () => {
@@ -189,6 +194,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         // Without rules an ML challenge awards nothing — the service has
         // nothing to score against.
         reward_rules: type === 'ml' ? rewardRules : null,
+        compute_enabled: type === 'ml' ? computeEnabled : false,
       };
 
       // Editing never touches the project, the pool, the repo, or (for
@@ -415,6 +421,18 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
               onChange={setRewardRules}
               dense
             />
+          )}
+
+          {/* ── ML: GPU compute toggle ── */}
+          {type === 'ml' && (
+            <Field icon={<Cpu className="h-3.5 w-3.5" />} label="Puissance de calcul GPU">
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <p className="text-xs" style={{ color: fgAt(0.4) }}>
+                  Autorise les contributeurs à demander une instance Scaleway sur ce challenge
+                </p>
+                <Toggle enabled={computeEnabled} onChange={setComputeEnabled} />
+              </div>
+            </Field>
           )}
 
           {/* ── Validation: source challenge (creation only, locked after) ── */}

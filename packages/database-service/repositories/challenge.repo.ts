@@ -57,6 +57,7 @@ export class ChallengeRepository {
     if (validated.type !== undefined) dbData.type = validated.type;
     if (validated.project_id) dbData.project_id = validated.project_id;
     if (validated.reward_rules !== undefined) dbData.reward_rules = validated.reward_rules ?? null;
+    if (validated.compute_enabled !== undefined) dbData.compute_enabled = validated.compute_enabled;
 
     const [updated] = await db.update(challenges)
       .set(dbData)

@@ -33,6 +33,7 @@ interface Challenge {
   project_id: string;
   roadmap?: string;
   reward_rules?: MlRewardRules | null;
+  compute_enabled?: boolean | null;
 }
 
 interface TeamMember { id: string; fullName: string; githubUsername?: string; avatarUrl?: string; }
@@ -895,7 +896,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
       label: 'Rankings',
       panel: <TabRankings contributions={contributions} team={team} />,
     },
-    ...(computeEnabled ? [{
+    ...(computeEnabled && challenge.compute_enabled ? [{
       label: 'Compute',
       panel: <ComputeRequestsPanel challengeId={challengeId} open />,
     }] : []),
