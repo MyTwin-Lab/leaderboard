@@ -21,6 +21,10 @@ const protectedApiRoutes = [
   '/api/contributions',
   '/api/contributors/me',
   '/api/tasks',
+  '/api/evaluation-grids',
+  '/api/evaluation-runs',
+  '/api/github-oauth',
+  '/api/sync-meetings',
 ];
 
 // Routes publiques d'authentification
@@ -225,5 +229,9 @@ export const config = {
     '/api/tasks/:path*',
     '/api/auth/:path*',
     '/api/google-auth/:path*',
+    '/api/evaluation-grids/:path*',
+    '/api/evaluation-runs/:path*',
+    '/api/github-oauth/:path*',
+    '/api/sync-meetings/:path*',
   ],
 };
