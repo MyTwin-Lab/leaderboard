@@ -35,6 +35,7 @@ interface TestRunResponse {
   failedCount: number;
   determinism: DeterminismStats;
   perCriterion: CriterionStats[];
+  warning?: string;
 }
 
 const inputClass =
@@ -162,7 +163,7 @@ export function GridTestRun({ gridId, onBack }: GridTestRunProps) {
         <div>
           <h2 className="text-lg font-bold text-white">Test grid{grid ? `: ${grid.name}` : ''}</h2>
           <p className="text-xs text-white/40">
-            Runs 5 evaluations in parallel on the same real content and measures how consistent the scores are.
+            Runs 3 evaluations in parallel on the same real content and measures how consistent the scores are.
           </p>
         </div>
       </div>
@@ -249,7 +250,7 @@ export function GridTestRun({ gridId, onBack }: GridTestRunProps) {
 
         <Button onClick={handleRun} disabled={!canRun}>
           {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
-          {running ? 'Running 5 evaluations…' : 'Run test'}
+          {running ? 'Running 3 evaluations…' : 'Run test'}
         </Button>
       </div>
 
@@ -271,6 +272,13 @@ function determinismColor(score: number) {
 function TestRunResults({ result }: { result: TestRunResponse }) {
   return (
     <div className="animate-fade-up space-y-4">
+      {result.warning && (
+        <div className="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/[0.06] px-4 py-3 text-sm text-yellow-400">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {result.warning}
+        </div>
+      )}
+
       <div className={`flex items-center justify-between rounded-xl border p-5 ${determinismColor(result.determinism.score)}`}>
         <div>
           <p className="text-xs uppercase tracking-widest opacity-70">Determinism score</p>

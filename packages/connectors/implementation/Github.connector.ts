@@ -11,8 +11,9 @@ import {
  * Options pour le connecteur GitHub externe
  */
 export interface GitHubExternalConnectorOptions {
-  /** Token d'authentification GitHub (PAT ou OAuth) */
-  token: string;
+  /** Token d'authentification GitHub (PAT ou OAuth). Omis = requêtes non
+   * authentifiées (repos publics uniquement, ~60 req/h). */
+  token?: string;
   
   /** Owner du repository (ex: "facebook") */
   owner: string;

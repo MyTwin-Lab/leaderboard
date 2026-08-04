@@ -27,7 +27,7 @@ const snapshotService = new SnapshotService();
 
 /** Fixed by design: the point of this sandbox is measuring how consistent
  * the grid's scoring is across repeated runs on the same content. */
-const RUN_COUNT = 5;
+const RUN_COUNT = 3;
 /** Plafonné (la vraie pipeline task va jusqu'à 100) pour garder ce test rapide. */
 const MAX_GITHUB_COMMITS = 20;
 
@@ -66,6 +66,7 @@ export async function POST(
 
     let snapshotInfo: SnapshotInfo | null = null;
     let derivedTitle = title;
+    let unauthenticatedGithub = false;
 
     if (sourceType === 'github') {
       const parsedUrl = parseGitHubUrl(sourceUrl);
@@ -75,26 +76,28 @@ export async function POST(
           { status: 400 }
         );
       }
+      // No token configured (neither DB nor .env)? Fall back to unauthenticated
+      // requests — works for public repos, just heavily rate-limited (~60/h).
       const token = await getGithubToken();
-      if (!token) {
-        return NextResponse.json(
-          { error: 'No GitHub token configured — connect a GitHub account in Integrations, or set GITHUB_TOKEN.' },
-          { status: 400 }
-        );
-      }
+      if (!token) unauthenticatedGithub = true;
       const branch = branchOverride?.trim() || (parsedUrl.refType === 'branch' ? parsedUrl.ref : undefined);
-      const connector = new GitHubExternalConnector({ token, owner: parsedUrl.owner, repo: parsedUrl.repo, branch });
+      const connector = new GitHubExternalConnector({ token: token ?? undefined, owner: parsedUrl.owner, repo: parsedUrl.repo, branch });
 
       try {
         await connector.connect();
-        const commitShas = await resolveGitHubCommitShas(parsedUrl, connector, token, MAX_GITHUB_COMMITS);
+        const commitShas = await resolveGitHubCommitShas(parsedUrl, connector, token ?? undefined, MAX_GITHUB_COMMITS);
         if (commitShas.length === 0) {
           return NextResponse.json({ error: 'No commits found for this GitHub reference.' }, { status: 400 });
         }
         snapshotInfo = await snapshotService.buildAggregatedSnapshot(() => connector, commitShas);
       } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to fetch this GitHub repo';
         return NextResponse.json(
-          { error: err instanceof Error ? err.message : 'Failed to fetch this GitHub repo' },
+          {
+            error: unauthenticatedGithub
+              ? `${message} (no GitHub token configured — this only works for public repos and is rate-limited; connect a GitHub account in Integrations or set GITHUB_TOKEN for private repos or a higher rate limit)`
+              : message,
+          },
           { status: 400 }
         );
       }
@@ -172,6 +175,9 @@ export async function POST(
       failedCount,
       determinism: computeDeterminism(runs),
       perCriterion: computePerCriterion(runs),
+      warning: unauthenticatedGithub
+        ? 'Ran without a GitHub token (none configured) — only works for public repos and is rate-limited to ~60 requests/hour.'
+        : undefined,
     });
   } catch (error) {
     console.error('[EvaluationGrids] test-run POST error:', error);

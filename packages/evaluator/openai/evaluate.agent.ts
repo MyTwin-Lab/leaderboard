@@ -139,7 +139,7 @@ export async function runEvaluateAgent(
   `;
 
   let response = await client.responses.create({
-    model: "gpt-5-nano",
+    model: "gpt-5.6-luna",
     tools,
     tool_choice: "auto",
     input: prompt,

@@ -71,7 +71,7 @@ export function parseGitHubUrl(raw: string): ParsedGitHubRef | null {
 export async function resolveGitHubCommitShas(
   parsed: ParsedGitHubRef,
   connector: GitHubExternalConnector,
-  token: string,
+  token: string | undefined,
   maxCommits: number = 20
 ): Promise<string[]> {
   if (parsed.refType === "commit" && parsed.ref) {
