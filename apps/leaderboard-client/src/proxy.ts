@@ -28,7 +28,7 @@ const protectedApiRoutes = [
 ];
 
 // Routes publiques d'authentification
-const authRoutes = ['/api/auth/refresh', '/api/auth/logout', '/api/google-auth/authorize', '/api/google-auth/callback'];
+const authRoutes = ['/api/auth/refresh', '/api/auth/logout', '/api/auth/check-session', '/api/google-auth/authorize', '/api/google-auth/callback'];
 
 // Fonction de vérification JWT simplifiée pour Edge Runtime
 async function verifyTokenEdge(token: string): Promise<{ userId: string; role: string } | null> {
@@ -99,6 +99,25 @@ async function tryRefreshSession(request: NextRequest): Promise<{
   }
 }
 
+/**
+ * Vérifie que le userId d'un JWT valide correspond toujours à un compte
+ * existant (Node runtime — même contrainte que tryRefreshSession : l'Edge
+ * runtime ne peut pas interroger `pg` directement).
+ */
+async function checkSessionStillValid(request: NextRequest, userId: string): Promise<boolean> {
+  try {
+    const baseUrl = getBaseUrl(request);
+    const url = new URL('/api/auth/check-session', baseUrl);
+    url.searchParams.set('userId', userId);
+    const res = await fetch(url);
+    if (!res.ok) return true; // panne du check : ne pas bloquer tout le trafic
+    const data = await res.json();
+    return data.valid !== false;
+  } catch {
+    return true;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const matchedProtectedPage = protectedPages.find((route) => pathname.startsWith(route.prefix));
@@ -161,6 +180,35 @@ export async function proxy(request: NextRequest) {
       const oauthUrl = new URL('/api/google-auth/authorize', baseUrl);
       oauthUrl.searchParams.set('from', pathname);
       return NextResponse.redirect(oauthUrl);
+    }
+
+    // Le JWT est valide par signature mais ne prouve pas que le compte existe
+    // encore : un admin a pu le fusionner (Onboarding > Lier) ou le supprimer
+    // entre deux requêtes. Un seul lookup indexé côté Node runtime détecte ça
+    // immédiatement au lieu d'attendre l'expiration de l'access_token (15 min).
+    if (!(await checkSessionStillValid(request, payload.userId))) {
+      if (isProtectedApiRoute) {
+        return respond(NextResponse.json(
+          { error: 'SESSION_INVALID' },
+          { status: 401 }
+        ));
+      }
+
+      // Navigation client Next.js (next/link) : le fetch RSC peut recevoir ce
+      // 401 et le front affiche une modale de reconnexion (SessionGuard). Un
+      // chargement direct (hard refresh) n'a pas ce header — on ne peut pas y
+      // poser de modale, donc on redirige tout de suite vers Google.
+      if (request.headers.get('rsc') === '1') {
+        return respond(NextResponse.json(
+          { error: 'SESSION_INVALID' },
+          { status: 401 }
+        ));
+      }
+
+      const baseUrl = getBaseUrl(request);
+      const oauthUrl = new URL('/api/google-auth/authorize', baseUrl);
+      oauthUrl.searchParams.set('from', pathname);
+      return respond(NextResponse.redirect(oauthUrl));
     }
 
     if (matchedProtectedPage) {

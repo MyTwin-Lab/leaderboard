@@ -17,7 +17,8 @@ import { KaggleConnectionCard } from "@/components/contributor/KaggleConnectionC
 import { SlackConnectionCard } from "@/components/contributor/SlackConnectionCard";
 import { OpenAIConnectionCard } from "@/components/contributor/OpenAIConnectionCard";
 import { ScalewayConnectionCard } from "@/components/contributor/ScalewayConnectionCard";
-import { AppSettingsRepository, OnboardingProgressRepository } from "@packages/database-service/repositories";
+import { AppSettingsRepository, OnboardingProgressRepository, UserRepository } from "@packages/database-service/repositories";
+import { AccountMergePanel } from "@/components/contributor/AccountMergePanel";
 import { isValidThemeKey, DEFAULT_THEME_KEY } from "@/lib/themes";
 import { ModulesSettings } from "@/components/contributor/ModulesSettings";
 import { OnboardingProgressTable } from "@/components/contributor/OnboardingProgressTable";
@@ -25,6 +26,7 @@ import { EvaluationGridsTab } from "@/components/contributor/evaluation-grids/Ev
 
 const appSettingsRepo = new AppSettingsRepository();
 const onboardingProgressRepo = new OnboardingProgressRepository();
+const userRepo = new UserRepository();
 
 export default async function ContributorSelfPage({
   searchParams,
@@ -86,10 +88,13 @@ export default async function ContributorSelfPage({
   ];
 
   if (session.role === "admin") {
-    const [settings, onboardingRows] = await Promise.all([
+    const [settings, onboardingRows, allUsers] = await Promise.all([
       appSettingsRepo.get(),
       onboardingProgressRepo.findAllWithUsers(),
+      userRepo.findAll(),
     ]);
+    const unlinkedUsers = allUsers.filter((u) => !u.google_user_id);
+    const linkedUsers = allUsers.filter((u) => u.google_user_id);
     const themeKey = isValidThemeKey(settings.theme_key) ? settings.theme_key : DEFAULT_THEME_KEY;
     tabs.push({
       label: "Appearance",
@@ -150,6 +155,7 @@ export default async function ContributorSelfPage({
             Onboarding Progress
           </h2>
           <OnboardingProgressTable rows={onboardingRows} />
+          <AccountMergePanel unlinkedUsers={unlinkedUsers} linkedUsers={linkedUsers} />
         </div>
       ),
     });

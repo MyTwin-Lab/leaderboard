@@ -25,3 +25,4 @@ export { ChallengeSlackConfigRepository } from "./challengeSlackConfig.repo.js";
 export { ValidationTargetRepository } from "./validationTarget.repo.js";
 export { ValidationAttemptRepository } from "./validationAttempt.repo.js";
 export { ComputeRequestRepository } from "./computeRequest.repo.js";
+export { AccountMergeRepository } from "./accountMerge.repo.js";

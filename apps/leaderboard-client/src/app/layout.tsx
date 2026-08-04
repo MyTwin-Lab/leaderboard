@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { GradientBackground } from "@/components/layout/GradientBackground";
 import { Navbar } from "@/components/layout/Navbar";
 import { OnboardingDrawer } from "@/components/onboarding/OnboardingDrawer";
+import { SessionGuard } from "@/components/layout/SessionGuard";
 import { fetchContributorSession } from "@/lib/contributor";
 import { fetchOnboardingProgress } from "@/lib/server/onboarding";
 import { AppSettingsRepository } from "@packages/database-service/repositories";
@@ -75,6 +76,7 @@ export default async function RootLayout({
           {session && onboarding && !onboarding.completed_at && settings.modules_onboarding_enabled && (
             <OnboardingDrawer initialProgress={onboarding} />
           )}
+          {session && <SessionGuard />}
         </GradientBackground>
       </body>
     </html>

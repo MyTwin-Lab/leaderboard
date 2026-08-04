@@ -1,34 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getTokenFromRequest, 
-  verifyToken, 
+import {
+  getTokenFromRequest,
+  verifyToken,
   generateAccessToken,
   generateRefreshToken,
   storeRefreshToken,
   invalidateAllUserTokens
 } from '@/lib/auth';
+import { UserRepository } from '../../../../../../../packages/database-service/repositories';
+
+const userRepo = new UserRepository();
 
 export async function POST(request: NextRequest) {
   try {
     const refreshToken = getTokenFromRequest(request, 'refresh_token');
-    
+
     if (!refreshToken) {
       return NextResponse.json(
         { error: 'Refresh token not found' },
         { status: 401 }
       );
     }
-    
+
     // Vérifier le refresh token
     const payload = await verifyToken(refreshToken);
-    
+
     if (!payload) {
       return NextResponse.json(
         { error: 'Invalid refresh token' },
         { status: 401 }
       );
     }
-    
+
+    // Le payload signé ne prouve que la possession d'un refresh token valide à
+    // l'émission — pas que le compte existe encore (fusionné ou supprimé
+    // depuis). Sans ce check, on re-signerait indéfiniment un access_token
+    // pour un compte fantôme.
+    const user = await userRepo.findById(payload.userId);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Account no longer exists' },
+        { status: 401 }
+      );
+    }
+
     // Générer de nouveaux tokens
     const newAccessToken = await generateAccessToken(payload);
     const newRefreshToken = await generateRefreshToken(payload);
