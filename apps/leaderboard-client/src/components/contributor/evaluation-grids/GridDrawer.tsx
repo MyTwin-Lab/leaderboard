@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ClipboardList, Pencil, Plus, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
-import type { EvaluationGrid } from '@packages/database-service/domain/entities';
+import { X, ClipboardList, Pencil, Plus, Sparkles, Loader2, CheckCircle2, Upload, FileJson } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import type { EvaluationGrid, EvaluationGridCategoryType } from '@packages/database-service/domain/entities';
 
 interface GridDrawerProps {
   open: boolean;
@@ -12,6 +13,28 @@ interface GridDrawerProps {
   /** Present = edit mode. Absent = create a new grid. */
   grid?: EvaluationGrid | null;
 }
+
+/** Portable JSON shape produced by GridEditor's "Export JSON" and consumed here on import. */
+interface ImportedSubcriterion {
+  criterion: string;
+  description?: string;
+  weight?: number;
+  metrics?: string[];
+  indicators?: string[];
+  scoring_excellent?: string;
+  scoring_good?: string;
+  scoring_average?: string;
+  scoring_poor?: string;
+}
+
+interface ImportedCategory {
+  name: string;
+  weight: number;
+  type: EvaluationGridCategoryType;
+  subcriteria: ImportedSubcriterion[];
+}
+
+const CATEGORY_TYPES: EvaluationGridCategoryType[] = ['objective', 'mixed', 'subjective', 'contextual'];
 
 function fgAt(opacity: number) {
   return `color-mix(in srgb, var(--foreground) ${Math.round(opacity * 100)}%, transparent)`;
@@ -23,6 +46,60 @@ function slugify(value: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+/** Lenient parse: this is a UX guard, not a security boundary — coerce what
+ * we can, drop what we can't, only hard-fail on a missing name/slug. */
+function parseImportedGrid(raw: unknown): {
+  name: string;
+  slug: string;
+  description: string;
+  instructions: string;
+  categories: ImportedCategory[];
+} {
+  if (typeof raw !== 'object' || raw === null) {
+    throw new Error('Invalid grid file — expected a JSON object.');
+  }
+  const obj = raw as Record<string, unknown>;
+  const name = typeof obj.name === 'string' ? obj.name.trim() : '';
+  const slug = typeof obj.slug === 'string' ? obj.slug.trim() : '';
+  if (!name || !slug) {
+    throw new Error('Invalid grid file — "name" and "slug" are required.');
+  }
+
+  const rawCategories = Array.isArray(obj.categories) ? obj.categories : [];
+  const categories: ImportedCategory[] = rawCategories
+    .filter((c): c is Record<string, unknown> => typeof c === 'object' && c !== null && typeof (c as any).name === 'string')
+    .map((c) => {
+      const rawSubs = Array.isArray(c.subcriteria) ? c.subcriteria : [];
+      const subcriteria: ImportedSubcriterion[] = rawSubs
+        .filter((s: unknown): s is Record<string, unknown> => typeof s === 'object' && s !== null && typeof (s as any).criterion === 'string')
+        .map((s: Record<string, unknown>) => ({
+          criterion: String(s.criterion).trim(),
+          description: typeof s.description === 'string' ? s.description : undefined,
+          weight: typeof s.weight === 'number' ? s.weight : undefined,
+          metrics: Array.isArray(s.metrics) ? s.metrics.filter((m): m is string => typeof m === 'string') : undefined,
+          indicators: Array.isArray(s.indicators) ? s.indicators.filter((i): i is string => typeof i === 'string') : undefined,
+          scoring_excellent: typeof s.scoring_excellent === 'string' ? s.scoring_excellent : undefined,
+          scoring_good: typeof s.scoring_good === 'string' ? s.scoring_good : undefined,
+          scoring_average: typeof s.scoring_average === 'string' ? s.scoring_average : undefined,
+          scoring_poor: typeof s.scoring_poor === 'string' ? s.scoring_poor : undefined,
+        }));
+      return {
+        name: String(c.name).trim(),
+        weight: typeof c.weight === 'number' ? c.weight : 0,
+        type: CATEGORY_TYPES.includes(c.type as EvaluationGridCategoryType) ? (c.type as EvaluationGridCategoryType) : 'objective',
+        subcriteria,
+      };
+    });
+
+  return {
+    name,
+    slug,
+    description: typeof obj.description === 'string' ? obj.description : '',
+    instructions: typeof obj.instructions === 'string' ? obj.instructions : '',
+    categories,
+  };
 }
 
 export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
@@ -37,7 +114,11 @@ export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [importedCategories, setImportedCategories] = useState<ImportedCategory[]>([]);
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
 
   // Portal target only exists client-side — mount after hydration to avoid
   // an SSR/client markup mismatch.
@@ -54,6 +135,8 @@ export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
 
     setError('');
     setSuccess(false);
+    setImportedCategories([]);
+    setImportProgress(null);
     if (grid) {
       setName(grid.name);
       setSlug(grid.slug);
@@ -84,6 +167,71 @@ export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
     if (!slugTouched) setSlug(slugify(value));
   };
 
+  const handleImportClick = () => fileInputRef.current?.click();
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file later
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = parseImportedGrid(JSON.parse(text));
+      setName(parsed.name);
+      setSlug(parsed.slug);
+      setSlugTouched(true);
+      setDescription(parsed.description);
+      setInstructions(parsed.instructions);
+      setImportedCategories(parsed.categories);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not read this file as a valid grid JSON.');
+    }
+  };
+
+  /** Sequentially recreates imported categories/subcriteria on a freshly
+   * created grid, via the same nested REST routes the drawers use manually.
+   * Best-effort: a failure here is surfaced as a warning toast, not a hard
+   * error — the grid itself is already created, so the admin lands in the
+   * editor and can fix up whatever didn't make it rather than being stuck. */
+  const applyImportedCategories = async (gridId: string) => {
+    const total = importedCategories.length;
+    let done = 0;
+    let failures = 0;
+    setImportProgress({ done: 0, total });
+
+    for (const cat of importedCategories) {
+      try {
+        const catRes = await fetch(`/api/evaluation-grids/${gridId}/categories`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: cat.name, weight: cat.weight, type: cat.type, position: done }),
+        });
+        if (!catRes.ok) throw new Error();
+        const createdCat = await catRes.json();
+
+        for (let i = 0; i < cat.subcriteria.length; i++) {
+          const sub = cat.subcriteria[i];
+          const subRes = await fetch(`/api/evaluation-grids/${gridId}/categories/${createdCat.uuid}/subcriteria`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...sub, position: i }),
+          });
+          if (!subRes.ok) failures++;
+        }
+      } catch {
+        failures++;
+      }
+      done++;
+      setImportProgress({ done, total });
+    }
+
+    if (failures > 0) {
+      toast(`Grid created — ${failures} imported item(s) failed and may need to be re-added manually.`, 'error');
+    }
+    setImportProgress(null);
+  };
+
   const handleSubmit = async () => {
     if (!name.trim() || !slug.trim()) {
       setError('Name and slug are required.');
@@ -108,6 +256,11 @@ export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
         return;
       }
       const saved: EvaluationGrid = await res.json();
+
+      if (!isEdit && importedCategories.length > 0) {
+        await applyImportedCategories(saved.uuid);
+      }
+
       setSuccess(true);
       setTimeout(() => {
         onSaved(saved);
@@ -153,17 +306,50 @@ export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
               {isEdit ? 'Edit evaluation grid' : 'New evaluation grid'}
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/[0.06]"
-            style={{ color: fgAt(0.3) }}
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {!isEdit && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/json"
+                  onChange={handleFileSelected}
+                  className="hidden"
+                />
+                <button
+                  onClick={handleImportClick}
+                  className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-white/[0.06]"
+                  style={{ color: fgAt(0.5) }}
+                  title="Import from JSON"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  Import
+                </button>
+              </>
+            )}
+            <button
+              onClick={onClose}
+              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/[0.06]"
+              style={{ color: fgAt(0.3) }}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
+          {!isEdit && importedCategories.length > 0 && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-brandCP/20 bg-brandCP/[0.06] px-4 py-3">
+              <FileJson className="mt-0.5 h-4 w-4 shrink-0 text-brandCP" />
+              <p className="text-xs" style={{ color: fgAt(0.6) }}>
+                Imported {importedCategories.length} categor{importedCategories.length === 1 ? 'y' : 'ies'} (
+                {importedCategories.reduce((sum, c) => sum + c.subcriteria.length, 0)} criteria). Review the fields
+                below, then create the grid to add them.
+              </p>
+            </div>
+          )}
+
           {/* Name */}
           <div className="space-y-1.5">
             <input
@@ -248,13 +434,15 @@ export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
               ? isEdit
                 ? 'Saved!'
                 : 'Created!'
-              : saving
-                ? isEdit
-                  ? 'Saving…'
-                  : 'Creating…'
-                : isEdit
-                  ? 'Save changes'
-                  : 'Create & add criteria'}
+              : importProgress
+                ? `Importing ${importProgress.done}/${importProgress.total}…`
+                : saving
+                  ? isEdit
+                    ? 'Saving…'
+                    : 'Creating…'
+                  : isEdit
+                    ? 'Save changes'
+                    : 'Create & add criteria'}
           </button>
         </div>
       </div>

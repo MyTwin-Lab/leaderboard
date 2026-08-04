@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Pencil, Plus, Trash2, Settings2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Download, FlaskConical, Loader2, Pencil, Plus, Trash2, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
@@ -25,11 +25,12 @@ interface GridEditorProps {
   onBack: () => void;
   onDeleted: (id: string) => void;
   onUpdated: (grid: EvaluationGridFull) => void;
+  onTest: () => void;
 }
 
 type FullCategory = EvaluationGridCategory & { subcriteria: EvaluationGridSubcriterion[] };
 
-export function GridEditor({ gridId, onBack, onDeleted, onUpdated }: GridEditorProps) {
+export function GridEditor({ gridId, onBack, onDeleted, onUpdated, onTest }: GridEditorProps) {
   const [grid, setGrid] = useState<EvaluationGridFull | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -120,6 +121,48 @@ export function GridEditor({ gridId, onBack, onDeleted, onUpdated }: GridEditorP
     } else {
       toast('Failed to delete grid', 'error');
     }
+  };
+
+  /** Portable JSON — no DB-internal fields (uuid, grid_id/category_id, status,
+   * version, timestamps) and no `position` (implied by array order), so a
+   * file exported here can be re-imported via GridDrawer's "Import" button. */
+  const exportGrid = () => {
+    if (!grid) return;
+    const portable = {
+      name: grid.name,
+      slug: grid.slug,
+      description: grid.description ?? undefined,
+      instructions: grid.instructions ?? undefined,
+      categories: grid.categories
+        .sort((a, b) => a.position - b.position)
+        .map((cat) => ({
+          name: cat.name,
+          weight: cat.weight,
+          type: cat.type,
+          subcriteria: cat.subcriteria
+            .sort((a, b) => a.position - b.position)
+            .map((sub) => ({
+              criterion: sub.criterion,
+              description: sub.description ?? undefined,
+              weight: sub.weight ?? undefined,
+              metrics: sub.metrics ?? undefined,
+              indicators: sub.indicators ?? undefined,
+              scoring_excellent: sub.scoring_excellent ?? undefined,
+              scoring_good: sub.scoring_good ?? undefined,
+              scoring_average: sub.scoring_average ?? undefined,
+              scoring_poor: sub.scoring_poor ?? undefined,
+            })),
+        })),
+    };
+    const blob = new Blob([JSON.stringify(portable, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${grid.slug}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   };
 
   /* ---------- Category CRUD ---------- */
@@ -324,6 +367,13 @@ export function GridEditor({ gridId, onBack, onDeleted, onUpdated }: GridEditorP
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            <Button size="sm" variant="secondary" onClick={onTest} title="Test this grid">
+              <FlaskConical className="h-3.5 w-3.5" />
+              Test
+            </Button>
+            <Button size="sm" variant="secondary" onClick={exportGrid} title="Export as JSON">
+              <Download className="h-3.5 w-3.5" />
+            </Button>
             <Button size="sm" variant="secondary" onClick={() => setMetaDrawerOpen(true)} title="Edit details">
               <Settings2 className="h-3.5 w-3.5" />
             </Button>

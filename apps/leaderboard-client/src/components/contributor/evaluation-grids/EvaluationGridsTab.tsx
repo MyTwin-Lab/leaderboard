@@ -8,9 +8,10 @@ import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialog';
 import { GridCard } from './GridCard';
 import { GridEditor } from './GridEditor';
 import { GridDrawer } from './GridDrawer';
+import { GridTestRun } from './GridTestRun';
 import type { EvaluationGrid, EvaluationGridFull } from '@packages/database-service/domain/entities';
 
-type View = { mode: 'list' } | { mode: 'edit'; gridId: string };
+type View = { mode: 'list' } | { mode: 'edit'; gridId: string } | { mode: 'test'; gridId: string };
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-brandCP/50 focus:outline-none focus:ring-1 focus:ring-brandCP/50';
@@ -97,6 +98,14 @@ function EvaluationGridsPanel() {
     setDetails((prev) => ({ ...prev, [grid.uuid]: grid }));
   };
 
+  if (view.mode === 'test') {
+    return (
+      <div className="animate-fade-up">
+        <GridTestRun gridId={view.gridId} onBack={() => setView({ mode: 'edit', gridId: view.gridId })} />
+      </div>
+    );
+  }
+
   if (view.mode === 'edit') {
     return (
       <div className="animate-fade-up">
@@ -105,6 +114,7 @@ function EvaluationGridsPanel() {
           onBack={() => setView({ mode: 'list' })}
           onDeleted={handleDeleted}
           onUpdated={handleGridUpdated}
+          onTest={() => setView({ mode: 'test', gridId: view.gridId })}
         />
       </div>
     );
