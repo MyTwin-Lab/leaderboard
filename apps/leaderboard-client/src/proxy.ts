@@ -40,68 +40,139 @@ async function verifyTokenEdge(token: string): Promise<{ userId: string; role: s
   }
 }
 
+/** Extrait la valeur d'un cookie donné depuis une liste d'en-têtes Set-Cookie bruts. */
+function extractCookieValue(setCookieHeaders: string[], name: string): string | null {
+  for (const header of setCookieHeaders) {
+    const [pair] = header.split(';');
+    const [key, value] = pair.split('=');
+    if (key?.trim() === name) return value ?? null;
+  }
+  return null;
+}
+
+/** Remplace (ou ajoute) la valeur d'un cookie dans l'en-tête `Cookie` brut d'une requête. */
+function withUpdatedCookie(cookieHeader: string | null, name: string, value: string): string {
+  const pairs = (cookieHeader ?? '')
+    .split(';')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .filter((p) => !p.startsWith(`${name}=`));
+  pairs.push(`${name}=${value}`);
+  return pairs.join('; ');
+}
+
+/**
+ * Tente un refresh silencieux via /api/auth/refresh (Node runtime — c'est là
+ * que vivent la rotation en base et bcrypt, impossibles à faire tourner ici
+ * même raison que verifyTokenEdge existe au lieu d'importer lib/auth.ts).
+ * Appel HTTP interne, même déploiement.
+ */
+async function tryRefreshSession(request: NextRequest): Promise<{
+  payload: { userId: string; role: string };
+  setCookieHeaders: string[];
+} | null> {
+  const refreshToken = request.cookies.get('refresh_token')?.value;
+  if (!refreshToken) return null;
+
+  try {
+    const baseUrl = getBaseUrl(request);
+    const res = await fetch(new URL('/api/auth/refresh', baseUrl), {
+      method: 'POST',
+      headers: { cookie: `refresh_token=${refreshToken}` },
+    });
+    if (!res.ok) return null;
+
+    const setCookieHeaders = res.headers.getSetCookie();
+    const newAccessToken = extractCookieValue(setCookieHeaders, 'access_token');
+    if (!newAccessToken) return null;
+
+    const payload = await verifyTokenEdge(newAccessToken);
+    if (!payload) return null;
+
+    return { payload, setCookieHeaders };
+  } catch {
+    return null;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const matchedProtectedPage = protectedPages.find((route) => pathname.startsWith(route.prefix));
   const isProtectedApiRoute = protectedApiRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
-  
+
   // Les routes d'auth sont toujours accessibles
   if (isAuthRoute) {
     return NextResponse.next();
   }
-  
-  // Si c'est une route protégée, vérifier le token
+
   if (matchedProtectedPage || isProtectedApiRoute) {
     const token = request.cookies.get('access_token')?.value;
-    
-    if (!token) {
-      // Rediriger vers Google OAuth pour les pages, 401 pour les API
+    let payload = token ? await verifyTokenEdge(token) : null;
+
+    // access_token absent ou expiré : tenter un refresh silencieux avant
+    // d'abandonner (au lieu de déconnecter après 15 minutes d'inactivité).
+    let refreshedCookies: string[] | null = null;
+    let requestHeaders = request.headers;
+
+    if (!payload) {
+      const refreshed = await tryRefreshSession(request);
+      if (refreshed) {
+        payload = refreshed.payload;
+        refreshedCookies = refreshed.setCookieHeaders;
+
+        // Les pages/route handlers en aval relisent les cookies eux-mêmes
+        // (lib/auth.ts) — ils doivent voir le nouveau access_token, pas
+        // seulement ce middleware.
+        const newAccessToken = extractCookieValue(refreshedCookies, 'access_token');
+        const newRefreshToken = extractCookieValue(refreshedCookies, 'refresh_token');
+        let cookieHeader = request.headers.get('cookie') ?? '';
+        if (newAccessToken) cookieHeader = withUpdatedCookie(cookieHeader, 'access_token', newAccessToken);
+        if (newRefreshToken) cookieHeader = withUpdatedCookie(cookieHeader, 'refresh_token', newRefreshToken);
+        requestHeaders = new Headers(request.headers);
+        requestHeaders.set('cookie', cookieHeader);
+      }
+    }
+
+    // Propage les nouveaux cookies vers le navigateur sur toute réponse
+    // renvoyée après un refresh réussi — y compris un 403 "rôle insuffisant" :
+    // l'action précise peut être refusée, la session reste rafraîchie.
+    const respond = (response: NextResponse) => {
+      if (refreshedCookies) {
+        for (const cookie of refreshedCookies) response.headers.append('set-cookie', cookie);
+      }
+      return response;
+    };
+
+    if (!payload) {
+      // Ni access_token valide, ni refresh_token exploitable.
       if (isProtectedApiRoute) {
         return NextResponse.json(
           { error: 'Authentication required' },
           { status: 401 }
         );
       }
-      
-      const baseUrl = getBaseUrl(request);
-      const oauthUrl = new URL('/api/google-auth/authorize', baseUrl);
-      oauthUrl.searchParams.set('from', pathname);
-      return NextResponse.redirect(oauthUrl);
-    }
-
-    // Vérifier la validité du token
-    const payload = await verifyTokenEdge(token);
-
-    if (!payload) {
-      // Token invalide ou expiré
-      if (isProtectedApiRoute) {
-        return NextResponse.json(
-          { error: 'Invalid or expired token' },
-          { status: 401 }
-        );
-      }
 
       const baseUrl = getBaseUrl(request);
       const oauthUrl = new URL('/api/google-auth/authorize', baseUrl);
       oauthUrl.searchParams.set('from', pathname);
       return NextResponse.redirect(oauthUrl);
     }
-    
+
     if (matchedProtectedPage) {
       const allowedRoles = matchedProtectedPage.roles;
       if (!allowedRoles.includes(payload.role as typeof allowedRoles[number])) {
-        return NextResponse.json(
+        return respond(NextResponse.json(
           { error: 'Insufficient permissions' },
           { status: 403 }
-        );
+        ));
       }
     }
-    
+
     // Pour les routes API protégées, vérifier les permissions selon la méthode
     if (isProtectedApiRoute) {
       const method = request.method;
-      
+
       // Routes accessibles aux contributeurs (self-assign/unassign/complete)
       const isTaskSelfServiceRoute =
         pathname.startsWith('/api/tasks/') &&
@@ -126,15 +197,17 @@ export async function proxy(request: NextRequest) {
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
         if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isManagerAccessibleRoute && !isContributorSelfRoute) {
-          return NextResponse.json(
+          return respond(NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }
-          );
+          ));
         }
       }
     }
+
+    return respond(NextResponse.next({ request: { headers: requestHeaders } }));
   }
-  
+
   return NextResponse.next();
 }
 
