@@ -27,7 +27,7 @@ const snapshotService = new SnapshotService();
 
 /** Fixed by design: the point of this sandbox is measuring how consistent
  * the grid's scoring is across repeated runs on the same content. */
-const RUN_COUNT = 3;
+const RUN_COUNT = 5;
 /** Plafonné (la vraie pipeline task va jusqu'à 100) pour garder ce test rapide. */
 const MAX_GITHUB_COMMITS = 20;
 

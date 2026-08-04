@@ -182,16 +182,18 @@ describe('POST /api/evaluation-grids/[id]/test-run', () => {
     expect(body.error).toMatch(/at least one category/i);
   });
 
-  it('runs the grid 3 times against a GitHub source and returns aggregated results', async () => {
+  it('runs the grid 5 times against a GitHub source and returns aggregated results', async () => {
     const res = await postTestRun(GITHUB_BODY);
 
     expect(res.status).toBe(200);
-    expect(mockEvaluate).toHaveBeenCalledTimes(3);
+    expect(mockEvaluate).toHaveBeenCalledTimes(5);
     const body = await res.json();
-    expect(body.runs).toHaveLength(3);
+    expect(body.runs).toHaveLength(5);
     expect(body.failedCount).toBe(0);
     expect(body.determinism).toEqual({ score: 100, mean: 80, stddev: 0 });
-    expect(body.perCriterion).toEqual([{ criterion: 'Correctness', mean: 80, stddev: 0, values: [80, 80, 80] }]);
+    expect(body.perCriterion).toEqual([
+      { criterion: 'Correctness', mean: 80, stddev: 0, values: [80, 80, 80, 80, 80] },
+    ]);
     expect(body.warning).toBeUndefined();
     expect(mockFsRm).toHaveBeenCalledWith('/tmp/workspace', { recursive: true, force: true });
   });
@@ -243,7 +245,7 @@ describe('POST /api/evaluation-grids/[id]/test-run', () => {
     expect(res.status).toBe(200);
     expect(mockKaggleFetchItemContent).toHaveBeenCalledWith('item-1');
     const body = await res.json();
-    expect(body.runs).toHaveLength(3);
+    expect(body.runs).toHaveLength(5);
   });
 
   it('returns 400 when the Kaggle URL cannot be parsed', async () => {

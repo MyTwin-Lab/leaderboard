@@ -163,7 +163,7 @@ export function GridTestRun({ gridId, onBack }: GridTestRunProps) {
         <div>
           <h2 className="text-lg font-bold text-white">Test grid{grid ? `: ${grid.name}` : ''}</h2>
           <p className="text-xs text-white/40">
-            Runs 3 evaluations in parallel on the same real content and measures how consistent the scores are.
+            Runs 5 evaluations in parallel on the same real content and measures how consistent the scores are.
           </p>
         </div>
       </div>
@@ -250,7 +250,7 @@ export function GridTestRun({ gridId, onBack }: GridTestRunProps) {
 
         <Button onClick={handleRun} disabled={!canRun}>
           {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
-          {running ? 'Running 3 evaluations…' : 'Run test'}
+          {running ? 'Running 5 evaluations…' : 'Run test'}
         </Button>
       </div>
 
