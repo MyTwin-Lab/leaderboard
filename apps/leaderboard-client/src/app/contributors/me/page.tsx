@@ -21,6 +21,7 @@ import { AppSettingsRepository, OnboardingProgressRepository } from "@packages/d
 import { isValidThemeKey, DEFAULT_THEME_KEY } from "@/lib/themes";
 import { ModulesSettings } from "@/components/contributor/ModulesSettings";
 import { OnboardingProgressTable } from "@/components/contributor/OnboardingProgressTable";
+import { EvaluationGridsTab } from "@/components/contributor/evaluation-grids/EvaluationGridsTab";
 
 const appSettingsRepo = new AppSettingsRepository();
 const onboardingProgressRepo = new OnboardingProgressRepository();
@@ -119,6 +120,14 @@ export default async function ContributorSelfPage({
               <ScalewayConnectionCard />
             </div>
           </div>
+        </div>
+      ),
+    });
+    tabs.push({
+      label: "Evaluation Grids",
+      panel: (
+        <div className="mx-auto max-w-lg py-2 lg:max-w-5xl">
+          <EvaluationGridsTab />
         </div>
       ),
     });
