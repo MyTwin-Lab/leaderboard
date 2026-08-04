@@ -96,7 +96,7 @@ export function rankEntries(entries: AggregatedUser[]): LeaderboardEntry[] {
     displayName: entry.user.full_name,
     githubUsername: entry.user.github_username,
     bio: entry.user.bio,
-    avatarUrl: entry.user.avatar_url,
+    avatarUrl: entry.user.avatar_url ?? undefined,
     totalCP: entry.totalCP,
   }));
 }

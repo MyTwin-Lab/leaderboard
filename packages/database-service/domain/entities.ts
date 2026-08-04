@@ -216,7 +216,7 @@ export interface User {
   email?: string;
   google_user_id?: string;
   bio?: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
   created_at: Date;
 }
 

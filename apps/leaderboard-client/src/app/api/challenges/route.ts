@@ -41,9 +41,14 @@ export async function GET(request: NextRequest) {
     if (managedParam === 'true') {
       const token = request.cookies.get('access_token')?.value;
       if (!token) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-      const { payload } = await jwtVerify(token, secret);
-      const userId = payload.userId as string;
+      let userId: string;
+      try {
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+        const { payload } = await jwtVerify(token, secret);
+        userId = payload.userId as string;
+      } catch {
+        return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      }
       const managedProjects = await repositories.project.findByManagerId(userId);
       const projectIds = new Set(managedProjects.map(p => p.uuid));
       const all = await challengeRepo.findAll();
@@ -66,10 +71,16 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get('access_token')?.value;
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    const userId = payload.userId as string;
-    const userRole = payload.role as string;
+    let userId: string;
+    let userRole: string;
+    try {
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+      const { payload } = await jwtVerify(token, secret);
+      userId = payload.userId as string;
+      userRole = payload.role as string;
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body = await request.json();
     const validated = createChallengeSchema.parse(body);

@@ -167,7 +167,7 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     userId: user.uuid,
     displayName: user.full_name,
     githubUsername: user.github_username,
-    avatarUrl: user.avatar_url,
+    avatarUrl: user.avatar_url ?? undefined,
     totalCP,
     challenges: aggregated,
     globalRank,

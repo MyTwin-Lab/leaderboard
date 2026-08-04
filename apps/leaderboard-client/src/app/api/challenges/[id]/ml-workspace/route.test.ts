@@ -151,12 +151,15 @@ describe('PATCH /api/challenges/[id]/ml-workspace', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 400 when repo_id is missing', async () => {
+  it('returns 400 when repo_id is missing, without joining the challenge team', async () => {
+    mockTeamFindByChallenge.mockResolvedValue([]);
+
     const res = await patchWorkspace({ workspace_url: 'https://x.com' });
 
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toMatch(/repo_id/);
+    expect(mockTeamCreate).not.toHaveBeenCalled();
   });
 
   it('returns 400 when neither workspace_url nor live_endpoint_url is provided', async () => {
@@ -177,12 +180,14 @@ describe('PATCH /api/challenges/[id]/ml-workspace', () => {
     expect(res.status).toBe(400);
   });
 
-  it('returns 404 when the repo does not belong to this challenge', async () => {
+  it('returns 404 when the repo does not belong to this challenge, without joining the challenge team', async () => {
     mockFindByChallengeAndRepo.mockResolvedValue(null);
+    mockTeamFindByChallenge.mockResolvedValue([]);
 
     const res = await patchWorkspace({ repo_id: 'repo-1', workspace_url: 'https://github.com/a/b' });
 
     expect(res.status).toBe(404);
+    expect(mockTeamCreate).not.toHaveBeenCalled();
   });
 
   it('adds the user to the challenge team when they are not already a member', async () => {

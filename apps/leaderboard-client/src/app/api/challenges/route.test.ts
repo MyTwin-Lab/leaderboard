@@ -114,12 +114,12 @@ describe('GET /api/challenges', () => {
     expect(mockProjectFindByManagerId).toHaveBeenCalledWith('manager-1');
   });
 
-  it('returns 500 when an invalid token throws during managed=true', async () => {
+  it('returns 401 when an invalid token throws during managed=true', async () => {
     mockJwtVerify.mockRejectedValue(new Error('bad token'));
 
     const res = await getChallenges('?managed=true', 'garbage');
 
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(401);
   });
 
   it('returns 500 when the repository call throws', async () => {
@@ -282,12 +282,12 @@ describe('POST /api/challenges', () => {
     });
   });
 
-  it('returns 500 when an invalid token throws', async () => {
+  it('returns 401 when an invalid token throws', async () => {
     mockJwtVerify.mockRejectedValue(new Error('bad token'));
 
     const res = await postChallenge(validBody, 'garbage');
 
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(401);
   });
 
   it('returns 500 when challenge creation fails', async () => {

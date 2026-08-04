@@ -55,7 +55,7 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: "Avatar image too large (max 500 KB)" }, { status: 413 });
       }
     }
-    updates.avatar_url = avatar_url ?? undefined;
+    updates.avatar_url = avatar_url;
   }
 
   await userRepo.update(session.id, updates);

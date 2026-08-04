@@ -176,7 +176,7 @@ export const userSchema = z.object({
   email: z.string().email().optional(),
   google_user_id: z.string().optional(),
   bio: z.string().max(2000).optional(),
-  avatar_url: z.string().max(700_000).optional(),
+  avatar_url: z.string().max(700_000).nullable().optional(),
   created_at: z.coerce.date(),
 });
 

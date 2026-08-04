@@ -137,11 +137,11 @@ describe('PATCH /api/contributors/me', () => {
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
-  it('accepts a null avatar_url without mime validation', async () => {
+  it('clears the avatar when avatar_url is explicitly null, without mime validation', async () => {
     const res = await patchMe({ avatar_url: null });
 
     expect(res.status).toBe(200);
-    expect(mockUpdate).toHaveBeenCalledWith('user-1', { avatar_url: undefined });
+    expect(mockUpdate).toHaveBeenCalledWith('user-1', { avatar_url: null });
   });
 
   it('sends only the provided fields to the repository', async () => {

@@ -76,9 +76,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ meeting }, { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation error', details: error.issues }, { status: 400 });
-    }
     console.error('[SyncMeetings] POST error:', error);
     return NextResponse.json({ error: 'Failed to create meeting' }, { status: 500 });
   }

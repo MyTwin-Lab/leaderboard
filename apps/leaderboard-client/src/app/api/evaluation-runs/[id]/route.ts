@@ -1,14 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EvaluationRunsRepository } from '../../../../../../../packages/database-service/repositories';
+import { jwtVerify } from 'jose';
 
 const runsRepo = new EvaluationRunsRepository();
 
+async function getSession(request: NextRequest): Promise<{ userId: string; role: string } | null> {
+  const token = request.cookies.get('access_token')?.value;
+  if (!token) return null;
+  try {
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    return { userId: payload.userId as string, role: payload.role as string };
+  } catch {
+    return null;
+  }
+}
+
 // GET /api/evaluation-runs/[id]
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (session.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { id } = await params;
     const result = await runsRepo.findWithChallenge(id);
     if (!result) {
@@ -23,10 +44,18 @@ export async function GET(
 
 // DELETE /api/evaluation-runs/[id]
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (session.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { id } = await params;
     await runsRepo.delete(id);
     return NextResponse.json({ success: true });

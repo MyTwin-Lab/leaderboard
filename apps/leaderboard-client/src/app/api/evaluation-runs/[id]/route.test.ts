@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindWithChallenge, mockDelete } = vi.hoisted(() => ({
+const { mockFindWithChallenge, mockDelete, mockJwtVerify } = vi.hoisted(() => ({
   mockFindWithChallenge: vi.fn(),
   mockDelete: vi.fn(),
+  mockJwtVerify: vi.fn(),
 }));
 
 vi.mock('../../../../../../../packages/database-service/repositories', () => ({
@@ -13,25 +14,55 @@ vi.mock('../../../../../../../packages/database-service/repositories', () => ({
   },
 }));
 
+vi.mock('jose', () => ({
+  jwtVerify: mockJwtVerify,
+}));
+
 import { GET, DELETE } from './route';
 
 const RUN_ID = 'run-1';
 
-function getRun() {
-  const req = new NextRequest(`http://localhost/api/evaluation-runs/${RUN_ID}`);
+function getRun(withCookie = true) {
+  const req = new NextRequest(`http://localhost/api/evaluation-runs/${RUN_ID}`, {
+    headers: withCookie ? { cookie: 'access_token=valid-token' } : undefined,
+  });
   return GET(req, { params: Promise.resolve({ id: RUN_ID }) });
 }
 
-function deleteRun() {
-  const req = new NextRequest(`http://localhost/api/evaluation-runs/${RUN_ID}`, { method: 'DELETE' });
+function deleteRun(withCookie = true) {
+  const req = new NextRequest(`http://localhost/api/evaluation-runs/${RUN_ID}`, {
+    method: 'DELETE',
+    headers: withCookie ? { cookie: 'access_token=valid-token' } : undefined,
+  });
   return DELETE(req, { params: Promise.resolve({ id: RUN_ID }) });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockJwtVerify.mockResolvedValue({ payload: { userId: 'admin-1', role: 'admin' } });
 });
 
 describe('GET /api/evaluation-runs/[id]', () => {
+  it('returns 401 when there is no access_token cookie', async () => {
+    const res = await getRun(false);
+    expect(res.status).toBe(401);
+    expect(mockFindWithChallenge).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 when the token fails verification', async () => {
+    mockJwtVerify.mockRejectedValue(new Error('bad token'));
+    const res = await getRun();
+    expect(res.status).toBe(401);
+    expect(mockFindWithChallenge).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when the caller is not an admin', async () => {
+    mockJwtVerify.mockResolvedValue({ payload: { userId: 'user-1', role: 'contributor' } });
+    const res = await getRun();
+    expect(res.status).toBe(403);
+    expect(mockFindWithChallenge).not.toHaveBeenCalled();
+  });
+
   it('returns 404 when the run does not exist', async () => {
     mockFindWithChallenge.mockResolvedValue(null);
     const res = await getRun();
@@ -57,6 +88,19 @@ describe('GET /api/evaluation-runs/[id]', () => {
 });
 
 describe('DELETE /api/evaluation-runs/[id]', () => {
+  it('returns 401 when there is no access_token cookie', async () => {
+    const res = await deleteRun(false);
+    expect(res.status).toBe(401);
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when the caller is not an admin', async () => {
+    mockJwtVerify.mockResolvedValue({ payload: { userId: 'user-1', role: 'contributor' } });
+    const res = await deleteRun();
+    expect(res.status).toBe(403);
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
   it('deletes the run and returns success', async () => {
     mockDelete.mockResolvedValue(undefined);
     const res = await deleteRun();

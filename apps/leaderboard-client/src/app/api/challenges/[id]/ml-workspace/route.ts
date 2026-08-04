@@ -98,14 +98,6 @@ export async function PATCH(
     const body = await request.json();
     const { repo_id, workspace_url, live_endpoint_url } = body;
 
-    // ML challenges have no tasks to assign, so submitting through the
-    // workspace is what makes someone a participant — there's no other
-    // path that adds them to the challenge's team.
-    const existingTeam = await challengeTeamRepo.findByChallenge(challengeId);
-    if (!existingTeam.some(m => m.user_id === session.userId)) {
-      await challengeTeamRepo.create({ challenge_id: challengeId, user_id: session.userId });
-    }
-
     if (!repo_id || typeof repo_id !== 'string') {
       return NextResponse.json({ error: 'repo_id is required' }, { status: 400 });
     }
@@ -124,6 +116,15 @@ export async function PATCH(
     const existing = await challengeRepoRepo.findByChallengeAndRepo(challengeId, repo_id);
     if (!existing) {
       return NextResponse.json({ error: 'Repo not found for this challenge' }, { status: 404 });
+    }
+
+    // ML challenges have no tasks to assign, so submitting through the
+    // workspace is what makes someone a participant — there's no other
+    // path that adds them to the challenge's team. Done only once the
+    // request has passed validation, so a rejected PATCH has no side effect.
+    const existingTeam = await challengeTeamRepo.findByChallenge(challengeId);
+    if (!existingTeam.some(m => m.user_id === session.userId)) {
+      await challengeTeamRepo.create({ challenge_id: challengeId, user_id: session.userId });
     }
 
     let current = existing;
