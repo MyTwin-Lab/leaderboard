@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   Database, BrainCircuit, Package, CheckCircle2,
-  ExternalLink, Users, ChevronRight, Loader2, AlertCircle, Coins,
+  ExternalLink, Users, ChevronRight, Loader2, AlertCircle, Lock,
 } from 'lucide-react';
 import { ComputeRequestPanel } from './ComputeRequestPanel';
 import { MlMetricTimeline } from './MlMetricTimeline';
@@ -159,6 +159,8 @@ interface PoolState {
   distributed: number;
   remaining: number;
   metric: { name: string; baseline: number; points: number[] } | null;
+  bestValue: number | null;
+  thresholdReached: boolean;
 }
 
 export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
@@ -176,8 +178,8 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
         fetch(`/api/challenges/${challengeId}/ml-rewards`),
       ]);
       if (wsRes.ok) setData(await wsRes.json());
-      // A challenge with no reward rules yet still renders — the pool banner
-      // simply stays hidden rather than blocking the flow.
+      // A challenge with no reward rules yet still renders — the metric
+      // timeline and threshold lock simply stay off rather than blocking the flow.
       if (poolRes.ok) setPool(await poolRes.json());
     } finally {
       setLoading(false);
@@ -205,27 +207,21 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
   const stepRepos = assignReposToSteps(data.repos);
   const { currentUserId } = data;
 
+  // Once the metric hits the challenge's configured threshold, dataset/model
+  // submissions close — only API packaging keeps taking new work.
   const steps = STEP_CONFIG.map((cfg, i) => ({
     ...cfg,
     repos: stepRepos[cfg.key],
     done: isStepComplete(stepRepos[cfg.key], currentUserId),
+    locked: !!pool?.thresholdReached && (cfg.key === 'dataset' || cfg.key === 'model'),
   }));
 
   return (
     <div className="space-y-6 animate-fade-up">
 
-      {/* ── Pool remainder + metric to beat ── */}
-      {pool && pool.pool > 0 && (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div className={pool.metric && pool.metric.points.length > 0 ? 'min-w-0 sm:max-w-[50%] sm:flex-1' : 'min-w-0 flex-1'}>
-            <PoolBanner pool={pool} />
-          </div>
-          {pool.metric && pool.metric.points.length > 0 && (
-            <div className="min-w-0 sm:flex-1">
-              <MlMetricTimeline {...pool.metric} />
-            </div>
-          )}
-        </div>
+      {/* ── Metric to beat ── */}
+      {pool?.metric && pool.metric.points.length > 0 && (
+        <MlMetricTimeline {...pool.metric} />
       )}
 
       {/* ── Stepper header ── */}
@@ -234,6 +230,7 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
           const Icon = step.icon;
           const isActive = activeStep === i;
           const isDone = step.done;
+          const isLocked = step.locked && !isDone;
 
           return (
             <div key={step.key} className="flex items-center flex-1 last:flex-none">
@@ -243,13 +240,17 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
                 className={`group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 focus-visible:outline-none
                   ${isDone
                     ? 'border-green-500 bg-green-500/15'
-                    : isActive
-                      ? 'border-brandCP bg-brandCP/15 shadow-[0_0_16px_rgba(10,247,193,0.2)]'
-                      : 'border-white/15 bg-white/[0.03] hover:border-white/30'
+                    : isLocked
+                      ? 'border-white/10 bg-white/[0.02]'
+                      : isActive
+                        ? 'border-brandCP bg-brandCP/15 shadow-[0_0_16px_rgba(10,247,193,0.2)]'
+                        : 'border-white/15 bg-white/[0.03] hover:border-white/30'
                   }`}
               >
                 {isDone ? (
                   <CheckCircle2 className="h-5 w-5 text-green-400" />
+                ) : isLocked ? (
+                  <Lock className="h-4 w-4 text-white/20" />
                 ) : (
                   <Icon className={`h-4 w-4 transition-colors ${isActive ? 'text-brandCP' : 'text-white/30 group-hover:text-white/50'}`} />
                 )}
@@ -306,7 +307,7 @@ function StepPanel({
   onSaved,
   onNext,
 }: {
-  step: typeof STEP_CONFIG[number] & { repos: MLRepo[]; done: boolean };
+  step: typeof STEP_CONFIG[number] & { repos: MLRepo[]; done: boolean; locked: boolean };
   challengeId: string;
   currentUserId: string | null;
   onSaved: () => void;
@@ -336,10 +337,15 @@ function StepPanel({
             <p className="text-xs text-white/35 mt-0.5">{step.sublabel}</p>
           </div>
         </div>
-        {step.done && (
+        {step.done ? (
           <span className="flex items-center gap-1 rounded-full bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-400">
             <CheckCircle2 className="h-3 w-3" />
             Submitted
+          </span>
+        ) : step.locked && (
+          <span className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-0.5 text-xs font-medium text-white/40">
+            <Lock className="h-3 w-3" />
+            Locked — threshold reached
           </span>
         )}
       </div>
@@ -354,6 +360,7 @@ function StepPanel({
           challengeId={challengeId}
           currentUserId={currentUserId}
           showCommunityPicker={step.key === 'dataset'}
+          locked={step.locked}
           onSaved={onSaved}
         />
       ))}
@@ -374,49 +381,6 @@ function StepPanel({
   );
 }
 
-// ─── Pool remainder ───────────────────────────────────────────────────────────
-
-/**
- * Points are awarded live from a finite pool, in arrival order. Showing what is
- * left is the only way a contributor can tell whether it is still worth racing.
- */
-function PoolBanner({ pool }: { pool: PoolState }) {
-  const claimedPct = pool.pool > 0 ? Math.min(100, (pool.distributed / pool.pool) * 100) : 0;
-  const empty = pool.remaining <= 0;
-
-  return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="flex items-baseline gap-1.5">
-          <Coins className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-brandCP/60" />
-          <span className={`text-sm font-semibold ${empty ? 'text-white/40' : 'text-brandCP'}`}>
-            {pool.remaining.toLocaleString()} CP
-          </span>
-          <span className="text-xs text-white/35">
-            {empty ? 'left — the pool is empty' : 'left to claim'}
-          </span>
-        </div>
-        <span className="text-xs text-white/25">
-          {pool.distributed.toLocaleString()} / {pool.pool.toLocaleString()} awarded
-        </span>
-      </div>
-
-      <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${empty ? 'bg-white/20' : 'bg-brandCP/60'}`}
-          style={{ width: `${claimedPct}%` }}
-        />
-      </div>
-
-      {empty && (
-        <p className="text-xs text-white/30">
-          Later submissions still get evaluated, but there are no points left to award.
-        </p>
-      )}
-    </div>
-  );
-}
-
 // ─── Per-repo submission form ─────────────────────────────────────────────────
 
 function RepoSubmission({
@@ -424,12 +388,14 @@ function RepoSubmission({
   challengeId,
   currentUserId,
   showCommunityPicker = false,
+  locked = false,
   onSaved,
 }: {
   repo: MLRepo;
   challengeId: string;
   currentUserId: string | null;
   showCommunityPicker?: boolean;
+  locked?: boolean;
   onSaved: () => void;
 }) {
   const myUrl = getUserUrl(repo, currentUserId);
@@ -549,6 +515,13 @@ function RepoSubmission({
         </div>
       )}
 
+      {locked && (
+        <div className="flex items-center gap-1.5 text-xs text-white/35">
+          <Lock className="h-3.5 w-3.5 shrink-0" />
+          Threshold reached — submissions are closed for this step.
+        </div>
+      )}
+
       {/* URL input */}
       <div className="flex gap-2">
         <input
@@ -557,11 +530,12 @@ function RepoSubmission({
           onChange={e => setUrlInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           placeholder={meta?.placeholder}
-          className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white placeholder:text-white/20 transition-all duration-200 focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
+          disabled={locked}
+          className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white placeholder:text-white/20 transition-all duration-200 focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)] disabled:cursor-not-allowed disabled:opacity-50"
         />
         <button
           onClick={handleSubmit}
-          disabled={saving || !urlInput.trim() || urlInput.trim() === myUrl}
+          disabled={locked || saving || !urlInput.trim() || urlInput.trim() === myUrl}
           className="shrink-0 rounded-xl bg-brandCP/15 px-4 py-2.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/25 hover:shadow-[0_0_12px_rgba(10,247,193,0.15)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : myUrl ? 'Update' : 'Submit'}
@@ -640,7 +614,7 @@ function RepoSubmission({
                 <button
                   key={i}
                   onClick={() => handleToggleCommunity(url)}
-                  disabled={saving}
+                  disabled={saving || locked}
                   aria-pressed={selected}
                   className={`group flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                     selected

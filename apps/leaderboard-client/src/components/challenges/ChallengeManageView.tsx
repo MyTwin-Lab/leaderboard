@@ -937,6 +937,10 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
     },
   ];
 
+  // Actually distributed, not the pool/cap set at creation — reward is already
+  // reconciled with the ledger (ML/validation) or the cached column (code).
+  const awardedTotal = contributions.reduce((sum, c) => sum + (c.reward ?? 0), 0);
+
   return (
     <>
       <div className="mx-auto max-w-5xl animate-fade-up space-y-8">
@@ -995,8 +999,8 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
 
           <div className="mt-5 flex flex-wrap items-center gap-5">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold text-white">{challenge.contribution_points_reward.toLocaleString()}</span>
-              <span className="text-sm font-semibold text-brandCP">CP</span>
+              <span className="text-2xl font-bold text-white">{awardedTotal.toLocaleString()}</span>
+              <span className="text-sm font-semibold text-brandCP">CP awarded</span>
             </div>
             <div className="h-6 w-px bg-white/10" />
             <div className="flex items-center gap-2">

@@ -127,6 +127,27 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
             onChange={e => patch(r => ({ ...r, model: { ...r.model, beatBestBonus: parseInt(e.target.value) || 0 } }))}
           />
         </FormField>
+
+        <FormField label="Block threshold (%) — optional">
+          <input
+            type="number" min={0} max={100} className={inputClass}
+            value={rules.model.metric.blockThreshold != null ? toPct(rules.model.metric.blockThreshold) : ''}
+            placeholder="No threshold"
+            onChange={e => patch(r => ({
+              ...r,
+              model: { ...r.model, metric: {
+                ...r.model.metric,
+                blockThreshold: e.target.value === '' ? undefined : fromPct(e.target.value),
+              } },
+            }))}
+          />
+        </FormField>
+        {rules.model.metric.blockThreshold != null && (
+          <p className="text-xs text-white/30">
+            Once {rules.model.metric.name.toUpperCase()} reaches {toPct(rules.model.metric.blockThreshold)}%,
+            dataset and model submissions close — only API packaging stays open.
+          </p>
+        )}
       </div>
 
       {/* ── Reuse ── */}

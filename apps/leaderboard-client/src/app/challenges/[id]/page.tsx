@@ -327,6 +327,9 @@ export default function ChallengeDetailPage() {
 
   const doneTasks = tasks.filter(t => t.status === 'done' || t.status === 'completed').length;
   const completion = tasks.length === 0 ? 0 : Math.round((doneTasks / tasks.length) * 100);
+  // Actually distributed, not the pool/cap set at creation — reward is already
+  // reconciled with the ledger (ML/validation) or the cached column (code).
+  const awardedTotal = contributions.reduce((sum, c) => sum + (c.reward ?? 0), 0);
 
   const upcomingMeetings = meetings
     .filter(m => ['scheduled', 'in_progress'].includes(m.status))
@@ -400,9 +403,9 @@ export default function ChallengeDetailPage() {
           {/* CP */}
           <div className="flex items-baseline gap-1.5">
             <span className="text-2xl font-bold text-white">
-              {challenge.contribution_points_reward.toLocaleString()}
+              {awardedTotal.toLocaleString()}
             </span>
-            <span className="text-sm font-semibold text-brandCP">CP</span>
+            <span className="text-sm font-semibold text-brandCP">CP awarded</span>
           </div>
 
           {!isML && !isValidation && (

@@ -57,12 +57,22 @@ export async function GET(
         })()
       : null;
 
+    // SQL MAX(...) rather than deriving from `metric.points[0]` computed above:
+    // this is the exact same source the ml-workspace PATCH gate reads before
+    // blocking a submission, so the two can never disagree on "is it reached".
+    const bestValue = challenge.reward_rules ? await rewardRepo.bestMetricValue(challengeId) : null;
+    const blockThreshold = challenge.reward_rules?.model.metric.blockThreshold ?? null;
+    const thresholdReached =
+      blockThreshold != null && bestValue != null && bestValue >= blockThreshold;
+
     return NextResponse.json({
       pool,
       distributed,
       remaining: Math.max(0, pool - distributed),
       rules: challenge.reward_rules ?? null,
       metric,
+      bestValue,
+      thresholdReached,
       breakdown: [...byUser.entries()]
         .map(([userId, points]) => ({ userId, points }))
         .sort((a, b) => b.points - a.points),

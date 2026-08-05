@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ChallengeRepoRepository, UserRepository, ContributionRepository, ChallengeTeamRepository } from '../../../../../../../../packages/database-service/repositories';
+import {
+  ChallengeRepoRepository,
+  UserRepository,
+  ContributionRepository,
+  ChallengeTeamRepository,
+  ChallengeRepository,
+  RewardEntryRepository,
+} from '../../../../../../../../packages/database-service/repositories';
 import type { ChallengeRepoRole } from '../../../../../../../../packages/database-service/domain/entities';
 import { normalizeArtifactUrl } from '../../../../../../../../packages/services/challenge/artifactUrl';
 import { jwtVerify } from 'jose';
+
+/** Roles closed once the challenge's metric block threshold is reached. */
+const BLOCKABLE_ROLES: ChallengeRepoRole[] = ['dataset', 'model', 'model_code'];
 
 /**
  * Rôle du repo → contribution qu'il alimente.
@@ -27,6 +37,8 @@ const challengeRepoRepo = new ChallengeRepoRepository();
 const contributionRepo = new ContributionRepository();
 const userRepo = new UserRepository();
 const challengeTeamRepo = new ChallengeTeamRepository();
+const challengeRepo = new ChallengeRepository();
+const rewardRepo = new RewardEntryRepository();
 
 async function getSession(request: NextRequest) {
   const token = request.cookies.get('access_token')?.value;
@@ -126,6 +138,24 @@ export async function PATCH(
     }
     if (hasDatasetUrls && existing.role !== 'dataset') {
       return NextResponse.json({ error: 'dataset_urls only applies to dataset repos' }, { status: 400 });
+    }
+
+    // Once the challenge's metric block threshold is reached, dataset/model
+    // submissions close — only API packaging stays open. Only gates real
+    // submissions (a non-null workspace_url): clearing your own url, and
+    // toggling a community dataset pick, stay allowed even past the threshold.
+    if (hasWorkspaceUrl && workspace_url !== null && existing.role && BLOCKABLE_ROLES.includes(existing.role)) {
+      const challenge = await challengeRepo.findById(challengeId);
+      const threshold = challenge?.reward_rules?.model.metric.blockThreshold;
+      if (threshold != null) {
+        const best = await rewardRepo.bestMetricValue(challengeId);
+        if (best != null && best >= threshold) {
+          return NextResponse.json(
+            { error: 'Metric threshold reached — dataset and model submissions are closed, only API packaging is accepted' },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     // ML challenges have no tasks to assign, so submitting through the

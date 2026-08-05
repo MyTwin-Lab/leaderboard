@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockChallengeFindById, mockFindByChallenge } = vi.hoisted(() => ({
+const { mockChallengeFindById, mockFindByChallenge, mockBestMetricValue } = vi.hoisted(() => ({
   mockChallengeFindById: vi.fn(),
   mockFindByChallenge: vi.fn(),
+  mockBestMetricValue: vi.fn(),
 }));
 
 vi.mock('../../../../../../../../packages/database-service/repositories', () => ({
@@ -12,6 +13,7 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   },
   RewardEntryRepository: class {
     findByChallenge = mockFindByChallenge;
+    bestMetricValue = mockBestMetricValue;
   },
 }));
 
@@ -26,6 +28,7 @@ function getRewards() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockBestMetricValue.mockResolvedValue(null);
 });
 
 describe('GET /api/challenges/[id]/ml-rewards', () => {
@@ -115,6 +118,56 @@ describe('GET /api/challenges/[id]/ml-rewards', () => {
     const body = await res.json();
 
     expect(body.remaining).toBe(0);
+  });
+
+  it('flags thresholdReached once the best metric meets the configured block threshold', async () => {
+    mockChallengeFindById.mockResolvedValue({
+      uuid: CHALLENGE_ID,
+      type: 'ml',
+      contribution_points_reward: 1000,
+      reward_rules: { model: { metric: { name: 'auc', baseline: 0.5, blockThreshold: 0.9 } } },
+    });
+    mockFindByChallenge.mockResolvedValue([]);
+    mockBestMetricValue.mockResolvedValue(0.9);
+
+    const res = await getRewards();
+    const body = await res.json();
+
+    expect(body.bestValue).toBe(0.9);
+    expect(body.thresholdReached).toBe(true);
+  });
+
+  it('does not flag thresholdReached below the configured block threshold', async () => {
+    mockChallengeFindById.mockResolvedValue({
+      uuid: CHALLENGE_ID,
+      type: 'ml',
+      contribution_points_reward: 1000,
+      reward_rules: { model: { metric: { name: 'auc', baseline: 0.5, blockThreshold: 0.9 } } },
+    });
+    mockFindByChallenge.mockResolvedValue([]);
+    mockBestMetricValue.mockResolvedValue(0.85);
+
+    const res = await getRewards();
+    const body = await res.json();
+
+    expect(body.bestValue).toBe(0.85);
+    expect(body.thresholdReached).toBe(false);
+  });
+
+  it('never flags thresholdReached when no threshold is configured', async () => {
+    mockChallengeFindById.mockResolvedValue({
+      uuid: CHALLENGE_ID,
+      type: 'ml',
+      contribution_points_reward: 1000,
+      reward_rules: { model: { metric: { name: 'auc', baseline: 0.5 } } },
+    });
+    mockFindByChallenge.mockResolvedValue([]);
+    mockBestMetricValue.mockResolvedValue(0.99);
+
+    const res = await getRewards();
+    const body = await res.json();
+
+    expect(body.thresholdReached).toBe(false);
   });
 
   it('returns 500 when the repository throws', async () => {

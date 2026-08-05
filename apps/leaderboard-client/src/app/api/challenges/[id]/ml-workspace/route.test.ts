@@ -14,6 +14,8 @@ const {
   mockTeamCreate,
   mockNormalizeArtifactUrl,
   mockScheduleAward,
+  mockChallengeFindById,
+  mockBestMetricValue,
 } = vi.hoisted(() => ({
   mockJwtVerify: vi.fn(),
   mockFindByChallengeWithRepo: vi.fn(),
@@ -27,6 +29,8 @@ const {
   mockTeamCreate: vi.fn(),
   mockNormalizeArtifactUrl: vi.fn(),
   mockScheduleAward: vi.fn(),
+  mockChallengeFindById: vi.fn(),
+  mockBestMetricValue: vi.fn(),
 }));
 
 vi.mock('jose', () => ({ jwtVerify: mockJwtVerify }));
@@ -48,6 +52,12 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   ChallengeTeamRepository: class {
     findByChallenge = mockTeamFindByChallenge;
     create = mockTeamCreate;
+  },
+  ChallengeRepository: class {
+    findById = mockChallengeFindById;
+  },
+  RewardEntryRepository: class {
+    bestMetricValue = mockBestMetricValue;
   },
 }));
 
@@ -94,6 +104,8 @@ beforeEach(() => {
   mockTeamCreate.mockResolvedValue(undefined);
   mockContributionFindByChallenge.mockResolvedValue([]);
   mockNormalizeArtifactUrl.mockImplementation((url: string) => url);
+  mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, reward_rules: null });
+  mockBestMetricValue.mockResolvedValue(null);
 });
 
 describe('GET /api/challenges/[id]/ml-workspace', () => {
@@ -322,6 +334,105 @@ describe('PATCH /api/challenges/[id]/ml-workspace', () => {
     await patchWorkspace({ repo_id: 'repo-1', workspace_url: 'https://x.com', live_endpoint_url: 'https://live.example.com' });
 
     expect(mockContributionUpdate).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ live_endpoint_url: expect.anything() }));
+  });
+
+  describe('metric block threshold', () => {
+    const withThreshold = (threshold: number) => ({
+      uuid: CHALLENGE_ID,
+      reward_rules: { model: { metric: { name: 'auc', baseline: 0, blockThreshold: threshold } } },
+    });
+
+    it('returns 403 for a dataset submission once the best metric reaches the threshold', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+      mockChallengeFindById.mockResolvedValue(withThreshold(0.9));
+      mockBestMetricValue.mockResolvedValue(0.9);
+
+      const res = await patchWorkspace({ repo_id: 'repo-1', workspace_url: 'https://kaggle.com/datasets/a/b' });
+
+      expect(res.status).toBe(403);
+      expect(mockContributionCreate).not.toHaveBeenCalled();
+      expect(mockScheduleAward).not.toHaveBeenCalled();
+    });
+
+    it('returns 403 for a model submission once the best metric reaches the threshold', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({ repo_id: 'repo-model', role: 'model', workspace_meta: {} });
+      mockChallengeFindById.mockResolvedValue(withThreshold(0.9));
+      mockBestMetricValue.mockResolvedValue(0.95); // past the threshold
+
+      const res = await patchWorkspace({ repo_id: 'repo-model', workspace_url: 'https://kaggle.com/models/a/b' });
+
+      expect(res.status).toBe(403);
+    });
+
+    it('returns 403 for a model_code submission once the best metric reaches the threshold', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({ repo_id: 'repo-code', role: 'model_code', workspace_meta: {} });
+      mockChallengeFindById.mockResolvedValue(withThreshold(0.9));
+      mockBestMetricValue.mockResolvedValue(0.9);
+
+      const res = await patchWorkspace({ repo_id: 'repo-code', workspace_url: 'https://github.com/a/b' });
+
+      expect(res.status).toBe(403);
+    });
+
+    it('still accepts an api submission once the threshold is reached', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({ repo_id: 'repo-api', role: 'api', workspace_meta: {} });
+      mockUpdateWorkspace.mockResolvedValue({ repo_id: 'repo-api', role: 'api', workspace_meta: {} });
+      mockFindByChallengeWithRepo.mockResolvedValue([{ repo_id: 'repo-api', role: 'api', workspace_meta: {} }]);
+      mockChallengeFindById.mockResolvedValue(withThreshold(0.9));
+      mockBestMetricValue.mockResolvedValue(0.95);
+
+      const res = await patchWorkspace({ repo_id: 'repo-api', workspace_url: 'https://github.com/a/api' });
+
+      expect(res.status).toBe(200);
+    });
+
+    it('still allows clearing your own dataset submission (workspace_url: null) past the threshold', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({
+        repo_id: 'repo-1', role: 'dataset', workspace_meta: { userUrls: { [USER_ID]: 'https://old.com' } },
+      });
+      mockUpdateWorkspace.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+      mockChallengeFindById.mockResolvedValue(withThreshold(0.9));
+      mockBestMetricValue.mockResolvedValue(0.95);
+
+      const res = await patchWorkspace({ repo_id: 'repo-1', workspace_url: null });
+
+      expect(res.status).toBe(200);
+    });
+
+    it('still allows toggling a community dataset pick (dataset_urls) past the threshold', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+      mockUpdateWorkspace.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+      mockChallengeFindById.mockResolvedValue(withThreshold(0.9));
+      mockBestMetricValue.mockResolvedValue(0.95);
+
+      const res = await patchWorkspace({ repo_id: 'repo-1', dataset_urls: ['https://kaggle.com/datasets/a/b'] });
+
+      expect(res.status).toBe(200);
+    });
+
+    it('allows a dataset submission when a threshold is configured but not yet reached', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+      mockUpdateWorkspace.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+      mockFindByChallengeWithRepo.mockResolvedValue([{ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} }]);
+      mockChallengeFindById.mockResolvedValue(withThreshold(0.9));
+      mockBestMetricValue.mockResolvedValue(0.8);
+
+      const res = await patchWorkspace({ repo_id: 'repo-1', workspace_url: 'https://kaggle.com/datasets/a/b' });
+
+      expect(res.status).toBe(200);
+    });
+
+    it('allows a dataset submission when no threshold is configured at all', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+      mockUpdateWorkspace.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+      mockFindByChallengeWithRepo.mockResolvedValue([{ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} }]);
+      mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, reward_rules: null });
+
+      const res = await patchWorkspace({ repo_id: 'repo-1', workspace_url: 'https://kaggle.com/datasets/a/b' });
+
+      expect(res.status).toBe(200);
+      expect(mockBestMetricValue).not.toHaveBeenCalled();
+    });
   });
 
   it('returns 500 when an unexpected error occurs', async () => {

@@ -32,6 +32,12 @@ export const mlRewardRulesV1Schema = z.object({
        * Ex. 0.5 pour l'AUC : un modèle au niveau du hasard vaut 0.
        */
       baseline: z.number().min(0).max(1).default(0),
+      /**
+       * Seuil au-delà duquel les soumissions dataset/model/model_code se
+       * ferment — seul l'API packaging reste accepté. Optionnel : absent =
+       * pas de fermeture automatique, comportement actuel inchangé.
+       */
+      blockThreshold: z.number().min(0).max(1).optional(),
     }),
     /** Bonus fixe attribué à qui bat le meilleur score du challenge. */
     beatBestBonus: z.number().int().nonnegative(),
