@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
       slack_team_name: teamName,
       slack_connected_by: payload.userId,
     });
-  } catch {
+  } catch (error) {
+    console.error('Failed to save Slack credentials:', error);
     return NextResponse.json({ error: 'Failed to save credentials' }, { status: 500 });
   }
 
@@ -66,7 +67,8 @@ export async function DELETE(request: NextRequest) {
   try {
     await appSettingsRepo.clearSlackConnection();
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    console.error('Failed to clear Slack credentials:', error);
     return NextResponse.json({ error: 'Failed to clear credentials' }, { status: 500 });
   }
 }

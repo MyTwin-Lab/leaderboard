@@ -124,6 +124,11 @@ class FakeDb {
     return {
       challengeRepo: {
         findById: async (id: string) => db.challenges.find(c => c.uuid === id) ?? null,
+        update: async (uuid: string, patch: Partial<Challenge>) => {
+          const c = db.challenges.find(x => x.uuid === uuid)!;
+          Object.assign(c, patch);
+          return c;
+        },
       },
       challengeRepoRepo: {
         findByChallengeAndRepo: async (challengeId: string, repoId: string) =>

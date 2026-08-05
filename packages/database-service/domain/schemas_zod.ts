@@ -42,7 +42,7 @@ export const challengeSchema = z.object({
   description: z.string().optional(),
   roadmap: z.string().optional(),
   contribution_points_reward: z.number().int().nonnegative(),
-  completion: z.number().int().nonnegative().default(0),
+  completion: z.number().min(0).max(1).default(0),
   project_id: z.string().uuid(),
   reward_rules: mlRewardRulesSchema.nullish(),
   source_challenge_id: z.string().uuid().nullish(),
