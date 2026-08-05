@@ -174,7 +174,7 @@ describe('PATCH /api/challenges/[id]/ml-workspace', () => {
     expect(mockTeamCreate).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when neither workspace_url nor live_endpoint_url is provided', async () => {
+  it('returns 400 when neither workspace_url nor dataset_urls is provided', async () => {
     const res = await patchWorkspace({ repo_id: 'repo-1' });
 
     expect(res.status).toBe(400);
@@ -182,12 +182,6 @@ describe('PATCH /api/challenges/[id]/ml-workspace', () => {
 
   it('returns 400 when workspace_url is an empty string', async () => {
     const res = await patchWorkspace({ repo_id: 'repo-1', workspace_url: '   ' });
-
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 400 when live_endpoint_url is an empty string', async () => {
-    const res = await patchWorkspace({ repo_id: 'repo-1', live_endpoint_url: '   ' });
 
     expect(res.status).toBe(400);
   });
@@ -298,42 +292,6 @@ describe('PATCH /api/challenges/[id]/ml-workspace', () => {
     expect(mockContributionCreate).not.toHaveBeenCalled();
     expect(mockContributionUpdate).not.toHaveBeenCalled();
     expect(mockScheduleAward).not.toHaveBeenCalled();
-  });
-
-  it('saves the live_endpoint_url for an api-role repo and updates the matching contribution', async () => {
-    mockFindByChallengeAndRepo.mockResolvedValue({
-      repo_id: 'repo-1', role: 'api', workspace_meta: {},
-    });
-    mockUpdateWorkspace.mockResolvedValue({
-      repo_id: 'repo-1', role: 'api', workspace_meta: { userEndpoints: { [USER_ID]: 'https://live.example.com' } },
-    });
-    mockContributionFindByChallenge.mockResolvedValue([
-      { uuid: 'contrib-2', user_id: USER_ID, type: 'api_packaging' },
-    ]);
-
-    const res = await patchWorkspace({ repo_id: 'repo-1', live_endpoint_url: 'https://live.example.com' });
-
-    expect(res.status).toBe(200);
-    expect(mockUpdateWorkspace).toHaveBeenCalledWith(CHALLENGE_ID, 'repo-1', {
-      workspace_meta: { userEndpoints: { [USER_ID]: 'https://live.example.com' } },
-    });
-    expect(mockContributionUpdate).toHaveBeenCalledWith('contrib-2', { live_endpoint_url: 'https://live.example.com' });
-  });
-
-  it('does not touch userEndpoints when the repo role is not api', async () => {
-    mockFindByChallengeAndRepo.mockResolvedValue({
-      repo_id: 'repo-1', role: 'dataset', workspace_meta: {},
-    });
-    mockUpdateWorkspace.mockResolvedValue({
-      repo_id: 'repo-1', role: 'dataset', workspace_meta: { userUrls: { [USER_ID]: 'https://x.com' } },
-    });
-    mockFindByChallengeWithRepo.mockResolvedValue([
-      { repo_id: 'repo-1', role: 'dataset', workspace_meta: { userUrls: { [USER_ID]: 'https://x.com' } } },
-    ]);
-
-    await patchWorkspace({ repo_id: 'repo-1', workspace_url: 'https://x.com', live_endpoint_url: 'https://live.example.com' });
-
-    expect(mockContributionUpdate).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ live_endpoint_url: expect.anything() }));
   });
 
   describe('metric block threshold', () => {

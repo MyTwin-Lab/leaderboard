@@ -20,12 +20,12 @@ A validation challenge is a `challenges` row with `type: 'validation'`, linked 1
 
 ```
 Contributor (ML workspace, API packaging step)
-  → submits GitHub repo URL (as before) + optionally a "Deployed API endpoint" URL
-       ↓ saved to contributions.live_endpoint_url
+  → submits GitHub repo URL, creating the api_packaging contribution
 
 Admin (validation challenge config)
-  → picks which api_packaging contributions (that have a live endpoint) to expose
-       ↓ creates a validation_targets row per submission
+  → picks which api_packaging contribution to expose (traceability — who gets
+    credited) and enters the endpoint URL to test at that same moment
+       ↓ saved to contributions.live_endpoint_url, creates a validation_targets row
 
 Validator (any logged-in contributor, on the validation challenge page)
   → drops a file on an exposed target
@@ -64,8 +64,8 @@ Unlike Slack discussion signals (fixed, but explicitly *outside* the ML pool), v
 
 ## Setting it up
 
-1. **Contributor side:** in an `ml` challenge's ML workspace, on the "API Packaging" step, fill in the optional "Deployed API endpoint" field alongside the GitHub repo URL (requires the GitHub URL to already be submitted — that's what creates the `api_packaging` contribution the endpoint attaches to).
-2. **Admin/manager side:** create a new challenge with type "Validation", pick the source `ml` challenge (one validation challenge per ML challenge — the API rejects a second one), set the CP pool and CP-per-validation rate. Then, editing the challenge, use the "Validation targets" section to pick which eligible `api_packaging` submissions (those with a saved endpoint) to expose.
+1. **Contributor side:** in an `ml` challenge's ML workspace, on the "API Packaging" step, submit the GitHub repo URL — that's what creates the `api_packaging` contribution. There is no endpoint field for the contributor; the deployed endpoint isn't declared here.
+2. **Admin/manager side:** create a new challenge with type "Validation", pick the source `ml` challenge (one validation challenge per ML challenge — the API rejects a second one), set the CP pool and CP-per-validation rate. Then, editing the challenge, use the "Validation targets" section: pick an eligible `api_packaging` submission and type its deployed endpoint URL to expose it.
 3. **Anyone:** open the validation challenge page, drop a file on an exposed submission, see the output.
 
 ---
@@ -102,8 +102,7 @@ This skips the private/loopback block entirely. **Local dev only — never set t
 | `packages/services/challenge/ssrf-guard.ts` | `assertPublicHttpUrl` — blocks private/loopback/link-local/non-http(s) targets |
 | `packages/services/challenge/validation-challenge.service.ts` | Orchestrates the proxy call, dedupe, and pool-clamped CP award |
 | `apps/leaderboard-client/src/app/api/challenges/route.ts` | Challenge creation, including `type: 'validation'` validation and 1:1 enforcement |
-| `apps/leaderboard-client/src/app/api/challenges/[id]/ml-workspace/route.ts` | The `live_endpoint_url` field on the API packaging step |
-| `apps/leaderboard-client/src/app/api/challenges/[id]/validation-targets/route.ts` | List exposed targets / eligible submissions, add a target |
+| `apps/leaderboard-client/src/app/api/challenges/[id]/validation-targets/route.ts` | List exposed targets / eligible submissions, add a target (admin/manager sets `live_endpoint_url` here) |
 | `apps/leaderboard-client/src/app/api/challenges/[id]/validation-targets/[targetId]/route.ts` | Remove a target |
 | `apps/leaderboard-client/src/app/api/challenges/[id]/validate/route.ts` | The proxy endpoint contributors hit when dropping a file |
 | `apps/leaderboard-client/src/app/api/challenges/[id]/validation-verdicts/route.ts` | Casts a verdict; resolves the target and pays the majority once quorum is reached |

@@ -131,9 +131,9 @@ export const contributions = pgTable("contributions", {
   // de détection de réutilisation entre contributeurs d'un même challenge.
   artifact_url: varchar("artifact_url", { length: 500 }),
   // Deployed API endpoint for an `api_packaging` contribution — distinct from
-  // `artifact_url` (the GitHub packaging repo). Set via the ML workspace's
-  // API packaging step. Only contributions with this set can be exposed on a
-  // validation challenge.
+  // `artifact_url` (the GitHub packaging repo). Set by an admin/manager when
+  // adding this contribution as a validation target (see validation-targets
+  // route's POST), not declared by the contributor.
   live_endpoint_url: varchar("live_endpoint_url", { length: 500 }),
   // pending | running | done | failed | skipped_reuse
   evaluation_status: varchar("evaluation_status", { length: 20 }),

@@ -19,7 +19,6 @@ interface MLRepo {
   role: MLRepoRole | null;
   workspace_meta: {
     userUrls?: Record<string, string>;
-    userEndpoints?: Record<string, string>;
     /** Dataset step only — the full set of datasets (own + community picks) a user has attached to their model build. */
     datasetUrls?: Record<string, string[]>;
     [key: string]: unknown;
@@ -399,22 +398,16 @@ function RepoSubmission({
   onSaved: () => void;
 }) {
   const myUrl = getUserUrl(repo, currentUserId);
-  const myEndpoint = repo.role === 'api' && currentUserId
-    ? repo.workspace_meta?.userEndpoints?.[currentUserId]
-    : undefined;
   const community = getCommunityUrls(repo, currentUserId);
   const myDatasetUrls = getMyDatasetUrls(repo, currentUserId);
   const meta = repo.role ? ROLE_META[repo.role] : null;
 
   const [urlInput, setUrlInput] = useState(myUrl ?? '');
-  const [endpointInput, setEndpointInput] = useState(myEndpoint ?? '');
   const [saving, setSaving] = useState(false);
-  const [savingEndpoint, setSavingEndpoint] = useState(false);
   const [error, setError] = useState('');
 
   // Keep input in sync after refresh
   useEffect(() => { setUrlInput(myUrl ?? ''); }, [myUrl]);
-  useEffect(() => { setEndpointInput(myEndpoint ?? ''); }, [myEndpoint]);
 
   const handleSubmit = async () => {
     const url = urlInput.trim();
@@ -437,30 +430,6 @@ function RepoSubmission({
       setError('Network error');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleSubmitEndpoint = async () => {
-    const url = endpointInput.trim();
-    if (!url) return;
-    setSavingEndpoint(true);
-    setError('');
-    try {
-      const res = await fetch(`/api/challenges/${challengeId}/ml-workspace`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_id: repo.repo_id, live_endpoint_url: url }),
-      });
-      if (res.ok) {
-        onSaved();
-      } else {
-        const d = await res.json();
-        setError(d.error || 'Failed to save endpoint');
-      }
-    } catch {
-      setError('Network error');
-    } finally {
-      setSavingEndpoint(false);
     }
   };
 
@@ -555,40 +524,6 @@ function RepoSubmission({
             {myUrl}
             <ExternalLink className="h-3 w-3 shrink-0" />
           </a>
-        </div>
-      )}
-
-      {/* Deployed endpoint — API packaging step only, requires the GitHub repo already submitted */}
-      {repo.role === 'api' && myUrl && (
-        <div className="space-y-1.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-          <p className="text-xs font-medium text-white/70">Deployed API endpoint (optional)</p>
-          <p className="text-xs text-white/35">
-            If you&apos;ve deployed your packaged API somewhere reachable, share the URL here so it can be
-            tested from a validation challenge.
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={endpointInput}
-              onChange={e => setEndpointInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmitEndpoint()}
-              placeholder="https://your-model.example.com/predict"
-              className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white placeholder:text-white/20 transition-all duration-200 focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-            />
-            <button
-              onClick={handleSubmitEndpoint}
-              disabled={savingEndpoint || !endpointInput.trim() || endpointInput.trim() === myEndpoint}
-              className="shrink-0 rounded-xl bg-brandCP/15 px-4 py-2.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {savingEndpoint ? <Loader2 className="h-4 w-4 animate-spin" /> : myEndpoint ? 'Update' : 'Save'}
-            </button>
-          </div>
-          {myEndpoint && (
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-400" />
-              <span className="text-xs text-green-400 truncate max-w-xs">{myEndpoint}</span>
-            </div>
-          )}
         </div>
       )}
 

@@ -3,16 +3,17 @@ import { NextRequest } from 'next/server';
 
 const {
   mockGetSessionUser, mockIsManagerOfChallenge,
-  mockChallengeFindById, mockContributionFindByChallenge, mockContributionFindById,
+  mockChallengeFindById, mockContributionFindByChallenge, mockContributionFindById, mockContributionUpdate,
   mockTargetFindByChallenge, mockTargetFindByChallengeAndContribution, mockTargetCreate,
   mockAttemptFindByChallengeAndValidator, mockAttemptFindByChallengeAndContribution,
-  mockRewardSumByChallenge, mockUserFindByIds,
+  mockRewardSumByChallenge, mockUserFindByIds, mockAssertPublicHttpUrl,
 } = vi.hoisted(() => ({
   mockGetSessionUser: vi.fn(),
   mockIsManagerOfChallenge: vi.fn(),
   mockChallengeFindById: vi.fn(),
   mockContributionFindByChallenge: vi.fn(),
   mockContributionFindById: vi.fn(),
+  mockContributionUpdate: vi.fn(),
   mockTargetFindByChallenge: vi.fn(),
   mockTargetFindByChallengeAndContribution: vi.fn(),
   mockTargetCreate: vi.fn(),
@@ -20,10 +21,14 @@ const {
   mockAttemptFindByChallengeAndContribution: vi.fn(),
   mockRewardSumByChallenge: vi.fn(),
   mockUserFindByIds: vi.fn(),
+  mockAssertPublicHttpUrl: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
 vi.mock('@/lib/server/managerAuth', () => ({ isManagerOfChallenge: mockIsManagerOfChallenge }));
+vi.mock('../../../../../../../../packages/services/challenge/ssrf-guard', () => ({
+  assertPublicHttpUrl: mockAssertPublicHttpUrl,
+}));
 
 vi.mock('../../../../../../../../packages/database-service/repositories', () => ({
   ChallengeRepository: class {
@@ -32,6 +37,7 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   ContributionRepository: class {
     findByChallenge = mockContributionFindByChallenge;
     findById = mockContributionFindById;
+    update = mockContributionUpdate;
   },
   ValidationTargetRepository: class {
     findByChallenge = mockTargetFindByChallenge;
@@ -85,6 +91,7 @@ beforeEach(() => {
   mockAttemptFindByChallengeAndContribution.mockResolvedValue([]);
   mockRewardSumByChallenge.mockResolvedValue(0);
   mockUserFindByIds.mockResolvedValue([]);
+  mockAssertPublicHttpUrl.mockResolvedValue(undefined);
 });
 
 describe('GET /api/challenges/[id]/validation-targets', () => {
@@ -119,7 +126,7 @@ describe('GET /api/challenges/[id]/validation-targets', () => {
       expect(res.status).toBe(403);
     });
 
-    it('lists api_packaging contributions with a live endpoint that are not already a target', async () => {
+    it('lists api_packaging contributions that are not already a target, regardless of whether an endpoint is already saved', async () => {
       mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
       mockContributionFindByChallenge.mockResolvedValue([
         { uuid: 'c1', type: 'api_packaging', live_endpoint_url: 'https://x', user_id: 'u1' },
@@ -128,14 +135,15 @@ describe('GET /api/challenges/[id]/validation-targets', () => {
         { uuid: 'c4', type: 'api_packaging', live_endpoint_url: 'https://z', user_id: 'u4' },
       ]);
       mockTargetFindByChallenge.mockResolvedValue([{ contribution_id: 'c4' }]);
-      mockUserFindByIds.mockResolvedValue([{ uuid: 'u1', full_name: 'Alice' }]);
+      mockUserFindByIds.mockResolvedValue([{ uuid: 'u1', full_name: 'Alice' }, { uuid: 'u2', full_name: 'Bob' }]);
 
       const res = await getTargets('?eligible=true');
       const body = await res.json();
 
       expect(res.status).toBe(200);
       expect(body.eligible).toEqual([
-        { contributionId: 'c1', userId: 'u1', userName: 'Alice', liveEndpointUrl: 'https://x' },
+        { contributionId: 'c1', userId: 'u1', userName: 'Alice' },
+        { contributionId: 'c2', userId: 'u2', userName: 'Bob' },
       ]);
     });
 
@@ -237,8 +245,9 @@ describe('GET /api/challenges/[id]/validation-targets', () => {
 
 describe('POST /api/challenges/[id]/validation-targets', () => {
   const eligibleContribution = {
-    uuid: CONTRIBUTION_ID, challenge_id: 'ml-challenge-1', type: 'api_packaging', live_endpoint_url: 'https://x',
+    uuid: CONTRIBUTION_ID, challenge_id: 'ml-challenge-1', type: 'api_packaging', live_endpoint_url: null,
   };
+  const LIVE_URL = 'https://model.example.com/predict';
 
   beforeEach(() => {
     mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
@@ -248,7 +257,7 @@ describe('POST /api/challenges/[id]/validation-targets', () => {
   it('returns 401 when not authenticated', async () => {
     mockGetSessionUser.mockResolvedValue(null);
 
-    const res = await postTarget({ contribution_id: CONTRIBUTION_ID });
+    const res = await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: LIVE_URL });
 
     expect(res.status).toBe(401);
     expect(mockTargetCreate).not.toHaveBeenCalled();
@@ -258,7 +267,7 @@ describe('POST /api/challenges/[id]/validation-targets', () => {
     mockGetSessionUser.mockResolvedValue({ id: 'u1', role: 'contributor' });
     mockIsManagerOfChallenge.mockResolvedValue(false);
 
-    const res = await postTarget({ contribution_id: CONTRIBUTION_ID });
+    const res = await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: LIVE_URL });
 
     expect(res.status).toBe(403);
   });
@@ -266,22 +275,28 @@ describe('POST /api/challenges/[id]/validation-targets', () => {
   it('returns 400 when the challenge is not a validation challenge', async () => {
     mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'ml' });
 
-    const res = await postTarget({ contribution_id: CONTRIBUTION_ID });
+    const res = await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: LIVE_URL });
 
     expect(res.status).toBe(400);
   });
 
   it('returns 400 on an invalid body (Zod)', async () => {
-    const res = await postTarget({ contribution_id: 'not-a-uuid' });
+    const res = await postTarget({ contribution_id: 'not-a-uuid', live_endpoint_url: LIVE_URL });
 
     expect(res.status).toBe(400);
+    expect(mockTargetCreate).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when live_endpoint_url is missing or not a valid URL', async () => {
+    expect((await postTarget({ contribution_id: CONTRIBUTION_ID })).status).toBe(400);
+    expect((await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: 'not-a-url' })).status).toBe(400);
     expect(mockTargetCreate).not.toHaveBeenCalled();
   });
 
   it('returns 400 when the contribution is not from the source challenge', async () => {
     mockContributionFindById.mockResolvedValue({ ...eligibleContribution, challenge_id: 'other-challenge' });
 
-    const res = await postTarget({ contribution_id: CONTRIBUTION_ID });
+    const res = await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: LIVE_URL });
 
     expect(res.status).toBe(400);
   });
@@ -289,15 +304,7 @@ describe('POST /api/challenges/[id]/validation-targets', () => {
   it('returns 400 when the contribution is not api_packaging', async () => {
     mockContributionFindById.mockResolvedValue({ ...eligibleContribution, type: 'dataset' });
 
-    const res = await postTarget({ contribution_id: CONTRIBUTION_ID });
-
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 400 when the contribution has no live endpoint', async () => {
-    mockContributionFindById.mockResolvedValue({ ...eligibleContribution, live_endpoint_url: null });
-
-    const res = await postTarget({ contribution_id: CONTRIBUTION_ID });
+    const res = await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: LIVE_URL });
 
     expect(res.status).toBe(400);
   });
@@ -305,7 +312,7 @@ describe('POST /api/challenges/[id]/validation-targets', () => {
   it('returns 400 when the contribution does not exist', async () => {
     mockContributionFindById.mockResolvedValue(null);
 
-    const res = await postTarget({ contribution_id: CONTRIBUTION_ID });
+    const res = await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: LIVE_URL });
 
     expect(res.status).toBe(400);
   });
@@ -313,20 +320,32 @@ describe('POST /api/challenges/[id]/validation-targets', () => {
   it('returns 409 when the contribution is already a target', async () => {
     mockTargetFindByChallengeAndContribution.mockResolvedValue({ uuid: 'existing-target' });
 
-    const res = await postTarget({ contribution_id: CONTRIBUTION_ID });
+    const res = await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: LIVE_URL });
 
     expect(res.status).toBe(409);
     expect(mockTargetCreate).not.toHaveBeenCalled();
   });
 
-  it('creates the target on success', async () => {
+  it('returns 400 when the endpoint fails the SSRF guard', async () => {
+    mockAssertPublicHttpUrl.mockRejectedValue(new Error('blocked: private address'));
+
+    const res = await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: LIVE_URL });
+
+    expect(res.status).toBe(400);
+    expect(mockContributionUpdate).not.toHaveBeenCalled();
+    expect(mockTargetCreate).not.toHaveBeenCalled();
+  });
+
+  it('saves the endpoint on the contribution, then creates the target on success', async () => {
     const created = { uuid: 'new-target', validation_challenge_id: CHALLENGE_ID, contribution_id: CONTRIBUTION_ID, position: 0 };
     mockTargetCreate.mockResolvedValue(created);
 
-    const res = await postTarget({ contribution_id: CONTRIBUTION_ID });
+    const res = await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: LIVE_URL });
     const body = await res.json();
 
     expect(res.status).toBe(201);
+    expect(mockAssertPublicHttpUrl).toHaveBeenCalledWith(LIVE_URL);
+    expect(mockContributionUpdate).toHaveBeenCalledWith(CONTRIBUTION_ID, { live_endpoint_url: LIVE_URL });
     expect(mockTargetCreate).toHaveBeenCalledWith({
       validation_challenge_id: CHALLENGE_ID, contribution_id: CONTRIBUTION_ID, position: 0,
     });
@@ -336,7 +355,7 @@ describe('POST /api/challenges/[id]/validation-targets', () => {
   it('returns 500 on an unexpected error', async () => {
     mockTargetCreate.mockRejectedValue(new Error('db down'));
 
-    const res = await postTarget({ contribution_id: CONTRIBUTION_ID });
+    const res = await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: LIVE_URL });
 
     expect(res.status).toBe(500);
   });

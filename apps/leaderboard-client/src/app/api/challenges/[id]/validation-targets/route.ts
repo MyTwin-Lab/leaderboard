@@ -10,6 +10,7 @@ import {
 } from '../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
+import { assertPublicHttpUrl } from '../../../../../../../../packages/services/challenge/ssrf-guard';
 
 const challengeRepo = new ChallengeRepository();
 const contributionRepo = new ContributionRepository();
@@ -32,7 +33,8 @@ async function authorize(challengeId: string) {
 // GET /api/challenges/[id]/validation-targets
 // Public: the exposed targets + pool state (+ "already validated by me" if logged in).
 // ?eligible=true (admin/manager only): api_packaging contributions from the source
-// challenge that have a live endpoint and aren't already a target.
+// challenge that aren't already a target — the endpoint URL is entered by the
+// admin/manager when adding one as a target, not required beforehand.
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -55,7 +57,7 @@ export async function GET(
       const targetedContributionIds = new Set(existingTargets.map(t => t.contribution_id));
 
       const eligible = sourceContribs.filter(
-        c => c.type === 'api_packaging' && c.live_endpoint_url && !targetedContributionIds.has(c.uuid)
+        c => c.type === 'api_packaging' && !targetedContributionIds.has(c.uuid)
       );
       const users = await userRepo.findByIds([...new Set(eligible.map(c => c.user_id))]);
       const usersById = new Map(users.map(u => [u.uuid, u]));
@@ -65,7 +67,6 @@ export async function GET(
           contributionId: c.uuid,
           userId: c.user_id,
           userName: usersById.get(c.user_id)?.full_name ?? 'Unknown',
-          liveEndpointUrl: c.live_endpoint_url,
         })),
       });
     }
@@ -134,9 +135,15 @@ export async function GET(
   }
 }
 
-const addTargetSchema = z.object({ contribution_id: z.string().uuid() });
+const addTargetSchema = z.object({
+  contribution_id: z.string().uuid(),
+  live_endpoint_url: z.string().url(),
+});
 
 // POST /api/challenges/[id]/validation-targets — admin/manager only
+// Selects an api_packaging submission (traceability — who gets credited) and
+// records the endpoint to test, entered by the admin/manager at this point
+// rather than declared beforehand by the contributor.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -152,14 +159,13 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { contribution_id } = addTargetSchema.parse(body);
+    const { contribution_id, live_endpoint_url } = addTargetSchema.parse(body);
 
     const contribution = await contributionRepo.findById(contribution_id);
     if (
       !contribution ||
       contribution.challenge_id !== challenge.source_challenge_id ||
-      contribution.type !== 'api_packaging' ||
-      !contribution.live_endpoint_url
+      contribution.type !== 'api_packaging'
     ) {
       return NextResponse.json({ error: 'Contribution is not an eligible api_packaging submission' }, { status: 400 });
     }
@@ -169,6 +175,16 @@ export async function POST(
       return NextResponse.json({ error: 'Already exposed on this validation challenge' }, { status: 409 });
     }
 
+    try {
+      await assertPublicHttpUrl(live_endpoint_url);
+    } catch (err) {
+      return NextResponse.json(
+        { error: `Endpoint URL is not reachable/allowed: ${err instanceof Error ? err.message : String(err)}` },
+        { status: 400 }
+      );
+    }
+
+    await contributionRepo.update(contribution_id, { live_endpoint_url });
     const target = await targetRepo.create({ validation_challenge_id: challengeId, contribution_id, position: 0 });
     return NextResponse.json(target, { status: 201 });
   } catch (err) {
