@@ -7,7 +7,7 @@ import {
   CheckCircle2, Circle, Clock3, BarChart2, Activity,
   Medal, Video, ExternalLink, GitBranch, GitPullRequest,
   GitCommit, MessageSquare,
-  Database, Package, Cpu, FlaskConical, ChevronDown, Loader2, Plus, FileText, Pencil,
+  Database, Package, Cpu, FlaskConical, ChevronDown, Loader2, Plus, FileText, Pencil, Info,
 } from 'lucide-react';
 import { CreateChallengeDrawer } from '@/components/admin/CreateChallengeDrawer';
 import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/Badge';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 import { CreateMeetingDrawer } from '@/components/admin/CreateMeetingDrawer';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
+import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -809,6 +810,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   const [isManager, setIsManager] = useState<boolean | null>(isAdmin ? true : null);
   const [meetingDrawerOpen, setMeetingDrawerOpen] = useState(false);
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
+  const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   // Admin view always shows meetings; manager view respects the global module flag.
@@ -984,14 +986,24 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
 
           <div className="flex items-start justify-between gap-4">
             <h1 className="mb-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">{challenge.title}</h1>
-            <button
-              onClick={() => setDocsDrawerOpen(true)}
-              title="Documents"
-              className="mt-1 flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-brandCP/30 hover:bg-brandCP/[0.07] hover:text-brandCP/70 hover:shadow-[0_4px_16px_rgba(10,247,193,0.1)] active:translate-y-0"
-            >
-              <FileText className="h-3.5 w-3.5" />
-              Docs
-            </button>
+            <div className="mt-1 flex shrink-0 items-center gap-2">
+              <button
+                onClick={() => setDocsDrawerOpen(true)}
+                title="Documents"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-brandCP/30 hover:bg-brandCP/[0.07] hover:text-brandCP/70 hover:shadow-[0_4px_16px_rgba(10,247,193,0.1)] active:translate-y-0"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Docs
+              </button>
+              <button
+                onClick={() => setRulesDrawerOpen(true)}
+                title="Reward rules"
+                aria-label="Reward rules"
+                className="flex shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white px-2.5 py-1.5 text-black transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(255,255,255,0.15)] active:translate-y-0"
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
           {challenge.description && (
             <p className="max-w-2xl text-sm leading-relaxed text-white/50">{challenge.description}</p>
@@ -1041,6 +1053,11 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
         isAdmin={true}
         open={docsDrawerOpen}
         onClose={() => setDocsDrawerOpen(false)}
+      />
+      <RewardRulesDrawer
+        challengeId={challengeId}
+        open={rulesDrawerOpen}
+        onClose={() => setRulesDrawerOpen(false)}
       />
       {/* Mounted unconditionally: the drawer slides in off `open`, so gating the
           mount on it would render it already at translate-x-0 and skip the

@@ -7,7 +7,7 @@ import { TeamAvatars } from '@/components/ui/TeamAvatars';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import {
   ArrowLeft, Video, CheckCircle2, Circle, CalendarDays, BrainCircuit,
-  GitBranch, GitPullRequest, Trophy, BarChart2, FlaskConical, Medal, FileText,
+  GitBranch, GitPullRequest, Trophy, BarChart2, FlaskConical, Medal, FileText, Info,
   Database, Cpu, ExternalLink,
 } from 'lucide-react';
 import type { TeamMember } from '@/lib/types';
@@ -15,6 +15,7 @@ import { trackOnboardingStep } from '@/lib/onboarding-track';
 import { MLChallengeFlow } from '@/components/challenges/MLChallengeFlow';
 import { ValidationChallengeFlow } from '@/components/challenges/ValidationChallengeFlow';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
+import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
 import { ContributorTaskBoard, type BoardContribution } from '@/components/contributor/ContributorTaskBoard';
 
 const ML_REPO_TYPES = ['kaggle_dataset', 'kaggle_model'];
@@ -215,6 +216,7 @@ export default function ChallengeDetailPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
+  const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
   const [repoActivity, setRepoActivity] = useState<Record<string, any> | null>(null);
 
   const isML = challenge?.type === 'ml' || repoTypes.some(t => ML_REPO_TYPES.includes(t));
@@ -381,14 +383,24 @@ export default function ChallengeDetailPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
             {challenge.title}
           </h1>
-          <button
-            onClick={() => setDocsDrawerOpen(true)}
-            title="Documents"
-            className="mt-1 flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-brandCP/30 hover:bg-brandCP/[0.07] hover:text-brandCP/70 hover:shadow-[0_4px_16px_rgba(10,247,193,0.1)] active:translate-y-0"
-          >
-            <FileText className="h-3.5 w-3.5" />
-            Docs
-          </button>
+          <div className="mt-1 flex shrink-0 items-center gap-2">
+            <button
+              onClick={() => setDocsDrawerOpen(true)}
+              title="Documents"
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-brandCP/30 hover:bg-brandCP/[0.07] hover:text-brandCP/70 hover:shadow-[0_4px_16px_rgba(10,247,193,0.1)] active:translate-y-0"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Docs
+            </button>
+            <button
+              onClick={() => setRulesDrawerOpen(true)}
+              title="Reward rules"
+              aria-label="Reward rules"
+              className="flex shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white px-2.5 py-1.5 text-black transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(255,255,255,0.15)] active:translate-y-0"
+            >
+              <Info className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Description */}
@@ -490,12 +502,17 @@ export default function ChallengeDetailPage() {
 
     </div>
 
-    {/* Drawer rendered OUTSIDE the animate-fade-up div to avoid transform containing-block breaking position:fixed */}
+    {/* Drawers rendered OUTSIDE the animate-fade-up div to avoid transform containing-block breaking position:fixed */}
     <DocumentsDrawer
       challengeId={challengeId}
       isAdmin={false}
       open={docsDrawerOpen}
       onClose={() => setDocsDrawerOpen(false)}
+    />
+    <RewardRulesDrawer
+      challengeId={challengeId}
+      open={rulesDrawerOpen}
+      onClose={() => setRulesDrawerOpen(false)}
     />
     </>
   );
