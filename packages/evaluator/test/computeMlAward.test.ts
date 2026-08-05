@@ -289,6 +289,79 @@ describe("computeMlAward — reuse deductions", () => {
   });
 });
 
+describe("computeMlAward — multi-dataset reuse (datasetUsages)", () => {
+  it("splits the model award across every used dataset, weighted 1/N, keeping the reuser's own share whole", () => {
+    // 1 own dataset + 2 community ones, each weighing a third — mirrors the
+    // "3 datasets, 1 of mine + 2 from the community" scenario directly.
+    const entries = computeMlAward(
+      base({
+        rule: "model_metric",
+        metricValue: 1,
+        bestOtherMetricValue: 0.99,
+        lineage: {
+          datasetUsages: [
+            { authorId: "alice", contributionId: "contrib-alice", weight: 1 / 3 },
+            { authorId: "dave", contributionId: "contrib-dave", weight: 1 / 3 },
+          ],
+        },
+      })
+    );
+    // Gross model_metric award is 250 (500 * 0.5 * 1). Each external third
+    // deducts 20% of its own slice: round(250 * (1/3) * 0.2) = 17.
+    const metricEntries = entries.filter(
+      (e) => e.rule_key === "model_metric" || e.meta?.sourceRule === "model_metric"
+    );
+    expect(metricEntries.reduce((s, e) => s + e.points, 0)).toBe(250); // still redistributes, not minted
+
+    expect(metricEntries.find((e) => e.user_id === "bob" && e.rule_key === "model_metric")?.points).toBe(250);
+    const bobDeductions = metricEntries
+      .filter((e) => e.user_id === "bob" && e.rule_key === "reuse_dataset")
+      .reduce((s, e) => s + e.points, 0);
+    expect(bobDeductions).toBe(-34); // -17 to alice, -17 to dave
+    expect(metricEntries.find((e) => e.user_id === "alice")?.points).toBe(17);
+    expect(metricEntries.find((e) => e.user_id === "dave")?.points).toBe(17);
+  });
+
+  it("deducts nothing for a dataset slice that is the reuser's own — datasetUsages never lists self", () => {
+    // Only one external usage among the N implied by its weight (1/3): the
+    // other two thirds are bob's own and simply don't appear in the array.
+    // bestOtherMetricValue ties the metric so no beat-best bonus muddies the sum.
+    const entries = computeMlAward(
+      base({
+        rule: "model_metric",
+        metricValue: 1,
+        bestOtherMetricValue: 1,
+        lineage: {
+          datasetUsages: [{ authorId: "alice", contributionId: "contrib-alice", weight: 1 / 3 }],
+        },
+      })
+    );
+    const bobNet = entries
+      .filter((e) => e.user_id === "bob" && (e.rule_key === "model_metric" || e.rule_key === "reuse_dataset"))
+      .reduce((s, e) => s + e.points, 0);
+    expect(bobNet).toBe(233); // 250 - round(250/3 * 0.2) = 250 - 17
+  });
+
+  it("falls back to the single datasetAuthorId candidate when datasetUsages is absent — unchanged legacy behavior", () => {
+    // Same assertion as the existing singular reuse test, proving the new
+    // branch does not disturb callers that haven't adopted multi-select yet.
+    const entries = withDatasetLegacy();
+    const deduction = entries.find((e) => e.rule_key === "reuse_dataset" && e.points < 0);
+    expect(deduction).toMatchObject({ user_id: "bob", points: -50, source_user_id: "alice" });
+  });
+
+  function withDatasetLegacy() {
+    return computeMlAward(
+      base({
+        rule: "model_metric",
+        metricValue: 1,
+        bestOtherMetricValue: 0.99,
+        lineage: { datasetAuthorId: "alice", datasetContributionId: "contrib-alice" },
+      })
+    );
+  }
+});
+
 describe("computeMlAward — pool clamping", () => {
   it("awards nothing once the pool is empty", () => {
     expect(computeMlAward(base({ rule: "dataset", agentScore: 1, remainingPool: 0 }))).toEqual([]);

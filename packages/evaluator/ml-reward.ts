@@ -32,6 +32,14 @@ export interface MlLineage {
   datasetContributionId?: string;
   modelAuthorId?: string;
   modelContributionId?: string;
+  /**
+   * Datasets multiples attachés à la construction du modèle (sélection
+   * communauté), chacun pesant `weight` (somme des poids = 1 sur l'ensemble
+   * des datasets utilisés, y compris le sien qui ne produit pas d'entrée ici).
+   * Quand présent, prend le pas sur `datasetAuthorId` dans le calcul du
+   * prélèvement modèle — voir `computeReuseSplits`.
+   */
+  datasetUsages?: Array<{ authorId: string; contributionId: string; weight: number }>;
 }
 
 export interface MlAwardInput {
@@ -182,20 +190,36 @@ function computeReuseSplits(
     authorId?: string;
     contributionId?: string;
     share: number;
-  }> = [
-    {
+  }> = [];
+
+  // Plusieurs datasets utilisés (sélection communauté) : chacun prélève sa part
+  // au prorata de son poids. Le sien (pas d'entrée dans datasetUsages) reste
+  // intégralement gardé. Sans sélection multiple, on retombe sur l'unique
+  // candidat d'aujourd'hui — reuse à 100% du poids, comportement inchangé.
+  if (lineage.datasetUsages && lineage.datasetUsages.length > 0) {
+    for (const usage of lineage.datasetUsages) {
+      candidates.push({
+        key: 'reuse_dataset',
+        authorId: usage.authorId,
+        contributionId: usage.contributionId,
+        share: usage.weight * rules.reuse.datasetShare,
+      });
+    }
+  } else if (lineage.datasetAuthorId) {
+    candidates.push({
       key: 'reuse_dataset',
       authorId: lineage.datasetAuthorId,
       contributionId: lineage.datasetContributionId,
       share: rules.reuse.datasetShare,
-    },
-    {
-      key: 'reuse_model',
-      authorId: lineage.modelAuthorId,
-      contributionId: lineage.modelContributionId,
-      share: rules.reuse.modelShare,
-    },
-  ];
+    });
+  }
+
+  candidates.push({
+    key: 'reuse_model',
+    authorId: lineage.modelAuthorId,
+    contributionId: lineage.modelContributionId,
+    share: rules.reuse.modelShare,
+  });
 
   // Réutiliser son propre artefact ne prélève rien : on ne se paie pas soi-même.
   const active = candidates.filter(

@@ -117,4 +117,52 @@ describe('resolveLineage', () => {
     const contributions = [contrib({ uuid: 'c-alice', user_id: 'alice' })];
     expect(resolveLineage(contributions, 'bob')).toEqual({});
   });
+
+  describe('datasetUsages (multi-dataset model attribution)', () => {
+    it('splits weight evenly across own + community datasets, skipping the self-authored one', () => {
+      const contributions = [
+        contrib({ uuid: 'c-alice-ds', user_id: 'alice', artifact_url: 'ds/alice' }),
+        contrib({ uuid: 'c-dave-ds', user_id: 'dave', artifact_url: 'ds/dave', submitted_at: at('2026-01-01T09:00:00Z') }),
+        contrib({ uuid: 'c-carol-ds', user_id: 'carol', artifact_url: 'ds/carol', submitted_at: at('2026-01-02T10:00:00Z') }),
+      ];
+
+      const lineage = resolveLineage(contributions, 'carol', ['ds/carol', 'ds/alice', 'ds/dave']);
+
+      expect(lineage.datasetUsages).toEqual(
+        expect.arrayContaining([
+          { authorId: 'alice', contributionId: 'c-alice-ds', weight: 1 / 3 },
+          { authorId: 'dave', contributionId: 'c-dave-ds', weight: 1 / 3 },
+        ])
+      );
+      expect(lineage.datasetUsages).toHaveLength(2); // carol's own dataset produces no entry
+    });
+
+    it('ignores a url nobody has ever submitted', () => {
+      const contributions = [contrib({ uuid: 'c-alice-ds', user_id: 'alice', artifact_url: 'ds/alice' })];
+      const lineage = resolveLineage(contributions, 'bob', ['ds/alice', 'ds/unclaimed']);
+      expect(lineage.datasetUsages).toEqual([{ authorId: 'alice', contributionId: 'c-alice-ds', weight: 0.5 }]);
+    });
+
+    it('dedupes repeated urls before weighting', () => {
+      const contributions = [contrib({ uuid: 'c-alice-ds', user_id: 'alice', artifact_url: 'ds/alice' })];
+      const lineage = resolveLineage(contributions, 'bob', ['ds/alice', 'ds/alice']);
+      expect(lineage.datasetUsages).toEqual([{ authorId: 'alice', contributionId: 'c-alice-ds', weight: 1 }]);
+    });
+
+    it('is a no-op when only your own dataset is in the set', () => {
+      const contributions = [contrib({ uuid: 'c-alice-ds', user_id: 'alice', artifact_url: 'ds/alice' })];
+      expect(resolveLineage(contributions, 'alice', ['ds/alice']).datasetUsages).toBeUndefined();
+    });
+
+    it('does not add datasetUsages when no urls are passed — unchanged legacy behavior', () => {
+      const contributions = [
+        contrib({ uuid: 'c-alice', user_id: 'alice', submitted_at: at('2026-01-01T10:00:00Z') }),
+        contrib({ uuid: 'c-bob', user_id: 'bob', submitted_at: at('2026-01-02T10:00:00Z') }),
+      ];
+      expect(resolveLineage(contributions, 'bob', [])).toEqual({
+        datasetAuthorId: 'alice',
+        datasetContributionId: 'c-alice',
+      });
+    });
+  });
 });

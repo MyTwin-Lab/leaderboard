@@ -96,15 +96,16 @@ export async function PATCH(
 
     const { id: challengeId } = await params;
     const body = await request.json();
-    const { repo_id, workspace_url, live_endpoint_url } = body;
+    const { repo_id, workspace_url, live_endpoint_url, dataset_urls } = body;
 
     if (!repo_id || typeof repo_id !== 'string') {
       return NextResponse.json({ error: 'repo_id is required' }, { status: 400 });
     }
     const hasWorkspaceUrl = Object.prototype.hasOwnProperty.call(body, 'workspace_url');
     const hasEndpointUrl = Object.prototype.hasOwnProperty.call(body, 'live_endpoint_url');
-    if (!hasWorkspaceUrl && !hasEndpointUrl) {
-      return NextResponse.json({ error: 'workspace_url or live_endpoint_url is required' }, { status: 400 });
+    const hasDatasetUrls = Object.prototype.hasOwnProperty.call(body, 'dataset_urls');
+    if (!hasWorkspaceUrl && !hasEndpointUrl && !hasDatasetUrls) {
+      return NextResponse.json({ error: 'workspace_url, dataset_urls or live_endpoint_url is required' }, { status: 400 });
     }
     if (hasWorkspaceUrl && workspace_url !== null && (typeof workspace_url !== 'string' || !workspace_url.trim())) {
       return NextResponse.json({ error: 'workspace_url must be a non-empty string or null' }, { status: 400 });
@@ -112,10 +113,19 @@ export async function PATCH(
     if (hasEndpointUrl && live_endpoint_url !== null && (typeof live_endpoint_url !== 'string' || !live_endpoint_url.trim())) {
       return NextResponse.json({ error: 'live_endpoint_url must be a non-empty string or null' }, { status: 400 });
     }
+    const isValidDatasetUrls =
+      dataset_urls === null ||
+      (Array.isArray(dataset_urls) && dataset_urls.every((u) => typeof u === 'string' && u.trim()));
+    if (hasDatasetUrls && !isValidDatasetUrls) {
+      return NextResponse.json({ error: 'dataset_urls must be an array of non-empty strings, or null' }, { status: 400 });
+    }
 
     const existing = await challengeRepoRepo.findByChallengeAndRepo(challengeId, repo_id);
     if (!existing) {
       return NextResponse.json({ error: 'Repo not found for this challenge' }, { status: 404 });
+    }
+    if (hasDatasetUrls && existing.role !== 'dataset') {
+      return NextResponse.json({ error: 'dataset_urls only applies to dataset repos' }, { status: 400 });
     }
 
     // ML challenges have no tasks to assign, so submitting through the
@@ -132,6 +142,7 @@ export async function PATCH(
     if (hasWorkspaceUrl) {
       const existingMeta = (current.workspace_meta as Record<string, unknown>) ?? {};
       const existingUserUrls = (existingMeta.userUrls as Record<string, string>) ?? {};
+      const previousOwnUrl = existingUserUrls[session.userId];
 
       // null = remove the user's URL (reset step)
       const updatedUserUrls = { ...existingUserUrls };
@@ -141,7 +152,52 @@ export async function PATCH(
         updatedUserUrls[session.userId] = workspace_url.trim();
       }
 
-      const updatedMeta = { ...existingMeta, userUrls: updatedUserUrls };
+      const updatedMeta: Record<string, unknown> = { ...existingMeta, userUrls: updatedUserUrls };
+
+      // Dataset step: keep the multi-select set (datasetUrls, used for model
+      // reward attribution) in sync with the manually typed own URL — swap the
+      // previous own entry for the new one, or drop it on clear, without
+      // touching any community picks already checked.
+      if (existing.role === 'dataset') {
+        const existingDatasetUrls = (existingMeta.datasetUrls as Record<string, string[]>) ?? {};
+        const mySet = new Set(existingDatasetUrls[session.userId] ?? []);
+        if (previousOwnUrl) mySet.delete(previousOwnUrl);
+        if (workspace_url !== null) mySet.add(workspace_url.trim());
+
+        const updatedDatasetUrls = { ...existingDatasetUrls };
+        if (mySet.size > 0) {
+          updatedDatasetUrls[session.userId] = [...mySet];
+        } else {
+          delete updatedDatasetUrls[session.userId];
+        }
+        // Skip adding an empty key when the multi-select feature was never
+        // touched for this repo — keeps workspace_meta unchanged for the
+        // common single-dataset case.
+        if (Object.keys(updatedDatasetUrls).length > 0 || 'datasetUrls' in existingMeta) {
+          updatedMeta.datasetUrls = updatedDatasetUrls;
+        }
+      }
+
+      current = (await challengeRepoRepo.updateWorkspace(challengeId, repo_id, {
+        workspace_meta: updatedMeta,
+      })) ?? current;
+    }
+
+    // Dataset step only — toggling a community dataset in/out of the set used
+    // to build a model. Never touches userUrls/the dataset contribution/
+    // scheduleAward: this only affects how a later model reward gets split.
+    if (hasDatasetUrls) {
+      const existingMeta = (current.workspace_meta as Record<string, unknown>) ?? {};
+      const existingDatasetUrls = (existingMeta.datasetUrls as Record<string, string[]>) ?? {};
+
+      const updatedDatasetUrls = { ...existingDatasetUrls };
+      if (dataset_urls === null || dataset_urls.length === 0) {
+        delete updatedDatasetUrls[session.userId];
+      } else {
+        updatedDatasetUrls[session.userId] = [...new Set<string>(dataset_urls.map((u: string) => u.trim()))];
+      }
+
+      const updatedMeta = { ...existingMeta, datasetUrls: updatedDatasetUrls };
 
       current = (await challengeRepoRepo.updateWorkspace(challengeId, repo_id, {
         workspace_meta: updatedMeta,

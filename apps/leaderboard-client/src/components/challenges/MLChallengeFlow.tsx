@@ -17,7 +17,13 @@ interface MLRepo {
   repo_type: 'kaggle_dataset' | 'kaggle_model' | 'github' | string;
   repo_external_id?: string;
   role: MLRepoRole | null;
-  workspace_meta: { userUrls?: Record<string, string>; userEndpoints?: Record<string, string>; [key: string]: unknown };
+  workspace_meta: {
+    userUrls?: Record<string, string>;
+    userEndpoints?: Record<string, string>;
+    /** Dataset step only — the full set of datasets (own + community picks) a user has attached to their model build. */
+    datasetUrls?: Record<string, string[]>;
+    [key: string]: unknown;
+  };
 }
 
 interface MLWorkspaceData {
@@ -61,6 +67,19 @@ function getCommunityUrls(repo: MLRepo, currentUserId: string | null): { userId:
 }
 
 /**
+ * Dataset step only — every dataset URL a user has attached to their model build
+ * (their own + any community picks). Falls back to their single own URL when
+ * `datasetUrls` hasn't been written yet (pre-multi-select submissions).
+ */
+function getMyDatasetUrls(repo: MLRepo, userId: string | null): string[] {
+  if (!userId) return [];
+  const fromSet = repo.workspace_meta?.datasetUrls?.[userId];
+  if (fromSet) return fromSet;
+  const own = repo.workspace_meta?.userUrls?.[userId];
+  return own ? [own] : [];
+}
+
+/**
  * A step is done once every *required* repo has a URL. The model's GitHub is
  * optional — it unlocks the other half of the reward — so it must not gate the
  * step, and the mandatory Kaggle model must not be satisfied by it either.
@@ -85,25 +104,25 @@ const ROLE_META: Record<MLRepoRole, {
     label: 'Kaggle dataset',
     placeholder: 'https://www.kaggle.com/datasets/...',
     optional: false,
-    hint: 'Scored by the evaluator. Reusing someone else\'s dataset earns you nothing here — but costs you nothing to build either.',
+    hint: '',
   },
   model: {
     label: 'Kaggle model',
     placeholder: 'https://www.kaggle.com/models/...',
     optional: false,
-    hint: 'Required. Your metric is read from the model card and drives half of the model reward.',
+    hint: '',
   },
   model_code: {
     label: 'GitHub repository',
     placeholder: 'https://github.com/your-org/your-model',
     optional: true,
-    hint: 'Optional. Unlocks the other half of the model reward — the evaluator scores your preprocessing, train split, and so on.',
+    hint: '',
   },
   api: {
     label: 'GitHub repository',
     placeholder: 'https://github.com/your-org/your-api',
     optional: false,
-    hint: 'Scored by the evaluator as code.',
+    hint: '',
   },
 };
 
@@ -418,6 +437,7 @@ function RepoSubmission({
     ? repo.workspace_meta?.userEndpoints?.[currentUserId]
     : undefined;
   const community = getCommunityUrls(repo, currentUserId);
+  const myDatasetUrls = getMyDatasetUrls(repo, currentUserId);
   const meta = repo.role ? ROLE_META[repo.role] : null;
 
   const [urlInput, setUrlInput] = useState(myUrl ?? '');
@@ -425,7 +445,6 @@ function RepoSubmission({
   const [saving, setSaving] = useState(false);
   const [savingEndpoint, setSavingEndpoint] = useState(false);
   const [error, setError] = useState('');
-  const [showCommunity, setShowCommunity] = useState(false);
 
   // Keep input in sync after refresh
   useEffect(() => { setUrlInput(myUrl ?? ''); }, [myUrl]);
@@ -479,17 +498,25 @@ function RepoSubmission({
     }
   };
 
-  const handleSelectCommunity = async (url: string) => {
+  /**
+   * Dataset step only — toggles a community dataset in/out of the set used to
+   * build a model. Does not touch `workspace_url` (that stays "my own dataset"),
+   * so checking/unchecking a community pick never affects the dataset step's
+   * own evaluation, only how a later model reward gets split.
+   */
+  const handleToggleCommunity = async (url: string) => {
+    const next = myDatasetUrls.includes(url)
+      ? myDatasetUrls.filter(u => u !== url)
+      : [...myDatasetUrls, url];
     setSaving(true);
     setError('');
     try {
       const res = await fetch(`/api/challenges/${challengeId}/ml-workspace`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_id: repo.repo_id, workspace_url: url }),
+        body: JSON.stringify({ repo_id: repo.repo_id, dataset_urls: next.length ? next : null }),
       });
       if (res.ok) {
-        setShowCommunity(false);
         onSaved();
       } else {
         const d = await res.json();
@@ -518,7 +545,7 @@ function RepoSubmission({
               {meta.optional ? 'Optional' : 'Required'}
             </span>
           </div>
-          <p className="text-xs text-white/35">{meta.hint}</p>
+          {meta.hint && <p className="text-xs text-white/35">{meta.hint}</p>}
         </div>
       )}
 
@@ -598,43 +625,55 @@ function RepoSubmission({
         </div>
       )}
 
-      {/* Community URLs — only shown on dataset step */}
+      {/* Community datasets — only shown on dataset step, always open, multi-select */}
       {showCommunityPicker && community.length > 0 && (
         <div>
-          <button
-            onClick={() => setShowCommunity(v => !v)}
-            className="flex items-center gap-1.5 text-xs text-white/35 hover:text-white/60 transition-colors"
-          >
+          <div className="flex items-center gap-1.5 text-xs text-white/35">
             <Users className="h-3.5 w-3.5" />
-            {showCommunity ? 'Hide' : 'Or pick from community'} ({community.length})
-          </button>
+            Pick from community ({community.length})
+          </div>
 
-          {showCommunity && (
-            <div className="mt-2 space-y-1 animate-slide-in">
-              {community.map(({ userId, url }, i) => (
+          <div className="mt-2 space-y-1 animate-slide-in">
+            {community.map(({ userId, url }, i) => {
+              const selected = myDatasetUrls.includes(url);
+              return (
                 <button
                   key={i}
-                  onClick={() => handleSelectCommunity(url)}
+                  onClick={() => handleToggleCommunity(url)}
                   disabled={saving}
-                  className="group flex w-full items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-left transition-all hover:border-brandCP/20 hover:bg-brandCP/[0.04] disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-pressed={selected}
+                  className={`group flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                    selected
+                      ? 'border-brandCP/40 bg-brandCP/[0.08]'
+                      : 'border-white/[0.06] bg-white/[0.02] hover:border-brandCP/20 hover:bg-brandCP/[0.04]'
+                  }`}
                 >
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-white/50">
+                  <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                    selected ? 'bg-brandCP/20 text-brandCP' : 'bg-white/10 text-white/50'
+                  }`}>
                     {userId.slice(0, 1).toUpperCase()}
                   </div>
-                  <span className="flex-1 truncate text-xs text-white/50 group-hover:text-white/70 transition-colors">
+                  <span className={`flex-1 truncate text-xs transition-colors ${
+                    selected ? 'text-white/80' : 'text-white/50 group-hover:text-white/70'
+                  }`}>
                     {url}
                   </span>
                   {saving ? (
                     <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brandCP/50" />
+                  ) : selected ? (
+                    <span className="flex items-center gap-1 shrink-0 rounded-md bg-brandCP/15 px-2 py-0.5 text-[10px] font-semibold text-brandCP">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Selected
+                    </span>
                   ) : (
                     <span className="shrink-0 rounded-md bg-brandCP/10 px-2 py-0.5 text-[10px] font-semibold text-brandCP/60 opacity-0 transition-opacity group-hover:opacity-100">
                       Use
                     </span>
                   )}
                 </button>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

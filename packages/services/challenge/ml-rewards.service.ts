@@ -18,7 +18,7 @@ import { ConnectorRegistry } from "../../connectors/registry.js";
 import type { KaggleRepoActivity } from "../../connectors/interfaces.js";
 import { SnapshotService } from "./snapshot.service.js";
 import { DatabaseGridProvider } from "../database-grid-provider.js";
-import { extractArtifactRef } from "./artifactUrl.js";
+import { extractArtifactRef, normalizeArtifactUrl } from "./artifactUrl.js";
 import { resolveLineage } from "./lineage.js";
 
 /** Rôle → règle de reward et grille d'évaluation. */
@@ -53,7 +53,7 @@ export interface MlSubmissionEvent {
  */
 export interface MlRewardsDeps {
   challengeRepo: Pick<ChallengeRepository, 'findById' | 'update'>;
-  challengeRepoRepo: Pick<ChallengeRepoRepository, 'findByChallengeAndRepo'>;
+  challengeRepoRepo: Pick<ChallengeRepoRepository, 'findByChallengeAndRepo' | 'findByChallengeAndRole'>;
   contributionRepo: Pick<ContributionRepository, 'findByChallenge' | 'update'>;
   rewardRepo: Pick<RewardEntryRepository, 'sumByChallenge' | 'bestMetricValue' | 'createManyAndSyncRewards'>;
   readMetric: (url: string, rules: MlRewardRules) => Promise<number>;
@@ -308,6 +308,23 @@ export class MlRewardsService {
 
   private async resolveLineage(challenge: Challenge, userId: string): Promise<MlLineage> {
     const all = await this.deps.contributionRepo.findByChallenge(challenge.uuid);
-    return resolveLineage(all, userId);
+
+    // Datasets attachés à la construction du modèle (sélection communauté) —
+    // union de tous les repos dataset du challenge, généralement un seul.
+    // workspace_meta.datasetUrls garde les URLs brutes (comme userUrls, pour un
+    // aller-retour GET/PATCH sûr) ; on les normalise ici pour matcher
+    // contribution.artifact_url, déjà normalisée à la soumission.
+    const datasetRepos = await this.deps.challengeRepoRepo.findByChallengeAndRole(challenge.uuid, 'dataset');
+    const myDatasetUrls = [...new Set(
+      datasetRepos
+        .flatMap(r => {
+          const meta = r.workspace_meta as { datasetUrls?: Record<string, string[]> } | undefined;
+          return meta?.datasetUrls?.[userId] ?? [];
+        })
+        .map(url => normalizeArtifactUrl(url))
+        .filter((u): u is string => !!u)
+    )];
+
+    return resolveLineage(all, userId, myDatasetUrls);
   }
 }

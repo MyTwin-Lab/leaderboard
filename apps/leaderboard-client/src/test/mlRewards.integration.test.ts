@@ -107,6 +107,18 @@ class FakeDb {
     return contribution;
   }
 
+  /**
+   * Mirrors what the "pick from community" multi-select PATCH writes:
+   * `workspace_meta.datasetUrls[userId]` on the dataset repo — the full set of
+   * datasets a user has attached to their upcoming model build.
+   */
+  attachDatasets(userId: string, urls: string[]): void {
+    const repo = this.challengeRepos.find(r => r.challenge_id === 'ch-1' && r.role === 'dataset')!;
+    const meta = (repo.workspace_meta as Record<string, unknown>) ?? {};
+    const datasetUrls = { ...(meta.datasetUrls as Record<string, string[]> ?? {}), [userId]: urls };
+    repo.workspace_meta = { ...meta, datasetUrls };
+  }
+
   rewardOf(userId: string, type: string): number {
     return this.contributions.find(c => c.user_id === userId && c.type === type)?.reward ?? 0;
   }
@@ -133,6 +145,8 @@ class FakeDb {
       challengeRepoRepo: {
         findByChallengeAndRepo: async (challengeId: string, repoId: string) =>
           db.challengeRepos.find(r => r.challenge_id === challengeId && r.repo_id === repoId) ?? null,
+        findByChallengeAndRole: async (challengeId: string, role: ChallengeRepoRole) =>
+          db.challengeRepos.filter(r => r.challenge_id === challengeId && r.role === role),
       },
       contributionRepo: {
         findByChallenge: async (challengeId: string) =>
@@ -393,6 +407,68 @@ describe('ML rewards — the pool', () => {
     // 240 dataset + 250 metric + 50 bonus + 250 code — the ±60 reuse rows net to 0
     expect(db.distributed()).toBe(790);
     expect(db.totalOf('alice') + db.totalOf('bob')).toBe(790);
+  });
+});
+
+describe('ML rewards — multi-dataset attribution (community picks)', () => {
+  it("splits a model award across every attached dataset, weighted 1/N, and keeps the builder's own slice", async () => {
+    const { db, submit } = harness();
+
+    // Alice and Dave each publish their own dataset.
+    await submit('alice', 'dataset', ALICE_DATASET, { agentScore: 0.8 }, '2026-01-10T09:00:00Z');
+    const daveDataset = 'https://www.kaggle.com/datasets/dave/weather';
+    await submit('dave', 'dataset', daveDataset, { agentScore: 0.8 }, '2026-01-10T10:00:00Z');
+
+    // Carol publishes her own dataset too, then checks Alice's and Dave's as
+    // additional community picks — the "3 datasets, 1 of mine + 2 from the
+    // community" scenario.
+    const carolDataset = 'https://www.kaggle.com/datasets/carol/climate';
+    await submit('carol', 'dataset', carolDataset, { agentScore: 0.8 }, '2026-01-10T11:00:00Z');
+    db.attachDatasets('carol', [carolDataset, ALICE_DATASET, daveDataset]);
+
+    await submit('carol', 'model', 'https://www.kaggle.com/models/carol/m', { metric: 1 }, '2026-01-11T10:00:00Z');
+
+    // Carol's model: 250 metric + 50 first-submitter bonus = 300 gross.
+    // Each external third deducts 20% of its own slice: round(250/3*0.2)=17
+    // on the metric award, round(50/3*0.2)=3 on the bonus — 20 per author.
+    expect(db.rewardOf('alice', 'dataset')).toBe(260); // 240 own + 20 from Carol
+    expect(db.rewardOf('dave', 'dataset')).toBe(260);  // 240 own + 20 from Carol
+    expect(db.rewardOf('carol', 'model')).toBe(260);   // 300 gross - 20 - 20
+    expect(db.rewardOf('carol', 'dataset')).toBe(240); // her own share, untouched — she authored it
+
+    // Redistribution, not minting.
+    expect(db.totalOf('alice') + db.totalOf('dave') + db.totalOf('carol')).toBe(db.distributed());
+  });
+
+  it('checking a community dataset does not itself trigger an award or touch the dataset step', async () => {
+    const { db, submit, runAgent } = harness();
+
+    await submit('alice', 'dataset', ALICE_DATASET, { agentScore: 0.8 }, '2026-01-10T09:00:00Z');
+    runAgent.mockClear();
+
+    db.attachDatasets('bob', [ALICE_DATASET]);
+
+    expect(runAgent).not.toHaveBeenCalled();
+    expect(db.entries).toHaveLength(1); // only Alice's own dataset award exists
+    expect(db.contributions.find(c => c.user_id === 'bob')).toBeUndefined();
+  });
+
+  it('unchecking a dataset stops it from being credited on the next model submission', async () => {
+    const { db, submit } = harness();
+
+    await submit('alice', 'dataset', ALICE_DATASET, { agentScore: 0.8 }, '2026-01-10T09:00:00Z');
+    const bobDataset = 'https://www.kaggle.com/datasets/bob/own';
+    await submit('bob', 'dataset', bobDataset, { agentScore: 0.8 }, '2026-01-10T10:00:00Z');
+
+    // Attach, then uncheck Alice's before submitting the model.
+    db.attachDatasets('bob', [bobDataset, ALICE_DATASET]);
+    db.attachDatasets('bob', [bobDataset]);
+
+    await submit('bob', 'model', BOB_MODEL, { metric: 1 }, '2026-01-11T10:00:00Z');
+
+    expect(db.entries.some(e => e.rule_key === 'reuse_dataset')).toBe(false);
+    expect(db.rewardOf('bob', 'model')).toBe(300); // full gross, nothing shared
+    expect(db.rewardOf('alice', 'dataset')).toBe(240); // untouched
   });
 });
 

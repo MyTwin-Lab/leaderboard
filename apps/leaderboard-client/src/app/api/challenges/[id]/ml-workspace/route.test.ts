@@ -331,4 +331,124 @@ describe('PATCH /api/challenges/[id]/ml-workspace', () => {
 
     expect(res.status).toBe(500);
   });
+
+  describe('dataset_urls — community multi-select', () => {
+    it('returns 400 when dataset_urls is not an array of non-empty strings', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+
+      const res = await patchWorkspace({ repo_id: 'repo-1', dataset_urls: ['ok', ''] });
+
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when dataset_urls targets a non-dataset repo', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({ repo_id: 'repo-1', role: 'model', workspace_meta: {} });
+
+      const res = await patchWorkspace({ repo_id: 'repo-1', dataset_urls: ['https://kaggle.com/datasets/a/b'] });
+
+      expect(res.status).toBe(400);
+    });
+
+    it('stores the set under workspace_meta.datasetUrls without touching userUrls, the contribution or scheduleAward', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+      mockUpdateWorkspace.mockResolvedValue({
+        repo_id: 'repo-1', role: 'dataset',
+        workspace_meta: { datasetUrls: { [USER_ID]: ['https://kaggle.com/datasets/alice/a'] } },
+      });
+
+      const res = await patchWorkspace({ repo_id: 'repo-1', dataset_urls: ['https://kaggle.com/datasets/alice/a'] });
+
+      expect(res.status).toBe(200);
+      expect(mockUpdateWorkspace).toHaveBeenCalledWith(CHALLENGE_ID, 'repo-1', {
+        workspace_meta: { datasetUrls: { [USER_ID]: ['https://kaggle.com/datasets/alice/a'] } },
+      });
+      expect(mockContributionCreate).not.toHaveBeenCalled();
+      expect(mockContributionUpdate).not.toHaveBeenCalled();
+      expect(mockScheduleAward).not.toHaveBeenCalled();
+    });
+
+    it('dedupes urls and clears the key when the array is empty', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({
+        repo_id: 'repo-1', role: 'dataset',
+        workspace_meta: { datasetUrls: { [USER_ID]: ['https://kaggle.com/datasets/alice/a'] } },
+      });
+      mockUpdateWorkspace.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: { datasetUrls: {} } });
+
+      const res = await patchWorkspace({ repo_id: 'repo-1', dataset_urls: [] });
+
+      expect(res.status).toBe(200);
+      expect(mockUpdateWorkspace).toHaveBeenCalledWith(CHALLENGE_ID, 'repo-1', {
+        workspace_meta: { datasetUrls: {} },
+      });
+    });
+
+    it('preserves other users\' picks when updating this one', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({
+        repo_id: 'repo-1', role: 'dataset',
+        workspace_meta: { datasetUrls: { 'other-user': ['https://kaggle.com/datasets/dave/d'] } },
+      });
+      mockUpdateWorkspace.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+
+      await patchWorkspace({ repo_id: 'repo-1', dataset_urls: ['https://kaggle.com/datasets/alice/a'] });
+
+      expect(mockUpdateWorkspace).toHaveBeenCalledWith(CHALLENGE_ID, 'repo-1', {
+        workspace_meta: {
+          datasetUrls: {
+            'other-user': ['https://kaggle.com/datasets/dave/d'],
+            [USER_ID]: ['https://kaggle.com/datasets/alice/a'],
+          },
+        },
+      });
+    });
+
+    it('syncs datasetUrls when the own workspace_url is submitted, keeping community picks already checked', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({
+        repo_id: 'repo-1', role: 'dataset',
+        workspace_meta: {
+          userUrls: { [USER_ID]: 'https://kaggle.com/datasets/old/mine' },
+          datasetUrls: { [USER_ID]: ['https://kaggle.com/datasets/old/mine', 'https://kaggle.com/datasets/alice/a'] },
+        },
+      });
+      mockUpdateWorkspace.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+      mockFindByChallengeWithRepo.mockResolvedValue([
+        { repo_id: 'repo-1', role: 'dataset', workspace_meta: { userUrls: { [USER_ID]: 'https://kaggle.com/datasets/new/mine' } } },
+      ]);
+      mockContributionFindByChallenge.mockResolvedValue([]);
+      mockContributionCreate.mockResolvedValue({ uuid: 'contrib-1' });
+
+      await patchWorkspace({ repo_id: 'repo-1', workspace_url: 'https://kaggle.com/datasets/new/mine' });
+
+      expect(mockUpdateWorkspace).toHaveBeenCalledWith(CHALLENGE_ID, 'repo-1', {
+        workspace_meta: {
+          userUrls: { [USER_ID]: 'https://kaggle.com/datasets/new/mine' },
+          datasetUrls: {
+            [USER_ID]: expect.arrayContaining([
+              'https://kaggle.com/datasets/new/mine',
+              'https://kaggle.com/datasets/alice/a',
+            ]),
+          },
+        },
+      });
+    });
+
+    it('drops the own entry from datasetUrls when workspace_url is cleared, keeping community picks', async () => {
+      mockFindByChallengeAndRepo.mockResolvedValue({
+        repo_id: 'repo-1', role: 'dataset',
+        workspace_meta: {
+          userUrls: { [USER_ID]: 'https://kaggle.com/datasets/old/mine' },
+          datasetUrls: { [USER_ID]: ['https://kaggle.com/datasets/old/mine', 'https://kaggle.com/datasets/alice/a'] },
+        },
+      });
+      mockUpdateWorkspace.mockResolvedValue({ repo_id: 'repo-1', role: 'dataset', workspace_meta: {} });
+
+      await patchWorkspace({ repo_id: 'repo-1', workspace_url: null });
+
+      expect(mockUpdateWorkspace).toHaveBeenCalledWith(CHALLENGE_ID, 'repo-1', {
+        workspace_meta: {
+          userUrls: {},
+          datasetUrls: { [USER_ID]: ['https://kaggle.com/datasets/alice/a'] },
+        },
+      });
+    });
+  });
 });

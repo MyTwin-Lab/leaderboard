@@ -17,10 +17,18 @@ export interface LineageContribution {
  *
  * La détection est volontairement limitée au challenge courant : réutiliser un
  * dataset d'un challenge passé ne déclenche rien.
+ *
+ * `myDatasetUrls` (optionnel) porte l'ensemble complet des datasets qu'un
+ * contributeur a attachés à sa construction de modèle (le sien + ses picks
+ * communauté, cf. workspace_meta.datasetUrls) — indépendant du dataset "à moi"
+ * unique ci-dessus, qui continue de gouverner uniquement le reward du step
+ * Dataset. Chaque URL pèse `1/N` du reward modèle ; celles dont le premier
+ * auteur n'est pas l'appelant produisent une entrée dans `datasetUsages`.
  */
 export function resolveLineage(
   contributions: LineageContribution[],
-  userId: string
+  userId: string,
+  myDatasetUrls?: string[]
 ): MlLineage {
   const lineage: MlLineage = {};
 
@@ -42,6 +50,24 @@ export function resolveLineage(
       lineage[authorKey] = author.user_id;
       lineage[contribKey] = author.uuid;
     }
+  }
+
+  const urls = [...new Set(myDatasetUrls ?? [])];
+  if (urls.length > 0) {
+    const weight = 1 / urls.length;
+    const usages: NonNullable<MlLineage['datasetUsages']> = [];
+
+    for (const url of urls) {
+      const author = contributions
+        .filter(c => c.type === 'dataset' && c.artifact_url === url)
+        .sort(byFirstSubmitted)[0];
+
+      if (author && author.user_id !== userId) {
+        usages.push({ authorId: author.user_id, contributionId: author.uuid, weight });
+      }
+    }
+
+    if (usages.length > 0) lineage.datasetUsages = usages;
   }
 
   return lineage;
