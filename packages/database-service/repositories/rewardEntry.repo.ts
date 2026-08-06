@@ -1,6 +1,6 @@
 import { db } from "../db/drizzle";
-import { reward_entries, contributions } from "../db/drizzle";
-import { eq, and, ne, sql, inArray, notInArray } from "drizzle-orm";
+import { reward_entries } from "../db/drizzle";
+import { eq, and, ne, sql, notInArray } from "drizzle-orm";
 import { toDomainRewardEntry } from "../db/mappers";
 import type { RewardEntry } from "../domain/entities";
 import { rewardEntrySchema } from "../domain/schemas_zod";
@@ -108,12 +108,13 @@ export class RewardEntryRepository {
   }
 
   /**
-   * Écrit plusieurs lignes et resynchronise `contributions.reward` pour chaque
-   * contribution touchée, dans une seule transaction.
+   * Écrit plusieurs lignes de ledger dans une seule transaction.
    *
-   * `contributions.reward` est un cache : l'agrégat des lignes du ledger visant
-   * cette contribution. Le recalculer ici plutôt que d'incrémenter évite toute
-   * dérive entre le ledger (vérité) et le cache.
+   * `contributions.reward` (cache = agrégat des lignes du ledger visant cette
+   * contribution) se resynchronise tout seul via le trigger Postgres
+   * `trg_sync_contribution_reward` (drizzle/0018_reward_ledger_sync_trigger.sql) —
+   * plus besoin de le faire à la main ici. Ça évite la dérive qu'on avait entre
+   * ce chemin (synchronisé) et `create()` ci-dessus (qui, lui, ne l'était pas).
    */
   async createManyAndSyncRewards(entries: RewardEntryDraft[]): Promise<RewardEntry[]> {
     if (entries.length === 0) return [];
@@ -122,44 +123,21 @@ export class RewardEntryRepository {
       rewardEntrySchema.omit({ uuid: true, created_at: true }).parse(e)
     );
 
-    return db.transaction(async (tx) => {
-      const inserted = await tx
-        .insert(reward_entries)
-        .values(
-          validated.map((v) => ({
-            challenge_id: v.challenge_id,
-            user_id: v.user_id,
-            contribution_id: v.contribution_id ?? null,
-            rule_key: v.rule_key,
-            points: v.points,
-            source_user_id: v.source_user_id ?? null,
-            meta: v.meta ?? null,
-          }))
-        )
-        .returning();
+    const inserted = await db
+      .insert(reward_entries)
+      .values(
+        validated.map((v) => ({
+          challenge_id: v.challenge_id,
+          user_id: v.user_id,
+          contribution_id: v.contribution_id ?? null,
+          rule_key: v.rule_key,
+          points: v.points,
+          source_user_id: v.source_user_id ?? null,
+          meta: v.meta ?? null,
+        }))
+      )
+      .returning();
 
-      const touched = [
-        ...new Set(
-          validated
-            .map((v) => v.contribution_id)
-            .filter((id): id is string => Boolean(id))
-        ),
-      ];
-
-      if (touched.length > 0) {
-        await tx
-          .update(contributions)
-          .set({
-            reward: sql`(
-              SELECT COALESCE(SUM(${reward_entries.points}), 0)::int
-              FROM ${reward_entries}
-              WHERE ${reward_entries.contribution_id} = ${contributions.uuid}
-            )`,
-          })
-          .where(inArray(contributions.uuid, touched));
-      }
-
-      return inserted.map(toDomainRewardEntry);
-    });
+    return inserted.map(toDomainRewardEntry);
   }
 }

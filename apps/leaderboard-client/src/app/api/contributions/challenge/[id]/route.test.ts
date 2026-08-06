@@ -1,17 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindByChallenge, mockRewardFindByChallenge } = vi.hoisted(() => ({
+const { mockFindByChallenge } = vi.hoisted(() => ({
   mockFindByChallenge: vi.fn(),
-  mockRewardFindByChallenge: vi.fn(),
 }));
 
 vi.mock('../../../../../../../../packages/database-service/repositories', () => ({
   ContributionRepository: class {
     findByChallenge = mockFindByChallenge;
-  },
-  RewardEntryRepository: class {
-    findByChallenge = mockRewardFindByChallenge;
   },
 }));
 
@@ -27,7 +23,6 @@ function getContributions() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockFindByChallenge.mockResolvedValue([]);
-  mockRewardFindByChallenge.mockResolvedValue([]);
 });
 
 describe('GET /api/contributions/challenge/[id]', () => {
@@ -39,21 +34,11 @@ describe('GET /api/contributions/challenge/[id]', () => {
     expect(body).toEqual([]);
   });
 
-  it('falls back to the cached reward when there are no ledger entries', async () => {
-    mockFindByChallenge.mockResolvedValue([{ uuid: 'c1', reward: 42 }]);
-
-    const res = await getContributions();
-    const body = await res.json();
-
-    expect(body).toEqual([{ uuid: 'c1', reward: 42 }]);
-  });
-
-  it('overrides the cached reward with the summed ledger total', async () => {
-    mockFindByChallenge.mockResolvedValue([{ uuid: 'c1', reward: 0 }]);
-    mockRewardFindByChallenge.mockResolvedValue([
-      { contribution_id: 'c1', points: 30 },
-      { contribution_id: 'c1', points: 15 },
-    ]);
+  // contributions.reward is kept in sync with the reward_entries ledger by
+  // trg_sync_contribution_reward (drizzle/0018_reward_ledger_sync_trigger.sql),
+  // so this route just passes the cached column through — no ledger lookup.
+  it('returns the cached reward as-is, trusting the DB trigger to keep it in sync', async () => {
+    mockFindByChallenge.mockResolvedValue([{ uuid: 'c1', reward: 45 }]);
 
     const res = await getContributions();
     const body = await res.json();
@@ -61,17 +46,7 @@ describe('GET /api/contributions/challenge/[id]', () => {
     expect(body).toEqual([{ uuid: 'c1', reward: 45 }]);
   });
 
-  it('ignores ledger entries without a contribution_id', async () => {
-    mockFindByChallenge.mockResolvedValue([{ uuid: 'c1', reward: 5 }]);
-    mockRewardFindByChallenge.mockResolvedValue([{ contribution_id: null, points: 100 }]);
-
-    const res = await getContributions();
-    const body = await res.json();
-
-    expect(body).toEqual([{ uuid: 'c1', reward: 5 }]);
-  });
-
-  it('returns 500 when a repository call throws', async () => {
+  it('returns 500 when the repository call throws', async () => {
     mockFindByChallenge.mockRejectedValue(new Error('db down'));
 
     const res = await getContributions();
