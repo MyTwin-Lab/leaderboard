@@ -438,7 +438,7 @@ export default function ChallengeDetailPage() {
 
           {/* Team */}
           <div className="flex items-center gap-2">
-            <TeamAvatars members={team} />
+            <TeamAvatars members={team} variant="floating" />
             {team.length > 0 && (
               <span className="text-xs text-white/35">
                 {team.length} member{team.length !== 1 ? 's' : ''}

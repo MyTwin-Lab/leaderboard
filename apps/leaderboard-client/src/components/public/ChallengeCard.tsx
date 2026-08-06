@@ -121,7 +121,7 @@ export function ChallengeCard({
       <div className="mb-4 mt-auto">
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-[11px] text-white/35">Completion</span>
-          <span className="text-[11px] font-semibold text-brandCP">{completion}%</span>
+          <span className="text-[11px] font-bold text-black">{completion}%</span>
         </div>
         <div className="h-1 w-full overflow-hidden rounded-full bg-white/8">
           <div
@@ -135,7 +135,7 @@ export function ChallengeCard({
       <div className="flex items-center justify-between border-t border-primary-100/10 pt-3.5">
         <div className="flex items-center gap-3">
           <ChallengeTypeBadge type={normalizedType} />
-          <TeamAvatars members={teamMembers} />
+          <TeamAvatars members={teamMembers} variant="floating" />
         </div>
 
         <span className="flex items-center gap-1 text-xs font-semibold text-brandCP transition-all duration-200 group-hover:gap-1.5">

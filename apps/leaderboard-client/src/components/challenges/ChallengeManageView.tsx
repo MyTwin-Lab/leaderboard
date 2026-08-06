@@ -219,7 +219,12 @@ function TabOverview({ challenge, team, meetings, contributions, onNewMeeting, m
             {team.map(m => (
               <div key={m.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/[0.03]">
                 <div className="shrink-0">
-                  <InitialsAvatar name={m.fullName} size={28} avatarUrl={m.avatarUrl} />
+                  <InitialsAvatar
+                    name={m.fullName}
+                    size={28}
+                    avatarUrl={m.avatarUrl}
+                    className="rounded-xl bg-white/10 shadow-[0_10px_24px_-6px_rgba(0,0,0,0.4)]"
+                  />
                 </div>
                 <span className="text-sm text-white/70">{m.fullName}</span>
                 {m.githubUsername && (
@@ -764,7 +769,12 @@ function TabRankings({ contributions, team }: { contributions: Contribution[]; t
             {i < 3 ? MEDALS[i] : <span className="text-xs text-white/25">#{i + 1}</span>}
           </span>
           <div className="shrink-0">
-            <InitialsAvatar name={entry.name} size={32} avatarUrl={avatarMap[entry.userId]} />
+            <InitialsAvatar
+              name={entry.name}
+              size={32}
+              avatarUrl={avatarMap[entry.userId]}
+              className="rounded-xl bg-white/10 shadow-[0_10px_24px_-6px_rgba(0,0,0,0.4)]"
+            />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-white">{entry.name}</p>
@@ -1016,7 +1026,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
             </div>
             <div className="h-6 w-px bg-white/10" />
             <div className="flex items-center gap-2">
-              <TeamAvatars members={team} />
+              <TeamAvatars members={team} variant="floating" />
               <span className="text-xs text-white/35">{team.length} member{team.length !== 1 ? 's' : ''}</span>
             </div>
             {!isML && tasks.length > 0 && (
