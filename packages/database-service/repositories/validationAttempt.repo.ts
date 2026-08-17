@@ -27,6 +27,7 @@ const ATTEMPT_SUMMARY_COLUMNS = {
   response_content_type: validation_attempts.response_content_type,
   response_status: validation_attempts.response_status,
   purged_at: validation_attempts.purged_at,
+  reference_case_claim_id: validation_attempts.reference_case_claim_id,
 };
 
 export class ValidationAttemptRepository {
