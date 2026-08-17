@@ -4,35 +4,26 @@ import {
   ValidationTargetRepository,
   ValidationAttemptRepository,
   RewardEntryRepository,
+  UserRepository,
+  CaseClaimRepository,
 } from "../../database-service/repositories/index.js";
 import type { RewardEntryDraft } from "../../database-service/repositories/index.js";
 import type { Challenge, Contribution, ValidationAttempt } from "../../database-service/domain/entities.js";
-import { assertPublicHttpUrl } from "./ssrf-guard.js";
-
-const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
-const TIMEOUT_MS = 15_000;
 
 /** The submission isn't exposed on this validation challenge, or has no endpoint — a 4xx-shaped problem. */
 export class ValidationTargetError extends Error {}
-/** The proxied call itself failed (SSRF-blocked, unreachable, timed out, too large) — a 5xx-shaped problem. */
-export class EndpointCallError extends Error {}
 /** A validator tried to cast a verdict on their own submission. */
 export class SelfVoteError extends Error {}
 /** A validator tried to cast a second verdict on a target they already voted on. */
 export class DuplicateVerdictError extends Error {}
-
-export interface ValidationFile {
-  buffer: Buffer;
-  filename: string;
-  mimeType: string;
-}
-
-/** The raw result of proxying a file to a target's endpoint — no CP, no verdict. */
-export interface ValidationCallResult {
-  status: number;
-  contentType: string;
-  body: Buffer;
-}
+/** A non-medical_pro user tried to cast a verdict on a validation challenge. */
+export class InsufficientRoleError extends Error {}
+/** The referenced claim doesn't exist. */
+export class ClaimNotFoundError extends Error {}
+/** The caller doesn't own the claim they're trying to vote from. */
+export class ForbiddenClaimAccessError extends Error {}
+/** castVerdict was called with a claim whose expected output hasn't been revealed yet. */
+export class ClaimNotRevealedError extends Error {}
 
 export interface CastVerdictResult {
   verdictRecorded: boolean;
@@ -56,33 +47,39 @@ export interface ValidationRunDeps {
       validator_user_id: string;
       verdict: "works" | "broken";
       description: string | null;
-      file_bytes: Buffer;
-      file_filename: string;
-      file_content_type: string;
-      response_bytes: Buffer;
-      response_content_type: string;
-      response_status: number;
+      file_bytes: Buffer | null;
+      file_filename: string | null;
+      file_content_type: string | null;
+      response_bytes: Buffer | null;
+      response_content_type: string | null;
+      response_status: number | null;
+      reference_case_claim_id: string | null;
     }) => Promise<ValidationAttempt | null>;
     findByChallengeAndContribution: (validationChallengeId: string, contributionId: string) => Promise<ValidationAttempt[]>;
   };
   contributionRepo: Pick<ContributionRepository, "findById" | "findByChallenge" | "create" | "update">;
   rewardRepo: Pick<RewardEntryRepository, "sumByChallenge" | "createManyAndSyncRewards">;
-  callEndpoint: (url: string, file: ValidationFile) => Promise<ValidationCallResult>;
+  userRepo: Pick<UserRepository, "findById">;
+  caseClaimRepo: Pick<CaseClaimRepository, "findById">;
 }
 
 /**
  * ValidationChallengeService
  * ---------------------------
- * `validate()` proxies a "drop a file, see the API's output" call — pure
- * network I/O, no CP, no identity involved. `castVerdict()` records what a
- * validator concluded after seeing that output and, once a target collects
- * `required_validations` verdicts, resolves it: the majority side is paid
- * `cp_per_validation` each (clamped to the pool, earliest voters first), the
- * minority gets nothing, and the outcome is permanent.
+ * `castVerdict()` records what a `medical_pro` validator concluded after
+ * testing a reference case's known input against a target's live endpoint
+ * (via `ReferenceCaseService.claimCase`/`recordObservation`/
+ * `revealExpectedOutput` — see reference-case.service.ts) and, once a target
+ * collects `required_validations` verdicts, resolves it: the majority side is
+ * paid `cp_per_validation` each (clamped to the pool, earliest voters first),
+ * the minority gets nothing, and the outcome is permanent.
  *
- * The browser never calls the target endpoint directly (CORS + trust — see
- * the design doc); this service is the one thing that observes the response,
- * so it's the one thing allowed to decide whether CP is earned.
+ * As of challenge-014, testing only ever happens through a claim — there is
+ * no more free-file `validate()` path. A verdict must reference a claim that
+ * (a) belongs to the calling validator, (b) targets this same submission, and
+ * (c) has already been revealed (observation recorded, expected output
+ * shown) — enforced here as defense-in-depth on top of the same checks in
+ * ReferenceCaseService.
  */
 export class ValidationChallengeService {
   private deps: ValidationRunDeps;
@@ -94,44 +91,10 @@ export class ValidationChallengeService {
       attemptRepo: new ValidationAttemptRepository(),
       contributionRepo: new ContributionRepository(),
       rewardRepo: new RewardEntryRepository(),
-      callEndpoint: (url, file) => this.callEndpointDefault(url, file),
+      userRepo: new UserRepository(),
+      caseClaimRepo: new CaseClaimRepository(),
       ...deps,
     };
-  }
-
-  async validate(input: {
-    validationChallengeId: string;
-    contributionId: string;
-    validatorUserId: string;
-    file: ValidationFile;
-  }): Promise<ValidationCallResult> {
-    const { validationChallengeId, contributionId, validatorUserId, file } = input;
-
-    const challenge = await this.deps.challengeRepo.findById(validationChallengeId);
-    if (!challenge || challenge.type !== "validation") {
-      throw new ValidationTargetError("Not a validation challenge");
-    }
-
-    const targets = await this.deps.targetRepo.findByChallenge(validationChallengeId);
-    if (!targets.some(t => t.contribution_id === contributionId)) {
-      throw new ValidationTargetError("Submission is not exposed on this validation challenge");
-    }
-
-    const contribution = await this.deps.contributionRepo.findById(contributionId);
-    if (!contribution?.live_endpoint_url) {
-      throw new ValidationTargetError("Submission has no deployed endpoint");
-    }
-
-    if (contribution.user_id === validatorUserId) {
-      throw new SelfVoteError("Cannot validate your own submission");
-    }
-
-    try {
-      await assertPublicHttpUrl(contribution.live_endpoint_url);
-      return await this.deps.callEndpoint(contribution.live_endpoint_url, file);
-    } catch (error) {
-      throw new EndpointCallError(error instanceof Error ? error.message : String(error));
-    }
   }
 
   async castVerdict(input: {
@@ -139,12 +102,11 @@ export class ValidationChallengeService {
     contributionId: string;
     validatorUserId: string;
     verdict: "works" | "broken";
-    description: string | null;
-    /** Exactly what the validator dropped and exactly what they saw — persisted for manager review. */
-    file: ValidationFile;
-    response: ValidationCallResult;
+    /** Required unconditionally as of challenge-014 — no more works/broken distinction. */
+    description: string;
+    referenceCaseClaimId: string;
   }): Promise<CastVerdictResult> {
-    const { validationChallengeId, contributionId, validatorUserId, verdict, description, file, response } = input;
+    const { validationChallengeId, contributionId, validatorUserId, verdict, description, referenceCaseClaimId } = input;
 
     const challenge = await this.deps.challengeRepo.findById(validationChallengeId);
     if (!challenge || challenge.type !== "validation") {
@@ -156,6 +118,25 @@ export class ValidationChallengeService {
     const target = targets.find(t => t.contribution_id === contributionId);
     if (!target) {
       throw new ValidationTargetError("Submission is not exposed on this validation challenge");
+    }
+
+    const user = await this.deps.userRepo.findById(validatorUserId);
+    if (!user || user.role !== "medical_pro") {
+      throw new InsufficientRoleError("Only medical_pro users can cast a verdict on a validation challenge");
+    }
+
+    const claim = await this.deps.caseClaimRepo.findById(referenceCaseClaimId);
+    if (!claim) {
+      throw new ClaimNotFoundError("Reference case claim not found");
+    }
+    if (claim.validator_user_id !== validatorUserId) {
+      throw new ForbiddenClaimAccessError("This claim does not belong to you");
+    }
+    if (claim.contribution_id !== contributionId) {
+      throw new ValidationTargetError("This claim was not made against this target");
+    }
+    if (!claim.revealed_at) {
+      throw new ClaimNotRevealedError("View the expected output before casting a verdict");
     }
 
     const contribution = await this.deps.contributionRepo.findById(contributionId);
@@ -177,12 +158,13 @@ export class ValidationChallengeService {
       validator_user_id: validatorUserId,
       verdict,
       description,
-      file_bytes: file.buffer,
-      file_filename: file.filename,
-      file_content_type: file.mimeType,
-      response_bytes: response.body,
-      response_content_type: response.contentType,
-      response_status: response.status,
+      file_bytes: null,
+      file_filename: null,
+      file_content_type: null,
+      response_bytes: null,
+      response_content_type: null,
+      response_status: null,
+      reference_case_claim_id: claim.uuid,
     });
     if (!created) {
       // Lost a race against another request from the same validator.
@@ -286,33 +268,5 @@ export class ValidationChallengeService {
       submitted_at: new Date(),
       evaluation_status: "done",
     });
-  }
-
-  private async callEndpointDefault(url: string, file: ValidationFile): Promise<ValidationCallResult> {
-    const form = new FormData();
-    form.append("file", new Blob([new Uint8Array(file.buffer)], { type: file.mimeType }), file.filename);
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    try {
-      // `redirect: "manual"` is load-bearing for the SSRF guard: `assertPublicHttpUrl`
-      // only validates the URL we were given, not wherever a 3xx response might
-      // point. Following redirects automatically would let a malicious target
-      // redirect this server-side call to a private address after the check
-      // already passed. Node's fetch returns the raw redirect response (not an
-      // opaque one) under "manual", so we can detect and reject it explicitly.
-      const res = await fetch(url, { method: "POST", body: form, signal: controller.signal, redirect: "manual" });
-      if (res.status >= 300 && res.status < 400) {
-        throw new Error(`Endpoint responded with a redirect (${res.status}) — redirects are not followed`);
-      }
-      const contentType = res.headers.get("content-type") ?? "application/octet-stream";
-      const arrayBuffer = await res.arrayBuffer();
-      if (arrayBuffer.byteLength > MAX_RESPONSE_BYTES) {
-        throw new Error(`Response exceeded ${MAX_RESPONSE_BYTES} bytes`);
-      }
-      return { status: res.status, contentType, body: Buffer.from(arrayBuffer) };
-    } finally {
-      clearTimeout(timeout);
-    }
   }
 }
