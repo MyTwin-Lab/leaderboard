@@ -1,6 +1,6 @@
 import { db } from "../db/drizzle";
 import { tasks, task_assignees, users, challenges } from "../db/drizzle";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { toDomainTask, toDbTask, toDomainUser } from "../db/mappers";
 import type { Task, User } from "../domain/entities";
 import { taskSchema } from "../domain/schemas_zod";
@@ -42,18 +42,34 @@ export class TaskRepository {
       .from(task_assignees)
       .leftJoin(users, eq(task_assignees.user_id, users.uuid))
       .where(eq(task_assignees.task_id, taskId));
-    
+
     return results.filter(r => r.user !== null).map(r => toDomainUser(r.user!));
   }
 
   async findByChallengeWithAssignees(challengeId: string): Promise<(Task & { assignees: User[] })[]> {
     const taskList = await this.findByChallenge(challengeId);
-    return Promise.all(
-      taskList.map(async (task) => ({
-        ...task,
-        assignees: await this.findAssignees(task.uuid),
-      }))
-    );
+    if (taskList.length === 0) return [];
+
+    // Single query for all assignees of every task in this challenge, instead
+    // of one findAssignees() round-trip per task (was N+1: 1 + N SQL queries).
+    const rows = await db
+      .select({ taskId: task_assignees.task_id, user: users })
+      .from(task_assignees)
+      .leftJoin(users, eq(task_assignees.user_id, users.uuid))
+      .where(inArray(task_assignees.task_id, taskList.map(t => t.uuid)));
+
+    const assigneesByTask = new Map<string, User[]>();
+    for (const row of rows) {
+      if (!row.user || !row.taskId) continue;
+      const list = assigneesByTask.get(row.taskId) ?? [];
+      list.push(toDomainUser(row.user));
+      assigneesByTask.set(row.taskId, list);
+    }
+
+    return taskList.map(task => ({
+      ...task,
+      assignees: assigneesByTask.get(task.uuid) ?? [],
+    }));
   }
 
   async completeTask(taskId: string): Promise<Task> {

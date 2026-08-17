@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter, useParams } from 'next/navigation';
+import { fetchJson } from '@/lib/fetchJson';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -129,66 +131,32 @@ export default function SyncMeetingDetailPage() {
   const params = useParams();
   const meetingId = params.id as string;
 
-  const [meeting, setMeeting] = useState<SyncMeeting | null>(null);
-  const [participants, setParticipants] = useState<MeetingParticipant[]>([]);
-  const [analysis, setAnalysis] = useState<MeetingAnalysis | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [analysisLoading, setAnalysisLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AnalysisTab>('summary');
 
-  useEffect(() => {
-    if (meetingId) fetchAll();
-  }, [meetingId]);
+  const meetingQuery = useQuery({
+    queryKey: ['sync-meeting', meetingId],
+    queryFn: async () => (await fetchJson(`/api/sync-meetings/${meetingId}`)).meeting as SyncMeeting,
+    enabled: !!meetingId,
+  });
 
-  const fetchAll = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([fetchMeeting(), fetchParticipants(), fetchAnalysis()]);
-    } catch (error) {
-      console.error('Error fetching meeting data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const participantsQuery = useQuery({
+    queryKey: ['sync-meeting', meetingId, 'participants'],
+    queryFn: async () => (await fetchJson(`/api/sync-meetings/${meetingId}/participants`)).participants as MeetingParticipant[] ?? [],
+    enabled: !!meetingId,
+  });
 
-  const fetchMeeting = async () => {
-    try {
-      const res = await fetch(`/api/sync-meetings/${meetingId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMeeting(data.meeting);
-      }
-    } catch (error) {
-      console.error('Error fetching meeting:', error);
-    }
-  };
+  const analysisQuery = useQuery({
+    queryKey: ['sync-meeting', meetingId, 'analysis'],
+    queryFn: async () => (await fetchJson(`/api/sync-meetings/${meetingId}/analysis`)).analysis as MeetingAnalysis | null,
+    enabled: !!meetingId,
+    retry: false, // analysis may legitimately not exist yet — don't retry a 404
+  });
 
-  const fetchParticipants = async () => {
-    try {
-      const res = await fetch(`/api/sync-meetings/${meetingId}/participants`);
-      if (res.ok) {
-        const data = await res.json();
-        setParticipants(data.participants || []);
-      }
-    } catch (error) {
-      console.error('Error fetching participants:', error);
-    }
-  };
-
-  const fetchAnalysis = async () => {
-    setAnalysisLoading(true);
-    try {
-      const res = await fetch(`/api/sync-meetings/${meetingId}/analysis`);
-      if (res.ok) {
-        const data = await res.json();
-        setAnalysis(data.analysis);
-      }
-    } catch {
-      // Analysis may not exist yet
-    } finally {
-      setAnalysisLoading(false);
-    }
-  };
+  const meeting = meetingQuery.data ?? null;
+  const participants = participantsQuery.data ?? [];
+  const analysis = analysisQuery.data ?? null;
+  const loading = meetingQuery.isLoading || participantsQuery.isLoading || analysisQuery.isLoading;
+  const analysisLoading = analysisQuery.isLoading;
 
   // --- Render ---
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
@@ -67,43 +68,46 @@ interface TaskDetails {
   } | null;
 }
 
+// Distinct error class so the query's error message can carry the 404 vs
+// generic-failure distinction the page used to derive from `res.status`.
+class TaskDetailsError extends Error {
+  constructor(public status: number) { super(`Task details request failed with ${status}`); }
+}
+
 export default function TaskDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const taskId = params.id as string;
 
-  const [data, setData] = useState<TaskDetails | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [completing, setCompleting] = useState(false);
 
-  useEffect(() => {
-    fetchDetails();
-  }, [taskId]);
-
-  const fetchDetails = async () => {
-    try {
+  const detailsQuery = useQuery({
+    queryKey: ['task-details', taskId],
+    queryFn: async () => {
       const res = await fetch(`/api/tasks/${taskId}/details`);
-      if (!res.ok) {
-        setError(res.status === 404 ? 'Task not found' : 'Failed to load task');
-        return;
-      }
-      const json: TaskDetails = await res.json();
-      setData(json);
-    } catch {
-      setError('Failed to load task');
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (!res.ok) throw new TaskDetailsError(res.status);
+      return res.json() as Promise<TaskDetails>;
+    },
+    enabled: !!taskId,
+    retry: false,
+  });
+
+  const data = detailsQuery.data ?? null;
+  const loading = detailsQuery.isLoading;
+  const error = detailsQuery.isError
+    ? ((detailsQuery.error as TaskDetailsError)?.status === 404 ? 'Task not found' : 'Failed to load task')
+    : null;
+
+  const refetchDetails = () => queryClient.invalidateQueries({ queryKey: ['task-details', taskId] });
 
   const handleEvaluate = async () => {
     setEvaluating(true);
     try {
       const res = await fetch(`/api/tasks/${taskId}/evaluate`, { method: 'POST' });
       if (res.ok) {
-        await fetchDetails();
+        await refetchDetails();
       } else {
         const err = await res.json();
         alert(err.error || 'Evaluation failed');
@@ -120,7 +124,7 @@ export default function TaskDetailPage() {
     try {
       const res = await fetch(`/api/tasks/${taskId}/complete`, { method: 'PATCH' });
       if (res.ok) {
-        await fetchDetails();
+        await refetchDetails();
       } else {
         const err = await res.json();
         alert(err.error || 'Failed to complete task');

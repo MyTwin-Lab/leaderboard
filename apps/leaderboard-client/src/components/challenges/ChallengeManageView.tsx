@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
+import { fetchJson } from '@/lib/fetchJson';
 import {
   ArrowLeft, Users, Trophy, CalendarDays, Code2, BrainCircuit, ShieldCheck,
   CheckCircle2, Circle, Clock3, BarChart2, Activity,
@@ -807,74 +809,110 @@ function TabRankings({ contributions, team }: { contributions: Contribution[]; t
 export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) {
   const router = useRouter();
   const { id: challengeId } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
 
-  const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [status, setStatus] = useState('');
-  const [team, setTeam] = useState<TeamMember[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [contributions, setContributions] = useState<Contribution[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [mlData, setMlData] = useState<{ currentUserId: string | null; repos: MLRepo[]; users?: Record<string, { fullName: string; avatarUrl?: string }> } | null>(null);
-  const [repoActivity, setRepoActivity] = useState<Record<string, any> | null>(null);
-  const [loading, setLoading] = useState(true);
   // Admins are authorized up front; managers must be verified against the project.
   const [isManager, setIsManager] = useState<boolean | null>(isAdmin ? true : null);
   const [meetingDrawerOpen, setMeetingDrawerOpen] = useState(false);
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
   const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
-  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
-  // Admin view always shows meetings; manager view respects the global module flag.
-  const [meetingsEnabled, setMeetingsEnabled] = useState(isAdmin);
-  const [computeEnabled, setComputeEnabled] = useState(false);
 
-  useEffect(() => { if (challengeId) fetchAll(); }, [challengeId]);
+  // Challenge, team, tasks, meetings and contributions come from one
+  // aggregated request, shared (same key + raw shape) with the public
+  // /challenges/[id] page — visiting one view warms the cache for the other.
+  const overviewQuery = useQuery({
+    queryKey: ['challenge-overview', challengeId],
+    queryFn: () => fetchJson(`/api/challenges/${challengeId}/overview`) as Promise<{
+      challenge: Challenge;
+      team: any[];
+      tasks: any[];
+      meetings: Meeting[];
+      repos: any[];
+      contributions: Contribution[];
+    }>,
+    enabled: !!challengeId,
+  });
+
+  const mlWorkspaceQuery = useQuery({
+    queryKey: ['challenge-ml-workspace', challengeId],
+    queryFn: () => fetchJson(`/api/challenges/${challengeId}/ml-workspace`),
+    enabled: !!challengeId,
+  });
+
+  const repoActivityQuery = useQuery({
+    queryKey: ['challenge-repo-activity', challengeId],
+    queryFn: async () => {
+      const data = await fetchJson(`/api/challenges/${challengeId}/repo-activity`);
+      return (data?.activities ?? null) as Record<string, any> | null;
+    },
+    enabled: !!challengeId,
+  });
+
+  const scalewayStatusQuery = useQuery({
+    queryKey: ['scaleway-status'],
+    queryFn: () => fetchJson('/api/scaleway/status'),
+  });
+
+  // Not challenge-specific — shared across every page that needs it.
+  const modulesQuery = useQuery({
+    queryKey: ['modules'],
+    queryFn: () => fetchJson('/api/modules'),
+    enabled: !isAdmin,
+    staleTime: 5 * 60_000,
+  });
+
+  // Only used to name the (locked) project in the edit drawer.
+  const projectsQuery = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => fetchJson('/api/projects'),
+    staleTime: 60_000,
+  });
+
+  const meQuery = useQuery({
+    queryKey: ['me'],
+    queryFn: () => fetchJson('/api/contributors/me'),
+    enabled: !isAdmin,
+    staleTime: 5 * 60_000,
+  });
+
+  const challenge = overviewQuery.data?.challenge ?? null;
+  const team: TeamMember[] = (overviewQuery.data?.team ?? []).map((m: any) => ({
+    id: m.uuid, fullName: m.full_name, githubUsername: m.github_username, avatarUrl: m.avatar_url ?? undefined,
+  }));
+  const tasks: Task[] = (overviewQuery.data?.tasks ?? []).map((t: any) => ({
+    ...t,
+    assignees: (t.assignees ?? []).map((a: any) => ({ id: a.uuid, fullName: a.full_name, avatarUrl: a.avatar_url ?? undefined })),
+  }));
+  const contributions = overviewQuery.data?.contributions ?? [];
+  const meetings = overviewQuery.data?.meetings ?? [];
+  const mlData = mlWorkspaceQuery.data ?? null;
+  const repoActivity = repoActivityQuery.data ?? null;
+  const computeEnabled = !!scalewayStatusQuery.data?.connected;
+  // Admin view always shows meetings; manager view respects the global module flag.
+  const meetingsEnabled = isAdmin || modulesQuery.data?.meetings_enabled !== false;
+  const projects = (projectsQuery.data ?? []).map((p: any) => ({ id: p.uuid, name: p.title }));
 
   useEffect(() => {
-    if (isAdmin || !challenge) return;
-    fetch('/api/contributors/me')
-      .then(r => r.ok && r.json())
-      .then(d => {
-        if (!d) { router.replace(`/challenges/${challengeId}`); return; }
-        const managed: string[] = d.managedProjectIds ?? [];
-        if (!managed.includes(challenge.project_id)) {
-          router.replace(`/challenges/${challengeId}`);
-        } else {
-          setIsManager(true);
-        }
-      });
-  }, [challenge, isAdmin]);
+    if (challenge) setStatus(challenge.status);
+  }, [challenge?.uuid, challenge?.status]);
 
-  const fetchAll = async () => {
-    setLoading(true);
-    await Promise.allSettled([
-      fetch(`/api/challenges/${challengeId}`).then(r => r.ok && r.json()).then(d => { if (d) { setChallenge(d); setStatus(d.status); } }),
-      fetch(`/api/challenges/${challengeId}/team`).then(r => r.ok && r.json()).then(d =>
-        Array.isArray(d) && setTeam(d.map((m: any) => ({ id: m.uuid, fullName: m.full_name, githubUsername: m.github_username, avatarUrl: m.avatar_url ?? undefined })))
-      ),
-      fetch(`/api/tasks?challenge_id=${challengeId}&include=assignees`).then(r => r.ok && r.json()).then(d =>
-        Array.isArray(d) && setTasks(d.map((t: any) => ({
-          ...t,
-          assignees: (t.assignees ?? []).map((a: any) => ({ id: a.uuid, fullName: a.full_name, avatarUrl: a.avatar_url ?? undefined })),
-        })))
-      ),
-      fetch(`/api/contributions/challenge/${challengeId}`).then(r => r.ok && r.json()).then(d =>
-        Array.isArray(d) && setContributions(d)
-      ),
-      fetch(`/api/sync-meetings?challenge_id=${challengeId}`).then(r => r.ok && r.json()).then(d =>
-        d?.meetings && setMeetings(d.meetings)
-      ),
-      fetch(`/api/challenges/${challengeId}/ml-workspace`).then(r => r.ok && r.json()).then(d => d && setMlData(d)),
-      fetch(`/api/challenges/${challengeId}/repo-activity`).then(r => r.ok && r.json()).then(d => d?.activities && setRepoActivity(d.activities)),
-      fetch('/api/scaleway/status').then(r => r.ok && r.json()).then(d => d && setComputeEnabled(!!d.connected)),
-      isAdmin ? Promise.resolve() : fetch('/api/modules').then(r => r.ok && r.json()).then(d => d && setMeetingsEnabled(d.meetings_enabled !== false)),
-      // Only used to name the (locked) project in the edit drawer.
-      fetch('/api/projects').then(r => r.ok && r.json()).then(d =>
-        Array.isArray(d) && setProjects(d.map((p: any) => ({ id: p.uuid, name: p.title })))
-      ),
-    ]);
-    setLoading(false);
-  };
+  useEffect(() => {
+    if (isAdmin || !challenge || meQuery.isLoading) return;
+    if (meQuery.isError || !meQuery.data) { router.replace(`/challenges/${challengeId}`); return; }
+    const managed: string[] = meQuery.data.managedProjectIds ?? [];
+    if (!managed.includes(challenge.project_id)) {
+      router.replace(`/challenges/${challengeId}`);
+    } else {
+      setIsManager(true);
+    }
+  }, [challenge, isAdmin, meQuery.data, meQuery.isError, meQuery.isLoading, challengeId, router]);
+
+  // repo-activity is excluded on purpose — see the /overview route comment;
+  // TabActivity/TabMLMetrics already render their own skeleton while it's null.
+  const loading = overviewQuery.isLoading || mlWorkspaceQuery.isLoading
+    || scalewayStatusQuery.isLoading || modulesQuery.isLoading || projectsQuery.isLoading;
 
   if (loading) return <Skeleton />;
   if (isManager !== true) return null;
@@ -971,7 +1009,11 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
         {/* Hero */}
         <div>
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <StatusPicker challengeId={challengeId} status={status} onUpdate={setStatus} />
+            <StatusPicker
+              challengeId={challengeId}
+              status={status}
+              onUpdate={s => { setStatus(s); queryClient.invalidateQueries({ queryKey: ['challenge-overview', challengeId] }); }}
+            />
             {isOpen && (
               <button
                 onClick={() => setEditDrawerOpen(true)}
@@ -1053,11 +1095,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
           open={meetingDrawerOpen}
           onClose={() => setMeetingDrawerOpen(false)}
           challengeId={challengeId}
-          onCreated={() => {
-            fetch(`/api/sync-meetings?challenge_id=${challengeId}`)
-              .then(r => r.ok && r.json())
-              .then(d => d?.meetings && setMeetings(d.meetings));
-          }}
+          onCreated={() => queryClient.invalidateQueries({ queryKey: ['challenge-overview', challengeId] })}
         />
       )}
       <DocumentsDrawer
@@ -1082,7 +1120,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
         // challenge.status is stale after a status change and saving would
         // silently revert it.
         challenge={{ ...challenge, status }}
-        onCreated={() => fetchAll()}
+        onCreated={() => queryClient.invalidateQueries({ queryKey: ['challenge-overview', challengeId] })}
       />
     </>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useParams } from 'next/navigation';
 import { Badge } from '@/components/ui/Badge';
 import { TeamAvatars } from '@/components/ui/TeamAvatars';
@@ -18,6 +19,7 @@ import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseA
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
 import { ContributorTaskBoard, type BoardContribution } from '@/components/contributor/ContributorTaskBoard';
+import { fetchJson } from '@/lib/fetchJson';
 
 const ML_REPO_TYPES = ['kaggle_dataset', 'kaggle_model'];
 
@@ -204,119 +206,87 @@ function PastMeetingRow({ meeting, onClick }: { meeting: SyncMeeting; onClick: (
 export default function ChallengeDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const queryClient = useQueryClient();
   const challengeId = params.id as string;
 
-  const [challenge, setChallenge] = useState<Challenge | null>(null);
-  const [team, setTeam] = useState<TeamMember[]>([]);
-  const [tasks, setTasks] = useState<TaskWithAssignees[]>([]);
-  const [meetings, setMeetings] = useState<SyncMeeting[]>([]);
-  const [meetingsEnabled, setMeetingsEnabled] = useState(false);
-  const [repoTypes, setRepoTypes] = useState<string[]>([]);
-  const [contributions, setContributions] = useState<BoardContribution[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
   const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
-  const [repoActivity, setRepoActivity] = useState<Record<string, any> | null>(null);
+
+  useEffect(() => {
+    if (challengeId) trackOnboardingStep('clicked_challenge');
+  }, [challengeId]);
+
+  // Challenge, team, tasks, meetings, repos and contributions all come from
+  // one aggregated request instead of 6 separate ones — see the route for why
+  // repo-activity stays its own call. Shared query key + shape with
+  // ChallengeManageView, so navigating manage <-> public for the same
+  // challenge reuses this cache.
+  const overviewQuery = useQuery({
+    queryKey: ['challenge-overview', challengeId],
+    queryFn: () => fetchJson(`/api/challenges/${challengeId}/overview`) as Promise<{
+      challenge: Challenge;
+      team: any[];
+      tasks: any[];
+      meetings: SyncMeeting[];
+      repos: any[];
+      contributions: BoardContribution[];
+    }>,
+    enabled: !!challengeId,
+  });
+
+  const repoActivityQuery = useQuery({
+    queryKey: ['challenge-repo-activity', challengeId],
+    queryFn: async () => {
+      const data = await fetchJson(`/api/challenges/${challengeId}/repo-activity`);
+      return (data?.activities ?? null) as Record<string, any> | null;
+    },
+    enabled: !!challengeId,
+  });
+
+  // Not challenge-specific — shared across every page that needs it.
+  const modulesQuery = useQuery({
+    queryKey: ['modules'],
+    queryFn: () => fetchJson('/api/modules'),
+    staleTime: 5 * 60_000,
+  });
+
+  const meQuery = useQuery({
+    queryKey: ['me'],
+    queryFn: () => fetchJson('/api/contributors/me'),
+    staleTime: 5 * 60_000,
+  });
+
+  const challenge = overviewQuery.data?.challenge ?? null;
+  const team: TeamMember[] = (overviewQuery.data?.team ?? []).map((m: any) => ({
+    id: m.uuid, fullName: m.full_name, avatarUrl: m.avatar_url ?? undefined,
+  }));
+  const tasks: TaskWithAssignees[] = (overviewQuery.data?.tasks ?? []).map((t: any) => ({
+    ...t,
+    assignees: Array.isArray(t.assignees)
+      ? t.assignees.map((a: any) => ({ id: a.uuid, fullName: a.full_name, avatarUrl: a.avatar_url ?? undefined }))
+      : [],
+  }));
+  const meetings = overviewQuery.data?.meetings ?? [];
+  const meetingsEnabled = modulesQuery.data?.meetings_enabled !== false;
+  const repoTypes: string[] = (overviewQuery.data?.repos ?? []).map((r: any) => r.repo_type ?? r.type ?? '');
+  const contributions = overviewQuery.data?.contributions ?? [];
+  const repoActivity = repoActivityQuery.data ?? null;
+  const currentUserId = meQuery.data?.user?.id ?? null;
+  const isAdmin = meQuery.data?.user?.role === 'admin';
 
   const isML = challenge?.type === 'ml' || repoTypes.some(t => ML_REPO_TYPES.includes(t));
   const isValidation = challenge?.type === 'validation';
 
-  useEffect(() => {
-    if (challengeId) {
-      fetchAll();
-      trackOnboardingStep('clicked_challenge');
-    }
-  }, [challengeId]);
-
-  const fetchModules = async () => {
-    const res = await fetch('/api/modules');
-    if (res.ok) {
-      const data = await res.json();
-      setMeetingsEnabled(data.meetings_enabled !== false);
-    }
-  };
-
-  const fetchAll = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([fetchChallenge(), fetchTeam(), fetchTasks(), fetchMeetings(), fetchRepos(), fetchRepoActivity(), fetchModules(), fetchContributions(), fetchMe()]);
-    } catch {}
-    finally { setLoading(false); }
-  };
-
   // Silent refresh after a board mutation — no skeleton flash.
   const reloadBoard = async () => {
-    await Promise.all([fetchTasks(), fetchContributions()]);
+    await queryClient.invalidateQueries({ queryKey: ['challenge-overview', challengeId] });
   };
 
-  const fetchContributions = async () => {
-    const res = await fetch(`/api/contributions/challenge/${challengeId}`);
-    if (res.ok) {
-      const data = await res.json();
-      setContributions(Array.isArray(data) ? data : []);
-    }
-  };
-
-  const fetchMe = async () => {
-    const res = await fetch('/api/contributors/me');
-    if (res.ok) {
-      const data = await res.json();
-      setCurrentUserId(data?.user?.id ?? null);
-      setIsAdmin(data?.user?.role === 'admin');
-    }
-  };
-
-  const fetchChallenge = async () => {
-    const res = await fetch(`/api/challenges/${challengeId}`);
-    if (res.ok) setChallenge(await res.json());
-  };
-
-  const fetchTeam = async () => {
-    const res = await fetch(`/api/challenges/${challengeId}/team`);
-    if (res.ok) {
-      const data = await res.json();
-      setTeam(Array.isArray(data) ? data.map((m: any) => ({ id: m.uuid, fullName: m.full_name, avatarUrl: m.avatar_url ?? undefined })) : []);
-    }
-  };
-
-  const fetchTasks = async () => {
-    const res = await fetch(`/api/tasks?challenge_id=${challengeId}&include=assignees`);
-    if (res.ok) {
-      const data = await res.json();
-      setTasks((Array.isArray(data) ? data : []).map((t: any) => ({
-        ...t,
-        assignees: Array.isArray(t.assignees)
-          ? t.assignees.map((a: any) => ({ id: a.uuid, fullName: a.full_name, avatarUrl: a.avatar_url ?? undefined }))
-          : [],
-      })));
-    }
-  };
-
-  const fetchMeetings = async () => {
-    const res = await fetch(`/api/sync-meetings?challenge_id=${challengeId}`);
-    if (res.ok) {
-      const data = await res.json();
-      setMeetings(data.meetings || []);
-    }
-  };
-
-  const fetchRepos = async () => {
-    const res = await fetch(`/api/challenges/${challengeId}/repos`);
-    if (res.ok) {
-      const data = await res.json();
-      setRepoTypes((Array.isArray(data) ? data : []).map((r: any) => r.repo_type ?? r.type ?? ''));
-    }
-  };
-
-  const fetchRepoActivity = async () => {
-    const res = await fetch(`/api/challenges/${challengeId}/repo-activity`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.activities) setRepoActivity(data.activities);
-    }
-  };
+  // repo-activity is excluded on purpose: it hits external connectors and can
+  // be slow, but TabActivity/TabMLMetrics already render their own inline
+  // skeleton while repoActivity is null — no reason to hold up the rest of
+  // the page for it.
+  const loading = overviewQuery.isLoading || modulesQuery.isLoading || meQuery.isLoading;
 
   if (loading) return <Skeleton />;
 
