@@ -202,6 +202,16 @@ describe('POST /api/challenges', () => {
     expect(roles.sort()).toEqual(['api', 'dataset', 'model', 'model_code']);
   });
 
+  it('skips the API repo when api_packaging_enabled is false, leaving only dataset/model/model_code', async () => {
+    const res = await postChallenge({ ...validBody, type: 'ml', api_packaging_enabled: false }, 'valid-token');
+
+    expect(res.status).toBe(201);
+    expect(mockRepoCreate).toHaveBeenCalledTimes(3);
+    expect(mockChallengeRepoCreate).toHaveBeenCalledTimes(3);
+    const roles = mockChallengeRepoCreate.mock.calls.map(([args]: any[]) => args.role);
+    expect(roles.sort()).toEqual(['dataset', 'model', 'model_code']);
+  });
+
   describe('validation challenge business rules', () => {
     const mlSourceId = '22222222-2222-4222-8222-222222222222';
 

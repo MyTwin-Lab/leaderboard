@@ -7,6 +7,7 @@ const {
   mockTargetFindByChallenge, mockTargetFindByChallengeAndContribution, mockTargetCreate,
   mockAttemptFindByChallengeAndValidator, mockAttemptFindByChallengeAndContribution,
   mockRewardSumByChallenge, mockUserFindByIds, mockAssertPublicHttpUrl,
+  mockCaseClaimFindByValidatorAndTarget,
 } = vi.hoisted(() => ({
   mockGetSessionUser: vi.fn(),
   mockIsManagerOfChallenge: vi.fn(),
@@ -22,6 +23,7 @@ const {
   mockRewardSumByChallenge: vi.fn(),
   mockUserFindByIds: vi.fn(),
   mockAssertPublicHttpUrl: vi.fn(),
+  mockCaseClaimFindByValidatorAndTarget: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
@@ -53,6 +55,9 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   },
   UserRepository: class {
     findByIds = mockUserFindByIds;
+  },
+  CaseClaimRepository: class {
+    findByValidatorAndTarget = mockCaseClaimFindByValidatorAndTarget;
   },
 }));
 
@@ -92,6 +97,7 @@ beforeEach(() => {
   mockRewardSumByChallenge.mockResolvedValue(0);
   mockUserFindByIds.mockResolvedValue([]);
   mockAssertPublicHttpUrl.mockResolvedValue(undefined);
+  mockCaseClaimFindByValidatorAndTarget.mockResolvedValue([]);
 });
 
 describe('GET /api/challenges/[id]/validation-targets', () => {

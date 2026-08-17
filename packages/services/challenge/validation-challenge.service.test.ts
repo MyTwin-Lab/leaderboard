@@ -1,26 +1,23 @@
 import { describe, it, expect, vi } from "vitest";
 
-// assertPublicHttpUrl (called directly by the service, not through injectable
-// deps) does a real DNS lookup — mock it so these tests exercise the service's
-// own logic without touching the network. SSRF-guard behavior itself is
-// covered exhaustively in ssrf-guard.test.ts.
-vi.mock("node:dns/promises", () => ({
-  lookup: vi.fn(async () => [{ address: "203.0.113.10", family: 4 }]),
-}));
-
 import {
   ValidationChallengeService,
   ValidationTargetError,
-  EndpointCallError,
   SelfVoteError,
   DuplicateVerdictError,
+  InsufficientRoleError,
+  ClaimNotFoundError,
+  ForbiddenClaimAccessError,
+  ClaimNotRevealedError,
 } from "./validation-challenge.service.js";
 import type { ValidationRunDeps } from "./validation-challenge.service.js";
 import type {
   Challenge,
   Contribution,
   ValidationAttempt,
+  ValidationCaseClaim,
   RewardEntry,
+  User,
 } from "../../database-service/domain/entities.js";
 
 function makeChallenge(over: Partial<Challenge> = {}): Challenge {
@@ -54,15 +51,40 @@ function makeContribution(over: Partial<Contribution> = {}): Contribution {
   };
 }
 
-const file = { buffer: Buffer.from("fake-bytes"), filename: "cat.png", mimeType: "image/png" };
-const response = { status: 200, contentType: "application/json", body: Buffer.from('{"label":"cat"}') };
+function makeClaim(over: Partial<ValidationCaseClaim> = {}): ValidationCaseClaim {
+  return {
+    uuid: "claim-1",
+    reference_case_id: "case-1",
+    contribution_id: "contrib-1",
+    validator_user_id: "bob",
+    response_bytes: Buffer.from('{"label":"cat"}'),
+    response_content_type: "application/json",
+    response_status: 200,
+    observation: "Looked correct",
+    observed_at: new Date(),
+    revealed_at: new Date(),
+    created_at: new Date(),
+    ...over,
+  };
+}
+
+function makeUser(over: Partial<User> = {}): User {
+  return {
+    uuid: "bob",
+    role: "medical_pro",
+    full_name: "Bob",
+    created_at: new Date(),
+    ...over,
+  };
+}
 
 function makeDeps(opts: {
   challenge?: Partial<Challenge>;
   target?: { outcome?: "pending" | "works" | "broken" };
   existingAttempts?: ValidationAttempt[];
   overrideResolve?: (uuid: string, outcome: "works" | "broken") => Promise<any>;
-  callEndpoint?: ValidationRunDeps["callEndpoint"];
+  users?: Record<string, User | null>;
+  claims?: Record<string, ValidationCaseClaim | null>;
 } = {}): ValidationRunDeps {
   const challenge = makeChallenge(opts.challenge);
   const contribution = makeContribution();
@@ -78,6 +100,9 @@ function makeDeps(opts: {
   const attempts: ValidationAttempt[] = [...(opts.existingAttempts ?? [])];
   const entries: RewardEntry[] = [];
   const validatorContributions: Contribution[] = [];
+
+  const users: Record<string, User | null> = { bob: makeUser(), ...opts.users };
+  const claims: Record<string, ValidationCaseClaim | null> = { "claim-1": makeClaim(), ...opts.claims };
 
   return {
     challengeRepo: { findById: vi.fn(async (id: string) => (id === challenge.uuid ? challenge : null)) },
@@ -120,77 +145,42 @@ function makeDeps(opts: {
         return rows;
       }),
     },
-    callEndpoint:
-      opts.callEndpoint ??
-      vi.fn(async () => ({ status: 200, contentType: "application/json", body: Buffer.from('{"label":"cat"}') })),
+    userRepo: { findById: vi.fn(async (id: string) => users[id] ?? null) },
+    caseClaimRepo: { findById: vi.fn(async (id: string) => claims[id] ?? null) },
   } as ValidationRunDeps;
 }
 
-describe("ValidationChallengeService.validate", () => {
-  it("returns the endpoint's response for a successful call", async () => {
-    const deps = makeDeps();
-    const service = new ValidationChallengeService(deps);
+// Every voter in the multi-validator tests below needs their own revealed
+// claim — bob's claim-1 covers the single-voter tests, these back the
+// quorum/majority tests where carol/dave/erin also vote.
+function withExtraClaims(deps: ValidationRunDeps, ids: string[]) {
+  const claims: Record<string, ValidationCaseClaim> = {};
+  const users: Record<string, User> = {};
+  for (const id of ids) {
+    claims[`claim-${id}`] = makeClaim({ uuid: `claim-${id}`, validator_user_id: id });
+    users[id] = makeUser({ uuid: id });
+  }
+  deps.caseClaimRepo.findById = vi.fn(async (claimId: string) =>
+    claimId === "claim-1" ? makeClaim() : claims[claimId] ?? null
+  );
+  deps.userRepo.findById = vi.fn(async (id: string) => (id === "bob" ? makeUser() : users[id] ?? null));
+  return deps;
+}
 
-    const result = await service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", file });
-
-    expect(result).toEqual({ status: 200, contentType: "application/json", body: Buffer.from('{"label":"cat"}') });
-  });
-
-  it("passes through a non-2xx status without throwing", async () => {
-    const deps = makeDeps({
-      callEndpoint: vi.fn(async () => ({ status: 500, contentType: "text/plain", body: Buffer.from("boom") })),
-    });
-    const service = new ValidationChallengeService(deps);
-
-    const result = await service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", file });
-
-    expect(result.status).toBe(500);
-  });
-
-  it("throws ValidationTargetError when the contribution isn't an exposed target", async () => {
-    const deps = makeDeps();
-    deps.targetRepo.findByChallenge = vi.fn(async () => []);
-    const service = new ValidationChallengeService(deps);
-
-    await expect(
-      service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", file })
-    ).rejects.toThrow(ValidationTargetError);
-  });
-
-  it("throws ValidationTargetError when the target contribution has no live endpoint", async () => {
-    const deps = makeDeps();
-    deps.contributionRepo.findById = vi.fn(async () => null);
-    const service = new ValidationChallengeService(deps);
-
-    await expect(
-      service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", file })
-    ).rejects.toThrow(ValidationTargetError);
-  });
-
-  it("wraps a failing endpoint call in EndpointCallError", async () => {
-    const deps = makeDeps({ callEndpoint: vi.fn(async () => { throw new Error("ECONNREFUSED"); }) });
-    const service = new ValidationChallengeService(deps);
-
-    await expect(
-      service.validate({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", file })
-    ).rejects.toThrow(EndpointCallError);
-  });
-});
+const baseInput = {
+  validationChallengeId: "vch-1",
+  contributionId: "contrib-1",
+  verdict: "works" as const,
+  description: "Looked correct on the sample input",
+  referenceCaseClaimId: "claim-1",
+};
 
 describe("ValidationChallengeService.castVerdict", () => {
   it("records a verdict and reports the running count while below quorum", async () => {
     const deps = makeDeps();
     const service = new ValidationChallengeService(deps);
 
-    const result = await service.castVerdict({
-      validationChallengeId: "vch-1",
-      contributionId: "contrib-1",
-      validatorUserId: "bob",
-      verdict: "works",
-      description: null,
-      file,
-      response,
-    });
+    const result = await service.castVerdict({ ...baseInput, validatorUserId: "bob" });
 
     expect(result).toEqual({
       verdictRecorded: true,
@@ -203,49 +193,77 @@ describe("ValidationChallengeService.castVerdict", () => {
     expect(deps.rewardRepo.createManyAndSyncRewards).not.toHaveBeenCalled();
   });
 
-  it("persists exactly the file and response bytes/metadata passed in, alongside the verdict", async () => {
+  it("writes reference_case_claim_id on the created attempt and leaves the legacy blob fields null", async () => {
     const deps = makeDeps();
     const service = new ValidationChallengeService(deps);
 
-    await service.castVerdict({
-      validationChallengeId: "vch-1",
-      contributionId: "contrib-1",
-      validatorUserId: "bob",
-      verdict: "broken",
-      description: "It crashed on a 512x512 input",
-      file,
-      response,
-    });
+    await service.castVerdict({ ...baseInput, validatorUserId: "bob", verdict: "broken", description: "It crashed on a 512x512 input" });
 
     expect(deps.attemptRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         verdict: "broken",
         description: "It crashed on a 512x512 input",
-        file_bytes: file.buffer,
-        file_filename: "cat.png",
-        file_content_type: "image/png",
-        response_bytes: response.body,
-        response_content_type: "application/json",
-        response_status: 200,
+        reference_case_claim_id: "claim-1",
+        file_bytes: null,
+        file_filename: null,
+        file_content_type: null,
+        response_bytes: null,
+        response_content_type: null,
+        response_status: null,
       })
     );
   });
 
-  it("throws SelfVoteError when the validator owns the target submission", async () => {
-    const deps = makeDeps();
+  it("throws InsufficientRoleError for a non-medical_pro validator", async () => {
+    const deps = makeDeps({ users: { bob: makeUser({ role: "contributor" }) } });
     const service = new ValidationChallengeService(deps);
 
-    await expect(
-      service.castVerdict({
-        validationChallengeId: "vch-1",
-        contributionId: "contrib-1",
-        validatorUserId: "alice", // same as makeContribution()'s user_id
-        verdict: "works",
-        description: null,
-        file,
-        response,
-      })
-    ).rejects.toThrow(SelfVoteError);
+    await expect(service.castVerdict({ ...baseInput, validatorUserId: "bob" })).rejects.toThrow(InsufficientRoleError);
+  });
+
+  it("throws InsufficientRoleError when the validator user no longer exists", async () => {
+    const deps = makeDeps({ users: { bob: null } });
+    const service = new ValidationChallengeService(deps);
+
+    await expect(service.castVerdict({ ...baseInput, validatorUserId: "bob" })).rejects.toThrow(InsufficientRoleError);
+  });
+
+  it("throws ClaimNotFoundError when the claim doesn't exist", async () => {
+    const deps = makeDeps({ claims: { "claim-1": null } });
+    const service = new ValidationChallengeService(deps);
+
+    await expect(service.castVerdict({ ...baseInput, validatorUserId: "bob" })).rejects.toThrow(ClaimNotFoundError);
+  });
+
+  it("throws ForbiddenClaimAccessError when the claim belongs to a different validator", async () => {
+    const deps = makeDeps({ claims: { "claim-1": makeClaim({ validator_user_id: "someone-else" }) } });
+    const service = new ValidationChallengeService(deps);
+
+    await expect(service.castVerdict({ ...baseInput, validatorUserId: "bob" })).rejects.toThrow(ForbiddenClaimAccessError);
+  });
+
+  it("throws ValidationTargetError when the claim was made against a different target", async () => {
+    const deps = makeDeps({ claims: { "claim-1": makeClaim({ contribution_id: "some-other-contrib" }) } });
+    const service = new ValidationChallengeService(deps);
+
+    await expect(service.castVerdict({ ...baseInput, validatorUserId: "bob" })).rejects.toThrow(ValidationTargetError);
+  });
+
+  it("throws ClaimNotRevealedError when the claim hasn't been revealed yet", async () => {
+    const deps = makeDeps({ claims: { "claim-1": makeClaim({ revealed_at: null }) } });
+    const service = new ValidationChallengeService(deps);
+
+    await expect(service.castVerdict({ ...baseInput, validatorUserId: "bob" })).rejects.toThrow(ClaimNotRevealedError);
+  });
+
+  it("throws SelfVoteError when the validator owns the target submission", async () => {
+    const deps = makeDeps({
+      users: { alice: makeUser({ uuid: "alice", role: "medical_pro" }) },
+      claims: { "claim-1": makeClaim({ validator_user_id: "alice" }) },
+    });
+    const service = new ValidationChallengeService(deps);
+
+    await expect(service.castVerdict({ ...baseInput, validatorUserId: "alice" })).rejects.toThrow(SelfVoteError);
   });
 
   it("throws DuplicateVerdictError when the validator already voted", async () => {
@@ -257,7 +275,7 @@ describe("ValidationChallengeService.castVerdict", () => {
           contribution_id: "contrib-1",
           validator_user_id: "bob",
           verdict: "works",
-          description: null,
+          description: "already voted",
           created_at: new Date(),
           file_bytes: null,
           file_filename: null,
@@ -266,31 +284,24 @@ describe("ValidationChallengeService.castVerdict", () => {
           response_content_type: null,
           response_status: null,
           purged_at: null,
+          reference_case_claim_id: "claim-1",
         },
       ],
     });
     const service = new ValidationChallengeService(deps);
 
     await expect(
-      service.castVerdict({
-        validationChallengeId: "vch-1",
-        contributionId: "contrib-1",
-        validatorUserId: "bob",
-        verdict: "broken",
-        description: "still bad",
-        file,
-        response,
-      })
+      service.castVerdict({ ...baseInput, validatorUserId: "bob", verdict: "broken", description: "still bad" })
     ).rejects.toThrow(DuplicateVerdictError);
   });
 
   it("resolves the target and pays the majority once quorum is reached", async () => {
-    const deps = makeDeps();
+    const deps = withExtraClaims(makeDeps(), ["carol", "dave"]);
     const service = new ValidationChallengeService(deps);
 
-    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", verdict: "works", description: null, file, response });
-    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "carol", verdict: "broken", description: "bad output", file, response });
-    const result = await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "dave", verdict: "works", description: null, file, response });
+    await service.castVerdict({ ...baseInput, validatorUserId: "bob", verdict: "works", referenceCaseClaimId: "claim-1" });
+    await service.castVerdict({ ...baseInput, validatorUserId: "carol", verdict: "broken", description: "bad output", referenceCaseClaimId: "claim-carol" });
+    const result = await service.castVerdict({ ...baseInput, validatorUserId: "dave", verdict: "works", referenceCaseClaimId: "claim-dave" });
 
     expect(result.resolved).toBe(true);
     expect(result.outcome).toBe("works");
@@ -302,28 +313,31 @@ describe("ValidationChallengeService.castVerdict", () => {
   });
 
   it("clamps the payout batch to whatever remains in the pool", async () => {
-    const deps = makeDeps({ challenge: { contribution_points_reward: 8, cp_per_validation: 5 } });
+    const deps = withExtraClaims(makeDeps({ challenge: { contribution_points_reward: 8, cp_per_validation: 5 } }), ["carol", "dave"]);
     const service = new ValidationChallengeService(deps);
 
-    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "bob", verdict: "works", description: null, file, response });
-    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "carol", verdict: "works", description: null, file, response });
-    await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "dave", verdict: "broken", description: "nope", file, response });
+    await service.castVerdict({ ...baseInput, validatorUserId: "bob", verdict: "works", referenceCaseClaimId: "claim-1" });
+    await service.castVerdict({ ...baseInput, validatorUserId: "carol", verdict: "works", referenceCaseClaimId: "claim-carol" });
+    await service.castVerdict({ ...baseInput, validatorUserId: "dave", verdict: "broken", description: "nope", referenceCaseClaimId: "claim-dave" });
 
     const paid = vi.mocked(deps.rewardRepo.createManyAndSyncRewards).mock.calls[0][0] as any[];
     expect(paid.map(e => e.points)).toEqual([5, 3]); // bob gets the full 5, carol gets whatever's left
   });
 
   it("does not pay out twice if a concurrent request already resolved the target", async () => {
-    const deps = makeDeps({
-      existingAttempts: [
-        { uuid: "att-1", validation_challenge_id: "vch-1", contribution_id: "contrib-1", validator_user_id: "bob", verdict: "works", description: null, created_at: new Date(), file_bytes: null, file_filename: null, file_content_type: null, response_bytes: null, response_content_type: null, response_status: null, purged_at: null },
-        { uuid: "att-2", validation_challenge_id: "vch-1", contribution_id: "contrib-1", validator_user_id: "carol", verdict: "works", description: null, created_at: new Date(), file_bytes: null, file_filename: null, file_content_type: null, response_bytes: null, response_content_type: null, response_status: null, purged_at: null },
-      ],
-      overrideResolve: async () => null, // another request already resolved it
-    });
+    const deps = withExtraClaims(
+      makeDeps({
+        existingAttempts: [
+          { uuid: "att-1", validation_challenge_id: "vch-1", contribution_id: "contrib-1", validator_user_id: "bob", verdict: "works", description: "ok", created_at: new Date(), file_bytes: null, file_filename: null, file_content_type: null, response_bytes: null, response_content_type: null, response_status: null, purged_at: null, reference_case_claim_id: "claim-1" },
+          { uuid: "att-2", validation_challenge_id: "vch-1", contribution_id: "contrib-1", validator_user_id: "carol", verdict: "works", description: "ok", created_at: new Date(), file_bytes: null, file_filename: null, file_content_type: null, response_bytes: null, response_content_type: null, response_status: null, purged_at: null, reference_case_claim_id: "claim-carol" },
+        ],
+        overrideResolve: async () => null, // another request already resolved it
+      }),
+      ["carol", "dave"]
+    );
     const service = new ValidationChallengeService(deps);
 
-    const result = await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "dave", verdict: "works", description: null, file, response });
+    const result = await service.castVerdict({ ...baseInput, validatorUserId: "dave", verdict: "works", referenceCaseClaimId: "claim-dave" });
 
     expect(result.resolved).toBe(true);
     expect(result.cpAwarded).toBe(0);
@@ -334,7 +348,7 @@ describe("ValidationChallengeService.castVerdict", () => {
     const deps = makeDeps({ target: { outcome: "works" } });
     const service = new ValidationChallengeService(deps);
 
-    const result = await service.castVerdict({ validationChallengeId: "vch-1", contributionId: "contrib-1", validatorUserId: "erin", verdict: "broken", description: "seems off", file, response });
+    const result = await service.castVerdict({ ...baseInput, validatorUserId: "bob", verdict: "broken", description: "seems off" });
 
     expect(result.verdictRecorded).toBe(true);
     expect(result.resolved).toBe(true);

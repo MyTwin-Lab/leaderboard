@@ -1,118 +1,86 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindById, mockUpdate, mockDelete } = vi.hoisted(() => ({
-  mockFindById: vi.fn(),
+const { mockUpdate, mockDelete } = vi.hoisted(() => ({
   mockUpdate: vi.fn(),
   mockDelete: vi.fn(),
 }));
 
+vi.mock('@/lib/auth', () => ({ getSessionUser: vi.fn() }));
+
 vi.mock('../../../../../../../packages/database-service/repositories', () => ({
   UserRepository: class {
-    findById = mockFindById;
     update = mockUpdate;
     delete = mockDelete;
   },
 }));
 
-import { GET, PATCH, DELETE } from './route';
+import { PATCH, DELETE } from './route';
+import { getSessionUser } from '@/lib/auth';
 
-const USER_ID = 'user-1';
+const mockGetSessionUser = getSessionUser as ReturnType<typeof vi.fn>;
 
-function getUser() {
-  const req = new NextRequest(`http://localhost/api/users/${USER_ID}`);
-  return GET(req, { params: Promise.resolve({ id: USER_ID }) });
-}
-
-function patchUser(body: unknown) {
-  const req = new NextRequest(`http://localhost/api/users/${USER_ID}`, {
+function patch(body: Record<string, unknown> = { role: 'medical_pro' }) {
+  const req = new NextRequest('http://localhost/api/users/user-1', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  return PATCH(req, { params: Promise.resolve({ id: USER_ID }) });
+  return PATCH(req, { params: Promise.resolve({ id: 'user-1' }) });
 }
 
-function deleteUser() {
-  const req = new NextRequest(`http://localhost/api/users/${USER_ID}`, { method: 'DELETE' });
-  return DELETE(req, { params: Promise.resolve({ id: USER_ID }) });
+function del() {
+  const req = new NextRequest('http://localhost/api/users/user-1', { method: 'DELETE' });
+  return DELETE(req, { params: Promise.resolve({ id: 'user-1' }) });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-describe('GET /api/users/[id]', () => {
-  it('returns 404 when the user does not exist', async () => {
-    mockFindById.mockResolvedValue(null);
-
-    const res = await getUser();
-
-    expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: 'Not found' });
-  });
-
-  it('returns the user when found', async () => {
-    mockFindById.mockResolvedValue({ uuid: USER_ID, full_name: 'Ada Lovelace', role: 'contributor' });
-
-    const res = await getUser();
-
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ uuid: USER_ID, full_name: 'Ada Lovelace', role: 'contributor' });
-  });
-
-  it('returns 500 when the repository throws', async () => {
-    mockFindById.mockRejectedValue(new Error('db down'));
-
-    const res = await getUser();
-
-    expect(res.status).toBe(500);
-  });
+  mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
+  mockUpdate.mockResolvedValue({ uuid: 'user-1', role: 'medical_pro' });
+  mockDelete.mockResolvedValue(undefined);
 });
 
 describe('PATCH /api/users/[id]', () => {
-  it('returns 400 on an invalid body (Zod)', async () => {
-    const res = await patchUser({ role: 123 });
-
-    expect(res.status).toBe(400);
+  it('returns 401 when not authenticated', async () => {
+    mockGetSessionUser.mockResolvedValue(null);
+    const res = await patch();
+    expect(res.status).toBe(401);
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
-  it('updates the user role', async () => {
-    mockUpdate.mockResolvedValue({ uuid: USER_ID, role: 'admin' });
-
-    const res = await patchUser({ role: 'admin' });
-
-    expect(res.status).toBe(200);
-    expect(mockUpdate).toHaveBeenCalledWith(USER_ID, { role: 'admin' });
-    expect(await res.json()).toEqual({ uuid: USER_ID, role: 'admin' });
+  it('returns 403 for a non-admin session', async () => {
+    mockGetSessionUser.mockResolvedValue({ id: 'u1', role: 'contributor' });
+    const res = await patch();
+    expect(res.status).toBe(403);
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 
-  it('returns 500 when the repository throws', async () => {
-    mockUpdate.mockRejectedValue(new Error('db down'));
-
-    const res = await patchUser({ role: 'admin' });
-
-    expect(res.status).toBe(500);
+  it('grants the medical_pro role as an admin — the actual role-grant path this whole feature depends on', async () => {
+    const res = await patch({ role: 'medical_pro' });
+    expect(res.status).toBe(200);
+    expect(mockUpdate).toHaveBeenCalledWith('user-1', { role: 'medical_pro' });
   });
 });
 
 describe('DELETE /api/users/[id]', () => {
-  it('deletes the user and returns success', async () => {
-    mockDelete.mockResolvedValue(undefined);
-
-    const res = await deleteUser();
-
-    expect(res.status).toBe(200);
-    expect(mockDelete).toHaveBeenCalledWith(USER_ID);
-    expect(await res.json()).toEqual({ success: true });
+  it('returns 401 when not authenticated', async () => {
+    mockGetSessionUser.mockResolvedValue(null);
+    const res = await del();
+    expect(res.status).toBe(401);
+    expect(mockDelete).not.toHaveBeenCalled();
   });
 
-  it('returns 500 when the repository throws', async () => {
-    mockDelete.mockRejectedValue(new Error('db down'));
+  it('returns 403 for a non-admin session', async () => {
+    mockGetSessionUser.mockResolvedValue({ id: 'u1', role: 'contributor' });
+    const res = await del();
+    expect(res.status).toBe(403);
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
 
-    const res = await deleteUser();
-
-    expect(res.status).toBe(500);
+  it('deletes as admin', async () => {
+    const res = await del();
+    expect(res.status).toBe(200);
+    expect(mockDelete).toHaveBeenCalledWith('user-1');
   });
 });

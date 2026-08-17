@@ -14,6 +14,8 @@ vi.mock('@/lib/server/managerAuth', () => ({ isManagerOfChallenge: mockIsManager
 vi.mock('../../../../../../../../../../packages/database-service/repositories', () => ({
   ChallengeRepository: class { findById = mockChallengeFindById; },
   ValidationAttemptRepository: class { findById = mockAttemptFindById; },
+  CaseClaimRepository: class { findById = vi.fn(); },
+  ReferenceCaseRepository: class { findInputById = vi.fn(); },
 }));
 
 import { GET } from './route';
