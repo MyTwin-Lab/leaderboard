@@ -27,7 +27,14 @@
       "Bash(npx tsx:*)",
       "Bash(echo \"--- TSC EXIT: $? ---\")",
       "Bash(npx eslint *)",
-      "Bash(echo \"--- EXIT: $? ---\")"
+      "Bash(echo \"--- EXIT: $? ---\")",
+      "PowerShell(npx tsc --noEmit -p apps/leaderboard-client/tsconfig.json 2>&1 | Select-Object -First 30)",
+      "PowerShell(npx tsc --noEmit -p apps/leaderboard-client/tsconfig.json 2>&1 | Select-Object -First 40)",
+      "PowerShell(npx tsc --noEmit -p packages/database-service/tsconfig.json 2>&1 | Select-Object -First 30)",
+      "PowerShell(npx vitest run --root apps/leaderboard-client 2>&1 | Select-Object -Last 30)",
+      "Bash(cd *)",
+      "Bash(cd E:\\\\OneDrive\\\\Bureau\\\\PROJETS\\\\Leaderboard\\\\leaderboard\\\\apps\\\\leaderboard-client *)"
     ]
-  }
+  },
+  "spinnerTipsEnabled": true
 }
