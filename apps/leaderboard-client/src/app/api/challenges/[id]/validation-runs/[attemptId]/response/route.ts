@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   ChallengeRepository,
   ValidationAttemptRepository,
+  CaseClaimRepository,
 } from '../../../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
@@ -9,6 +10,7 @@ import { buildSafeFileHeaders } from '@/lib/server/safeFileHeaders';
 
 const challengeRepo = new ChallengeRepository();
 const attemptRepo = new ValidationAttemptRepository();
+const caseClaimRepo = new CaseClaimRepository();
 
 // GET /api/challenges/[id]/validation-runs/[attemptId]/response — admin/manager only.
 // Streams back exactly the raw response the validator saw from the target's endpoint.
@@ -34,6 +36,17 @@ export async function GET(
     if (!attempt || attempt.validation_challenge_id !== challengeId) {
       return NextResponse.json({ error: 'Run not found' }, { status: 404 });
     }
+
+    // See the sibling file/route.ts for why this falls back to the claim —
+    // since challenge-014, response_bytes lives on the claim, not the attempt.
+    if (attempt.reference_case_claim_id) {
+      const claim = await caseClaimRepo.findById(attempt.reference_case_claim_id);
+      if (!claim) return NextResponse.json({ error: 'Response not available (purged or missing)' }, { status: 410 });
+      const headers = buildSafeFileHeaders(claim.response_content_type, 'response');
+      (headers as Record<string, string>)['X-Validation-Status'] = String(claim.response_status);
+      return new NextResponse(new Uint8Array(claim.response_bytes), { status: 200, headers });
+    }
+
     if (!attempt.response_bytes) {
       return NextResponse.json({ error: 'Response not available (purged or missing)' }, { status: 410 });
     }

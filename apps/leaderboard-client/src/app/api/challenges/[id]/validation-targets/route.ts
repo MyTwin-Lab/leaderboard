@@ -7,6 +7,7 @@ import {
   ValidationAttemptRepository,
   RewardEntryRepository,
   UserRepository,
+  CaseClaimRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
@@ -18,6 +19,7 @@ const targetRepo = new ValidationTargetRepository();
 const attemptRepo = new ValidationAttemptRepository();
 const rewardRepo = new RewardEntryRepository();
 const userRepo = new UserRepository();
+const caseClaimRepo = new CaseClaimRepository();
 
 async function authorize(challengeId: string) {
   const user = await getSessionUser();
@@ -95,6 +97,20 @@ export async function GET(
       targets.map(t => attemptRepo.findByChallengeAndContribution(challengeId, t.contribution_id))
     );
 
+    // The requester's own unfinished claims per target — lets the client
+    // resume an interrupted observe/reveal/vote sequence instead of
+    // re-offering the case pick list and losing that in-progress work.
+    const myOpenClaimsByTarget = session
+      ? await Promise.all(
+          targets.map(async t => {
+            const claims = await caseClaimRepo.findByValidatorAndTarget(session.id, t.contribution_id);
+            return claims
+              .filter(c => !c.observed_at || !c.revealed_at)
+              .map(c => ({ id: c.uuid, observed: !!c.observed_at, revealed: !!c.revealed_at }));
+          })
+        )
+      : targets.map(() => []);
+
     const pool = challenge.contribution_points_reward;
 
     return NextResponse.json({
@@ -122,6 +138,7 @@ export async function GET(
           verdictCount: attempts.length,
           outcome: t.outcome,
           resolvedAt: t.resolved_at,
+          myOpenClaims: myOpenClaimsByTarget[i],
           // Only the manager sees the live split before resolution — everyone
           // else gets a blind participation count, so their own verdict is an
           // independent judgment, not a reaction to the running tally.

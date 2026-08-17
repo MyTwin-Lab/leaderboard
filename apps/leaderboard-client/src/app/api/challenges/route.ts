@@ -32,6 +32,10 @@ const createChallengeSchema = z.object({
   cp_per_validation: z.number().int().positive().optional(),
   required_validations: z.number().int().positive().optional(),
   compute_enabled: z.boolean().optional(),
+  // ML only, creation-only: whether to auto-create the API Packaging repo/step.
+  // Omitted/true = created (default, unchanged behavior); false = skipped, so
+  // the challenge only ever shows Dataset + Model.
+  api_packaging_enabled: z.boolean().optional(),
 });
 
 // GET /api/challenges - Liste tous les challenges
@@ -158,7 +162,9 @@ export async function POST(request: NextRequest) {
             { title: `${validated.title} — Dataset`,    type: 'kaggle_dataset', role: 'dataset'    },
             { title: `${validated.title} — Model`,      type: 'kaggle_model',   role: 'model'      },
             { title: `${validated.title} — Model Code`, type: 'github',         role: 'model_code' },
-            { title: `${validated.title} — API`,        type: 'github',         role: 'api'        },
+            ...(validated.api_packaging_enabled !== false
+              ? [{ title: `${validated.title} — API`, type: 'github', role: 'api' as const }]
+              : []),
           ]
         : validated.type === 'validation'
           ? []
