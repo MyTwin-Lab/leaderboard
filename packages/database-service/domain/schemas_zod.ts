@@ -126,6 +126,33 @@ export const validationTargetSchema = z.object({
   created_at: z.coerce.date(),
 });
 
+export const validationReferenceCaseSchema = z.object({
+  uuid: z.string().uuid(),
+  validation_challenge_id: z.string().uuid(),
+  author_user_id: z.string().uuid().nullable(),
+  input_bytes: z.instanceof(Buffer),
+  input_filename: z.string().min(1),
+  input_content_type: z.string().min(1),
+  expected_output_bytes: z.instanceof(Buffer),
+  expected_output_filename: z.string().nullable(),
+  expected_output_content_type: z.string().min(1),
+  created_at: z.coerce.date(),
+});
+
+export const validationCaseClaimSchema = z.object({
+  uuid: z.string().uuid(),
+  reference_case_id: z.string().uuid(),
+  contribution_id: z.string().uuid(),
+  validator_user_id: z.string().uuid(),
+  response_bytes: z.instanceof(Buffer),
+  response_content_type: z.string().min(1),
+  response_status: z.number().int(),
+  observation: z.string().nullable(),
+  observed_at: z.coerce.date().nullable(),
+  revealed_at: z.coerce.date().nullable(),
+  created_at: z.coerce.date(),
+});
+
 export const validationAttemptSchema = z.object({
   uuid: z.string().uuid(),
   validation_challenge_id: z.string().uuid(),
@@ -141,6 +168,7 @@ export const validationAttemptSchema = z.object({
   response_content_type: z.string().nullable(),
   response_status: z.number().int().nullable(),
   purged_at: z.coerce.date().nullable(),
+  reference_case_claim_id: z.string().uuid().nullable(),
 });
 
 export const computeRequestSchema = z.object({

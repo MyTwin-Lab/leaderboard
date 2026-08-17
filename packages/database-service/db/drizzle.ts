@@ -184,13 +184,83 @@ export const validation_targets = pgTable("validation_targets", {
   uniqueTargetIdx: uniqueIndex("idx_validation_targets_unique").on(table.validation_challenge_id, table.contribution_id),
 }));
 
+// --- VALIDATION_REFERENCE_CASES ---
+// Ground-truth ("known input -> expected output") cases authored by a
+// medical_pro (see challenges/challenge-014-qualified_validation/SPEC.md).
+// Exactly `required_validations` cases per validation challenge — enforced
+// at the service layer (ReferenceCaseService), not here, since a DB CHECK
+// can't see sibling-row counts. Shared across every target on the challenge:
+// the correct answer for a case doesn't depend on which contributor is being
+// tested. Claim exclusivity is per-target, tracked on validation_case_claims
+// below, not here — the same case can be claimed independently on several
+// targets.
+export const validation_reference_cases = pgTable("validation_reference_cases", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  validation_challenge_id: uuid("validation_challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  // Kept even if the author account is later deleted — the case itself
+  // stays valid ground truth regardless of who wrote it.
+  author_user_id: uuid("author_user_id").references(() => users.uuid, { onDelete: "set null" }),
+  input_bytes: bytea("input_bytes").notNull(),
+  input_filename: varchar("input_filename", { length: 255 }).notNull(),
+  input_content_type: varchar("input_content_type", { length: 255 }).notNull(),
+  // Never SELECTed outside ReferenceCaseRepository.findExpectedOutputById —
+  // that's the one enforcement point for "never leaked before reveal".
+  expected_output_bytes: bytea("expected_output_bytes").notNull(),
+  expected_output_filename: varchar("expected_output_filename", { length: 255 }),
+  expected_output_content_type: varchar("expected_output_content_type", { length: 255 }).notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  challengeIdIdx: index("idx_validation_reference_cases_challenge_id").on(table.validation_challenge_id),
+}));
+
+// --- VALIDATION_CASE_CLAIMS ---
+// "Claim and test are one gesture": a row only ever appears already carrying
+// the real endpoint response — there is no separate reservation step, so
+// there is no abandoned-claim state to clean up. The unique index is the
+// actual per-target exclusivity guarantee under concurrent claims, mirroring
+// idx_validation_attempts_unique's null-on-race contract below.
+export const validation_case_claims = pgTable("validation_case_claims", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  reference_case_id: uuid("reference_case_id").references(() => validation_reference_cases.uuid, { onDelete: "cascade" }).notNull(),
+  contribution_id: uuid("contribution_id").references(() => contributions.uuid, { onDelete: "cascade" }).notNull(),
+  validator_user_id: uuid("validator_user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  // The real endpoint response for this exact test — set atomically at claim
+  // creation, never re-fetched afterwards.
+  response_bytes: bytea("response_bytes").notNull(),
+  response_content_type: varchar("response_content_type", { length: 255 }).notNull(),
+  response_status: integer("response_status").notNull(),
+  // Free-text note on what the medical_pro saw, recorded BEFORE reveal.
+  observation: text("observation"),
+  observed_at: timestamp("observed_at"),
+  // Set once, server-side, only after observed_at is non-null — the
+  // anti-confirmation-bias enforcement point (see ReferenceCaseService).
+  revealed_at: timestamp("revealed_at"),
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  contributionIdx: index("idx_validation_case_claims_contribution_id").on(table.contribution_id),
+  validatorIdx: index("idx_validation_case_claims_validator_id").on(table.validator_user_id),
+  // The actual per-target claim-exclusivity guarantee under races — mirrors
+  // ValidationAttemptRepository.create's null-on-23505 contract.
+  uniqueClaimIdx: uniqueIndex("idx_validation_case_claims_unique").on(table.reference_case_id, table.contribution_id),
+}));
+
 // --- VALIDATION_ATTEMPTS ---
-// One row the first time a validator successfully validates a given target.
-// Also carries the exact file the validator dropped and the exact response
-// they saw, so a challenge manager can review the run later — nulled out via
-// purgeContentForChallenge once the validation challenge is archived, while
-// the verdict/description/metadata stay for the CP audit trail. The unique
-// index is the actual dedupe guarantee under races.
+// One row per final verdict cast by a medical_pro on a given target. Traces
+// back to the claim (and thus the reference case, the live response, and the
+// observation) that produced it via reference_case_claim_id.
+//
+// file_bytes/file_filename/file_content_type and response_bytes/
+// response_content_type/response_status are left null on every new row — for
+// a claim-backed verdict the evidence lives on validation_case_claims (the
+// live response) and validation_reference_cases (the input file) instead,
+// reachable via reference_case_claim_id. The columns themselves are kept
+// (not dropped) purely so validation-runs' byte-serving routes don't need a
+// destructive migration; those routes fall back to the claim/case when
+// reference_case_claim_id is set.
+//
+// purgeContentForChallenge (validationAttempt.repo.ts) still exists but is no
+// longer wired to challenge archival (see SPEC 4.4) — no retention policy has
+// been decided yet, so nothing purges these columns automatically anymore.
 export const validation_attempts = pgTable("validation_attempts", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   validation_challenge_id: uuid("validation_challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
@@ -199,7 +269,8 @@ export const validation_attempts = pgTable("validation_attempts", {
   // 'works' | 'broken' — what the validator concluded after seeing the
   // endpoint's output. Not nullable: a row only exists once a verdict is cast.
   verdict: varchar("verdict", { length: 10 }).notNull(),
-  // Required by the API layer when verdict = 'broken', optional otherwise.
+  // Justification — required on every verdict (works and broken alike) as of
+  // challenge-014, enforced at the API layer (zod), not here.
   description: text("description"),
   created_at: timestamp("created_at").defaultNow(),
   // The file the validator dropped, exactly as sent alongside their verdict.
@@ -210,8 +281,12 @@ export const validation_attempts = pgTable("validation_attempts", {
   response_bytes: bytea("response_bytes"),
   response_content_type: varchar("response_content_type", { length: 255 }),
   response_status: integer("response_status"),
-  // Set once the file/response bytes above are purged (challenge archived).
+  // Set once the file/response bytes above are purged. No longer set by any
+  // automatic path as of challenge-014 — see the table-level comment above.
   purged_at: timestamp("purged_at"),
+  // Which claim (case + live response + observation) this verdict was cast
+  // from — null only for pre-challenge-014 rows, none of which exist yet.
+  reference_case_claim_id: uuid("reference_case_claim_id").references(() => validation_case_claims.uuid, { onDelete: "set null" }),
 }, (table) => ({
   challengeIdIdx: index("idx_validation_attempts_challenge_id").on(table.validation_challenge_id),
   validatorIdx: index("idx_validation_attempts_validator_id").on(table.validator_user_id),

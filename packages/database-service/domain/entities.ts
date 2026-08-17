@@ -161,22 +161,60 @@ export interface ValidationTarget {
   created_at: Date;
 }
 
-/** Un verdict (works/broken) rendu par un validateur sur une cible donnée. */
+/**
+ * Un cas de vérité terrain (entrée connue -> sortie attendue), écrit par un
+ * medical_pro. Partagé par tout le challenge de validation — voir
+ * challenges/challenge-014-qualified_validation/SPEC.md section 4.3.
+ */
+export interface ValidationReferenceCase {
+  uuid: string;
+  validation_challenge_id: string; // FK -> challenges.uuid
+  author_user_id: string | null;   // FK -> users.uuid (le medical_pro auteur)
+  input_bytes: Buffer;
+  input_filename: string;
+  input_content_type: string;
+  expected_output_bytes: Buffer;         // ne jamais exposer hors de la révélation
+  expected_output_filename: string | null;
+  expected_output_content_type: string;
+  created_at: Date;
+}
+
+/**
+ * La réclamation d'un cas de référence par un medical_pro sur un target
+ * donné : réponse réelle capturée à la réclamation (un seul geste atomique),
+ * puis observation, puis révélation — dans cet ordre, appliqué côté service.
+ */
+export interface ValidationCaseClaim {
+  uuid: string;
+  reference_case_id: string;   // FK -> validation_reference_cases.uuid
+  contribution_id: string;     // FK -> contributions.uuid (le target testé)
+  validator_user_id: string;   // FK -> users.uuid
+  response_bytes: Buffer;
+  response_content_type: string;
+  response_status: number;
+  observation: string | null;      // noté avant la révélation
+  observed_at: Date | null;
+  revealed_at: Date | null;        // non-null seulement après observed_at
+  created_at: Date;
+}
+
+/** Un verdict (works/broken) rendu par un medical_pro sur une cible donnée. */
 export interface ValidationAttempt {
   uuid: string;
   validation_challenge_id: string; // FK -> challenges.uuid
   contribution_id: string;         // FK -> contributions.uuid (la cible validée)
   validator_user_id: string;       // FK -> users.uuid
   verdict: 'works' | 'broken';
-  description: string | null;      // requis côté API quand verdict = 'broken'
+  description: string | null;      // requis côté API quel que soit le verdict
   created_at: Date;
-  file_bytes: Buffer | null;             // le fichier déposé par le validateur
+  file_bytes: Buffer | null;             // legacy — toujours null depuis challenge-014
   file_filename: string | null;
   file_content_type: string | null;
-  response_bytes: Buffer | null;         // la réponse brute de l'endpoint validé
+  response_bytes: Buffer | null;         // legacy — toujours null depuis challenge-014
   response_content_type: string | null;
   response_status: number | null;
-  purged_at: Date | null;                // non-null une fois le contenu purgé (challenge archivée)
+  purged_at: Date | null;                // non-null une fois le contenu purgé (plus déclenché automatiquement)
+  reference_case_claim_id: string | null; // FK -> validation_case_claims.uuid
 }
 
 export type ComputeRequestStatus = 'pending' | 'rejected' | 'approved' | 'provisioning' | 'ready' | 'expired' | 'failed';

@@ -32,6 +32,8 @@ import {
   reward_entries,
   validation_targets,
   validation_attempts,
+  validation_reference_cases,
+  validation_case_claims,
   compute_requests,
 } from "./drizzle.js";
 import { parseMlRewardRules } from "../domain/mlRewardRules.js";
@@ -47,6 +49,8 @@ import type {
   ChallengeSlackConfig,
   ValidationTarget,
   ValidationAttempt,
+  ValidationReferenceCase,
+  ValidationCaseClaim,
   ComputeRequest,
   User,
   Contribution,
@@ -701,6 +705,8 @@ export function toDbChallengeSignal(
 
 type DbValidationTarget = InferSelectModel<typeof validation_targets>;
 type DbValidationAttempt = InferSelectModel<typeof validation_attempts>;
+type DbValidationReferenceCase = InferSelectModel<typeof validation_reference_cases>;
+type DbValidationCaseClaim = InferSelectModel<typeof validation_case_claims>;
 
 export function toDomainValidationTarget(row: DbValidationTarget): ValidationTarget {
   return {
@@ -724,6 +730,68 @@ export function toDbValidationTarget(
   };
 }
 
+export function toDomainValidationReferenceCase(row: Partial<DbValidationReferenceCase> & Pick<DbValidationReferenceCase, "uuid" | "validation_challenge_id">): ValidationReferenceCase {
+  return {
+    uuid: row.uuid,
+    validation_challenge_id: row.validation_challenge_id,
+    author_user_id: row.author_user_id ?? null,
+    // Undefined (rather than null/throwing) means the column wasn't
+    // selected — summary reads never load either blob column.
+    input_bytes: row.input_bytes ?? (null as unknown as Buffer),
+    input_filename: row.input_filename ?? '',
+    input_content_type: row.input_content_type ?? '',
+    expected_output_bytes: row.expected_output_bytes ?? (null as unknown as Buffer),
+    expected_output_filename: row.expected_output_filename ?? null,
+    expected_output_content_type: row.expected_output_content_type ?? '',
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbValidationReferenceCase(
+  entity: Omit<ValidationReferenceCase, "uuid" | "created_at">
+): typeof validation_reference_cases.$inferInsert {
+  return {
+    validation_challenge_id: entity.validation_challenge_id,
+    author_user_id: entity.author_user_id ?? null,
+    input_bytes: entity.input_bytes,
+    input_filename: entity.input_filename,
+    input_content_type: entity.input_content_type,
+    expected_output_bytes: entity.expected_output_bytes,
+    expected_output_filename: entity.expected_output_filename ?? null,
+    expected_output_content_type: entity.expected_output_content_type,
+  };
+}
+
+export function toDomainValidationCaseClaim(row: Partial<DbValidationCaseClaim> & Pick<DbValidationCaseClaim, "uuid" | "reference_case_id" | "contribution_id" | "validator_user_id">): ValidationCaseClaim {
+  return {
+    uuid: row.uuid,
+    reference_case_id: row.reference_case_id,
+    contribution_id: row.contribution_id,
+    validator_user_id: row.validator_user_id,
+    // Undefined means response_bytes wasn't selected (summary reads).
+    response_bytes: row.response_bytes ?? (null as unknown as Buffer),
+    response_content_type: row.response_content_type ?? '',
+    response_status: row.response_status ?? 0,
+    observation: row.observation ?? null,
+    observed_at: row.observed_at ? new Date(row.observed_at) : null,
+    revealed_at: row.revealed_at ? new Date(row.revealed_at) : null,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbValidationCaseClaim(
+  entity: Omit<ValidationCaseClaim, "uuid" | "created_at" | "observation" | "observed_at" | "revealed_at">
+): typeof validation_case_claims.$inferInsert {
+  return {
+    reference_case_id: entity.reference_case_id,
+    contribution_id: entity.contribution_id,
+    validator_user_id: entity.validator_user_id,
+    response_bytes: entity.response_bytes,
+    response_content_type: entity.response_content_type,
+    response_status: entity.response_status,
+  };
+}
+
 export function toDomainValidationAttempt(row: Partial<DbValidationAttempt> & Pick<DbValidationAttempt, "uuid" | "validation_challenge_id" | "contribution_id" | "validator_user_id" | "verdict">): ValidationAttempt {
   return {
     uuid: row.uuid,
@@ -743,6 +811,7 @@ export function toDomainValidationAttempt(row: Partial<DbValidationAttempt> & Pi
     response_content_type: row.response_content_type ?? null,
     response_status: row.response_status ?? null,
     purged_at: row.purged_at ? new Date(row.purged_at) : null,
+    reference_case_claim_id: row.reference_case_claim_id ?? null,
   };
 }
 
@@ -761,6 +830,7 @@ export function toDbValidationAttempt(
     response_bytes: entity.response_bytes ?? null,
     response_content_type: entity.response_content_type ?? null,
     response_status: entity.response_status ?? null,
+    reference_case_claim_id: entity.reference_case_claim_id ?? null,
   };
 }
 
