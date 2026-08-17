@@ -14,6 +14,7 @@ import type { TeamMember } from '@/lib/types';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
 import { MLChallengeFlow } from '@/components/challenges/MLChallengeFlow';
 import { ValidationChallengeFlow } from '@/components/challenges/ValidationChallengeFlow';
+import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseAuthorPanel';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
 import { ContributorTaskBoard, type BoardContribution } from '@/components/contributor/ContributorTaskBoard';
@@ -462,7 +463,12 @@ export default function ChallengeDetailPage() {
       <ContributorTabs tabs={isValidation ? [
         {
           label: 'Validate',
-          panel: <ValidationChallengeFlow challengeId={challengeId} />,
+          panel: (
+            <div className="space-y-4">
+              <ReferenceCaseAuthorPanel challengeId={challengeId} />
+              <ValidationChallengeFlow challengeId={challengeId} />
+            </div>
+          ),
         },
       ] : isML ? [
         {

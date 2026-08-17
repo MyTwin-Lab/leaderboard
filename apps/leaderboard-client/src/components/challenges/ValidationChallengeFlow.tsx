@@ -1,8 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { UploadCloud, CheckCircle2, XCircle, Loader2, AlertCircle, Coins, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, AlertCircle, Coins, ShieldCheck, FileSearch } from 'lucide-react';
 import { ValidationOutputViewer } from './ValidationOutputViewer';
+
+interface OpenClaim {
+  id: string;
+  observed: boolean;
+  revealed: boolean;
+}
 
 interface TargetItem {
   id: string;
@@ -14,6 +20,7 @@ interface TargetItem {
   verdictCount: number;
   outcome: 'pending' | 'works' | 'broken';
   resolvedAt: string | null;
+  myOpenClaims: OpenClaim[];
 }
 
 interface PoolState {
@@ -24,18 +31,33 @@ interface PoolState {
   requiredValidations: number;
 }
 
+/**
+ * Since challenge-014, only `medical_pro` users may vote on a validation
+ * challenge — testing happens exclusively by claiming a pre-authored
+ * ground-truth reference case (see ReferenceCaseAuthorPanel for the writing
+ * side), not by dropping an arbitrary file. See
+ * challenges/challenge-014-qualified_validation/SPEC.md section 4.3.
+ */
 export function ValidationChallengeFlow({ challengeId }: { challengeId: string }) {
   const [targets, setTargets] = useState<TargetItem[]>([]);
   const [pool, setPool] = useState<PoolState | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeContributionId, setActiveContributionId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-targets`);
-      if (res.ok) {
-        const data = await res.json();
+      const [meRes, targetsRes] = await Promise.all([
+        fetch('/api/contributors/me'),
+        fetch(`/api/challenges/${challengeId}/validation-targets`),
+      ]);
+      if (meRes.ok) {
+        const me = await meRes.json();
+        setRole(me.user?.role ?? null);
+      }
+      if (targetsRes.ok) {
+        const data = await targetsRes.json();
         setTargets(data.targets ?? []);
         setPool(data.pool ?? null);
         setCurrentUserId(data.currentUserId ?? null);
@@ -49,6 +71,17 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
 
   if (loading) {
     return <div className="h-48 animate-pulse rounded-xl border border-white/[0.06] bg-white/5" />;
+  }
+
+  if (role !== 'medical_pro') {
+    return (
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center">
+        <ShieldCheck className="h-7 w-7 text-white/15" />
+        <p className="max-w-sm text-xs text-white/25">
+          Seuls les professionnels de santé qualifiés (medical_pro) peuvent voter sur ce challenge de validation.
+        </p>
+      </div>
+    );
   }
 
   if (targets.length === 0) {
@@ -116,6 +149,14 @@ function StatusBadge({ target, requiredValidations }: { target: TargetItem; requ
   );
 }
 
+interface ClaimableCase {
+  id: string;
+  inputFilename: string;
+  inputContentType: string;
+}
+
+type CardState = 'picking' | 'testing' | 'observing' | 'revealing' | 'revealed';
+
 function TargetCard({
   target,
   requiredValidations,
@@ -133,61 +174,135 @@ function TargetCard({
   onToggle: () => void;
   onResolved: () => void;
 }) {
-  const [dragging, setDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [state, setState] = useState<CardState>('picking');
+  const [loadingCases, setLoadingCases] = useState(false);
+  const [claimableCases, setClaimableCases] = useState<ClaimableCase[]>([]);
+  const [claimId, setClaimId] = useState<string | null>(null);
+  const [liveOutput, setLiveOutput] = useState<{ blob: Blob; contentType: string; status: number } | null>(null);
+  const [expectedOutput, setExpectedOutput] = useState<{ blob: Blob; contentType: string } | null>(null);
+  const [observation, setObservation] = useState('');
   const [error, setError] = useState('');
-  const [lastFile, setLastFile] = useState<File | null>(null);
-  const [output, setOutput] = useState<{ blob: Blob; contentType: string; status: number } | null>(null);
+  const [busy, setBusy] = useState(false);
   const [verdict, setVerdict] = useState<'works' | 'broken' | null>(null);
   const [description, setDescription] = useState('');
-  const [submittingVerdict, setSubmittingVerdict] = useState(false);
   const [verdictResult, setVerdictResult] = useState<{ resolved: boolean; outcome: string; cpAwarded: number } | null>(null);
 
-  const runValidation = async (file: File) => {
-    setUploading(true);
+  const loadClaimableCases = useCallback(async () => {
+    setLoadingCases(true);
     setError('');
-    setLastFile(file);
-    setOutput(null);
-    setVerdict(null);
-    setVerdictResult(null);
     try {
-      const form = new FormData();
-      form.append('contribution_id', target.contributionId);
-      form.append('file', file);
-      const res = await fetch(`/api/challenges/${challengeId}/validate`, { method: 'POST', body: form });
+      const res = await fetch(`/api/challenges/${challengeId}/validation-targets/${target.id}/claimable-cases`);
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setError(d.error || 'Validation failed');
+        setError(d.error || 'Failed to load reference cases');
+        return;
+      }
+      const data = await res.json();
+      setClaimableCases(data.claimableCases ?? []);
+      const openClaim = (data.myOpenClaims ?? [])[0];
+      if (openClaim) {
+        setClaimId(openClaim.id);
+        // Resuming — the live response itself isn't re-fetchable here, so we
+        // jump straight to whichever step is still missing rather than
+        // re-showing a response we no longer hold client-side.
+        setState(openClaim.observed ? 'revealed' : 'observing');
+      } else {
+        setState('picking');
+      }
+    } finally {
+      setLoadingCases(false);
+    }
+  }, [challengeId, target.id]);
+
+  useEffect(() => {
+    if (!isOwnTarget && expanded) loadClaimableCases();
+  }, [expanded, isOwnTarget, loadClaimableCases]);
+
+  const claimCase = async (referenceCaseId: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/challenges/${challengeId}/validation-targets/${target.id}/claim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference_case_id: referenceCaseId }),
+      });
+      if (res.status === 409) {
+        setError('Ce cas vient d’être réclamé par quelqu’un d’autre — choisissez-en un autre.');
+        await loadClaimableCases();
+        return;
+      }
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error || 'Failed to claim reference case');
         return;
       }
       const blob = await res.blob();
       const status = Number(res.headers.get('x-validation-status')) || res.status;
-      setOutput({ blob, contentType: res.headers.get('content-type') ?? 'text/plain', status });
+      const newClaimId = res.headers.get('x-claim-id');
+      setLiveOutput({ blob, contentType: res.headers.get('content-type') ?? 'text/plain', status });
+      setClaimId(newClaimId);
+      setState('observing');
     } catch {
       setError('Network error');
     } finally {
-      setUploading(false);
+      setBusy(false);
+    }
+  };
+
+  const submitObservation = async () => {
+    if (!claimId || !observation.trim()) return;
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/challenges/${challengeId}/validation-case-claims/${claimId}/observation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ observation: observation.trim() }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error || 'Failed to record observation');
+        return;
+      }
+      // The reveal fires immediately once the observation is locked in — the
+      // ordering (observation before reveal) is already guaranteed server-side,
+      // no extra click needed here.
+      setState('revealing');
+      const revealRes = await fetch(`/api/challenges/${challengeId}/validation-case-claims/${claimId}/reveal`, {
+        method: 'POST',
+      });
+      if (!revealRes.ok) {
+        const d = await revealRes.json().catch(() => ({}));
+        setError(d.error || 'Failed to reveal expected output');
+        setState('observing');
+        return;
+      }
+      const blob = await revealRes.blob();
+      setExpectedOutput({ blob, contentType: revealRes.headers.get('content-type') ?? 'text/plain' });
+      setState('revealed');
+    } catch {
+      setError('Network error');
+    } finally {
+      setBusy(false);
     }
   };
 
   const submitVerdict = async () => {
-    if (!verdict || !lastFile || !output) return;
-    if (verdict === 'broken' && !description.trim()) {
-      setError('A description is required when marking a submission as Défectueux');
-      return;
-    }
-    setSubmittingVerdict(true);
+    if (!verdict || !claimId || !description.trim()) return;
+    setBusy(true);
     setError('');
     try {
-      const form = new FormData();
-      form.append('contribution_id', target.contributionId);
-      form.append('verdict', verdict);
-      if (description.trim()) form.append('description', description.trim());
-      form.append('file', lastFile);
-      form.append('response', output.blob, 'response');
-      form.append('response_content_type', output.contentType);
-      form.append('response_status', String(output.status));
-      const res = await fetch(`/api/challenges/${challengeId}/validation-verdicts`, { method: 'POST', body: form });
+      const res = await fetch(`/api/challenges/${challengeId}/validation-verdicts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contribution_id: target.contributionId,
+          verdict,
+          description: description.trim(),
+          reference_case_claim_id: claimId,
+        }),
+      });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(d.error || 'Failed to submit verdict');
@@ -198,15 +313,8 @@ function TargetCard({
     } catch {
       setError('Network error');
     } finally {
-      setSubmittingVerdict(false);
+      setBusy(false);
     }
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) runValidation(file);
   };
 
   const canVote = !target.alreadyValidatedByMe && !verdictResult;
@@ -230,34 +338,8 @@ function TargetCard({
         </div>
       </button>
 
-      {!isOwnTarget && expanded && (
+      {!isOwnTarget && expanded && canVote && (
         <div className="space-y-3 border-t border-white/[0.06] p-4 animate-fade-up">
-          <div
-            onDragOver={e => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={handleDrop}
-            className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
-              dragging ? 'border-brandCP/60 bg-brandCP/[0.06]' : 'border-white/15 bg-white/[0.01]'
-            }`}
-          >
-            {uploading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-brandCP" />
-            ) : (
-              <UploadCloud className="h-6 w-6 text-white/25" />
-            )}
-            <p className="text-xs text-white/40">
-              {uploading ? 'Calling the API…' : 'Drop a file here to test this submission'}
-            </p>
-            <label className="cursor-pointer text-xs font-medium text-brandCP underline">
-              or browse
-              <input
-                type="file"
-                className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) runValidation(f); }}
-              />
-            </label>
-          </div>
-
           {error && (
             <div className="flex items-center gap-1.5 text-xs text-red-400">
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
@@ -265,9 +347,77 @@ function TargetCard({
             </div>
           )}
 
-          {output && <ValidationOutputViewer blob={output.blob} contentType={output.contentType} />}
+          {state === 'picking' && (
+            <div className="space-y-1.5">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">
+                <FileSearch className="h-3.5 w-3.5" /> Cas de référence à réclamer
+              </p>
+              {loadingCases ? (
+                <div className="flex items-center gap-2 py-2 text-xs text-white/35">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Chargement…
+                </div>
+              ) : claimableCases.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs text-white/30">
+                  Aucun cas de référence disponible pour l’instant.
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {claimableCases.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => claimCase(c.id)}
+                      disabled={busy}
+                      className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/60 transition-colors hover:border-brandCP/40 disabled:opacity-40"
+                    >
+                      <span className="truncate">{c.inputFilename}</span>
+                      <span className="shrink-0 text-brandCP/70">Réclamer &amp; tester</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-          {output && canVote && !verdictResult && (
+          {(state === 'observing' || state === 'revealing' || state === 'revealed') && liveOutput && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Réponse réelle</p>
+              <ValidationOutputViewer blob={liveOutput.blob} contentType={liveOutput.contentType} />
+            </div>
+          )}
+
+          {state === 'observing' && (
+            <div className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+              <textarea
+                value={observation}
+                onChange={e => setObservation(e.target.value)}
+                placeholder="Votre observation sur cette réponse (requis avant de voir la sortie attendue)"
+                className="w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/70"
+                rows={2}
+              />
+              <button
+                onClick={submitObservation}
+                disabled={busy || !observation.trim()}
+                className="w-full rounded-lg bg-brandCP/20 px-3 py-2 text-xs font-medium text-brandCP transition-colors hover:bg-brandCP/30 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {busy ? 'Envoi…' : 'Enregistrer l’observation'}
+              </button>
+            </div>
+          )}
+
+          {state === 'revealing' && (
+            <div className="flex items-center gap-2 py-2 text-xs text-white/35">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Révélation de la sortie attendue…
+            </div>
+          )}
+
+          {state === 'revealed' && expectedOutput && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Sortie attendue</p>
+              <ValidationOutputViewer blob={expectedOutput.blob} contentType={expectedOutput.contentType} />
+            </div>
+          )}
+
+          {state === 'revealed' && !verdictResult && (
             <div className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
               <div className="flex gap-2">
                 <button
@@ -292,34 +442,34 @@ function TargetCard({
                   <textarea
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    placeholder={verdict === 'broken' ? 'What went wrong? (required)' : 'Notes (optional)'}
+                    placeholder="Justification (requise)"
                     className="w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/70"
                     rows={2}
                   />
                   <button
                     onClick={submitVerdict}
-                    disabled={submittingVerdict || (verdict === 'broken' && !description.trim())}
+                    disabled={busy || !description.trim()}
                     className="w-full rounded-lg bg-brandCP/20 px-3 py-2 text-xs font-medium text-brandCP transition-colors hover:bg-brandCP/30 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {submittingVerdict ? 'Envoi…' : 'Envoyer le verdict'}
+                    {busy ? 'Envoi…' : 'Envoyer le verdict'}
                   </button>
                 </>
               )}
             </div>
           )}
+        </div>
+      )}
 
-          {verdictResult && (
-            <div className="space-y-1 text-xs">
-              {verdictResult.cpAwarded > 0 && (
-                <p className="font-semibold text-brandCP">+{verdictResult.cpAwarded} CP earned</p>
-              )}
-              <p className="text-white/40">
-                {verdictResult.resolved
-                  ? `Résolu : ${verdictResult.outcome === 'works' ? 'Fonctionne' : 'Défectueux'}`
-                  : 'Verdict enregistré — en attente des autres validateurs'}
-              </p>
-            </div>
+      {!isOwnTarget && expanded && verdictResult && (
+        <div className="space-y-1 border-t border-white/[0.06] p-4 text-xs">
+          {verdictResult.cpAwarded > 0 && (
+            <p className="font-semibold text-brandCP">+{verdictResult.cpAwarded} CP earned</p>
           )}
+          <p className="text-white/40">
+            {verdictResult.resolved
+              ? `Résolu : ${verdictResult.outcome === 'works' ? 'Fonctionne' : 'Défectueux'}`
+              : 'Verdict enregistré — en attente des autres validateurs'}
+          </p>
         </div>
       )}
     </div>

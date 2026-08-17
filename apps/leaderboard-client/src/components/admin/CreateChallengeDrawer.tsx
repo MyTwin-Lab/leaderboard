@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
-  CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck, Cpu,
+  CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck, Cpu, Package,
 } from 'lucide-react';
 import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
@@ -86,6 +86,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [githubRepo, setGithubRepo] = useState('');
   const [rewardRules, setRewardRules] = useState<MlRewardRules>(DEFAULT_ML_REWARD_RULES);
   const [computeEnabled, setComputeEnabled] = useState(false);
+  const [apiPackagingEnabled, setApiPackagingEnabled] = useState(true);
   const [sourceChallengeId, setSourceChallengeId] = useState('');
   const [cpPerValidation, setCpPerValidation] = useState(5);
   const [requiredValidations, setRequiredValidations] = useState(3);
@@ -163,6 +164,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     setCpPerValidation(5);
     setRequiredValidations(3);
     setComputeEnabled(false);
+    setApiPackagingEnabled(true);
   };
 
   const handleSubmit = async () => {
@@ -217,6 +219,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                   source_challenge_id: type === 'validation' ? sourceChallengeId : undefined,
                   cp_per_validation: type === 'validation' ? cpPerValidation : undefined,
                   required_validations: type === 'validation' ? requiredValidations : undefined,
+                  api_packaging_enabled: type === 'ml' ? apiPackagingEnabled : undefined,
                 }
           ),
         }
@@ -431,6 +434,18 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                   Autorise les contributeurs à demander une instance Scaleway sur ce challenge
                 </p>
                 <Toggle enabled={computeEnabled} onChange={setComputeEnabled} />
+              </div>
+            </Field>
+          )}
+
+          {/* ── ML: API Packaging toggle (creation only — decides whether the repo/step exists) ── */}
+          {type === 'ml' && !isEdit && (
+            <Field icon={<Package className="h-3.5 w-3.5" />} label="Étape API Packaging">
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <p className="text-xs" style={{ color: fgAt(0.4) }}>
+                  Ajoute une 3e étape API Packaging en plus de Dataset et Model
+                </p>
+                <Toggle enabled={apiPackagingEnabled} onChange={setApiPackagingEnabled} />
               </div>
             </Field>
           )}

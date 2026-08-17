@@ -206,9 +206,13 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
   const stepRepos = assignReposToSteps(data.repos);
   const { currentUserId } = data;
 
+  // API Packaging can be disabled for the whole challenge at creation — no
+  // repo ever gets a role of 'api' then, so the step just never appears.
+  const activeStepConfigs = STEP_CONFIG.filter(cfg => cfg.key !== 'api' || stepRepos.api.length > 0);
+
   // Once the metric hits the challenge's configured threshold, dataset/model
   // submissions close — only API packaging keeps taking new work.
-  const steps = STEP_CONFIG.map((cfg, i) => ({
+  const steps = activeStepConfigs.map(cfg => ({
     ...cfg,
     repos: stepRepos[cfg.key],
     done: isStepComplete(stepRepos[cfg.key], currentUserId),
@@ -224,7 +228,10 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
       )}
 
       {/* ── Stepper header ── */}
-      <div className="flex items-center">
+      {/* px so the first/last circle isn't flush against the edge — their
+          label (e.g. "API Packaging") is centered under the circle and can
+          overflow past it, so it needs room instead of getting clipped. */}
+      <div className="flex items-center px-6">
         {steps.map((step, i) => {
           const Icon = step.icon;
           const isActive = activeStep === i;

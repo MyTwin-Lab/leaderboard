@@ -5,7 +5,7 @@ import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/c
 import { TaskList } from './TaskList';
 import { TaskForm } from './TaskForm';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
-import { Plus, Code2, BrainCircuit, ShieldCheck, Cpu } from 'lucide-react';
+import { Plus, Code2, BrainCircuit, ShieldCheck, Cpu, Package } from 'lucide-react';
 import { Toggle } from '@/components/ui/Toggle';
 import { MlRewardRulesEditor } from './MlRewardRulesEditor';
 import { ValidationTargetsEditor } from './ValidationTargetsEditor';
@@ -37,6 +37,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     challenge?.reward_rules ?? DEFAULT_ML_REWARD_RULES
   );
   const [computeEnabled, setComputeEnabled] = useState((challenge as any)?.compute_enabled ?? false);
+  const [apiPackagingEnabled, setApiPackagingEnabled] = useState(true);
 
   const [sourceChallengeId, setSourceChallengeId] = useState((challenge as any)?.source_challenge_id ?? '');
   const [cpPerValidation, setCpPerValidation] = useState((challenge as any)?.cp_per_validation ?? 5);
@@ -153,6 +154,9 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       ...(formData.type === 'validation' && !challenge?.uuid
         ? { source_challenge_id: sourceChallengeId, cp_per_validation: cpPerValidation, required_validations: requiredValidations }
         : {}),
+      ...(formData.type === 'ml' && !challenge?.uuid
+        ? { api_packaging_enabled: apiPackagingEnabled }
+        : {}),
     });
   };
 
@@ -261,6 +265,19 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
               </div>
             </div>
             <Toggle enabled={computeEnabled} onChange={setComputeEnabled} />
+          </div>
+        )}
+
+        {formData.type === 'ml' && !challenge?.uuid && (
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5">
+            <div className="flex items-center gap-3 min-w-0">
+              <Package className="h-4 w-4 text-white/50" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white">Étape API Packaging</p>
+                <p className="text-xs text-white/35 mt-0.5">Ajoute une 3e étape API Packaging en plus de Dataset et Model</p>
+              </div>
+            </div>
+            <Toggle enabled={apiPackagingEnabled} onChange={setApiPackagingEnabled} />
           </div>
         )}
 
