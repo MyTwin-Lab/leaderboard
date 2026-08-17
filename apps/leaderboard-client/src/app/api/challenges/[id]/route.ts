@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ChallengeRepository, ValidationAttemptRepository } from '../../../../../../../packages/database-service/repositories';
+import { ChallengeRepository } from '../../../../../../../packages/database-service/repositories';
 import { mlRewardRulesSchema } from '../../../../../../../packages/database-service/domain/mlRewardRules';
 import { verifyRequestToken } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { z } from 'zod';
 
 const challengeRepo = new ChallengeRepository();
-const attemptRepo = new ValidationAttemptRepository();
 
 const updateChallengeSchema = z.object({
   title: z.string().min(1).optional(),
@@ -77,16 +76,13 @@ export async function PUT(
 
     const challenge = await challengeRepo.update(id, updateData);
 
-    // Purge the file/response blobs of every validation run once the
-    // validation challenge itself archives — verdict/description/metadata
-    // stay for the CP audit trail, only the binary content is dropped.
-    if (before?.type === 'validation' && before.status !== 'archived' && validated.status === 'archived') {
-      try {
-        await attemptRepo.purgeContentForChallenge(id);
-      } catch (err) {
-        console.error('Error purging validation attempt content on archive:', err);
-      }
-    }
+    // As of challenge-014, archiving a validation challenge no longer purges
+    // its evidence automatically — no retention policy has been decided yet
+    // (see challenges/challenge-014-qualified_validation/SPEC.md section 4.4),
+    // so evidence is kept by default rather than risk losing it before a
+    // policy exists. ValidationAttemptRepository.purgeContentForChallenge
+    // still exists, available for an explicit future call once that policy
+    // is set — it's just no longer wired to this transition.
 
     // Closing an ML challenge cuts any still-active GPU compute instance
     // immediately, regardless of how much of its 24h window is left — same
@@ -131,7 +127,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await verifyRequestToken(request);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { id } = await params;
+    const isAdmin = session.role === 'admin';
+    const isManager = !isAdmin && await isManagerOfChallenge(session.userId, id);
+    if (!isAdmin && !isManager) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Cut any active GPU compute instance *before* the challenge row is
     // deleted — compute_requests.challenge_id cascades on delete, so doing
