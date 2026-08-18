@@ -57,7 +57,7 @@ describe('POST /api/auth/refresh', () => {
   });
 
   it('rotates the tokens when the account still exists', async () => {
-    mockFindById.mockResolvedValue({ uuid: 'user-1', full_name: 'Ada Lovelace' });
+    mockFindById.mockResolvedValue({ uuid: 'user-1', email: 'a@b.com', role: 'contributor', full_name: 'Ada Lovelace' });
 
     const res = await postRefresh();
 
@@ -65,5 +65,26 @@ describe('POST /api/auth/refresh', () => {
     expect(mockFindById).toHaveBeenCalledWith('user-1');
     expect(mockInvalidateAllUserTokens).toHaveBeenCalledWith('user-1');
     expect(mockStoreRefreshToken).toHaveBeenCalledWith('user-1', 'new-refresh-token');
+  });
+
+  // Regression test: the old code re-signed the OLD refresh token's payload
+  // (PAYLOAD.role = 'contributor' below) instead of the freshly re-read DB
+  // role — a role change (e.g. a promotion to admin) would silently never
+  // take effect for as long as the session kept renewing itself via refresh
+  // instead of a fresh login. See app/api/auth/refresh/route.ts.
+  it('re-signs the new tokens with the current DB role, not the stale refresh token role', async () => {
+    mockFindById.mockResolvedValue({ uuid: 'user-1', email: 'a@b.com', role: 'admin', full_name: 'Ada Lovelace' });
+
+    await postRefresh();
+
+    expect(mockGenerateAccessToken).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', role: 'admin' })
+    );
+    expect(mockGenerateAccessToken).not.toHaveBeenCalledWith(
+      expect.objectContaining({ role: PAYLOAD.role })
+    );
+    expect(mockGenerateRefreshToken).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', role: 'admin' })
+    );
   });
 });

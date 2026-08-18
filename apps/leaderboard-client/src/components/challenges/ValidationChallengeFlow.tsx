@@ -109,7 +109,7 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
         {targets.map(t => (
           <TargetCard
             key={t.id}

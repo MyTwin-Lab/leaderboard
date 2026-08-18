@@ -44,9 +44,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Générer de nouveaux tokens
-    const newAccessToken = await generateAccessToken(payload);
-    const newRefreshToken = await generateRefreshToken(payload);
+    // Générer de nouveaux tokens à partir de l'utilisateur relu en base, pas
+    // du payload de l'ancien refresh token — sinon un changement de rôle
+    // (ex: promotion admin) ne serait jamais répercuté tant que la session
+    // se prolonge par rotation de refresh token au lieu d'un nouveau login.
+    const freshPayload = { userId: user.uuid, email: user.email ?? '', role: user.role };
+    const newAccessToken = await generateAccessToken(freshPayload);
+    const newRefreshToken = await generateRefreshToken(freshPayload);
     
     // Invalider l'ancien refresh token et stocker le nouveau (rotation)
     await invalidateAllUserTokens(payload.userId);

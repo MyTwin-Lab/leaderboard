@@ -3,13 +3,19 @@ import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 import { getBaseUrl } from '@/lib/url';
 
-type UserRole = 'admin' | 'contributor';
+type UserRole = 'admin' | 'contributor' | 'viewer' | 'medical_pro';
 type ProtectedPage = { prefix: string; roles: readonly UserRole[] };
 
+// Every authenticated role can view their own profile and the challenges
+// list/detail pages — role-specific gating (e.g. medical_pro-only voting on a
+// validation challenge) happens inside those pages/routes, not here. Only
+// /admin is restricted at this layer. Missing 'medical_pro' (added by
+// challenge-014) here was the bug: it 403'd a medical_pro on pages every
+// other authenticated role could already reach.
 const protectedPages: ProtectedPage[] = [
   { prefix: '/admin', roles: ['admin'] },
-  { prefix: '/contributors/me', roles: ['admin', 'contributor'] },
-  { prefix: '/challenges/', roles: ['admin', 'contributor'] },
+  { prefix: '/contributors/me', roles: ['admin', 'contributor', 'viewer', 'medical_pro'] },
+  { prefix: '/challenges/', roles: ['admin', 'contributor', 'viewer', 'medical_pro'] },
 ];
 
 // Routes API qui nécessitent une authentification (sauf auth)
@@ -246,9 +252,21 @@ export async function proxy(request: NextRequest) {
         (pathname.startsWith('/api/repos') && ['POST', 'PUT'].includes(method)) ||
         pathname.includes('/documents');
 
+      // Cycle de vote de la validation qualifiée (challenge-014) : claim/observation/
+      // reveal/verdict/authoring d'un cas de référence — réservé aux medical_pro,
+      // enforced dans chaque handler (InsufficientRoleError). Sans cette exception,
+      // le garde-fou "admin only" ci-dessous bloquerait toute la fonctionnalité pour
+      // un vrai medical_pro non-admin.
+      const isMedicalProValidationRoute =
+        payload.role === 'medical_pro' &&
+        (pathname.includes('/validation-verdicts') ||
+          pathname.includes('/validation-targets') ||
+          pathname.includes('/validation-case-claims') ||
+          pathname.includes('/validation-reference-cases'));
+
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isManagerAccessibleRoute && !isContributorSelfRoute) {
+        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isMedicalProValidationRoute) {
           return respond(NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }
