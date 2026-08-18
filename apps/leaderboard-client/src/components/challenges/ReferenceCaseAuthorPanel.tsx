@@ -1,12 +1,51 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FilePlus2, Loader2, AlertCircle, FileText } from 'lucide-react';
+import { FilePlus2, Loader2, AlertCircle, FileText, Upload, X } from 'lucide-react';
 
 interface CaseSummary {
   id: string;
   inputFilename: string;
   createdAt: string;
+}
+
+/** Native file input dressed up as a dashed dropzone-style button, matching the rest of the redesign. */
+function FilePicker({
+  inputRef, file, onChange, placeholder,
+}: {
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  file: File | null;
+  onChange: (file: File | null) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        type="file"
+        onChange={e => onChange(e.target.files?.[0] ?? null)}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      />
+      <div
+        className={`flex items-center gap-2.5 rounded-[14px] border border-dashed px-3.5 py-3 text-sm transition-colors ${
+          file ? 'border-brandCP/35 bg-brandCP/[0.05] text-white/80' : 'border-white/12 bg-white/[0.02] text-white/35'
+        }`}
+      >
+        <Upload className={`h-4 w-4 shrink-0 ${file ? 'text-brandCP' : 'text-white/25'}`} />
+        <span className="min-w-0 flex-1 truncate">{file ? file.name : placeholder}</span>
+        {file && (
+          <button
+            type="button"
+            onClick={() => { onChange(null); if (inputRef.current) inputRef.current.value = ''; }}
+            className="relative z-10 shrink-0 rounded-full p-1 text-white/30 transition-colors hover:bg-white/10 hover:text-white/70"
+            aria-label="Remove file"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -26,6 +65,7 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
   const [expectedText, setExpectedText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [formOpen, setFormOpen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const expectedFileRef = useRef<HTMLInputElement>(null);
@@ -64,15 +104,15 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputFile) {
-      setError('Un fichier d’entrée est requis');
+      setError('An input file is required');
       return;
     }
     if (expectedMode === 'file' && !expectedFile) {
-      setError('Un fichier de sortie attendue est requis');
+      setError('An expected-output file is required');
       return;
     }
     if (expectedMode === 'text' && !expectedText.trim()) {
-      setError('La sortie attendue ne peut pas être vide');
+      setError('The expected output cannot be empty');
       return;
     }
 
@@ -102,6 +142,7 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
       setExpectedText('');
       if (inputRef.current) inputRef.current.value = '';
       if (expectedFileRef.current) expectedFileRef.current.value = '';
+      setFormOpen(false);
       await fetchAll();
     } catch {
       setError('Network error');
@@ -111,49 +152,65 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
   };
 
   return (
-    <div className="space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">
-          <FileText className="h-3.5 w-3.5" /> Cas de référence à vérité terrain
-        </p>
-        <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-white/40">
-          {myCases.length}/{requiredValidations} écrits
-        </span>
+    <div className="space-y-3 rounded-[20px] border border-dashed border-brandCP/30 bg-brandCP/[0.03] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-0.5">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-white">
+            <FileText className="h-3.5 w-3.5 text-brandCP/70" /> Author a reference case
+          </p>
+          <p className="text-xs text-white/40">
+            Ground-truth input + expected output. Validators claim your cases blind —
+            {' '}{myCases.length} authored{quotaReached ? '' : `, ${requiredValidations - myCases.length} pending`}.
+          </p>
+        </div>
+        {!quotaReached && (
+          <button
+            onClick={() => setFormOpen(o => !o)}
+            style={{ color: '#000' }}
+            className="shrink-0 rounded-full bg-white px-4 py-2 text-xs font-semibold transition-colors hover:bg-white/90"
+          >
+            {formOpen ? 'Cancel' : 'New case'}
+          </button>
+        )}
       </div>
 
       {quotaReached ? (
         <p className="text-xs text-white/35">
-          Vos {requiredValidations} cas de référence sont écrits — la validation peut commencer une fois que le total du challenge atteint ce nombre.
+          Your {requiredValidations} reference cases are written — validation can start once the challenge total reaches this number.
         </p>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-2">
-          <div>
-            <label className="mb-1 block text-[11px] text-white/40">Entrée connue</label>
-            <input
-              ref={inputRef}
-              type="file"
-              onChange={e => setInputFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-xs text-white/60 file:mr-2 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs file:text-white/70"
+      ) : formOpen && (
+        <form onSubmit={handleSubmit} className="space-y-4 border-t border-white/[0.07] pt-4">
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">Known input</span>
+            <FilePicker
+              inputRef={inputRef}
+              file={inputFile}
+              onChange={f => setInputFile(f)}
+              placeholder="Choose an input file"
             />
           </div>
 
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="block text-[11px] text-white/40">Sortie attendue</label>
-              <div className="flex gap-1 text-[10px]">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">Expected output</span>
+              <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.02] p-0.5">
                 <button
                   type="button"
                   onClick={() => setExpectedMode('text')}
-                  className={`rounded px-1.5 py-0.5 ${expectedMode === 'text' ? 'bg-brandCP/20 text-brandCP' : 'text-white/30'}`}
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
+                    expectedMode === 'text' ? 'bg-brandCP/15 text-brandCP' : 'text-white/35 hover:text-white/60'
+                  }`}
                 >
-                  Texte
+                  Text
                 </button>
                 <button
                   type="button"
                   onClick={() => setExpectedMode('file')}
-                  className={`rounded px-1.5 py-0.5 ${expectedMode === 'file' ? 'bg-brandCP/20 text-brandCP' : 'text-white/30'}`}
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
+                    expectedMode === 'file' ? 'bg-brandCP/15 text-brandCP' : 'text-white/35 hover:text-white/60'
+                  }`}
                 >
-                  Fichier
+                  File
                 </button>
               </div>
             </div>
@@ -161,16 +218,16 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
               <textarea
                 value={expectedText}
                 onChange={e => setExpectedText(e.target.value)}
-                placeholder="La réponse correcte pour cette entrée"
-                rows={2}
-                className="w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/70"
+                placeholder="The correct answer for this input"
+                rows={3}
+                className="w-full resize-none rounded-[14px] border border-white/10 bg-white/[0.03] px-3.5 py-3 text-sm text-white placeholder:text-white/20 transition-colors focus:border-brandCP/40 focus:outline-none"
               />
             ) : (
-              <input
-                ref={expectedFileRef}
-                type="file"
-                onChange={e => setExpectedFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-xs text-white/60 file:mr-2 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs file:text-white/70"
+              <FilePicker
+                inputRef={expectedFileRef}
+                file={expectedFile}
+                onChange={f => setExpectedFile(f)}
+                placeholder="Choose an expected-output file"
               />
             )}
           </div>
@@ -185,10 +242,13 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
           <button
             type="submit"
             disabled={submitting}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-brandCP/20 px-3 py-2 text-xs font-medium text-brandCP transition-colors hover:bg-brandCP/30 disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ color: '#fff' }}
+            className="flex w-full items-center justify-center gap-1.5 rounded-full bg-brandCP px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-brandCP/90 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FilePlus2 className="h-3.5 w-3.5" />}
-            Écrire ce cas de référence
+            {submitting
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: '#fff' }} />
+              : <FilePlus2 className="h-3.5 w-3.5" style={{ color: '#fff' }} />}
+            Write this reference case
           </button>
         </form>
       )}

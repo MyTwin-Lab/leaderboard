@@ -16,13 +16,13 @@ interface ComputeRequestData {
 }
 
 const STATUS_LABEL: Record<ComputeRequestData['status'], string> = {
-  pending: 'En attente de validation',
-  approved: 'Approuvée — création en cours',
-  provisioning: 'Préparation de votre environnement...',
-  ready: 'Disponible',
-  rejected: 'Refusée',
-  expired: 'Expirée',
-  failed: 'Échec de la création, contactez un admin',
+  pending: 'Pending approval',
+  approved: 'Approved — creating instance',
+  provisioning: 'Setting up your environment…',
+  ready: 'Ready',
+  rejected: 'Rejected',
+  expired: 'Expired',
+  failed: 'Creation failed, contact an admin',
 };
 
 const STATUS_VARIANT: Record<ComputeRequestData['status'], 'success' | 'warning' | 'danger' | 'info' | 'muted'> = {
@@ -109,10 +109,10 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
         load();
       } else {
         const d = await res.json();
-        setError(d.error === 'already_requested' ? 'Vous avez déjà fait une demande sur ce challenge.' : (d.error ?? 'Échec de la demande'));
+        setError(d.error === 'already_requested' ? 'You already made a request on this challenge.' : (d.error ?? 'Request failed'));
       }
     } catch {
-      setError('Erreur réseau');
+      setError('Network error');
     } finally {
       setRequesting(false);
     }
@@ -125,7 +125,7 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
       const res = await fetch(`/api/challenges/${challengeId}/compute-request/reveal-token`, { method: 'POST' });
       const d = await res.json();
       if (!res.ok) {
-        setError(d.error ?? 'Impossible de récupérer le jeton d\'accès');
+        setError(d.error ?? 'Unable to retrieve the access token');
         return;
       }
       const url = d.jupyter_url ? `${d.jupyter_url}?token=${encodeURIComponent(d.token)}` : '';
@@ -146,50 +146,50 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
   // explanation of why the feature isn't available yet, rather than nothing.
   if (!scalewayConnected) {
     return (
-      <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: 'color-mix(in srgb, var(--foreground) 35%, transparent)' }}>
+      <div className="flex items-center gap-2.5 rounded-[16px] border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: 'color-mix(in srgb, var(--foreground) 35%, transparent)' }}>
         <Cpu className="h-3.5 w-3.5 shrink-0" />
-        La puissance de calcul GPU n&apos;est pas encore disponible — le service n&apos;a pas été connecté par un administrateur.
+        GPU compute power isn&apos;t available yet — the service hasn&apos;t been connected by an administrator.
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
-      <div className="flex items-center gap-2">
+    <div className="rounded-[20px] border border-brandCP/[0.18] bg-white/[0.02] p-4 space-y-3 sm:p-5">
+      <div className="flex flex-wrap items-center gap-2">
         <Cpu className="h-4 w-4 text-brandCP/80" />
-        <h3 className="text-sm font-semibold text-white">Puissance de calcul GPU</h3>
+        <h3 className="text-sm font-semibold text-white">GPU compute power</h3>
         {request && <Badge label={STATUS_LABEL[request.status]} variant={STATUS_VARIANT[request.status]} />}
       </div>
 
       {!request && !confirming && (
         <button
           onClick={() => setConfirming(true)}
-          className="rounded-lg bg-brandCP/15 px-4 py-2 text-sm font-semibold text-brandCP transition-all hover:bg-brandCP/25"
+          className="rounded-xl bg-brandCP/15 px-4 py-2.5 text-sm font-semibold text-brandCP transition-all hover:bg-brandCP/25"
         >
-          Demander de la puissance de calcul
+          Request compute power
         </button>
       )}
 
       {!request && confirming && (
-        <div className="space-y-2.5">
-          <p className="text-xs text-white/50">
-            Une seule demande possible sur ce challenge. Une fois validée par le manager, l&apos;instance
-            est disponible 24h avant coupure automatique — sans exception ni prolongation.
+        <div className="space-y-3">
+          <p className="text-xs leading-relaxed text-white/50">
+            Only one request is possible on this challenge. Once approved by the manager, the instance
+            is available for 24h before automatic shutdown — no exception or extension.
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={handleRequest}
               disabled={requesting}
-              className="rounded-lg bg-brandCP/15 px-4 py-2 text-sm font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:opacity-40"
+              className="rounded-xl bg-brandCP/15 px-4 py-2.5 text-sm font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:opacity-40"
             >
-              {requesting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirmer la demande'}
+              {requesting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirm request'}
             </button>
             <button
               onClick={() => setConfirming(false)}
               disabled={requesting}
-              className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/50 disabled:opacity-40"
+              className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-2.5 text-sm font-medium text-white/50 disabled:opacity-40"
             >
-              Annuler
+              Cancel
             </button>
           </div>
         </div>
@@ -198,14 +198,14 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
       {request?.status === 'ready' && (
         <div className="space-y-2">
           {request.expires_at && (
-            <p className="text-xs text-white/40">Expire dans {formatRemaining(request.expires_at)}</p>
+            <p className="text-xs text-white/40">Expires in {formatRemaining(request.expires_at)}</p>
           )}
           <button
             onClick={handleOpen}
             disabled={opening}
-            className="flex items-center gap-1.5 rounded-lg bg-brandCP/15 px-4 py-2 text-sm font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-xl bg-brandCP/15 px-4 py-2.5 text-sm font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:opacity-40"
           >
-            {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Ouvrir mon environnement <ExternalLink className="h-3.5 w-3.5" /></>}
+            {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Open my environment <ExternalLink className="h-3.5 w-3.5" /></>}
           </button>
         </div>
       )}

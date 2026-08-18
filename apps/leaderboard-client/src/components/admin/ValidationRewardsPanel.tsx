@@ -43,7 +43,7 @@ export function ValidationRewardsPanel({ challengeId, open }: { challengeId: str
   if (!data) return null;
 
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+    <div className="space-y-2 rounded-[18px] border border-brandCP/[0.22] bg-white/[0.02] p-4">
       <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest" style={{ color: fgAt(0.3) }}>
         <Coins className="h-3.5 w-3.5" /> CP pool
       </p>

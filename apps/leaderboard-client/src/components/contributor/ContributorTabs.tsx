@@ -7,7 +7,7 @@ interface TabItem {
   panel: React.ReactNode;
 }
 
-export function ContributorTabs({ tabs, initialTab }: { tabs: TabItem[]; initialTab?: string }) {
+export function ContributorTabs({ tabs, initialTab, extra }: { tabs: TabItem[]; initialTab?: string; extra?: React.ReactNode }) {
   const [active, setActive] = useState(() => {
     if (!initialTab) return 0;
     const idx = tabs.findIndex(t => t.label.toLowerCase() === initialTab.toLowerCase());
@@ -24,7 +24,7 @@ export function ContributorTabs({ tabs, initialTab }: { tabs: TabItem[]; initial
             <button
               key={i}
               onClick={() => setActive(i)}
-              className={`group relative shrink-0 px-4 py-2.5 font-medium transition-all duration-200 focus-visible:outline-none ${
+              className={`group relative shrink-0 px-[18px] py-3 font-medium transition-all duration-200 focus-visible:outline-none ${
                 isActive
                   ? "text-[15px] text-white"
                   : "text-[13px] text-white/40 hover:text-white/70"
@@ -42,6 +42,9 @@ export function ContributorTabs({ tabs, initialTab }: { tabs: TabItem[]; initial
           );
         })}
       </div>
+
+      {/* Content shared across every tab — meetings, in the redesign */}
+      {extra && <div className="mb-6">{extra}</div>}
 
       {/* Active panel — fade in on tab change */}
       <div key={active} className="animate-fade-up">

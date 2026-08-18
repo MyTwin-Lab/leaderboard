@@ -124,27 +124,27 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
       ) : (
         <>
           {targets.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
+            <p className="rounded-[14px] border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
               No submission exposed yet. Add one below.
             </p>
           ) : (
             <div className="space-y-1.5">
               {targets.map(t => (
-                <div key={t.id} className="group flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                <div key={t.id} className="group flex items-center gap-2.5 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-3 py-2">
                   <div className="min-w-0 flex-1">
                     <span className="block truncate text-sm" style={{ color: fgAt(0.75) }}>{t.submitterName}</span>
                     <span className="block text-[10px]" style={{ color: fgAt(0.35) }}>
                       {t.outcome === 'pending'
                         ? (t.worksCount !== undefined
-                            ? `${t.verdictCount} votes (${t.worksCount} Fonctionne, ${t.brokenCount} Défectueux)`
+                            ? `${t.verdictCount} votes (${t.worksCount} Works, ${t.brokenCount} Broken)`
                             : `${t.verdictCount} votes`)
-                        : `${t.outcome === 'works' ? '✅ Fonctionne' : '❌ Défectueux'} (${t.verdictCount} votes)`}
+                        : `${t.outcome === 'works' ? '✅ Works' : '❌ Broken'} (${t.verdictCount} votes)`}
                     </span>
                   </div>
                   <button
                     onClick={() => handleRemove(t.id)}
                     disabled={deletingId === t.id || t.verdictCount > 0}
-                    title={t.verdictCount > 0 ? 'Ce target a déjà reçu des votes — impossible de le retirer' : undefined}
+                    title={t.verdictCount > 0 ? 'This target already received votes — it cannot be removed' : undefined}
                     className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white/25"
                     aria-label="Remove submission"
                   >
@@ -156,7 +156,7 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
           )}
 
           {eligible.length > 0 && (
-            <div className="space-y-1.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+            <div className="space-y-1.5 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-3">
               <p className="text-[10px] font-medium uppercase tracking-widest" style={{ color: fgAt(0.25) }}>
                 Eligible — pick a submission and enter its endpoint
               </p>

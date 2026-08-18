@@ -28,13 +28,13 @@ function VerdictBadge({ verdict }: { verdict: 'works' | 'broken' }) {
   if (verdict === 'works') {
     return (
       <span className="flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-400">
-        <CheckCircle2 className="h-3 w-3" /> Fonctionne
+        <CheckCircle2 className="h-3 w-3" /> Works
       </span>
     );
   }
   return (
     <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-red-400">
-      <XCircle className="h-3 w-3" /> Défectueux
+      <XCircle className="h-3 w-3" /> Broken
     </span>
   );
 }
@@ -66,7 +66,7 @@ function RunFileMedia({ loading, error, blob, run }: { loading: boolean; error: 
   }, [objectUrl]);
 
   if (loading) return <Loader2 className="h-4 w-4 animate-spin" style={{ color: fgAt(0.3) }} />;
-  if (error || !blob || !objectUrl) return <p className="text-xs" style={{ color: fgAt(0.35) }}>Fichier indisponible</p>;
+  if (error || !blob || !objectUrl) return <p className="text-xs" style={{ color: fgAt(0.35) }}>File unavailable</p>;
 
   const isImage = (run.fileContentType ?? '').startsWith('image/');
 
@@ -80,7 +80,7 @@ function RunFileMedia({ loading, error, blob, run }: { loading: boolean; error: 
       className="flex w-fit items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs hover:border-white/20"
       style={{ color: fgAt(0.6) }}
     >
-      <Download className="h-3.5 w-3.5" /> {run.fileFilename ?? 'Télécharger le fichier'}
+      <Download className="h-3.5 w-3.5" /> {run.fileFilename ?? 'Download file'}
     </a>
   );
 }
@@ -99,7 +99,7 @@ function RunResponse({ challengeId, run }: { challengeId: string; run: RunItem }
     return () => { cancelled = true; };
   }, [challengeId, run.id]);
 
-  if (error) return <p className="text-xs" style={{ color: fgAt(0.35) }}>Réponse indisponible</p>;
+  if (error) return <p className="text-xs" style={{ color: fgAt(0.35) }}>Response unavailable</p>;
   if (!blob) return <Loader2 className="h-4 w-4 animate-spin" style={{ color: fgAt(0.3) }} />;
   return <ValidationOutputViewer blob={blob} contentType={run.responseContentType ?? 'text/plain'} />;
 }
@@ -109,7 +109,7 @@ function RunRow({ challengeId, run }: { challengeId: string; run: RunItem }) {
   const showDescription = !!run.description;
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-[16px] border border-white/[0.06] bg-white/[0.02] overflow-hidden">
       <button
         onClick={() => setExpanded(e => !e)}
         disabled={run.purged}
@@ -131,7 +131,7 @@ function RunRow({ challengeId, run }: { challengeId: string; run: RunItem }) {
 
       {run.purged ? (
         <p className="border-t border-white/[0.06] px-3 py-2 text-[10px]" style={{ color: fgAt(0.3) }}>
-          Contenu purgé (challenge archivée)
+          Content purged (archived challenge)
         </p>
       ) : expanded && (
         <div className="space-y-3 border-t border-white/[0.06] p-3">
@@ -141,11 +141,11 @@ function RunRow({ challengeId, run }: { challengeId: string; run: RunItem }) {
             </p>
           )}
           <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: fgAt(0.25) }}>Fichier envoyé</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: fgAt(0.25) }}>File sent</p>
             <RunFile challengeId={challengeId} run={run} />
           </div>
           <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: fgAt(0.25) }}>Réponse de l'endpoint</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: fgAt(0.25) }}>Endpoint response</p>
             <RunResponse challengeId={challengeId} run={run} />
           </div>
         </div>
@@ -181,8 +181,8 @@ export function ValidationRunsPanel({ challengeId, open }: { challengeId: string
 
   if (runs.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
-        Aucun run pour le moment.
+      <p className="rounded-[16px] border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
+        No run yet.
       </p>
     );
   }

@@ -428,10 +428,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
           {/* ── ML: GPU compute toggle ── */}
           {type === 'ml' && (
-            <Field icon={<Cpu className="h-3.5 w-3.5" />} label="Puissance de calcul GPU">
+            <Field icon={<Cpu className="h-3.5 w-3.5" />} label="GPU compute power">
               <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
                 <p className="text-xs" style={{ color: fgAt(0.4) }}>
-                  Autorise les contributeurs à demander une instance Scaleway sur ce challenge
+                  Lets contributors request a Scaleway instance on this challenge
                 </p>
                 <Toggle enabled={computeEnabled} onChange={setComputeEnabled} />
               </div>
@@ -440,10 +440,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
           {/* ── ML: API Packaging toggle (creation only — decides whether the repo/step exists) ── */}
           {type === 'ml' && !isEdit && (
-            <Field icon={<Package className="h-3.5 w-3.5" />} label="Étape API Packaging">
+            <Field icon={<Package className="h-3.5 w-3.5" />} label="API Packaging step">
               <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
                 <p className="text-xs" style={{ color: fgAt(0.4) }}>
-                  Ajoute une 3e étape API Packaging en plus de Dataset et Model
+                  Adds a 3rd API Packaging step on top of Dataset and Model
                 </p>
                 <Toggle enabled={apiPackagingEnabled} onChange={setApiPackagingEnabled} />
               </div>

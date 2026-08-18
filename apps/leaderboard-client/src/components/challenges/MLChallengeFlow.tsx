@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { ComputeRequestPanel } from './ComputeRequestPanel';
 import { MlMetricTimeline } from './MlMetricTimeline';
+import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ interface MLRepo {
 interface MLWorkspaceData {
   currentUserId: string | null;
   repos: MLRepo[];
+  users?: Record<string, { fullName: string; avatarUrl?: string }>;
 }
 
 interface StepRepos {
@@ -292,6 +294,7 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
           step={steps[activeStep]}
           challengeId={challengeId}
           currentUserId={currentUserId}
+          users={data.users}
           onSaved={fetchData}
           onNext={activeStep < steps.length - 1 ? () => setActiveStep(activeStep + 1) : undefined}
         />
@@ -310,12 +313,14 @@ function StepPanel({
   step,
   challengeId,
   currentUserId,
+  users,
   onSaved,
   onNext,
 }: {
   step: typeof STEP_CONFIG[number] & { repos: MLRepo[]; done: boolean; locked: boolean };
   challengeId: string;
   currentUserId: string | null;
+  users?: Record<string, { fullName: string; avatarUrl?: string }>;
   onSaved: () => void;
   onNext?: () => void;
 }) {
@@ -323,7 +328,7 @@ function StepPanel({
 
   if (step.repos.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center">
+      <div className="flex flex-col items-center gap-2 rounded-[20px] border border-white/[0.06] bg-white/[0.02] py-12 text-center">
         <Icon className="h-7 w-7 text-white/15" />
         <p className="text-xs text-white/25">No {step.label.toLowerCase()} workspace configured for this challenge</p>
       </div>
@@ -331,7 +336,7 @@ function StepPanel({
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 space-y-5">
+    <div className="rounded-[20px] border border-white/[0.06] bg-white/[0.02] p-5 space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -365,6 +370,7 @@ function StepPanel({
           repo={repo}
           challengeId={challengeId}
           currentUserId={currentUserId}
+          users={users}
           showCommunityPicker={step.key === 'dataset'}
           locked={step.locked}
           onSaved={onSaved}
@@ -393,6 +399,7 @@ function RepoSubmission({
   repo,
   challengeId,
   currentUserId,
+  users,
   showCommunityPicker = false,
   locked = false,
   onSaved,
@@ -400,6 +407,7 @@ function RepoSubmission({
   repo: MLRepo;
   challengeId: string;
   currentUserId: string | null;
+  users?: Record<string, { fullName: string; avatarUrl?: string }>;
   showCommunityPicker?: boolean;
   locked?: boolean;
   onSaved: () => void;
@@ -549,43 +557,51 @@ function RepoSubmission({
             Pick from community ({community.length})
           </div>
 
-          <div className="mt-2 space-y-1 animate-slide-in">
+          <div className="mt-2 grid grid-cols-1 gap-2.5 animate-slide-in sm:grid-cols-2">
             {community.map(({ userId, url }, i) => {
               const selected = myDatasetUrls.includes(url);
+              const displayName = users?.[userId]?.fullName ?? userId;
               return (
                 <button
                   key={i}
                   onClick={() => handleToggleCommunity(url)}
                   disabled={saving || locked}
                   aria-pressed={selected}
-                  className={`group flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                  className={`group flex min-w-0 flex-col gap-2.5 rounded-[16px] border p-3.5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                     selected
-                      ? 'border-brandCP/40 bg-brandCP/[0.08]'
+                      ? 'border-brandCP/35 bg-brandCP/[0.06]'
                       : 'border-white/[0.06] bg-white/[0.02] hover:border-brandCP/20 hover:bg-brandCP/[0.04]'
                   }`}
                 >
-                  <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                    selected ? 'bg-brandCP/20 text-brandCP' : 'bg-white/10 text-white/50'
-                  }`}>
-                    {userId.slice(0, 1).toUpperCase()}
+                  <div className="flex items-center gap-2.5">
+                    <InitialsAvatar
+                      name={displayName}
+                      size={28}
+                      avatarUrl={users?.[userId]?.avatarUrl}
+                      className={`rounded-[10px] shrink-0 ${selected ? 'bg-brandCP/20 text-brandCP' : 'bg-white/10 text-white/50'}`}
+                    />
+                    <span className={`min-w-0 flex-1 truncate text-xs font-medium transition-colors ${
+                      selected ? 'text-white/85' : 'text-white/55 group-hover:text-white/75'
+                    }`}>
+                      by {displayName}
+                    </span>
                   </div>
-                  <span className={`flex-1 truncate text-xs transition-colors ${
-                    selected ? 'text-white/80' : 'text-white/50 group-hover:text-white/70'
-                  }`}>
-                    {url}
-                  </span>
-                  {saving ? (
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brandCP/50" />
-                  ) : selected ? (
-                    <span className="flex items-center gap-1 shrink-0 rounded-md bg-brandCP/15 px-2 py-0.5 text-[10px] font-semibold text-brandCP">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Selected
-                    </span>
-                  ) : (
-                    <span className="shrink-0 rounded-md bg-brandCP/10 px-2 py-0.5 text-[10px] font-semibold text-brandCP/60 opacity-0 transition-opacity group-hover:opacity-100">
-                      Use
-                    </span>
-                  )}
+                  <span className="truncate font-mono text-[10px] text-white/35">{url}</span>
+                  <div className="flex items-center justify-between gap-2 border-t border-white/[0.06] pt-2">
+                    <span className="text-[10px] text-white/25">community pick</span>
+                    {saving ? (
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brandCP/50" />
+                    ) : selected ? (
+                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-brandCP/15 px-2.5 py-0.5 text-[10px] font-bold text-brandCP">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Kept
+                      </span>
+                    ) : (
+                      <span className="shrink-0 rounded-full bg-white/[0.06] px-2.5 py-0.5 text-[10px] font-semibold text-white/50 transition-colors group-hover:bg-brandCP/10 group-hover:text-brandCP">
+                        Use
+                      </span>
+                    )}
+                  </div>
                 </button>
               );
             })}

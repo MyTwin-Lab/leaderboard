@@ -92,13 +92,13 @@ export function ReferenceCasesOverviewPanel({ challengeId, open }: { challengeId
       </p>
 
       {cases.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
+        <p className="rounded-[14px] border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
           No reference case written yet — medical_pro users can write one from the challenge page.
         </p>
       ) : (
         <div className="space-y-1.5">
           {cases.map(c => (
-            <div key={c.id} className="group flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+            <div key={c.id} className="group flex items-center gap-2.5 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-3 py-2">
               <span className="min-w-0 flex-1 truncate text-sm" style={{ color: fgAt(0.75) }}>{c.inputFilename}</span>
               <button
                 onClick={() => handleRemove(c.id)}

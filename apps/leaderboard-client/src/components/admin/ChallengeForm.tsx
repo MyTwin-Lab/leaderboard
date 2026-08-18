@@ -260,8 +260,8 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
             <div className="flex items-center gap-3 min-w-0">
               <Cpu className="h-4 w-4 text-white/50" />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white">Puissance de calcul GPU</p>
-                <p className="text-xs text-white/35 mt-0.5">Autorise les contributeurs à demander une instance Scaleway sur ce challenge</p>
+                <p className="text-sm font-medium text-white">GPU compute power</p>
+                <p className="text-xs text-white/35 mt-0.5">Lets contributors request a Scaleway instance on this challenge</p>
               </div>
             </div>
             <Toggle enabled={computeEnabled} onChange={setComputeEnabled} />
@@ -273,8 +273,8 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
             <div className="flex items-center gap-3 min-w-0">
               <Package className="h-4 w-4 text-white/50" />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white">Étape API Packaging</p>
-                <p className="text-xs text-white/35 mt-0.5">Ajoute une 3e étape API Packaging en plus de Dataset et Model</p>
+                <p className="text-sm font-medium text-white">API Packaging step</p>
+                <p className="text-xs text-white/35 mt-0.5">Adds a 3rd API Packaging step on top of Dataset and Model</p>
               </div>
             </div>
             <Toggle enabled={apiPackagingEnabled} onChange={setApiPackagingEnabled} />

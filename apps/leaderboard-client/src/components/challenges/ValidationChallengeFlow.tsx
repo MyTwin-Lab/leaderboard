@@ -78,7 +78,7 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
       <div className="flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center">
         <ShieldCheck className="h-7 w-7 text-white/15" />
         <p className="max-w-sm text-xs text-white/25">
-          Seuls les professionnels de santé qualifiés (medical_pro) peuvent voter sur ce challenge de validation.
+          Only qualified health professionals (medical_pro) can vote on this validation challenge.
         </p>
       </div>
     );
@@ -96,16 +96,20 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
   return (
     <div className="space-y-4 animate-fade-up">
       {pool && pool.pool > 0 && (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-2">
-          <div className="flex items-baseline justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-brandCP/[0.22] bg-white/[0.02] px-5 py-4">
+          <div className="space-y-0.5">
             <div className="flex items-baseline gap-1.5">
-              <Coins className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-brandCP/60" />
-              <span className="text-sm font-semibold text-brandCP">{pool.remaining.toLocaleString()} CP</span>
-              <span className="text-xs text-white/35">
-                left — {pool.cpPerValidation} CP to each validator on the winning side, once {pool.requiredValidations} verdicts are in
-              </span>
+              <span className="text-2xl font-semibold tracking-tight text-white">{pool.remaining.toLocaleString()}</span>
+              <span className="text-xs font-bold text-brandCP">CP left</span>
             </div>
+            <span className="text-xs text-white/35">
+              {pool.cpPerValidation} CP to each validator on the winning side, once {pool.requiredValidations} verdicts are in.
+            </span>
           </div>
+          <span className="flex items-center gap-2 rounded-full bg-brandCP/10 px-3.5 py-2 text-xs font-semibold text-brandCP">
+            <Coins className="h-3.5 w-3.5" />
+            medical_pro required to vote
+          </span>
         </div>
       )}
 
@@ -131,21 +135,43 @@ function StatusBadge({ target, requiredValidations }: { target: TargetItem; requ
   if (target.outcome === 'works') {
     return (
       <span className="flex items-center gap-1 rounded-full bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-400">
-        <CheckCircle2 className="h-3 w-3" /> Fonctionne ({target.verdictCount}/{requiredValidations})
+        <CheckCircle2 className="h-3 w-3" /> Works ({target.verdictCount}/{requiredValidations})
       </span>
     );
   }
   if (target.outcome === 'broken') {
     return (
       <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-medium text-red-400">
-        <XCircle className="h-3 w-3" /> Défectueux ({target.verdictCount}/{requiredValidations})
+        <XCircle className="h-3 w-3" /> Broken ({target.verdictCount}/{requiredValidations})
       </span>
     );
   }
   return (
     <span className="rounded-full bg-white/8 px-2.5 py-0.5 text-xs font-medium text-white/40">
-      {target.verdictCount}/{requiredValidations} validations reçues
+      {target.verdictCount}/{requiredValidations} verdicts received
     </span>
+  );
+}
+
+/** One marker + connecting line in the claim → observe → reveal vertical timeline. */
+function StepRow({ index, done, active, last, title, children }: {
+  index: number; done: boolean; active: boolean; last?: boolean; title: string; children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex gap-3">
+      <div className="flex shrink-0 flex-col items-center gap-1">
+        <span className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+          done ? 'bg-green-500/15 text-green-400' : active ? 'bg-brandCP/15 text-brandCP' : 'bg-white/[0.05] text-white/40'
+        }`}>
+          {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
+        </span>
+        {!last && <div className="w-[2px] flex-1 min-h-[18px] rounded-full bg-white/[0.08]" />}
+      </div>
+      <div className="min-w-0 flex-1 space-y-2 pb-4">
+        <span className={`text-xs font-semibold ${done ? 'text-green-400' : active ? 'text-white' : 'text-white/60'}`}>{title}</span>
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -178,6 +204,7 @@ function TargetCard({
   const [loadingCases, setLoadingCases] = useState(false);
   const [claimableCases, setClaimableCases] = useState<ClaimableCase[]>([]);
   const [claimId, setClaimId] = useState<string | null>(null);
+  const [claimedFilename, setClaimedFilename] = useState<string | null>(null);
   const [liveOutput, setLiveOutput] = useState<{ blob: Blob; contentType: string; status: number } | null>(null);
   const [expectedOutput, setExpectedOutput] = useState<{ blob: Blob; contentType: string } | null>(null);
   const [observation, setObservation] = useState('');
@@ -221,6 +248,7 @@ function TargetCard({
   const claimCase = async (referenceCaseId: string) => {
     setBusy(true);
     setError('');
+    setClaimedFilename(claimableCases.find(c => c.id === referenceCaseId)?.inputFilename ?? null);
     try {
       const res = await fetch(`/api/challenges/${challengeId}/validation-targets/${target.id}/claim`, {
         method: 'POST',
@@ -228,7 +256,7 @@ function TargetCard({
         body: JSON.stringify({ reference_case_id: referenceCaseId }),
       });
       if (res.status === 409) {
-        setError('Ce cas vient d’être réclamé par quelqu’un d’autre — choisissez-en un autre.');
+        setError('This case was just claimed by someone else — pick another one.');
         await loadClaimableCases();
         return;
       }
@@ -320,7 +348,7 @@ function TargetCard({
   const canVote = !target.alreadyValidatedByMe && !verdictResult;
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-[20px] border border-white/[0.06] bg-white/[0.02] overflow-hidden">
       <button
         onClick={isOwnTarget ? undefined : onToggle}
         disabled={isOwnTarget}
@@ -329,136 +357,157 @@ function TargetCard({
         <span className="text-sm font-medium text-white/80">{target.submitterName}</span>
         <div className="flex items-center gap-2">
           {isOwnTarget && (
-            <span className="text-xs text-white/30">Votre soumission</span>
+            <span className="text-xs text-white/30">Your submission</span>
           )}
           {!isOwnTarget && target.alreadyValidatedByMe && (
-            <span className="text-xs text-white/30">Vous avez déjà voté</span>
+            <span className="text-xs text-white/30">You already voted</span>
           )}
           <StatusBadge target={target} requiredValidations={requiredValidations} />
         </div>
       </button>
 
-      {!isOwnTarget && expanded && canVote && (
-        <div className="space-y-3 border-t border-white/[0.06] p-4 animate-fade-up">
+      {!isOwnTarget && expanded && canVote && (() => {
+        // Which steps are already behind us — drives the check/number marker
+        // and the connecting line in the vertical timeline below.
+        const doneUpTo = state === 'picking' ? -1 : (state === 'observing' || state === 'revealing') ? 1 : 2;
+        return (
+        <div className="space-y-0.5 border-t border-white/[0.06] p-4 animate-fade-up">
           {error && (
-            <div className="flex items-center gap-1.5 text-xs text-red-400">
+            <div className="mb-2 flex items-center gap-1.5 text-xs text-red-400">
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
               {error}
             </div>
           )}
 
-          {state === 'picking' && (
-            <div className="space-y-1.5">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">
-                <FileSearch className="h-3.5 w-3.5" /> Cas de référence à réclamer
-              </p>
-              {loadingCases ? (
-                <div className="flex items-center gap-2 py-2 text-xs text-white/35">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Chargement…
+          {/* Step 1 — reference case */}
+          <StepRow
+            index={0}
+            done={doneUpTo >= 0}
+            active={state === 'picking'}
+            title={doneUpTo >= 0
+              ? `Reference case claimed${claimedFilename ? ` · ${claimedFilename}` : ''}`
+              : 'Reference case to claim'}
+          >
+            {state === 'picking' && (
+              loadingCases ? (
+                <div className="flex items-center gap-2 py-1 text-xs text-white/35">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
                 </div>
               ) : claimableCases.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs text-white/30">
-                  Aucun cas de référence disponible pour l’instant.
+                <p className="rounded-[12px] border border-dashed border-white/[0.06] px-3 py-2.5 text-xs text-white/30">
+                  No reference case available right now.
                 </p>
               ) : (
-                <div className="space-y-1.5">
-                  {claimableCases.map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => claimCase(c.id)}
-                      disabled={busy}
-                      className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/60 transition-colors hover:border-brandCP/40 disabled:opacity-40"
-                    >
-                      <span className="truncate">{c.inputFilename}</span>
-                      <span className="shrink-0 text-brandCP/70">Réclamer &amp; tester</span>
-                    </button>
-                  ))}
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/25">
+                  <FileSearch className="h-3.5 w-3.5" /> Reference case to claim
                 </div>
-              )}
-            </div>
-          )}
-
-          {(state === 'observing' || state === 'revealing' || state === 'revealed') && liveOutput && (
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Réponse réelle</p>
-              <ValidationOutputViewer blob={liveOutput.blob} contentType={liveOutput.contentType} />
-            </div>
-          )}
-
-          {state === 'observing' && (
-            <div className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-              <textarea
-                value={observation}
-                onChange={e => setObservation(e.target.value)}
-                placeholder="Votre observation sur cette réponse (requis avant de voir la sortie attendue)"
-                className="w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/70"
-                rows={2}
-              />
-              <button
-                onClick={submitObservation}
-                disabled={busy || !observation.trim()}
-                className="w-full rounded-lg bg-brandCP/20 px-3 py-2 text-xs font-medium text-brandCP transition-colors hover:bg-brandCP/30 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {busy ? 'Envoi…' : 'Enregistrer l’observation'}
-              </button>
-            </div>
-          )}
-
-          {state === 'revealing' && (
-            <div className="flex items-center gap-2 py-2 text-xs text-white/35">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Révélation de la sortie attendue…
-            </div>
-          )}
-
-          {state === 'revealed' && expectedOutput && (
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Sortie attendue</p>
-              <ValidationOutputViewer blob={expectedOutput.blob} contentType={expectedOutput.contentType} />
-            </div>
-          )}
-
-          {state === 'revealed' && !verdictResult && (
-            <div className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setVerdict('works')}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                    verdict === 'works' ? 'border-green-500/40 bg-green-500/15 text-green-400' : 'border-white/10 text-white/50 hover:border-white/20'
-                  }`}
-                >
-                  ✅ Fonctionne
-                </button>
-                <button
-                  onClick={() => setVerdict('broken')}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                    verdict === 'broken' ? 'border-red-500/40 bg-red-500/15 text-red-400' : 'border-white/10 text-white/50 hover:border-white/20'
-                  }`}
-                >
-                  ❌ Défectueux
-                </button>
+              )
+            )}
+            {state === 'picking' && !loadingCases && claimableCases.length > 0 && (
+              <div className="space-y-1.5">
+                {claimableCases.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => claimCase(c.id)}
+                    disabled={busy}
+                    className="flex w-full items-center justify-between rounded-[12px] border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/60 transition-colors hover:border-brandCP/40 disabled:opacity-40"
+                  >
+                    <span className="truncate">{c.inputFilename}</span>
+                    <span className="shrink-0 text-brandCP/70">Claim &amp; test</span>
+                  </button>
+                ))}
               </div>
-              {verdict && (
-                <>
+            )}
+          </StepRow>
+
+          {/* Step 2 — actual response */}
+          {liveOutput && (
+            <StepRow index={1} done={doneUpTo >= 1} active={false} title="Actual response">
+              <ValidationOutputViewer blob={liveOutput.blob} contentType={liveOutput.contentType} />
+            </StepRow>
+          )}
+
+          {/* Step 3 — observation, required before the reveal */}
+          {liveOutput && (
+            <StepRow index={2} done={doneUpTo >= 2} active={state === 'observing'} title="Your observation">
+              {state === 'observing' && (
+                <div className="space-y-2 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-3">
                   <textarea
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    placeholder="Justification (requise)"
-                    className="w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/70"
+                    value={observation}
+                    onChange={e => setObservation(e.target.value)}
+                    placeholder="Your observation on this response (required before seeing the expected output)"
+                    className="w-full rounded-[10px] border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/70"
                     rows={2}
                   />
                   <button
-                    onClick={submitVerdict}
-                    disabled={busy || !description.trim()}
-                    className="w-full rounded-lg bg-brandCP/20 px-3 py-2 text-xs font-medium text-brandCP transition-colors hover:bg-brandCP/30 disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={submitObservation}
+                    disabled={busy || !observation.trim()}
+                    className="w-full rounded-full bg-brandCP/20 px-3 py-2 text-xs font-semibold text-brandCP transition-colors hover:bg-brandCP/30 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {busy ? 'Envoi…' : 'Envoyer le verdict'}
+                    {busy ? 'Sending…' : 'Save observation'}
                   </button>
-                </>
+                </div>
               )}
-            </div>
+              {state === 'revealing' && (
+                <div className="flex items-center gap-2 py-1 text-xs text-white/35">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Revealing expected output…
+                </div>
+              )}
+              {doneUpTo >= 2 && observation && (
+                <p className="rounded-[12px] border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-xs text-white/50">{observation}</p>
+              )}
+            </StepRow>
+          )}
+
+          {/* Step 4 — expected output revealed → verdict */}
+          {state === 'revealed' && expectedOutput && (
+            <StepRow index={3} done={false} active={!verdictResult} last title="Expected output revealed → verdict">
+              <ValidationOutputViewer blob={expectedOutput.blob} contentType={expectedOutput.contentType} />
+              {!verdictResult && (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setVerdict('works')}
+                      className={`flex-1 rounded-full border px-3 py-2 text-xs font-semibold transition-colors ${
+                        verdict === 'works' ? 'border-green-500/40 bg-green-500/15 text-green-400' : 'border-white/10 text-white/50 hover:border-white/20'
+                      }`}
+                    >
+                      ✅ Works
+                    </button>
+                    <button
+                      onClick={() => setVerdict('broken')}
+                      className={`flex-1 rounded-full border px-3 py-2 text-xs font-semibold transition-colors ${
+                        verdict === 'broken' ? 'border-red-500/40 bg-red-500/15 text-red-400' : 'border-white/10 text-white/50 hover:border-white/20'
+                      }`}
+                    >
+                      ❌ Broken
+                    </button>
+                  </div>
+                  {verdict && (
+                    <>
+                      <textarea
+                        value={description}
+                        onChange={e => setDescription(e.target.value)}
+                        placeholder="Justification (required)"
+                        className="w-full rounded-[10px] border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-white/70"
+                        rows={2}
+                      />
+                      <button
+                        onClick={submitVerdict}
+                        disabled={busy || !description.trim()}
+                        className="w-full rounded-full bg-brandCP/20 px-3 py-2 text-xs font-semibold text-brandCP transition-colors hover:bg-brandCP/30 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {busy ? 'Sending…' : 'Submit verdict'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </StepRow>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {!isOwnTarget && expanded && verdictResult && (
         <div className="space-y-1 border-t border-white/[0.06] p-4 text-xs">
@@ -467,8 +516,8 @@ function TargetCard({
           )}
           <p className="text-white/40">
             {verdictResult.resolved
-              ? `Résolu : ${verdictResult.outcome === 'works' ? 'Fonctionne' : 'Défectueux'}`
-              : 'Verdict enregistré — en attente des autres validateurs'}
+              ? `Resolved: ${verdictResult.outcome === 'works' ? 'Works' : 'Broken'}`
+              : 'Verdict recorded — waiting on other validators'}
           </p>
         </div>
       )}

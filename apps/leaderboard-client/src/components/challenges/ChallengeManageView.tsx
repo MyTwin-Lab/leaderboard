@@ -7,7 +7,7 @@ import { fetchJson } from '@/lib/fetchJson';
 import {
   ArrowLeft, Users, Trophy, CalendarDays, Code2, BrainCircuit, ShieldCheck,
   CheckCircle2, Circle, Clock3, BarChart2, Activity,
-  Medal, Video, ExternalLink, GitBranch, GitPullRequest,
+  Medal, ExternalLink, GitBranch, GitPullRequest,
   GitCommit, MessageSquare,
   Database, Package, Cpu, FlaskConical, ChevronDown, Loader2, Plus, FileText, Pencil, Info,
 } from 'lucide-react';
@@ -20,12 +20,13 @@ import { ComputeRequestsPanel } from '@/components/challenges/ComputeRequestsPan
 import type { MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import { ContributionRewardBreakdown } from '@/components/contributor/ContributionRewardBreakdown';
-import { TeamAvatars } from '@/components/ui/TeamAvatars';
 import { Badge } from '@/components/ui/Badge';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 import { CreateMeetingDrawer } from '@/components/admin/CreateMeetingDrawer';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
+import { MeetingsSection } from '@/components/challenges/MeetingsSection';
+import { HeroStatCard } from '@/components/challenges/HeroStatCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,10 +72,6 @@ interface RankEntry { userId: string; name: string; totalCP: number; count: numb
 
 function fmt(iso: string, opts?: Intl.DateTimeFormatOptions) {
   return new Date(iso).toLocaleDateString('en-US', opts ?? { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function relativeDate(iso: string): string {
@@ -203,13 +200,10 @@ function Skeleton() {
 
 // ─── Overview Tab ────────────────────────────────────────────────────────────
 
-function TabOverview({ challenge, team, meetings, contributions, onNewMeeting, meetingsEnabled }: {
-  challenge: Challenge; team: TeamMember[]; meetings: Meeting[]; contributions: Contribution[]; onNewMeeting: () => void; meetingsEnabled: boolean;
+function TabOverview({ challenge, team, contributions }: {
+  challenge: Challenge; team: TeamMember[]; contributions: Contribution[];
 }) {
   const isML = challenge.type === 'ml';
-  const upcoming = meetings.filter(m => ['scheduled', 'in_progress'].includes(m.status))
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-  const past = meetings.filter(m => ['completed', 'processed'].includes(m.status));
 
   return (
     <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
@@ -238,60 +232,13 @@ function TabOverview({ challenge, team, meetings, contributions, onNewMeeting, m
             {team.length === 0 && <p className="px-2 text-xs text-white/25">No members yet</p>}
           </div>
         </div>
-
-        {/* Meetings */}
-        {meetingsEnabled && (
-          <div className="space-y-3">
-            <div className="flex items-center">
-              {sectionHeader(<Video className="h-3.5 w-3.5" />, 'Meetings', meetings.length)}
-              <button
-                onClick={onNewMeeting}
-                className="ml-auto flex items-center gap-1 rounded-lg bg-brandCP/10 px-2.5 py-1 text-[11px] font-semibold text-brandCP transition-all hover:bg-brandCP/20"
-              >
-                <Plus className="h-3 w-3" />
-                New
-              </button>
-            </div>
-            {upcoming.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-white/20">Upcoming</p>
-                {upcoming.map(m => (
-                  <div key={m.uuid} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-white">{m.title}</p>
-                      <p className="text-xs text-white/35">{fmtTime(m.start_time)} – {fmtTime(m.end_time)}</p>
-                    </div>
-                    {m.meet_link && (
-                      <a href={m.meet_link} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1 rounded-lg bg-brandCP/15 px-2.5 py-1 text-xs font-semibold text-brandCP hover:bg-brandCP/25">
-                        <Video className="h-3 w-3" /> Join
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {past.length > 0 && (
-              <div className="space-y-0.5">
-                <p className="text-[10px] uppercase tracking-wider text-white/20">Past ({past.length})</p>
-                {past.slice(0, 5).map(m => (
-                  <div key={m.uuid} className="flex items-center gap-2 rounded px-2 py-1">
-                    <span className="text-[11px] text-white/25 w-16 shrink-0">{fmt(m.start_time, { month: 'short', day: 'numeric' })}</span>
-                    <span className="truncate text-xs text-white/45">{m.title}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {meetings.length === 0 && <p className="text-xs text-white/25">No meetings yet</p>}
-          </div>
-        )}
       </div>
 
       {/* Right col — stats */}
       <div className="space-y-4">
         {sectionHeader(<Activity className="h-3.5 w-3.5" />, 'Contributions', contributions.length)}
         {contributions.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center">
+          <div className="flex flex-col items-center gap-2 rounded-[14px] border border-white/[0.06] bg-white/[0.02] py-12 text-center">
             <Activity className="h-7 w-7 text-white/15" />
             <p className="text-xs text-white/25">No contributions yet</p>
           </div>
@@ -299,7 +246,7 @@ function TabOverview({ challenge, team, meetings, contributions, onNewMeeting, m
           <div className="space-y-1">
             {contributions.slice(0, 8).map((c, i) => (
               <div key={c.uuid}
-                className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-fade-up"
+                className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-fade-up"
                 style={{ animationDelay: `${i * 30}ms` }}
               >
                 <div className="h-2 w-2 shrink-0 rounded-full bg-brandCP/60" />
@@ -353,7 +300,7 @@ function TabKanban({ tasks }: { tasks: Task[] }) {
           <div className="space-y-2 min-h-[120px]">
             {col.tasks.map((task, i) => (
               <div key={task.uuid}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-2 animate-fade-up hover:border-white/10 hover:bg-white/[0.04] transition-all"
+                className="rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-2 animate-fade-up hover:border-white/10 hover:bg-white/[0.04] transition-all"
                 style={{ animationDelay: `${i * 40}ms` }}
               >
                 <p className="text-sm font-medium text-white leading-snug">{task.title}</p>
@@ -390,9 +337,9 @@ function TabKanban({ tasks }: { tasks: Task[] }) {
 
 // ─── Activity Tab (code) ─────────────────────────────────────────────────────
 
-function TabActivity({ contributions, meetings, team, repoActivity, meetingsEnabled, isML }: {
-  contributions: Contribution[]; meetings: Meeting[]; team: TeamMember[];
-  repoActivity: Record<string, any> | null; meetingsEnabled: boolean; isML: boolean;
+function TabActivity({ contributions, team, repoActivity, isML }: {
+  contributions: Contribution[]; team: TeamMember[];
+  repoActivity: Record<string, any> | null; isML: boolean;
 }) {
   const userMap = Object.fromEntries(team.map(m => [m.id, m.fullName]));
   const avatarMap = Object.fromEntries(team.map(m => [m.id, m.avatarUrl]));
@@ -408,7 +355,7 @@ function TabActivity({ contributions, meetings, team, repoActivity, meetingsEnab
           <div className="space-y-1.5">
             {contributions.map((c, i) => (
               <div key={c.uuid}
-                className="flex items-center gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-slide-in-left"
+                className="flex items-center gap-4 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-slide-in-left"
                 style={{ animationDelay: `${i * 25}ms` }}
               >
                 <div className="shrink-0">
@@ -467,7 +414,7 @@ function TabActivity({ contributions, meetings, team, repoActivity, meetingsEnab
                 return (
                   <div
                     key={event.id}
-                    className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 animate-fade-up hover:bg-white/[0.04] transition-colors"
+                    className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 animate-fade-up hover:bg-white/[0.04] transition-colors"
                     style={{ animationDelay: `${i * 20}ms` }}
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0 text-white/30" />
@@ -497,22 +444,6 @@ function TabActivity({ contributions, meetings, team, repoActivity, meetingsEnab
           );
         })()}
       </div>
-
-      {/* Past meetings */}
-      {meetingsEnabled && meetings.filter(m => m.status === 'processed').length > 0 && (
-        <div className="space-y-3">
-          {sectionHeader(<Video className="h-3.5 w-3.5" />, 'Processed meetings')}
-          <div className="space-y-1">
-            {meetings.filter(m => m.status === 'processed').map(m => (
-              <div key={m.uuid} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
-                <span className="text-[11px] text-white/25 w-20 shrink-0">{fmt(m.start_time, { month: 'short', day: 'numeric' })}</span>
-                <span className="truncate text-xs text-white/50">{m.title}</span>
-                <Badge label="Processed" variant="muted" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -552,7 +483,7 @@ function TabMLSubmissions({ mlData, team }: {
             {repos.map(repo => {
               const urls = Object.entries(repo.workspace_meta?.userUrls ?? {});
               return (
-                <div key={repo.repo_id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] divide-y divide-white/[0.04]">
+                <div key={repo.repo_id} className="rounded-[14px] border border-white/[0.06] bg-white/[0.02] divide-y divide-white/[0.04]">
                   {urls.length === 0 ? (
                     <p className="px-4 py-3 text-xs text-white/25">No submissions yet</p>
                   ) : urls.map(([uid, url]) => (
@@ -694,7 +625,7 @@ function TabMLMetrics({ repoActivity }: { repoActivity: Record<string, any> | nu
                   v.metrics.auc !== undefined || v.metrics.f1 !== undefined || v.metrics.accuracy !== undefined
                 );
                 return (
-                  <div key={ref} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 space-y-4">
+                  <div key={ref} className="rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-5 py-4 space-y-4">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-white/70">{ref}</p>
                       <span className="text-[10px] text-white/25">
@@ -709,7 +640,7 @@ function TabMLMetrics({ repoActivity }: { repoActivity: Record<string, any> | nu
                           const val = versions[0].metrics[key];
                           if (val === undefined) return null;
                           return (
-                            <div key={key} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2 text-center">
+                            <div key={key} className="rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-2 text-center">
                               <p className="text-[10px] uppercase tracking-widest text-white/30">{key.toUpperCase()}</p>
                               <p className="text-lg font-bold text-white">{val.toFixed(3)}</p>
                             </div>
@@ -759,13 +690,13 @@ function TabRankings({ contributions, team }: { contributions: Contribution[]; t
   return (
     <div className="space-y-3 max-w-xl">
       {rankings.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-[14px] border border-white/[0.06] bg-white/[0.02] py-12 text-center">
           <Medal className="h-7 w-7 text-white/15" />
           <p className="text-xs text-white/25">No contributions yet — rankings will appear here</p>
         </div>
       ) : rankings.map((entry, i) => (
         <div key={entry.userId}
-          className="flex items-center gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-fade-up"
+          className="flex items-center gap-4 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-fade-up"
           style={{ animationDelay: `${i * 40}ms` }}
         >
           <span className="w-6 shrink-0 text-center text-base">
@@ -848,6 +779,18 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
       return (data?.activities ?? null) as Record<string, any> | null;
     },
     enabled: !!challengeId,
+  });
+
+  // Same source as the "beat the leader" timeline inside MLChallengeFlow —
+  // reads the reward ledger (challenge.reward_rules.model.metric), not a live
+  // Kaggle call, so it still has a value with no Kaggle credentials configured.
+  const mlRewardsQuery = useQuery({
+    queryKey: ['challenge-ml-rewards', challengeId],
+    queryFn: () => fetchJson(`/api/challenges/${challengeId}/ml-rewards`) as Promise<{
+      metric: { name: string; baseline: number; points: number[] } | null;
+      bestValue: number | null;
+    }>,
+    enabled: !!challengeId && overviewQuery.data?.challenge?.type === 'ml',
   });
 
   const scalewayStatusQuery = useQuery({
@@ -933,7 +876,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   const tabs = isML ? [
     {
       label: 'Overview',
-      panel: <TabOverview challenge={challenge} team={team} meetings={meetings} contributions={contributions} onNewMeeting={() => setMeetingDrawerOpen(true)} meetingsEnabled={meetingsEnabled} />,
+      panel: <TabOverview challenge={challenge} team={team} contributions={contributions} />,
     },
     {
       label: 'Submissions',
@@ -954,7 +897,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   ] : isValidation ? [
     {
       label: 'Overview',
-      panel: <TabOverview challenge={challenge} team={team} meetings={meetings} contributions={contributions} onNewMeeting={() => setMeetingDrawerOpen(true)} meetingsEnabled={meetingsEnabled} />,
+      panel: <TabOverview challenge={challenge} team={team} contributions={contributions} />,
     },
     {
       label: 'Targets',
@@ -973,7 +916,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   ] : [
     {
       label: 'Overview',
-      panel: <TabOverview challenge={challenge} team={team} meetings={meetings} contributions={contributions} onNewMeeting={() => setMeetingDrawerOpen(true)} meetingsEnabled={meetingsEnabled} />,
+      panel: <TabOverview challenge={challenge} team={team} contributions={contributions} />,
     },
     {
       label: 'Kanban',
@@ -981,7 +924,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
     },
     {
       label: 'Activity',
-      panel: <TabActivity contributions={contributions} meetings={meetings} team={team} repoActivity={repoActivity} meetingsEnabled={meetingsEnabled} isML={isML} />,
+      panel: <TabActivity contributions={contributions} team={team} repoActivity={repoActivity} isML={isML} />,
     },
     {
       label: 'Rankings',
@@ -992,6 +935,30 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   // Actually distributed, not the pool/cap set at creation — reward is already
   // reconciled with the ledger (ML/validation) or the cached column (code).
   const awardedTotal = contributions.reduce((sum, c) => sum + (c.reward ?? 0), 0);
+
+  // Best reported model metric across every submission — repoActivity is
+  // already fetched for TabMLMetrics, no extra request needed here. Not every
+  // challenge reports AUC specifically (some only have F1 or accuracy), so
+  // this picks whichever of the three is actually present, in that priority
+  // order, rather than assuming AUC.
+  const modelEntry = repoActivity ? Object.values(repoActivity).find((a: any) => a?.type === 'kaggle_model') : undefined;
+  const allModelVersions: any[] = ((modelEntry as any)?.modelVersions ?? []).flatMap((m: any) => m.versions ?? []);
+  const METRIC_PRIORITY = ['auc', 'f1', 'accuracy'] as const;
+  const bestMetricKey = METRIC_PRIORITY.find(key => allModelVersions.some(v => v.metrics?.[key] !== undefined && v.metrics?.[key] !== null));
+  const bestMetricValue = bestMetricKey
+    ? allModelVersions.reduce((best: number | null, v: any) => {
+        const val = v.metrics?.[bestMetricKey] !== undefined && v.metrics?.[bestMetricKey] !== null ? Number(v.metrics[bestMetricKey]) : NaN;
+        return !Number.isNaN(val) && (best === null || val > best) ? val : best;
+      }, null as number | null)
+    : null;
+  const bestMetricLabel = bestMetricKey === 'auc' ? 'AUC' : bestMetricKey === 'f1' ? 'F1' : bestMetricKey === 'accuracy' ? 'Accuracy' : null;
+
+  const upcomingMeetings = meetings
+    .filter(m => ['scheduled', 'in_progress'].includes(m.status))
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+  const pastMeetings = meetings
+    .filter(m => ['completed', 'processed'].includes(m.status))
+    .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
   return (
     <>
@@ -1023,7 +990,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
                 Edit
               </button>
             )}
-            <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-xs font-medium text-white/50">
+            <span className="flex items-center gap-1.5 rounded-full bg-brandCP/10 px-3 py-1 text-xs font-semibold text-brandCP">
               <TypeIcon className="h-3 w-3" />
               {isML ? 'Machine Learning' : isValidation ? 'Validation' : 'Code'}
             </span>
@@ -1044,7 +1011,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
               <button
                 onClick={() => setDocsDrawerOpen(true)}
                 title="Documents"
-                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-brandCP/30 hover:bg-brandCP/[0.07] hover:text-brandCP/70 hover:shadow-[0_4px_16px_rgba(10,247,193,0.1)] active:translate-y-0"
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-brandCP/30 hover:bg-brandCP/[0.07] hover:text-brandCP/70 hover:shadow-[0_4px_16px_rgba(10,247,193,0.1)] active:translate-y-0"
               >
                 <FileText className="h-3.5 w-3.5" />
                 Docs
@@ -1052,10 +1019,11 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
               <button
                 onClick={() => setRulesDrawerOpen(true)}
                 title="Reward rules"
-                aria-label="Reward rules"
-                className="flex shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white px-2.5 py-1.5 text-black transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(255,255,255,0.15)] active:translate-y-0"
+                style={{ color: '#000' }}
+                className="flex shrink-0 items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(255,255,255,0.15)] active:translate-y-0"
               >
-                <Info className="h-3.5 w-3.5" />
+                <Info className="h-3.5 w-3.5" style={{ color: '#000' }} />
+                Reward rules
               </button>
             </div>
           </div>
@@ -1063,29 +1031,72 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
             <p className="max-w-2xl text-sm leading-relaxed text-white/50">{challenge.description}</p>
           )}
 
-          <div className="mt-5 flex flex-wrap items-center gap-5">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold text-white">{awardedTotal.toLocaleString()}</span>
-              <span className="text-sm font-semibold text-brandCP">CP awarded</span>
-            </div>
-            <div className="h-6 w-px bg-white/10" />
-            <div className="flex items-center gap-2">
-              <TeamAvatars members={team} variant="floating" />
-              <span className="text-xs text-white/35">{team.length} member{team.length !== 1 ? 's' : ''}</span>
-            </div>
-            {!isML && tasks.length > 0 && (
-              <>
-                <div className="h-6 w-px bg-white/10" />
-                <span className="text-xs text-white/40">{doneTasks}/{tasks.length} tasks · {completion}%</span>
-              </>
+          {/* Hero stat cards */}
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <HeroStatCard
+              label="CP awarded"
+              value={awardedTotal.toLocaleString()}
+              unit="CP"
+              meta={challenge.contribution_points_reward ? `of a ${challenge.contribution_points_reward.toLocaleString()} CP pool` : undefined}
+              barWidth={challenge.contribution_points_reward
+                ? `${Math.min(100, Math.round((awardedTotal / challenge.contribution_points_reward) * 100))}%`
+                : undefined}
+            />
+            {isML ? (
+              <HeroStatCard
+                label={bestMetricLabel ? `Best ${bestMetricLabel}` : 'Best metric'}
+                value={bestMetricValue !== null ? bestMetricValue.toFixed(3) : '—'}
+                meta={bestMetricValue !== null ? 'from submitted model versions' : 'no metric yet'}
+                barWidth={bestMetricValue !== null ? `${Math.round(bestMetricValue * 100)}%` : undefined}
+              />
+            ) : isValidation ? (
+              <HeroStatCard
+                label="Contributions"
+                value={String(contributions.length)}
+                meta="submissions & verdicts recorded"
+              />
+            ) : (
+              <HeroStatCard
+                label="Tasks"
+                value={`${completion}%`}
+                meta={`${doneTasks} of ${tasks.length} tasks validated`}
+                barWidth={`${completion}%`}
+              />
             )}
-            <div className="h-6 w-px bg-white/10" />
-            <span className="text-xs text-white/40">{contributions.length} contributions</span>
+            <HeroStatCard
+              label="Team"
+              value={String(team.length)}
+              unit={team.length === 1 ? 'member' : 'members'}
+              meta="contributors on this challenge"
+              team={team}
+            />
           </div>
         </div>
 
         {/* Tabs */}
-        <ContributorTabs tabs={tabs} />
+        <ContributorTabs
+          tabs={tabs}
+          extra={meetingsEnabled && (
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-end">
+                <button
+                  onClick={() => setMeetingDrawerOpen(true)}
+                  className="flex items-center gap-1 rounded-full bg-brandCP/10 px-2.5 py-1 text-[11px] font-semibold text-brandCP transition-all hover:bg-brandCP/20"
+                >
+                  <Plus className="h-3 w-3" />
+                  New meeting
+                </button>
+              </div>
+              <MeetingsSection
+                meetings={meetings}
+                upcomingMeetings={upcomingMeetings}
+                pastMeetings={pastMeetings}
+                onOpen={id => router.push(`/sync-meetings/${id}`)}
+                onJoin={link => window.open(link, '_blank')}
+              />
+            </div>
+          )}
+        />
       </div>
 
       {/* Drawers rendered OUTSIDE the animate-fade-up div — CSS animations with

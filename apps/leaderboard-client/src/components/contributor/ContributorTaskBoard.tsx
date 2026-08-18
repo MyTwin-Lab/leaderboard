@@ -187,13 +187,17 @@ export function ContributorTaskBoard({
               />
             ))}
             {grouped[col.key].length === 0 && (
-              <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-white/[0.05]">
+              <div className="flex h-20 items-center justify-center rounded-[14px] border border-dashed border-white/[0.05]">
                 <p className="text-xs text-white/15">Empty</p>
               </div>
             )}
           </Column>
         ))}
       </div>
+
+      <p className="mt-3 text-xs text-white/30">
+        Drag a card right to take it, then to Done to trigger the evaluation.
+      </p>
 
       <DragOverlay dropAnimation={null}>
         {activeTask ? <CardShell task={activeTask} dragging /> : null}
@@ -236,8 +240,8 @@ function Column({
       </div>
       <div
         ref={setNodeRef}
-        className={`min-h-[140px] space-y-2 rounded-2xl border p-2 transition-colors ${
-          isOver ? 'border-brandCP/30 bg-brandCP/[0.04]' : 'border-white/[0.04] bg-white/[0.01]'
+        className={`min-h-[140px] space-y-2 rounded-[20px] border p-2.5 transition-colors ${
+          isOver ? 'border-brandCP/30 bg-brandCP/[0.04]' : 'border-white/[0.06] bg-white/[0.01]'
         }`}
       >
         {children}
@@ -284,7 +288,7 @@ function Card({
       ref={setNodeRef}
       {...(draggable ? { ...listeners, ...attributes } : {})}
       onClick={handleClick}
-      className={`select-none rounded-xl border border-white/[0.06] bg-white/[0.03] px-3.5 py-3 transition-all
+      className={`select-none rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-3.5 py-3 transition-all
         ${isDragging ? 'opacity-40' : 'hover:border-white/12 hover:bg-white/[0.05]'}
         ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
       style={{ touchAction: draggable ? 'none' : undefined }}
@@ -304,8 +308,8 @@ function Card({
       )}
 
       {!busy && isPendingValidation && (
-        <div className="mt-2 flex items-center gap-2">
-          <span className="rounded-full bg-brandCP/15 px-2 py-0.5 text-[11px] font-semibold text-brandCP">
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-2">
+          <span className="rounded-full bg-brandCP/15 px-2.5 py-0.5 text-[11px] font-semibold text-brandCP">
             Score {typeof score === 'number' ? Math.round(score) : '–'}
           </span>
           <span className="text-[11px] text-white/30">to validate</span>
@@ -323,13 +327,13 @@ function Card({
               <div className="ml-auto flex items-center gap-1.5">
                 <button
                   onClick={(e) => { e.stopPropagation(); onReEvaluate(); }}
-                  className="flex items-center gap-1 rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] font-medium text-white/60 transition-colors hover:bg-white/[0.1] hover:text-white/80"
+                  className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-white/60 transition-colors hover:bg-white/[0.1] hover:text-white/80"
                 >
                   <RotateCw className="h-3 w-3" /> Re-evaluate
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); onValidate(); }}
-                  className="flex items-center gap-1 rounded-lg bg-green-500/15 px-2 py-1 text-[11px] font-semibold text-green-400 transition-colors hover:bg-green-500/25"
+                  className="flex items-center gap-1 rounded-full bg-green-500/15 px-2.5 py-1 text-[11px] font-semibold text-green-400 transition-colors hover:bg-green-500/25"
                 >
                   <Check className="h-3 w-3" /> Validate
                 </button>

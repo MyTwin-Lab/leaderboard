@@ -16,13 +16,13 @@ interface ComputeRequestItem {
 }
 
 const STATUS_LABEL: Record<ComputeRequestItem['status'], string> = {
-  pending: 'En attente de validation',
-  rejected: 'Refusée',
-  approved: 'Approuvée — création en cours',
-  provisioning: 'Préparation en cours',
-  ready: 'Disponible',
-  expired: 'Expirée',
-  failed: 'Échec de la création',
+  pending: 'Pending approval',
+  rejected: 'Rejected',
+  approved: 'Approved — creating instance',
+  provisioning: 'Provisioning',
+  ready: 'Ready',
+  expired: 'Expired',
+  failed: 'Creation failed',
 };
 
 const STATUS_VARIANT: Record<ComputeRequestItem['status'], 'success' | 'warning' | 'danger' | 'info' | 'muted'> = {
@@ -62,7 +62,7 @@ function RequestRow({ challengeId, item, onChanged }: { challengeId: string; ite
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+    <div className="rounded-[16px] border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm" style={{ color: fgAt(0.75) }}>{item.requesterName}</span>
@@ -82,16 +82,16 @@ function RequestRow({ challengeId, item, onChanged }: { challengeId: string; ite
           <button
             onClick={() => decide('approve')}
             disabled={acting !== null}
-            className="rounded-lg border border-green-500/20 bg-green-500/[0.07] px-2.5 py-1 text-[11px] font-medium text-green-400 disabled:opacity-40"
+            className="rounded-full border border-green-500/20 bg-green-500/[0.07] px-3 py-1 text-[11px] font-semibold text-green-400 disabled:opacity-40"
           >
-            {acting === 'approve' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approuver'}
+            {acting === 'approve' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approve'}
           </button>
           <button
             onClick={() => decide('reject')}
             disabled={acting !== null}
-            className="rounded-lg border border-red-500/20 bg-red-500/[0.07] px-2.5 py-1 text-[11px] font-medium text-red-400 disabled:opacity-40"
+            className="rounded-full border border-red-500/20 bg-red-500/[0.07] px-3 py-1 text-[11px] font-semibold text-red-400 disabled:opacity-40"
           >
-            {acting === 'reject' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Refuser'}
+            {acting === 'reject' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Reject'}
           </button>
         </div>
       )}
@@ -101,9 +101,9 @@ function RequestRow({ challengeId, item, onChanged }: { challengeId: string; ite
           <button
             onClick={() => decide('retry')}
             disabled={acting !== null}
-            className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70 disabled:opacity-40"
+            className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-white/70 disabled:opacity-40"
           >
-            {acting === 'retry' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Réessayer'}
+            {acting === 'retry' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Retry'}
           </button>
         </div>
       )}
@@ -151,8 +151,8 @@ export function ComputeRequestsPanel({ challengeId, open }: { challengeId: strin
 
   if (requests.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
-        Aucune demande de puissance de calcul pour le moment.
+      <p className="rounded-[16px] border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
+        No compute power request yet.
       </p>
     );
   }
