@@ -10,6 +10,7 @@ import type { LeaderboardEntry, ProjectFilter } from "./types";
 export type AggregatedUser = {
   user: User;
   totalCP: number;
+  contributionsCount: number;
 };
 
 export function aggregateUsersByContribution({
@@ -30,6 +31,7 @@ export function aggregateUsersByContribution({
   );
   const userById = new Map<string, User>(users.map((user) => [user.uuid, user]));
   const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
 
   // Calculate the date threshold based on time period
   let dateThreshold: Date | null = null;
@@ -57,12 +59,18 @@ export function aggregateUsersByContribution({
 
     const reward = contribution.reward ?? 0;
     totals.set(contribution.user_id, (totals.get(contribution.user_id) ?? 0) + reward);
+    // Discussion (Slack signal) contributions aren't a "contribution" in the
+    // way a submission is — same exclusion fetchHomeOverview()/fetchContributorProfile() apply.
+    if (contribution.type !== "discussion") {
+      counts.set(contribution.user_id, (counts.get(contribution.user_id) ?? 0) + 1);
+    }
   }
 
   // Include all users, even those with 0 CP
   return Array.from(userById.values()).map((user) => ({
     user,
     totalCP: totals.get(user.uuid) ?? 0,
+    contributionsCount: counts.get(user.uuid) ?? 0,
   }));
 }
 
@@ -98,5 +106,6 @@ export function rankEntries(entries: AggregatedUser[]): LeaderboardEntry[] {
     bio: entry.user.bio,
     avatarUrl: entry.user.avatar_url ?? undefined,
     totalCP: entry.totalCP,
+    contributionsCount: entry.contributionsCount,
   }));
 }

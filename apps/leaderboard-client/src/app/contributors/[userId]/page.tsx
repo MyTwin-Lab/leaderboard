@@ -1,20 +1,22 @@
 import { notFound } from "next/navigation";
-
 import { ContributorHeader } from "@/components/contributor/ContributorHeader";
+import { ContributorTopBar } from "@/components/contributor/ContributorTopBar";
 import { ChallengeList } from "@/components/contributor/ChallengeList";
 import { ContributionHeatmap } from "@/components/contributor/ContributionHeatmap";
 import { ContributionDashboard } from "@/components/contributor/ContributionDashboard";
 import { ContributorTabs } from "@/components/contributor/ContributorTabs";
 import { fetchContributorProfile } from "@/lib/server/leaderboard";
 import { getSessionUser } from "@/lib/auth";
+import { computeContributorKpis } from "@/lib/contributorStats";
 
 interface ContributorPageProps {
   params: Promise<{
     userId: string;
   }>;
+  searchParams?: Promise<{ tab?: string }>;
 }
 
-export default async function ContributorPage({ params }: ContributorPageProps) {
+export default async function ContributorPage({ params, searchParams }: ContributorPageProps) {
   const { userId } = await params;
   const session = await getSessionUser();
   const profile = await fetchContributorProfile(userId, session?.id);
@@ -23,14 +25,30 @@ export default async function ContributorPage({ params }: ContributorPageProps) 
     notFound();
   }
 
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const initialTab = resolvedSearchParams.tab;
+  const kpis = computeContributorKpis(profile.challenges);
+
   return (
     <div className="mx-auto mt-4 max-w-4xl px-4 sm:mt-6">
+      <ContributorTopBar />
       <ContributorHeader
         displayName={profile.displayName}
         githubUsername={profile.githubUsername}
+        bio={profile.bio}
+        avatarUrl={profile.avatarUrl}
         totalCP={profile.totalCP}
+        totalContributions={kpis.totalContributions}
+        totalChallenges={kpis.totalChallenges}
+        last30Days={kpis.last30Days}
+        globalRank={profile.globalRank}
+        rankGap={profile.rankGap}
+        contributingSince={profile.contributingSince}
+        avgEvaluationScore={profile.avgEvaluationScore}
+        evaluatedContributionsCount={profile.evaluatedContributionsCount}
       />
       <ContributorTabs
+        initialTab={initialTab}
         tabs={[
           {
             label: "Overview",

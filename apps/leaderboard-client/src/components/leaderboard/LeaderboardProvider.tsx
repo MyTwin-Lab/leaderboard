@@ -10,10 +10,21 @@ interface LeaderboardContextValue {
   searchTerm: string;
   setProjectId: (projectId: string) => void;
   setSearchTerm: (term: string) => void;
+  /** Project-scoped, unranked-zero-CP-excluded, NOT search-filtered — powers the hero stats. */
+  scoredEntries: LeaderboardEntry[];
+  /** Search-filtered on top of scoredEntries — powers the podium + list. */
   entries: LeaderboardEntry[];
+  /** Top 3 of `entries`, only while there's no active search (mirrors the design's "Podium" section). */
+  podium: LeaderboardEntry[];
+  /** Ranks 4+ when the podium is shown, otherwise every entry. */
+  rest: LeaderboardEntry[];
+  hasPodium: boolean;
+  /** Whether the "Other contributors" list + CTA banner should render at all. */
+  showList: boolean;
   isLoading: boolean;
   error: string | null;
   projects: ProjectFilter[];
+  currentUserId?: string;
 }
 
 const LeaderboardContext = createContext<LeaderboardContextValue | undefined>(undefined);
@@ -23,6 +34,7 @@ interface LeaderboardProviderProps {
   initialProjectId: string;
   initialSearchTerm: string;
   projects: ProjectFilter[];
+  currentUserId?: string;
   children: React.ReactNode;
 }
 
@@ -50,6 +62,7 @@ export function LeaderboardProvider({
   initialProjectId,
   initialSearchTerm,
   projects,
+  currentUserId,
   children,
 }: LeaderboardProviderProps) {
   const [projectId, setProjectIdState] = useState(initialProjectId);
@@ -101,16 +114,33 @@ export function LeaderboardProvider({
     updateQuery({ q: term });
   };
 
+  // Contributors with 0 CP aren't "ranked" yet — exclude them from the
+  // leaderboard's stats/podium/list, same as the home page's overview.
+  const scoredEntries = useMemo(
+    () => rawEntries.filter((entry) => entry.totalCP > 0),
+    [rawEntries]
+  );
+
   const filteredEntries = useMemo(() => {
     const needle = searchTerm.trim().toLowerCase();
-    if (!needle) return rawEntries;
-    return rawEntries.filter((entry) =>
+    if (!needle) return scoredEntries;
+    return scoredEntries.filter((entry) =>
       [entry.displayName, entry.githubUsername]
         .join(" ")
         .toLowerCase()
         .includes(needle)
     );
-  }, [rawEntries, searchTerm]);
+  }, [scoredEntries, searchTerm]);
+
+  const hasPodium = searchTerm.trim().length === 0 && filteredEntries.length > 0;
+  const { podium, rest } = useMemo(
+    () => ({
+      podium: hasPodium ? filteredEntries.slice(0, 3) : [],
+      rest: hasPodium ? filteredEntries.slice(3) : filteredEntries,
+    }),
+    [hasPodium, filteredEntries]
+  );
+  const showList = rest.length > 0 || filteredEntries.length === 0;
 
   const value = useMemo<LeaderboardContextValue>(
     () => ({
@@ -118,12 +148,19 @@ export function LeaderboardProvider({
       searchTerm,
       setProjectId: handleProjectChange,
       setSearchTerm: handleSearchChange,
+      scoredEntries,
       entries: filteredEntries,
+      podium,
+      rest,
+      hasPodium,
+      showList,
       isLoading,
       error,
       projects,
+      currentUserId,
     }),
-    [projectId, searchTerm, filteredEntries, isLoading, error, projects]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projectId, searchTerm, scoredEntries, filteredEntries, podium, rest, hasPodium, showList, isLoading, error, projects, currentUserId]
   );
 
   return <LeaderboardContext.Provider value={value}>{children}</LeaderboardContext.Provider>;

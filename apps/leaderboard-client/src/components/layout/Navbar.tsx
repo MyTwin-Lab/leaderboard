@@ -26,7 +26,11 @@ function lerp(a: number, b: number, t: number) {
 
 export const Navbar = ({ session }: NavbarProps) => {
   const [p, setP] = useState(0); // scroll progress 0→1
-  const [heroVisible, setHeroVisible] = useState(true); // hero in view on homepage
+  // Home no longer has a distinctly-colored full-bleed hero to invert
+  // against (see src/app/page.tsx) — default to false so there's no flash
+  // of unreadable inverted nav text before the #hero-end observer (if any
+  // page still renders that sentinel) has a chance to correct it.
+  const [heroVisible, setHeroVisible] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState(false);
   const pathname = usePathname();

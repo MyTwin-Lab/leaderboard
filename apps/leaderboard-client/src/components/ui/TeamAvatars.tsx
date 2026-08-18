@@ -27,12 +27,11 @@ export function TeamAvatars({ members, maxDisplay = MAX_DISPLAY, variant = 'defa
   const displayedMembers = members.slice(0, maxDisplay);
   const remainingCount = members.length - maxDisplay;
   const floating = variant === 'floating';
-  // rounded-2xl (16px) on a 32px box is a half-radius = a perfect circle
-  // again — same trap as rounded-full. rounded-xl (12px) actually reads as a
-  // rounded square at this size, matching the navbar avatar's proportions
-  // (16px radius on its 40px box, ~40%) rather than its literal class name.
-  const radius = floating ? 'rounded-xl' : 'rounded-full';
-  const boxShadow = floating ? `${RING}, ${FLOATING_SHADOW}` : RING;
+  // Squircle, not a circle — matches the mockup (11px radius on a 30px tile)
+  // and the leaderboard's own avatars (rounded-xl/rounded-2xl), not a full
+  // rounded-full circle.
+  const radius = 'rounded-xl';
+  const boxShadow = floating ? `${RING}, ${FLOATING_SHADOW}` : undefined;
 
   if (members.length === 0) {
     return <span className="text-xs text-white/40">Waiting for you...</span>;
@@ -47,8 +46,7 @@ export function TeamAvatars({ members, maxDisplay = MAX_DISPLAY, variant = 'defa
             className={cn(radius, "overflow-hidden")}
             style={{
               zIndex: maxDisplay - index,
-              // solid background so the next avatar doesn't bleed through
-              background: 'var(--background-dark)',
+              background: 'var(--background)',
               boxShadow,
             }}
             title={member.fullName}
@@ -57,7 +55,7 @@ export function TeamAvatars({ members, maxDisplay = MAX_DISPLAY, variant = 'defa
               name={member.fullName}
               size={32}
               avatarUrl={member.avatarUrl}
-              className={floating ? "rounded-xl bg-white/10" : undefined}
+              className={floating ? `${radius} bg-white/10` : radius}
             />
           </div>
         ))}

@@ -1,5 +1,6 @@
 import { LeaderboardLayout } from "@/components/leaderboard/LeaderboardLayout";
 import { fetchLeaderboard } from "@/lib/server/leaderboard";
+import { fetchContributorSession } from "@/lib/contributor";
 
 export const dynamic = 'force-dynamic';
 
@@ -14,16 +15,18 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const initialProjectId = resolvedSearchParams.projectId ?? "all";
   const initialSearchTerm = resolvedSearchParams.q ?? "";
 
-  const initialData = await fetchLeaderboard(initialProjectId);
+  const [initialData, session] = await Promise.all([
+    fetchLeaderboard(initialProjectId),
+    fetchContributorSession(),
+  ]);
 
   return (
-    <div className="space-y-6">
-      <LeaderboardLayout
-        initialEntries={initialData.entries}
-        initialProjectId={initialProjectId}
-        initialSearchTerm={initialSearchTerm}
-        projects={initialData.filters.projects}
-      />
-    </div>
+    <LeaderboardLayout
+      initialEntries={initialData.entries}
+      initialProjectId={initialProjectId}
+      initialSearchTerm={initialSearchTerm}
+      projects={initialData.filters.projects}
+      currentUserId={session?.id}
+    />
   );
 }

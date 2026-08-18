@@ -161,15 +161,67 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     timePeriod: "all",
   });
   const rankedEntries = rankEntries(globalAggregated);
-  const globalRank = rankedEntries.find(entry => entry.userId === userId)?.rank;
+  const myIndex = rankedEntries.findIndex(entry => entry.userId === userId);
+  const globalRank = myIndex >= 0 ? rankedEntries[myIndex].rank : undefined;
+
+  // CP gap to the nearest adjacent rank — "behind" the rank above (closer to
+  // #1), or "ahead" of the rank below when we're already #1. Free: derived
+  // from the ranking we just built for globalRank, no extra query.
+  let rankGap: ContributorProfile["rankGap"];
+  if (myIndex >= 0) {
+    const me = rankedEntries[myIndex];
+    const above = myIndex > 0 ? rankedEntries[myIndex - 1] : null;
+    const below = myIndex < rankedEntries.length - 1 ? rankedEntries[myIndex + 1] : null;
+    if (above) {
+      const gap = above.totalCP - me.totalCP;
+      if (gap > 0) rankGap = { direction: "behind", rank: above.rank, cp: gap };
+    } else if (below) {
+      const gap = me.totalCP - below.totalCP;
+      if (gap > 0) rankGap = { direction: "ahead", rank: below.rank, cp: gap };
+    }
+  }
+
+  // Earliest submission — a free-form "contributing since" date, derived
+  // from the contributions we already fetched above.
+  const submittedTimestamps = contributions
+    .map(c => c.submitted_at)
+    .filter((d): d is Date => d != null)
+    .map(d => d.getTime());
+  const contributingSince = submittedTimestamps.length > 0
+    ? new Date(Math.min(...submittedTimestamps)).toISOString()
+    : undefined;
+
+  // Average AI evaluation score — private to the profile owner, same rule
+  // as `hasEvaluation` on individual contributions. `evaluation` is an
+  // untyped JSON column; `globalScore` is the 0–100 field the evaluator
+  // agent writes (see packages/evaluator/README.md).
+  let avgEvaluationScore: number | undefined;
+  let evaluatedContributionsCount: number | undefined;
+  if (viewerId === userId) {
+    const scores = contributions
+      .map(c => {
+        const evaluation = c.evaluation as { globalScore?: unknown } | null | undefined;
+        return evaluation && typeof evaluation === "object" ? evaluation.globalScore : undefined;
+      })
+      .filter((score): score is number => typeof score === "number" && Number.isFinite(score));
+    if (scores.length > 0) {
+      avgEvaluationScore = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+      evaluatedContributionsCount = scores.length;
+    }
+  }
 
   return {
     userId: user.uuid,
     displayName: user.full_name,
     githubUsername: user.github_username,
+    bio: user.bio,
     avatarUrl: user.avatar_url ?? undefined,
     totalCP,
     challenges: aggregated,
     globalRank,
+    rankGap,
+    contributingSince,
+    avgEvaluationScore,
+    evaluatedContributionsCount,
   } satisfies ContributorProfile;
 }

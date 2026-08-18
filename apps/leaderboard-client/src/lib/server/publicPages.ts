@@ -3,6 +3,29 @@ import "server-only";
 import { repositories } from "@/lib/db";
 import type { ProjectWithChallenges, TrendingChallenge } from "@/lib/types";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function dayKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+// 7 daily buckets (oldest → newest, today last) over an already-scoped list
+// of contributions — mirrors sparkFromContributions() in lib/server/home.ts,
+// duplicated locally rather than shared to keep each page's data pass
+// independent.
+function sparkFromContributions(reference: Date, contributions: { submitted_at: Date }[]): number[] {
+  const days: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    days.push(dayKey(new Date(reference.getTime() - i * DAY_MS)));
+  }
+  const counts = new Map(days.map((d) => [d, 0]));
+  for (const c of contributions) {
+    const key = dayKey(c.submitted_at);
+    if (counts.has(key)) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return days.map((d) => counts.get(d) ?? 0);
+}
+
 export type ChallengesPageData = {
   projects: ProjectWithChallenges[];
   joinedChallengeIds: string[];
@@ -30,6 +53,29 @@ export async function fetchProjectsWithChallenges(
     acc.set(contribution.challenge_id, current + 1);
     return acc;
   }, new Map());
+
+  // ── Per-challenge activity: same 7-day window as the home page's trending
+  // challenges, so the card design (spark bars, "N contributions this week")
+  // can be shared as-is between the two pages.
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * DAY_MS);
+  const recentContributions = contributions.filter((c) => c.submitted_at >= sevenDaysAgo);
+
+  const contributionsByChallenge = new Map<string, typeof contributions>();
+  for (const c of contributions) {
+    const list = contributionsByChallenge.get(c.challenge_id) ?? [];
+    list.push(c);
+    contributionsByChallenge.set(c.challenge_id, list);
+  }
+
+  const recentCountByChallenge = new Map<string, number>();
+  const activeContributorsByChallenge = new Map<string, Set<string>>();
+  for (const c of recentContributions) {
+    recentCountByChallenge.set(c.challenge_id, (recentCountByChallenge.get(c.challenge_id) ?? 0) + 1);
+    const set = activeContributorsByChallenge.get(c.challenge_id) ?? new Set<string>();
+    set.add(c.user_id);
+    activeContributorsByChallenge.set(c.challenge_id, set);
+  }
 
   // Group team members by challenge
   const teamMembersByChallenge = allChallengeTeams.reduce<Map<string, { id: string; fullName: string; avatarUrl?: string }[]>>((acc, ct) => {
@@ -68,6 +114,9 @@ export async function fetchProjectsWithChallenges(
           teamMembers: teamMembersByChallenge.get(challenge.uuid) ?? [],
           startDate: challenge.start_date?.toISOString() ?? null,
           endDate: challenge.end_date?.toISOString() ?? null,
+          recentContributions: recentCountByChallenge.get(challenge.uuid) ?? 0,
+          activeContributors: activeContributorsByChallenge.get(challenge.uuid)?.size ?? 0,
+          spark: sparkFromContributions(now, contributionsByChallenge.get(challenge.uuid) ?? []),
         }));
 
       return {

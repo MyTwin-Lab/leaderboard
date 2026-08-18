@@ -16,7 +16,7 @@ export function ChallengeList({ challenges }: ChallengeListProps) {
 
   if (challenges.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] py-14 text-center">
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/6 bg-white/[0.02] py-14 text-center">
         <Award className="h-7 w-7 text-white/15" />
         <p className="text-xs text-white/25">No contributions yet</p>
       </div>
@@ -72,7 +72,7 @@ function ChallengeRow({
 
   return (
     <div
-      className="animate-fade-up rounded-xl border border-white/[0.06] bg-white/[0.02] transition-colors duration-200 hover:border-white/10"
+      className="animate-fade-up rounded-2xl border border-white/[0.07] bg-white/[0.03] transition-colors duration-200 hover:border-white/12"
       style={{ animationDelay: `${idx * 30}ms` }}
     >
       {/* Header row */}

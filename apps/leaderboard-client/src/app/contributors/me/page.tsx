@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { ContributorHeader } from "@/components/contributor/ContributorHeader";
+import { ContributorTopBar } from "@/components/contributor/ContributorTopBar";
 import { ChallengeList } from "@/components/contributor/ChallengeList";
 import { ContributionHeatmap } from "@/components/contributor/ContributionHeatmap";
 import { ContributionDashboard } from "@/components/contributor/ContributionDashboard";
@@ -23,6 +24,7 @@ import { isValidThemeKey, DEFAULT_THEME_KEY } from "@/lib/themes";
 import { ModulesSettings } from "@/components/contributor/ModulesSettings";
 import { OnboardingProgressTable } from "@/components/contributor/OnboardingProgressTable";
 import { EvaluationGridsTab } from "@/components/contributor/evaluation-grids/EvaluationGridsTab";
+import { computeContributorKpis } from "@/lib/contributorStats";
 
 const appSettingsRepo = new AppSettingsRepository();
 const onboardingProgressRepo = new OnboardingProgressRepository();
@@ -73,15 +75,30 @@ export default async function ContributorSelfPage({
     {
       label: "Profile",
       panel: (
-        <div className="mx-auto max-w-sm py-2">
-          <ProfileEditForm
-            initialValues={{
-              firstName,
-              lastName,
-              githubUsername: session.githubUsername,
-            }}
-            initialAvatarUrl={profile.avatarUrl ?? null}
-          />
+        <div className="mx-auto grid max-w-3xl gap-5 sm:grid-cols-2 sm:items-start">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
+            <ProfileEditForm
+              initialValues={{
+                firstName,
+                lastName,
+                githubUsername: session.githubUsername,
+              }}
+              initialAvatarUrl={profile.avatarUrl ?? null}
+            />
+          </div>
+          <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
+            <span className="text-xs font-semibold uppercase tracking-widest text-white/30">Avatar</span>
+            <div className="flex items-center gap-4">
+              <ClickableAvatarUpload
+                name={profile.displayName}
+                size={64}
+                initialAvatarUrl={profile.avatarUrl}
+              />
+              <p className="text-sm text-white/50">
+                Click your avatar to replace it — PNG or JPG, square works best.
+              </p>
+            </div>
+          </div>
         </div>
       ),
     },
@@ -161,27 +178,40 @@ export default async function ContributorSelfPage({
     });
   }
 
+  const kpis = computeContributorKpis(profile.challenges);
+
   return (
     <div className="mx-auto mt-4 max-w-4xl px-4 sm:mt-6">
-      <div className="flex items-start justify-between mb-6">
-        <ContributorHeader
-          displayName={profile.displayName}
-          githubUsername={profile.githubUsername}
-          avatarUrl={profile.avatarUrl}
-          totalCP={profile.totalCP}
-          avatarSlot={
-            <ClickableAvatarUpload
-              name={profile.displayName}
-              size={64}
-              initialAvatarUrl={profile.avatarUrl}
-            />
-          }
-        />
-        <div className="flex shrink-0 items-center gap-2 pt-1">
-          {session.role === "admin" && <AdminButton />}
-          <LogoutButton />
-        </div>
-      </div>
+      <ContributorTopBar
+        actions={
+          <>
+            {session.role === "admin" && <AdminButton />}
+            <LogoutButton />
+          </>
+        }
+      />
+      <ContributorHeader
+        displayName={profile.displayName}
+        githubUsername={profile.githubUsername}
+        bio={profile.bio}
+        avatarUrl={profile.avatarUrl}
+        totalCP={profile.totalCP}
+        totalContributions={kpis.totalContributions}
+        totalChallenges={kpis.totalChallenges}
+        last30Days={kpis.last30Days}
+        globalRank={profile.globalRank}
+        rankGap={profile.rankGap}
+        contributingSince={profile.contributingSince}
+        avgEvaluationScore={profile.avgEvaluationScore}
+        evaluatedContributionsCount={profile.evaluatedContributionsCount}
+        avatarSlot={
+          <ClickableAvatarUpload
+            name={profile.displayName}
+            size={80}
+            initialAvatarUrl={profile.avatarUrl}
+          />
+        }
+      />
 
       <ContributorTabs tabs={tabs} initialTab={initialTab} />
     </div>

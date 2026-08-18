@@ -42,6 +42,7 @@ describe("GET /api/leaderboard", () => {
         displayName: "Bob",
         githubUsername: "bob",
         totalCP: 40,
+        contributionsCount: 1,
       },
       {
         rank: 2,
@@ -49,6 +50,7 @@ describe("GET /api/leaderboard", () => {
         displayName: "Alice",
         githubUsername: "alice",
         totalCP: 20,
+        contributionsCount: 1,
       },
     ]);
 
@@ -109,6 +111,7 @@ describe("GET /api/leaderboard", () => {
         displayName: "Alice",
         githubUsername: "alice",
         totalCP: 20,
+        contributionsCount: 1,
       },
     ]);
   });

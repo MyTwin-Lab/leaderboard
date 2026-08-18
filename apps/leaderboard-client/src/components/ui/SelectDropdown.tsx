@@ -55,14 +55,14 @@ export function SelectDropdown({
         onClick={() => !disabled && setOpen((v) => !v)}
         disabled={disabled}
         className={[
-          "flex w-full items-center justify-between gap-2 rounded-xl border py-2.5 pl-3 pr-2.5 text-sm transition-all duration-150",
+          "flex w-full items-center justify-between gap-2 rounded-xl border bg-white/5 py-2.5 pl-3 pr-2.5 text-sm transition-all duration-150",
           "border-white/10 focus:outline-none",
           open
             ? "border-brandCP/50 shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-            : "hover:border-white/20",
+            : "hover:border-white/20 hover:bg-white/8",
           disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
         ].join(" ")}
-        style={{ background: "color-mix(in srgb, var(--background-dark, rgba(0,0,0,0.35)) 75%, white 25%)", color: "var(--foreground)" }}
+        style={{ color: "var(--foreground)" }}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
@@ -77,7 +77,7 @@ export function SelectDropdown({
       {open && (
         <div
           className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-white/10 shadow-xl animate-slide-in"
-          style={{ background: "color-mix(in srgb, var(--background-dark, #0a0a14) 75%, white 25%)" }}
+          style={{ background: "var(--background)" }}
           role="listbox"
         >
           {options.map((option) => {

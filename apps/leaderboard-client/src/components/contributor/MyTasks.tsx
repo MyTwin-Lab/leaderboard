@@ -38,7 +38,7 @@ export function MyTasks() {
     return (
       <div className="animate-pulse space-y-2">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-14 rounded-xl bg-white/5 border border-white/[0.06]" />
+          <div key={i} className="h-14 rounded-2xl bg-white/5 border border-white/[0.06]" />
         ))}
       </div>
     );
@@ -49,7 +49,7 @@ export function MyTasks() {
 
   if (tasks.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] py-14 text-center">
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/6 bg-white/[0.02] py-14 text-center">
         <Circle className="h-7 w-7 text-white/15" />
         <p className="text-xs text-white/25">No tasks assigned yet</p>
       </div>
@@ -76,7 +76,7 @@ export function MyTasks() {
             <Link
               key={task.uuid}
               href={`/tasks/${task.uuid}`}
-              className="group animate-slide-in-left flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 transition-all duration-200 hover:border-white/15 hover:bg-white/[0.06] hover:translate-x-0.5"
+              className="group animate-slide-in-left flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 transition-all duration-200 hover:border-white/15 hover:bg-white/[0.06] hover:translate-x-0.5"
               style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'both' }}
             >
               {/* Dot with ping */}
@@ -123,7 +123,7 @@ export function MyTasks() {
             <Link
               key={task.uuid}
               href={`/tasks/${task.uuid}`}
-              className="group flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 transition-all duration-200 hover:border-white/10 hover:bg-white/[0.04]"
+              className="group flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 transition-all duration-200 hover:border-white/10 hover:bg-white/[0.04]"
             >
               <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
               <div className="min-w-0 flex-1">

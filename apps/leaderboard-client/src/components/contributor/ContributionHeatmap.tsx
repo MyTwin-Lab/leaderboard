@@ -20,6 +20,11 @@ interface DayData {
   }>;
 }
 
+interface MonthRun {
+  label: string;
+  span: number;
+}
+
 function buildHeatmapData(challenges: ContributionHeatmapProps["challenges"]): DayData[] {
   const days: DayData[] = [];
   const today = new Date();
@@ -51,6 +56,31 @@ function buildHeatmapData(challenges: ContributionHeatmapProps["challenges"]): D
   return days;
 }
 
+/** Month label per week column, run-length-encoded so a month spanning
+ * several columns only prints its name once (over its first column). */
+function buildMonthRuns(weeks: DayData[][]): MonthRun[] {
+  const runs: MonthRun[] = [];
+  for (const week of weeks) {
+    const anchor = week[week.length - 1] ?? week[0];
+    if (!anchor) continue;
+    const month = anchor.date.toLocaleDateString("en-US", { month: "short" });
+    const last = runs[runs.length - 1];
+    if (last && last.label === month) last.span += 1;
+    else runs.push({ label: month, span: 1 });
+  }
+  return runs;
+}
+
+/** Sparse weekday labels (Mon/Wed/Fri) — every column shares the same
+ * row→weekday mapping since week chunks are contiguous 7-day runs. */
+function buildWeekdayLabels(firstWeek: DayData[] | undefined): string[] {
+  if (!firstWeek) return [];
+  return firstWeek.map((day) => {
+    const wd = day.date.toLocaleDateString("en-US", { weekday: "short" });
+    return wd === "Mon" || wd === "Wed" || wd === "Fri" ? wd : "";
+  });
+}
+
 export function ContributionHeatmap({ challenges }: ContributionHeatmapProps) {
   const [hoveredDay, setHoveredDay] = useState<DayData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
@@ -75,6 +105,9 @@ export function ContributionHeatmap({ challenges }: ContributionHeatmapProps) {
       currentWeek = [];
     }
   });
+
+  const monthRuns = buildMonthRuns(weeks);
+  const weekdayLabels = buildWeekdayLabels(weeks[0]);
 
   const tooltipEl = hoveredDay && hoveredDay.count > 0 && tooltipPosition
     ? createPortal(
@@ -109,9 +142,9 @@ export function ContributionHeatmap({ challenges }: ContributionHeatmapProps) {
     : null;
 
   return (
-    <div className="space-y-4">
+    <div className="animate-fade-up rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
       {tooltipEl}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
           Contribution Activity
         </h2>
@@ -126,41 +159,68 @@ export function ContributionHeatmap({ challenges }: ContributionHeatmapProps) {
         </div>
       </div>
 
-      <div className="relative overflow-x-auto">
-        <div className="flex gap-1 min-w-max">
-          {weeks.map((week, weekIndex) => (
-            <div
-              key={weekIndex}
-              className="flex flex-col gap-1 animate-fade-up"
-              style={{ animationDelay: `${weekIndex * 8}ms`, animationFillMode: 'both' }}
-            >
-              {week.map((day, dayIndex) => (
+      <div className="relative mt-4 overflow-x-auto pb-1">
+        <div className="flex min-w-max flex-col gap-1.5">
+          {/* Month labels, offset to line up with the week columns below */}
+          <div className="flex gap-1 pl-[26px]">
+            {monthRuns.map((run, i) => (
+              <span
+                key={i}
+                className="shrink-0 text-[10px] text-white/30"
+                style={{ width: `${run.span * 16 - 4}px` }}
+              >
+                {run.span > 1 ? run.label : ""}
+              </span>
+            ))}
+          </div>
+
+          <div className="flex gap-1">
+            {/* Weekday labels */}
+            <div className="flex w-[22px] shrink-0 flex-col gap-1">
+              {weekdayLabels.map((label, i) => (
+                <span key={i} className="h-3 text-[9px] leading-3 text-white/30">
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {/* Heatmap grid */}
+            <div className="flex gap-1">
+              {weeks.map((week, weekIndex) => (
                 <div
-                  key={`${weekIndex}-${dayIndex}`}
-                  onMouseEnter={(e) => {
-                    if (day.count > 0) {
-                      setHoveredDay(day);
-                      setTooltipPosition({ x: e.clientX, y: e.clientY });
-                    }
-                  }}
-                  onMouseMove={(e) => {
-                    if (day.count > 0) setTooltipPosition({ x: e.clientX, y: e.clientY });
-                  }}
-                  onMouseLeave={() => {
-                    setHoveredDay(null);
-                    setTooltipPosition(null);
-                  }}
+                  key={weekIndex}
+                  className="flex flex-col gap-1 animate-fade-up"
+                  style={{ animationDelay: `${weekIndex * 8}ms`, animationFillMode: 'both' }}
                 >
-                  <div
-                    className={`h-3 w-3 rounded-sm transition-all duration-150 cursor-default
-                      ${day.count > 0 ? 'hover:scale-[1.4] hover:brightness-125 cursor-pointer' : ''}
-                      ${hoveredDay === day ? 'scale-[1.4] brightness-125' : ''}
-                      ${getIntensityColor(day.count)}`}
-                  />
+                  {week.map((day, dayIndex) => (
+                    <div
+                      key={`${weekIndex}-${dayIndex}`}
+                      onMouseEnter={(e) => {
+                        if (day.count > 0) {
+                          setHoveredDay(day);
+                          setTooltipPosition({ x: e.clientX, y: e.clientY });
+                        }
+                      }}
+                      onMouseMove={(e) => {
+                        if (day.count > 0) setTooltipPosition({ x: e.clientX, y: e.clientY });
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredDay(null);
+                        setTooltipPosition(null);
+                      }}
+                    >
+                      <div
+                        className={`h-3 w-3 rounded-sm transition-all duration-150 cursor-default
+                          ${day.count > 0 ? 'hover:scale-[1.4] hover:brightness-125 cursor-pointer' : ''}
+                          ${hoveredDay === day ? 'scale-[1.4] brightness-125' : ''}
+                          ${getIntensityColor(day.count)}`}
+                      />
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </div>

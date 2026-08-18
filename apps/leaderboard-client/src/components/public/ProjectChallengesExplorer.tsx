@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import type { ProjectWithChallenges, TeamMember } from "@/lib/types";
 import { ChallengeCard } from "@/components/public/ChallengeCard";
 import { ChallengesFiltersBar } from "@/components/public/ChallengesFiltersBar";
+import { ChallengesHero } from "@/components/public/ChallengesHero";
 import { CreateChallengeDrawer } from "@/components/admin/CreateChallengeDrawer";
 import { ManagerRolePopup } from "@/components/challenges/ManagerRolePopup";
+import { formatCP } from "@/lib/formatters";
 import { Plus } from "lucide-react";
 
 interface ProjectChallengesExplorerProps {
@@ -32,6 +34,9 @@ type FlatChallenge = {
   teamMembers: TeamMember[];
   startDate: string | null;
   endDate: string | null;
+  recentContributions: number;
+  activeContributors: number;
+  spark: number[];
 };
 
 export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmin = false, managedProjectIds = [] }: ProjectChallengesExplorerProps) {
@@ -62,6 +67,9 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
           teamMembers: challenge.teamMembers,
           startDate: challenge.startDate,
           endDate: challenge.endDate,
+          recentContributions: challenge.recentContributions,
+          activeContributors: challenge.activeContributors,
+          spark: challenge.spark,
         }))
       )
       // Most recent first; undated challenges have no place on that axis, so
@@ -102,9 +110,21 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
     return projects.map((p) => ({ id: p.id, name: p.title }));
   }, [projects]);
 
+  const heroStats = useMemo(() => {
+    const active = allChallenges.filter((c) => c.status === "active");
+    const totalCP = active.reduce((sum, c) => sum + c.rewardPool, 0);
+    return [
+      { value: String(active.length), label: "Open now" },
+      { value: formatCP(totalCP), label: "CP in play" },
+      { value: String(projects.length), label: "Projects" },
+    ];
+  }, [allChallenges, projects]);
+
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-6 sm:space-y-8">
+        <ChallengesHero stats={heroStats} />
+
         <ChallengesFiltersBar
           projects={projectOptions}
           onSearchChange={setSearchTerm}
@@ -156,6 +176,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
                 challengeId={challenge.id}
                 challengeTitle={challenge.title}
                 challengeType={challenge.type}
+                challengeStatus={challenge.status}
                 projectName={challenge.projectName}
                 description={challenge.description}
                 rewardPool={challenge.rewardPool}
@@ -163,6 +184,9 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
                 isMember={joinedSet.has(challenge.id)}
                 isAdmin={isAdmin}
                 teamMembers={challenge.teamMembers}
+                recentContributions={challenge.recentContributions}
+                activeContributors={challenge.activeContributors}
+                spark={challenge.spark}
                 onCardClick={(isAdmin || managedSet.has(challenge.projectId))
                   ? (e) => setPopup({ x: e.clientX, y: e.clientY, challengeId: challenge.id })
                   : undefined}

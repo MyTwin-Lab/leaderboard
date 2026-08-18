@@ -4,12 +4,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BrainCircuit, Code2, ShieldCheck } from "lucide-react";
 import { TeamAvatars } from "../ui/TeamAvatars";
+import { SparkBars } from "@/components/ui/SparkBars";
+import { formatCP } from "@/lib/formatters";
 import type { TeamMember } from "@/lib/types";
 
 interface ChallengeCardProps {
   challengeId: string;
   challengeTitle: string;
   challengeType?: string;
+  /** Drives the "Delivered and evaluated" vs "N contributions this week" copy. */
+  challengeStatus?: string;
   projectName: string;
   description: string | null;
   rewardPool: number;
@@ -17,6 +21,11 @@ interface ChallengeCardProps {
   isMember?: boolean;
   isAdmin?: boolean;
   teamMembers: TeamMember[];
+  /** Contributions in the last 7 days — feeds the activity row. */
+  recentContributions?: number;
+  activeContributors?: number;
+  /** 7 daily contribution counts, oldest → newest. */
+  spark?: number[];
   index?: number; // for stagger animation
   onCardClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
@@ -29,17 +38,24 @@ const CHALLENGE_TYPE_BADGE: Record<string, { icon: typeof Code2; label: string }
 function ChallengeTypeBadge({ type }: { type: string }) {
   const { icon: Icon, label } = CHALLENGE_TYPE_BADGE[type] ?? { icon: Code2, label: 'Code' };
   return (
-    <span className="flex items-center gap-1 text-[11px] text-white/30">
+    <span className="inline-flex items-center gap-1 rounded-full bg-brandCP/10 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-brandCP">
       <Icon className="h-3 w-3" />
       {label}
     </span>
   );
 }
 
+const ArrowIcon = () => (
+  <svg className="h-3.5 w-3.5" style={{ color: "inherit" }} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+  </svg>
+);
+
 export function ChallengeCard({
   challengeId,
   challengeTitle,
   challengeType,
+  challengeStatus,
   projectName,
   description,
   rewardPool,
@@ -47,10 +63,14 @@ export function ChallengeCard({
   isMember = false,
   isAdmin = false,
   teamMembers,
+  recentContributions = 0,
+  activeContributors = 0,
+  spark = [0, 0, 0, 0, 0, 0, 0],
   index = 0,
   onCardClick,
 }: ChallengeCardProps) {
   const normalizedType = (challengeType ?? 'code').toLowerCase();
+  const done = challengeStatus === 'completed';
   const router = useRouter();
   const dest = isAdmin ? `/admin/challenges/${challengeId}` : `/challenges/${challengeId}`;
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -70,40 +90,25 @@ export function ChallengeCard({
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={(e) => e.key === "Enter" && handleClick(e as unknown as React.MouseEvent<HTMLDivElement>)}
-      className="animate-fade-up group relative flex cursor-pointer flex-col overflow-hidden
-        rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-md shadow-black/20
-        transition-all duration-300
-        hover:-translate-y-0.5 hover:border-brandCP/25 hover:bg-white/[0.07]
-        hover:shadow-[0_8px_32px_rgba(10,247,193,0.08)]
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCP/40
-        sm:p-5"
+      className="animate-fade-up group flex min-w-0 cursor-pointer flex-col gap-3.5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-[0_14px_40px_-26px_rgba(0,0,0,0.6)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brandCP/25 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCP/40 sm:p-5"
       style={{ animationDelay: `${Math.min(index * 60, 480)}ms` }}
     >
-      {/* Top accent line — slides in on hover */}
-      <span className="absolute inset-x-0 top-0 h-[2px] origin-left scale-x-0 rounded-full bg-gradient-to-r from-brandCP/80 to-brandCP/20 transition-transform duration-300 group-hover:scale-x-100" />
-
       {/* Header */}
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <h3 className="truncate text-base font-semibold text-white transition-colors duration-200 group-hover:text-brandCP sm:text-lg">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <ChallengeTypeBadge type={normalizedType} />
+            <span className="text-xs text-white/45">{projectName}</span>
+          </div>
+          <h3 className="truncate text-lg font-semibold tracking-tight text-white transition-colors duration-200 group-hover:text-brandCP">
             {challengeTitle}
           </h3>
-          <p className="text-xs text-white/50">
-            {projectName}
-          </p>
         </div>
-
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          {/* CP badge */}
-          <span className="relative overflow-hidden rounded-full border border-brandCP/25 bg-brandCP/10 px-2.5 py-0.5 text-xs font-semibold">
-            <span className="animate-shimmer pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            <span className="relative text-white">{rewardPool.toLocaleString()}</span>{" "}
-            <span className="relative text-brandCP">CP</span>
-          </span>
-
-          {/* Member badge */}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <span className="text-xl font-bold tracking-tight text-white">{formatCP(rewardPool)}</span>
+          <span className="text-[10px] font-bold tracking-[0.1em] text-brandCP">CP POOL</span>
           {isMember && (
-            <span className="rounded-full bg-brandCP/15 px-2 py-0.5 text-[10px] font-medium text-brandCP">
+            <span className="mt-0.5 rounded-full bg-brandCP/15 px-2 py-0.5 text-[10px] font-medium text-brandCP">
               ✓ Joined
             </span>
           )}
@@ -112,47 +117,64 @@ export function ChallengeCard({
 
       {/* Description */}
       {description && (
-        <p className="mb-4 line-clamp-2 text-xs leading-relaxed text-white/50 sm:text-sm">
-          {description}
-        </p>
+        <p className="line-clamp-2 text-sm leading-relaxed text-white/55">{description}</p>
       )}
 
-      {/* Progress bar */}
-      <div className="mb-4 mt-auto">
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-[11px] text-white/35">Completion</span>
-          <span className="text-[11px] font-bold text-black">{completion}%</span>
+      {/* Activity + completion + footer — pinned to the bottom of the card so
+          shorter titles/descriptions don't leave a gap above them once the
+          grid stretches every card in a row to the tallest one's height. */}
+      <div className="mt-auto flex flex-col gap-3.5">
+        {/* Activity */}
+        <div className="flex items-center gap-3.5 rounded-xl bg-white/[0.04] px-3.5 py-3">
+          <SparkBars values={spark} className="h-6.5 w-14 shrink-0 gap-1" barClassName="rounded-[3px]" />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-[13px] font-semibold text-white">
+              {done
+                ? "Delivered and evaluated"
+                : `${recentContributions} contribution${recentContributions !== 1 ? "s" : ""} this week`}
+            </span>
+            <span className="text-[11px] text-white/45">
+              {done
+                ? "CP distributed to the team"
+                : `${activeContributors} contributor${activeContributors !== 1 ? "s" : ""} active`}
+            </span>
+          </div>
         </div>
-        <div className="h-1 w-full overflow-hidden rounded-full bg-white/8">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-brandCP/60 to-brandCP transition-[width] duration-700 ease-out"
-            style={{ width: `${barWidth}%` }}
-          />
-        </div>
-      </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between border-t border-primary-100/10 pt-3.5">
-        <div className="flex items-center gap-3">
-          <ChallengeTypeBadge type={normalizedType} />
-          <TeamAvatars members={teamMembers} variant="floating" />
-        </div>
-
-        <span className="flex items-center gap-1 text-xs font-semibold text-brandCP transition-all duration-200 group-hover:gap-1.5">
-          Contribute
-          <svg
-            className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fillRule="evenodd"
-              d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z"
-              clipRule="evenodd"
+        {/* Completion */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-white/50">{done ? "Completed" : "Completion"}</span>
+            <span className="text-xs font-semibold text-white">{completion}%</span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/8">
+            <div
+              className={`h-full rounded-full transition-[width] duration-700 ease-out ${
+                done ? "bg-brandCP/35" : "bg-gradient-to-r from-brandCP/55 to-brandCP"
+              }`}
+              style={{ width: `${barWidth}%` }}
             />
-          </svg>
-        </span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] pt-3.5">
+          <div className="flex items-center gap-3">
+            <TeamAvatars members={teamMembers} maxDisplay={3} variant="floating" />
+            <span className="text-xs text-white/45">
+              {teamMembers.length} in the team
+            </span>
+          </div>
+          <span
+            className="inline-flex shrink-0 items-center gap-2 rounded-full px-4.5 py-2.5 text-[13px] font-semibold transition-all duration-200 group-hover:gap-2.5"
+            style={done
+              ? { background: "rgba(255,255,255,0.08)", color: "var(--foreground)" }
+              : { background: "var(--foreground)", color: "var(--background)" }}
+          >
+            {done ? "See results" : "Contribute"}
+            <ArrowIcon />
+          </span>
+        </div>
       </div>
     </div>
   );
