@@ -914,7 +914,11 @@ function makeDeps(opts: {
     },
     rewardRepo: {
       findByUserAndChallenge: vi.fn(async () => (opts.existingEntries ?? []) as RewardEntry[]),
-      sumByChallenge: vi.fn(async () => opts.distributed ?? 0),
+      // Somme dynamique : le "distributed" initial + tout ce que le service a
+      // écrit pendant le run — sinon le recalcul de completion lirait 0.
+      sumByChallenge: vi.fn(async () =>
+        (opts.distributed ?? 0) +
+        written.flat().reduce((s: number, d) => s + (d as { points: number }).points, 0)),
       createManyAndSyncRewards: vi.fn(async (drafts: unknown[]) => { written.push(drafts); return drafts as RewardEntry[]; }),
     },
     runAgent: vi.fn(async () => {
@@ -982,9 +986,12 @@ describe("evaluate", () => {
       ["code_fixed", 50],
       ["code_quality", 120],
     ]);
-    // running → done
+    // Premier run : le statut running est posé À LA CRÉATION de la
+    // contribution (pas via update) ; seul le passage à done est un update.
+    expect(deps.contributionRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ evaluation_status: "running" })
+    );
     const statuses = updates.map(u => u.patch.evaluation_status).filter(Boolean);
-    expect(statuses).toContain("running");
     expect(statuses[statuses.length - 1]).toBe("done");
   });
 
