@@ -18,14 +18,17 @@ const contributionRepo = new ContributionRepository();
 //
 // Aggregates the challenge-scoped reads that both /challenges/[id] (public)
 // and /challenges/[id]/manage (ChallengeManageView) need — challenge, team,
-// tasks+assignees, meetings, repos, contributions — into a single response.
-// Shared by both pages/components with the same react-query key, so
-// navigating between them reuses the cache instead of re-fetching.
+// tasks+assignees, meetings, repos, contributions, participants — into a
+// single response. Shared by both pages/components with the same
+// react-query key, so navigating between them reuses the cache instead of
+// re-fetching.
 //
 // Each field is the same raw shape its former standalone endpoint returned
 // (/team, /tasks?include=assignees, /sync-meetings, /repos,
 // /contributions/challenge/[id]) — callers map fields client-side exactly as
-// before, nothing changed there.
+// before, nothing changed there. `participants` is the raw
+// ChallengeTeam[] (workspace fields included) — the personal-board UI
+// (tasks 11/13) reads workspace status per contributor from it.
 //
 // repo-activity is intentionally NOT included: it calls external connectors
 // (GitHub/Kaggle) and can be slow or flaky, so it stays its own request and
@@ -42,15 +45,16 @@ export async function GET(
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
     }
 
-    const [team, tasks, meetings, repos, contributions] = await Promise.all([
+    const [team, tasks, meetings, repos, contributions, participants] = await Promise.all([
       challengeTeamRepo.findTeamMembers(id),
       taskRepo.findByChallenge(id),
       new SyncMeetingService().getMeetingsByChallengeId(id),
       challengeRepoRepo.findByChallengeWithRepo(id),
       contributionRepo.findByChallenge(id),
+      challengeTeamRepo.findByChallenge(id),
     ]);
 
-    return NextResponse.json({ challenge, team, tasks, meetings, repos, contributions });
+    return NextResponse.json({ challenge, team, tasks, meetings, repos, contributions, participants });
   } catch (error) {
     console.error('Error fetching challenge overview:', error);
     return NextResponse.json({ error: 'Failed to fetch challenge overview' }, { status: 500 });
