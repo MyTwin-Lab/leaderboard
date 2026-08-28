@@ -47,13 +47,25 @@ interface TeamMember { id: string; fullName: string; githubUsername?: string; av
 interface Task {
   uuid: string; title: string; description?: string;
   status: string;
-  assignees: TeamMember[];
+  user_id?: string | null;
+  parent_task_id?: string;
+}
+
+interface Participant {
+  user_id: string;
+  workspace_provider?: string | null;
+  workspace_ref?: string | null;
+  workspace_url?: string | null;
+  workspace_status?: string | null;
 }
 
 interface Contribution {
   uuid: string; title: string; type: string; description?: string;
   reward: number; user_id: string; submitted_at: string;
   evaluation?: { globalScore?: number };
+  // Only set on type === 'project' contributions (code challenges) — reflects
+  // where CodeRewardsService's live evaluation run currently stands.
+  evaluation_status?: 'running' | 'done' | 'failed';
 }
 
 interface Meeting {
@@ -283,7 +295,8 @@ const GITHUB_EVENT_CONFIG = {
   branch_created: { label: 'Branch',       badge: 'bg-green-500/20 text-green-300' },
 } as const;
 
-function TabKanban({ tasks }: { tasks: Task[] }) {
+function TabKanban({ tasks, team }: { tasks: Task[]; team: TeamMember[] }) {
+  const memberById = new Map(team.map(m => [m.id, m]));
   const cols = KANBAN_COLS.map(col => ({
     ...col,
     tasks: tasks.filter(t => col.statuses.includes(t.status)),
@@ -309,13 +322,13 @@ function TabKanban({ tasks }: { tasks: Task[] }) {
                   <p className="text-xs text-white/35 line-clamp-2">{task.description}</p>
                 )}
                 <div className="flex items-center gap-2">
-                  {task.assignees.length > 0 && (
-                    <div className="ml-auto flex -space-x-2">
-                      {task.assignees.slice(0, 3).map(a => (
-                        <div key={a.id} className="rounded-full overflow-hidden" style={{ boxShadow: '0 0 0 1.5px var(--background)' }}>
-                          <InitialsAvatar name={a.fullName} size={20} avatarUrl={a.avatarUrl} />
-                        </div>
-                      ))}
+                  {task.user_id && memberById.get(task.user_id) && (
+                    <div className="ml-auto rounded-full overflow-hidden" style={{ boxShadow: '0 0 0 1.5px var(--background)' }}>
+                      <InitialsAvatar
+                        name={memberById.get(task.user_id)!.fullName}
+                        size={20}
+                        avatarUrl={memberById.get(task.user_id)!.avatarUrl}
+                      />
                     </div>
                   )}
                 </div>
@@ -329,6 +342,48 @@ function TabKanban({ tasks }: { tasks: Task[] }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Participants Tab (code) ────────────────────────────────────────────────
+
+function TabParticipants({ team, tasks, participants, contributions }: {
+  team: TeamMember[];
+  tasks: Array<{ uuid: string; user_id?: string | null; status: string; parent_task_id?: string }>;
+  participants: Array<{ user_id: string; workspace_status?: string | null; workspace_url?: string | null; workspace_provider?: string | null }>;
+  contributions: Contribution[];
+}) {
+  const rows = team.map(member => {
+    const mine = tasks.filter(t => t.user_id === member.id && !t.parent_task_id);
+    const done = mine.filter(t => t.status === 'done').length;
+    const participation = participants.find(p => p.user_id === member.id);
+    const project = contributions.find(c => c.user_id === member.id && c.type === 'project');
+    return { member, total: mine.length, done, participation, project };
+  });
+
+  return (
+    <div className="space-y-1.5">
+      {rows.map(({ member, total, done, participation, project }) => (
+        <div key={member.id} className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+          <InitialsAvatar name={member.fullName} size={28} avatarUrl={member.avatarUrl} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-white">{member.fullName}</p>
+            <p className="text-xs text-white/30">
+              {total === 0 ? 'No tasks yet' : `${done}/${total} tasks done`}
+              {participation?.workspace_status ? ` · workspace ${participation.workspace_status}` : ''}
+            </p>
+          </div>
+          {project?.evaluation_status === 'running' && <Loader2 className="h-4 w-4 animate-spin text-brandCP" />}
+          {project?.evaluation_status === 'done' && (
+            <span className="rounded-full bg-brandCP/10 px-2.5 py-0.5 text-xs font-semibold text-brandCP">
+              {project.reward} CP
+            </span>
+          )}
+          {project?.evaluation_status === 'failed' && <span className="text-xs text-red-400">eval failed</span>}
+        </div>
+      ))}
+      {rows.length === 0 && <p className="px-2 py-8 text-center text-xs text-white/25">No participants yet</p>}
     </div>
   );
 }
@@ -760,6 +815,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
       meetings: Meeting[];
       repos: any[];
       contributions: Contribution[];
+      participants: Participant[];
     }>,
     enabled: !!challengeId,
   });
@@ -785,10 +841,13 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   const mlRewardsQuery = useQuery({
     queryKey: ['challenge-ml-rewards', challengeId],
     queryFn: () => fetchJson(`/api/challenges/${challengeId}/ml-rewards`) as Promise<{
+      pool: number;
+      distributed: number;
+      remaining: number;
       metric: { name: string; baseline: number; points: number[] } | null;
       bestValue: number | null;
     }>,
-    enabled: !!challengeId && overviewQuery.data?.challenge?.type === 'ml',
+    enabled: !!challengeId && ['ml', 'code'].includes(overviewQuery.data?.challenge?.type ?? ''),
   });
 
   const scalewayStatusQuery = useQuery({
@@ -822,10 +881,8 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   const team: TeamMember[] = (overviewQuery.data?.team ?? []).map((m: any) => ({
     id: m.uuid, fullName: m.full_name, githubUsername: m.github_username, avatarUrl: m.avatar_url ?? undefined,
   }));
-  const tasks: Task[] = (overviewQuery.data?.tasks ?? []).map((t: any) => ({
-    ...t,
-    assignees: (t.assignees ?? []).map((a: any) => ({ id: a.uuid, fullName: a.full_name, avatarUrl: a.avatar_url ?? undefined })),
-  }));
+  const tasks: Task[] = overviewQuery.data?.tasks ?? [];
+  const participants: Participant[] = overviewQuery.data?.participants ?? [];
   const contributions = overviewQuery.data?.contributions ?? [];
   const meetings = overviewQuery.data?.meetings ?? [];
   const mlData = mlWorkspaceQuery.data ?? null;
@@ -917,8 +974,27 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
       panel: <TabOverview challenge={challenge} team={team} contributions={contributions} />,
     },
     {
+      label: 'Participants',
+      panel: (
+        <div className="space-y-4">
+          {mlRewardsQuery.data && (
+            <div className="space-y-1 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30">CP pool</p>
+              <p className="text-sm text-white/75">
+                {mlRewardsQuery.data.remaining.toLocaleString()} / {mlRewardsQuery.data.pool.toLocaleString()} CP remaining
+                <span className="ml-1 text-xs text-white/35">
+                  ({mlRewardsQuery.data.distributed.toLocaleString()} distributed)
+                </span>
+              </p>
+            </div>
+          )}
+          <TabParticipants team={team} tasks={tasks} participants={participants} contributions={contributions} />
+        </div>
+      ),
+    },
+    {
       label: 'Kanban',
-      panel: <TabKanban tasks={tasks} />,
+      panel: <TabKanban tasks={tasks} team={team} />,
     },
     {
       label: 'Activity',

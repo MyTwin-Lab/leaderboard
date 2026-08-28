@@ -11,7 +11,7 @@ const challengeRepo = new ChallengeRepository();
 const rewardRepo = new RewardEntryRepository();
 
 // GET /api/challenges/[id]/ml-rewards
-// Pool state + per-user breakdown for an ML challenge.
+// Pool state + per-user breakdown for a challenge with live rewards (ML or code).
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -23,8 +23,8 @@ export async function GET(
     if (!challenge) {
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
     }
-    if (challenge.type !== 'ml') {
-      return NextResponse.json({ error: 'Not an ML challenge' }, { status: 400 });
+    if (challenge.type !== 'ml' && challenge.type !== 'code') {
+      return NextResponse.json({ error: 'No reward pool for this challenge type' }, { status: 400 });
     }
     const mlRules = parseMlRewardRules(challenge.reward_rules);
 

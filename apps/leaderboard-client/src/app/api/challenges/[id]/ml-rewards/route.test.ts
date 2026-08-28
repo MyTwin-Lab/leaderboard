@@ -54,13 +54,42 @@ describe('GET /api/challenges/[id]/ml-rewards', () => {
     expect(mockFindByChallenge).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when the challenge is not an ML challenge', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code' });
+  it('returns 400 when the challenge has no reward pool (e.g. validation)', async () => {
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'validation' });
 
     const res = await getRewards();
 
     expect(res.status).toBe(400);
     expect(mockFindByChallenge).not.toHaveBeenCalled();
+  });
+
+  it('computes pool state from the ledger for a code challenge (no metric)', async () => {
+    mockChallengeFindById.mockResolvedValue({
+      uuid: CHALLENGE_ID,
+      type: 'code',
+      contribution_points_reward: 1000,
+      reward_rules: null,
+    });
+    mockFindByChallenge.mockResolvedValue([
+      { user_id: 'u1', points: 100, rule_key: 'project_evaluation', meta: null },
+      { user_id: 'u2', points: 50, rule_key: 'project_evaluation', meta: null },
+    ]);
+
+    const res = await getRewards();
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.pool).toBe(1000);
+    expect(body.distributed).toBe(150);
+    expect(body.remaining).toBe(850);
+    expect(body.rules).toBeNull();
+    expect(body.metric).toBeNull();
+    expect(body.bestValue).toBeNull();
+    expect(body.thresholdReached).toBe(false);
+    expect(body.breakdown).toEqual([
+      { userId: 'u1', points: 100 },
+      { userId: 'u2', points: 50 },
+    ]);
   });
 
   it('computes pool state and breakdown with no reward_rules (no metric)', async () => {
