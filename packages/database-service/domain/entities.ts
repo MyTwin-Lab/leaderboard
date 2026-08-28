@@ -125,7 +125,9 @@ export type RewardRuleKey =
   | 'reuse_dataset'
   | 'reuse_model'
   | 'slack_signal'
-  | 'validation';
+  | 'validation'
+  | 'code_fixed'
+  | 'code_quality';
 
 export interface RewardEntryMeta {
   metricValue?: number;

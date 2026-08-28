@@ -102,6 +102,8 @@ export const rewardRuleKeySchema = z.enum([
   'reuse_model',
   'slack_signal',
   'validation',
+  'code_fixed',
+  'code_quality',
 ]);
 
 export const rewardEntrySchema = z.object({
