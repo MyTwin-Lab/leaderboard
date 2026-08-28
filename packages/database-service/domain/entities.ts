@@ -283,7 +283,8 @@ export interface Task {
   challenge_id: string;
   /** null/undefined = tâche template (admin), sinon propriétaire du board. */
   user_id?: string | null;
-  parent_task_id?: string;
+  /** null = pas de parent (ou détaché explicitement), undefined = non renseigné. */
+  parent_task_id?: string | null;
   title: string;
   description?: string;
   status: TaskStatus;

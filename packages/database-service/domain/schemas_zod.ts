@@ -228,7 +228,7 @@ export const taskSchema = z.object({
   uuid: z.string().uuid(),
   challenge_id: z.string().uuid(),
   user_id: z.string().uuid().nullish(),
-  parent_task_id: z.string().uuid().optional(),
+  parent_task_id: z.string().uuid().nullable().optional(),
   title: z.string().min(1),
   description: z.string().optional(),
   status: z.enum(["todo", "in_progress", "done"]),

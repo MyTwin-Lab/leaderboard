@@ -118,6 +118,13 @@ describe('PATCH /api/tasks/[id]', () => {
     expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { status: 'done' });
   });
 
+  it('lets the owner detach a sub-task by sending parent_task_id: null', async () => {
+    const res = await patchTask({ parent_task_id: null }, 'valid-token');
+
+    expect(res.status).toBe(200);
+    expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { parent_task_id: null });
+  });
+
   it('returns 400 on an invalid status', async () => {
     const res = await patchTask({ status: 'not-a-status' }, 'valid-token');
 

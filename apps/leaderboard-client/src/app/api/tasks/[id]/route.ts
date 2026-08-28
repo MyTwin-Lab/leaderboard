@@ -95,13 +95,7 @@ export async function PATCH(
     const body = await request.json();
     const validated = updateTaskSchema.parse(body);
 
-    const task = await taskRepo.update(id, {
-      ...validated,
-      // TaskRepository.update (Task 3) doesn't accept null for parent_task_id yet
-      // (its schema only allows string|undefined); treat an explicit "clear" as a
-      // no-op until the repo/schema support unlinking a sub-task from its parent.
-      parent_task_id: validated.parent_task_id ?? undefined,
-    });
+    const task = await taskRepo.update(id, validated);
     return NextResponse.json(task);
   } catch (error) {
     if (error instanceof z.ZodError) {
