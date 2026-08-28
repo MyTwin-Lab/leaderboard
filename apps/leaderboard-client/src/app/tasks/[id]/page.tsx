@@ -18,7 +18,6 @@ interface TaskDetails {
     parent_task_id?: string;
     title: string;
     description?: string;
-    type: 'solo' | 'concurrent';
     status: 'todo' | 'done';
     created_at: string;
   };
@@ -50,7 +49,6 @@ interface TaskDetails {
     uuid: string;
     title: string;
     description?: string;
-    type: 'solo' | 'concurrent';
     status: 'todo' | 'done';
     created_at: string;
   }[];
@@ -193,10 +191,6 @@ export default function TaskDetailPage() {
           }`}>
             <span className={`h-1.5 w-1.5 rounded-full ${isDone ? 'bg-green-400' : 'bg-yellow-400'}`} />
             {isDone ? 'Done' : 'To do'}
-          </span>
-          <span className="text-white/20">·</span>
-          <span className="rounded-full bg-white/8 px-2.5 py-0.5 text-xs text-white/40 capitalize">
-            {task.type}
           </span>
           {challenge && (
             <>

@@ -9,7 +9,6 @@ interface TaskWithChallenge {
   uuid: string;
   title: string;
   description?: string;
-  type: 'solo' | 'concurrent';
   status: 'todo' | 'done';
   challenge_id: string;
   challenge_title: string;
@@ -90,11 +89,6 @@ export function MyTasks() {
                 </p>
                 <p className="mt-0.5 text-xs text-white/30 truncate">{task.challenge_title}</p>
               </div>
-              {task.type === 'concurrent' && (
-                <span className="hidden shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/25 sm:inline">
-                  concurrent
-                </span>
-              )}
               <ChevronRight className="h-4 w-4 shrink-0 text-white/0 transition-all group-hover:text-white/25" />
             </Link>
           ))

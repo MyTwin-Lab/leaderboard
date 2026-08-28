@@ -240,7 +240,7 @@ export default function SyncMeetingDetailPage() {
             </div>
           </Card>
 
-          {/* Right — Participants (avatar badges like concurrent tasks) */}
+          {/* Right — Participants */}
           <Card>
             <div className="p-4">
               <div className="flex items-center gap-2 mb-3">

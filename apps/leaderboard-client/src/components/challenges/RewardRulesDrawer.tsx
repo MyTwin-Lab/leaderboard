@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Info, X, ArrowDown, Trophy, Lock, Loader2, Users } from 'lucide-react';
-import type { MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
+import { Info, X, ArrowDown, Trophy, Lock, Loader2, Users, CheckCircle2, Star } from 'lucide-react';
+import { parseMlRewardRules, type MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
+import { parseCodeRewardRules, type CodeRewardRules } from '../../../../../packages/database-service/domain/codeRewardRules';
 
 interface ChallengeRules {
   type: string;
   contribution_points_reward: number;
-  reward_rules?: MlRewardRules | null;
+  reward_rules?: MlRewardRules | CodeRewardRules | null;
   cp_per_validation?: number | null;
   required_validations?: number | null;
 }
@@ -137,7 +138,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 // ─── ML ─────────────────────────────────────────────────────────────────────
 
 function MlRules({ challenge }: { challenge: ChallengeRules }) {
-  const rules = challenge.reward_rules;
+  const rules = parseMlRewardRules(challenge.reward_rules);
   if (!rules) {
     return <p className="text-xs text-white/35">No reward rules configured for this challenge yet.</p>;
   }
@@ -254,6 +255,11 @@ function ValidationRules({ challenge }: { challenge: ChallengeRules }) {
 // ─── Code ───────────────────────────────────────────────────────────────────
 
 function CodeRules({ challenge }: { challenge: ChallengeRules }) {
+  const codeRules = parseCodeRewardRules(challenge.reward_rules);
+  if (codeRules) {
+    return <CodeRewardRulesFlow rules={codeRules} />;
+  }
+
   return (
     <div>
       <SectionLabel>How points are earned</SectionLabel>
@@ -268,6 +274,23 @@ function CodeRules({ challenge }: { challenge: ChallengeRules }) {
         <FlowArrow />
         <FlowBox icon={<span className="text-sm">💰</span>} title="Your CP">
           That fraction of the <b className="text-white/80">{challenge.contribution_points_reward} CP</b> pool is yours.
+        </FlowBox>
+      </div>
+    </div>
+  );
+}
+
+function CodeRewardRulesFlow({ rules }: { rules: CodeRewardRules }) {
+  return (
+    <div>
+      <SectionLabel>How points are earned</SectionLabel>
+      <div className="space-y-0">
+        <FlowBox icon={<CheckCircle2 className="h-3.5 w-3.5" />} title="Fixed part">
+          <b className="text-white/80">{rules.delivery.fixed} CP</b> — earned when your evaluated delivery lands.
+        </FlowBox>
+        <FlowArrow />
+        <FlowBox icon={<Star className="h-3.5 w-3.5" />} title="Quality cap">
+          Up to <b className="text-white/80">{rules.delivery.cap} CP</b> — × your AI score /10, delta on re-runs.
         </FlowBox>
       </div>
     </div>

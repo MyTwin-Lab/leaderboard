@@ -46,7 +46,7 @@ interface TeamMember { id: string; fullName: string; githubUsername?: string; av
 
 interface Task {
   uuid: string; title: string; description?: string;
-  type: 'solo' | 'concurrent'; status: string;
+  status: string;
   assignees: TeamMember[];
 }
 
@@ -309,9 +309,6 @@ function TabKanban({ tasks }: { tasks: Task[] }) {
                   <p className="text-xs text-white/35 line-clamp-2">{task.description}</p>
                 )}
                 <div className="flex items-center gap-2">
-                  {task.type === 'concurrent' && (
-                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/30">concurrent</span>
-                  )}
                   {task.assignees.length > 0 && (
                     <div className="ml-auto flex -space-x-2">
                       {task.assignees.slice(0, 3).map(a => (

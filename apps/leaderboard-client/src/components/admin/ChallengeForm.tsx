@@ -2,16 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/components/ui/FormField';
-import { TaskList } from './TaskList';
-import { TaskForm } from './TaskForm';
-import { useConfirm } from '@/components/ui/ConfirmDialog';
-import { Plus, Code2, BrainCircuit, ShieldCheck, Cpu, Package } from 'lucide-react';
+import { ChallengeTasksEditor } from './ChallengeTasksEditor';
+import { Code2, BrainCircuit, ShieldCheck, Cpu, Package } from 'lucide-react';
 import { Toggle } from '@/components/ui/Toggle';
 import { MlRewardRulesEditor } from './MlRewardRulesEditor';
 import { ValidationTargetsEditor } from './ValidationTargetsEditor';
 import { ValidationRewardsPanel } from './ValidationRewardsPanel';
 import { DEFAULT_ML_REWARD_RULES, parseMlRewardRules, type MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
-import type { Challenge, Project, Task } from '../../../../../packages/database-service/domain/entities';
+import type { Challenge, Project } from '../../../../../packages/database-service/domain/entities';
 
 interface ChallengeFormProps {
   challenge?: Challenge;
@@ -44,22 +42,6 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
   const [requiredValidations, setRequiredValidations] = useState((challenge as any)?.required_validations ?? 3);
   const [mlChallenges, setMlChallenges] = useState<{ id: string; title: string }[]>([]);
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [showTaskForm, setShowTaskForm] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | undefined>();
-  const [challengeRepos, setChallengeRepos] = useState<
-    { repo_id: string; repo_type: string; repo_external_id?: string; challenge_id: string }[]
-  >([]);
-
-  const confirm = useConfirm();
-
-  useEffect(() => {
-    if (challenge?.uuid) {
-      fetchTasks();
-      fetchChallengeRepos();
-    }
-  }, [challenge?.uuid]);
-
   // Only needed to populate the source-challenge picker when creating a new
   // validation challenge — editing never touches this field (locked).
   useEffect(() => {
@@ -71,75 +53,6 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       ))
       .catch(() => {});
   }, [challenge?.uuid]);
-
-  const fetchTasks = async () => {
-    if (!challenge?.uuid) return;
-    try {
-      const res = await fetch(`/api/tasks?challenge_id=${challenge.uuid}`);
-      const data = await res.json();
-      setTasks(Array.isArray(data) ? data : []);
-    } catch {
-      setTasks([]);
-    }
-  };
-
-  const fetchChallengeRepos = async () => {
-    if (!challenge?.uuid) return;
-    try {
-      const res = await fetch(`/api/challenges/${challenge.uuid}/repos`);
-      const data = await res.json();
-      setChallengeRepos(Array.isArray(data) ? data : []);
-    } catch {
-      setChallengeRepos([]);
-    }
-  };
-
-  const handleCreateTask = async (data: any) => {
-    try {
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) { await fetchTasks(); setShowTaskForm(false); }
-    } catch { /* noop */ }
-  };
-
-  const handleUpdateTask = async (data: any) => {
-    if (!editingTask) return;
-    try {
-      const res = await fetch(`/api/tasks/${editingTask.uuid}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) { await fetchTasks(); setShowTaskForm(false); setEditingTask(undefined); }
-    } catch { /* noop */ }
-  };
-
-  const handleDeleteTask = async (id: string) => {
-    const ok = await confirm({
-      title: 'Delete Task',
-      message: 'Are you sure you want to delete this task?',
-      confirmLabel: 'Delete',
-      variant: 'danger',
-    });
-    if (!ok) return;
-    try {
-      const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
-      if (res.ok) await fetchTasks();
-    } catch { /* noop */ }
-  };
-
-  const handleEditTask = (task: Task) => {
-    setEditingTask(task);
-    setShowTaskForm(true);
-  };
-
-  const handleCancelTaskForm = () => {
-    setShowTaskForm(false);
-    setEditingTask(undefined);
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -403,28 +316,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       {/* Section: Tasks — seulement en mode édition */}
       {challenge?.uuid && (
         <FormSection title="Tasks">
-          {showTaskForm ? (
-            <TaskForm
-              task={editingTask}
-              challengeId={challenge.uuid}
-              availableParentTasks={tasks.filter((t) => !t.parent_task_id)}
-              availableRepos={challengeRepos}
-              onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
-              onCancel={handleCancelTaskForm}
-            />
-          ) : (
-            <>
-              <TaskList tasks={tasks} onEdit={handleEditTask} onDelete={handleDeleteTask} />
-              <button
-                type="button"
-                onClick={() => setShowTaskForm(true)}
-                className="mt-2 flex items-center gap-1.5 rounded-lg border border-dashed border-white/20 px-3 py-2 text-sm text-white/40 transition-colors hover:border-white/40 hover:text-white/60"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Task
-              </button>
-            </>
-          )}
+          <ChallengeTasksEditor challengeId={challenge.uuid} open />
         </FormSection>
       )}
 

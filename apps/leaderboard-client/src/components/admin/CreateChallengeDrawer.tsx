@@ -9,14 +9,21 @@ import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
 import { Toggle } from '@/components/ui/Toggle';
 import { MlRewardRulesEditor } from '@/components/admin/MlRewardRulesEditor';
+import { CodeRewardRulesEditor } from '@/components/admin/CodeRewardRulesEditor';
 import { ChallengeTasksEditor } from '@/components/admin/ChallengeTasksEditor';
 import { ChallengeSlackSignalsEditor } from '@/components/admin/ChallengeSlackSignalsEditor';
 import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
 import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
 import {
   DEFAULT_ML_REWARD_RULES,
+  parseMlRewardRules,
   type MlRewardRules,
 } from '../../../../../packages/database-service/domain/mlRewardRules';
+import {
+  DEFAULT_CODE_REWARD_RULES,
+  parseCodeRewardRules,
+  type CodeRewardRules,
+} from '../../../../../packages/database-service/domain/codeRewardRules';
 
 interface Project {
   id: string;
@@ -35,10 +42,11 @@ export interface EditableChallenge {
   roadmap?: string | null;
   contribution_points_reward: number;
   project_id: string;
-  reward_rules?: MlRewardRules | null;
+  reward_rules?: MlRewardRules | CodeRewardRules | null;
   source_challenge_id?: string | null;
   cp_per_validation?: number | null;
   compute_enabled?: boolean | null;
+  workspace_mode?: 'provided_repo' | 'own_repo' | null;
 }
 
 interface CreateChallengeDrawerProps {
@@ -84,7 +92,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [roadmap, setRoadmap] = useState('');
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [githubRepo, setGithubRepo] = useState('');
+  const [workspaceMode, setWorkspaceMode] = useState<'provided_repo' | 'own_repo'>('provided_repo');
   const [rewardRules, setRewardRules] = useState<MlRewardRules>(DEFAULT_ML_REWARD_RULES);
+  const [codeRules, setCodeRules] = useState<CodeRewardRules>(DEFAULT_CODE_REWARD_RULES);
   const [computeEnabled, setComputeEnabled] = useState(false);
   const [apiPackagingEnabled, setApiPackagingEnabled] = useState(true);
   const [sourceChallengeId, setSourceChallengeId] = useState('');
@@ -120,7 +130,13 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setDescription(challenge.description ?? '');
       setRoadmap(challenge.roadmap ?? '');
       setShowRoadmap(!!challenge.roadmap);
-      setRewardRules(challenge.reward_rules ?? DEFAULT_ML_REWARD_RULES);
+      setWorkspaceMode(challenge.workspace_mode ?? 'provided_repo');
+      const parsedCodeRules = parseCodeRewardRules(challenge.reward_rules);
+      if (parsedCodeRules) {
+        setCodeRules(parsedCodeRules);
+      } else {
+        setRewardRules(parseMlRewardRules(challenge.reward_rules) ?? DEFAULT_ML_REWARD_RULES);
+      }
       setSourceChallengeId(challenge.source_challenge_id ?? '');
       setCpPerValidation(challenge.cp_per_validation ?? 5);
       setComputeEnabled(challenge.compute_enabled ?? false);
@@ -159,7 +175,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     setRoadmap('');
     setShowRoadmap(false);
     setGithubRepo('');
+    setWorkspaceMode('provided_repo');
     setRewardRules(DEFAULT_ML_REWARD_RULES);
+    setCodeRules(DEFAULT_CODE_REWARD_RULES);
     setSourceChallengeId('');
     setCpPerValidation(5);
     setRequiredValidations(3);
@@ -193,9 +211,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         end_date: endDate || null,
         description: description.trim() || undefined,
         roadmap: roadmap.trim() || undefined,
-        // Without rules an ML challenge awards nothing — the service has
+        // Without rules an ML/code challenge awards nothing — the service has
         // nothing to score against.
-        reward_rules: type === 'ml' ? rewardRules : null,
+        reward_rules: type === 'ml' ? rewardRules : type === 'code' ? codeRules : null,
         compute_enabled: type === 'ml' ? computeEnabled : false,
       };
 
@@ -215,7 +233,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                   ...shared,
                   project_id: projectId,
                   contribution_points_reward: cp,
-                  github_repo: type === 'code' && githubRepo.trim() ? githubRepo.trim() : undefined,
+                  workspace_mode: type === 'code' ? workspaceMode : undefined,
+                  github_repo: type === 'code' && workspaceMode === 'provided_repo' && githubRepo.trim() ? githubRepo.trim() : undefined,
                   source_challenge_id: type === 'validation' ? sourceChallengeId : undefined,
                   cp_per_validation: type === 'validation' ? cpPerValidation : undefined,
                   required_validations: type === 'validation' ? requiredValidations : undefined,
@@ -416,6 +435,55 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             </div>
           </Field>
 
+          {/* ── Code: workspace mode ── */}
+          {/* Locked on edit: it decides which repos exist and how contributors
+              submit — it only makes sense to fix at creation. */}
+          {type === 'code' && (
+            <Field label="Workspace mode">
+              {isEdit ? (
+                <LockedValue
+                  text={workspaceMode === 'own_repo'
+                    ? 'Own repo — each contributor submits their repo URL'
+                    : 'Shared repo — one personal branch per contributor'}
+                />
+              ) : (
+                <div className="flex gap-2">
+                  {([
+                    { value: 'provided_repo', label: 'Shared repo', desc: 'One personal branch per contributor' },
+                    { value: 'own_repo',      label: 'Own repo',    desc: 'Each contributor submits their repo URL' },
+                  ] as const).map(opt => {
+                    const active = workspaceMode === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => setWorkspaceMode(opt.value)}
+                        className={`flex flex-1 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
+                          active
+                            ? 'border-brandCP/40 bg-brandCP/10 ring-1 ring-brandCP/20'
+                            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'
+                        }`}
+                      >
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: active ? 'var(--foreground)' : fgAt(0.5) }}>{opt.label}</p>
+                          <p className="text-[10px]" style={{ color: fgAt(0.3) }}>{opt.desc}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </Field>
+          )}
+
+          {/* ── Code reward rules ── */}
+          {type === 'code' && (
+            <CodeRewardRulesEditor
+              value={codeRules}
+              pool={cp}
+              onChange={setCodeRules}
+            />
+          )}
+
           {/* ── ML reward rules ── */}
           {type === 'ml' && (
             <MlRewardRulesEditor
@@ -547,8 +615,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             </>
           )}
 
-          {/* ── GitHub repo (code only, creation only) ── */}
-          {type === 'code' && !isEdit && (
+          {/* ── GitHub repo (code only, creation only, provided_repo mode only) ── */}
+          {type === 'code' && !isEdit && workspaceMode === 'provided_repo' && (
             <Field icon={<Github className="h-3.5 w-3.5" />} label="GitHub Repository">
               <input
                 type="url"

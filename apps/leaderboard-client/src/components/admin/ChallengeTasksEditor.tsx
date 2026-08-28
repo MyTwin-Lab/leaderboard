@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2, Loader2, ListTodo, Users, User } from 'lucide-react';
+import { Plus, Trash2, Loader2, ListTodo } from 'lucide-react';
 
 interface TaskItem {
   uuid: string;
   title: string;
-  type: 'solo' | 'concurrent';
   status: string;
   parent_task_id?: string;
 }
@@ -16,18 +15,17 @@ function fgAt(opacity: number) {
 }
 
 /**
- * Task management for a code challenge, embedded in the edit drawer.
+ * Template task management for a code challenge, embedded in the edit drawer.
+ * These are the tasks copied to a contributor's personal board when they join
+ * — not the tasks themselves, which live on each contributor's own board and
+ * have no shared progress to show here.
  * Tasks are independent entities: each add/delete hits the API immediately,
  * it is not tied to the challenge's "Save changes" button.
  */
 export function ChallengeTasksEditor({ challengeId, open }: { challengeId: string; open: boolean }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
-  // A code challenge has a single repo, fixed at creation. We force it on every
-  // task rather than letting the manager pick one.
-  const [forcedRepoId, setForcedRepoId] = useState('');
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
-  const [type, setType] = useState<'solo' | 'concurrent'>('solo');
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -37,26 +35,17 @@ export function ChallengeTasksEditor({ challengeId, open }: { challengeId: strin
   useEffect(() => {
     const justOpened = open && !wasOpen.current;
     wasOpen.current = open;
-    if (justOpened) fetchAll();
+    if (justOpened) fetchTasks();
   }, [open]);
 
   const fetchTasks = async () => {
-    const res = await fetch(`/api/tasks?challenge_id=${challengeId}`);
-    if (res.ok) {
-      const data = await res.json();
-      setTasks(Array.isArray(data) ? data : []);
-    }
-  };
-
-  const fetchAll = async () => {
     setLoading(true);
     try {
-      await Promise.all([
-        fetchTasks(),
-        fetch(`/api/challenges/${challengeId}/repos`).then(r => r.ok && r.json()).then(d => {
-          if (Array.isArray(d) && d.length > 0) setForcedRepoId(d[0].repo_id ?? '');
-        }),
-      ]);
+      const res = await fetch(`/api/tasks?challenge_id=${challengeId}&scope=template`);
+      if (res.ok) {
+        const data = await res.json();
+        setTasks(Array.isArray(data) ? data : []);
+      }
     } catch {} finally { setLoading(false); }
   };
 
@@ -71,13 +60,11 @@ export function ChallengeTasksEditor({ challengeId, open }: { challengeId: strin
         body: JSON.stringify({
           challenge_id: challengeId,
           title: title.trim(),
-          type,
-          repo_id: forcedRepoId || undefined,
+          template: true,
         }),
       });
       if (res.ok) {
         setTitle('');
-        setType('solo');
         await fetchTasks();
       } else {
         const d = await res.json().catch(() => ({}));
@@ -103,10 +90,13 @@ export function ChallengeTasksEditor({ challengeId, open }: { challengeId: strin
     <div className="space-y-3">
       <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest" style={{ color: fgAt(0.3) }}>
         <ListTodo className="h-3.5 w-3.5" />
-        Tasks
+        Template tasks
         <span className="ml-1 rounded-full bg-white/8 px-1.5 py-0.5 text-[9px] font-normal" style={{ color: fgAt(0.4) }}>
           {parents.length}
         </span>
+      </p>
+      <p className="-mt-2 text-xs" style={{ color: fgAt(0.3) }}>
+        Copied to each contributor&apos;s personal board when they join.
       </p>
 
       {/* Existing tasks */}
@@ -116,34 +106,25 @@ export function ChallengeTasksEditor({ challengeId, open }: { challengeId: strin
         </div>
       ) : parents.length === 0 ? (
         <p className="rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
-          No task yet. Add the first one below.
+          No template task yet. Add the first one below.
         </p>
       ) : (
         <div className="space-y-1.5">
-          {parents.map(task => {
-            const isDone = task.status === 'done' || task.status === 'completed';
-            const TypeIcon = task.type === 'concurrent' ? Users : User;
-            return (
-              <div key={task.uuid} className="group flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isDone ? 'bg-green-500' : 'bg-white/25'}`} />
-                <span className="min-w-0 flex-1 truncate text-sm" style={{ color: fgAt(isDone ? 0.4 : 0.75) }}>
-                  {task.title}
-                </span>
-                <span className="flex shrink-0 items-center gap-1 text-[10px]" style={{ color: fgAt(0.3) }}>
-                  <TypeIcon className="h-3 w-3" />
-                  {task.type}
-                </span>
-                <button
-                  onClick={() => handleDelete(task.uuid)}
-                  disabled={deletingId === task.uuid}
-                  className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100 disabled:opacity-40"
-                  aria-label="Delete task"
-                >
-                  {deletingId === task.uuid ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                </button>
-              </div>
-            );
-          })}
+          {parents.map(task => (
+            <div key={task.uuid} className="group flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+              <span className="min-w-0 flex-1 truncate text-sm" style={{ color: fgAt(0.75) }}>
+                {task.title}
+              </span>
+              <button
+                onClick={() => handleDelete(task.uuid)}
+                disabled={deletingId === task.uuid}
+                className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100 disabled:opacity-40"
+                aria-label="Delete task"
+              >
+                {deletingId === task.uuid ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -154,38 +135,16 @@ export function ChallengeTasksEditor({ challengeId, open }: { challengeId: strin
           value={title}
           onChange={e => setTitle(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !adding) handleAdd(); }}
-          placeholder="New task title…"
+          placeholder="New template task title…"
           className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
           style={{ color: 'var(--foreground)' }}
         />
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Type toggle */}
-          {([
-            { value: 'solo', label: 'Solo', icon: User },
-            { value: 'concurrent', label: 'Concurrent', icon: Users },
-          ] as const).map(opt => {
-            const Icon = opt.icon;
-            const active = type === opt.value;
-            return (
-              <button
-                key={opt.value}
-                onClick={() => setType(opt.value)}
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all ${
-                  active ? 'border-brandCP/40 bg-brandCP/10 text-brandCP' : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'
-                }`}
-                style={active ? undefined : { color: fgAt(0.5) }}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {opt.label}
-              </button>
-            );
-          })}
-
+        <div className="flex items-center justify-end">
           <button
             onClick={handleAdd}
             disabled={adding || !title.trim()}
-            className="ml-auto flex items-center gap-1.5 rounded-lg bg-brandCP/15 px-3 py-1.5 text-xs font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-lg bg-brandCP/15 px-3 py-1.5 text-xs font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {adding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
             Add
