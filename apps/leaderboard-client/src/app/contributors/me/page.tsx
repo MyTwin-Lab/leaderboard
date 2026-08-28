@@ -24,7 +24,6 @@ import { isValidThemeKey, DEFAULT_THEME_KEY } from "@/lib/themes";
 import { ModulesSettings } from "@/components/contributor/ModulesSettings";
 import { OnboardingProgressTable } from "@/components/contributor/OnboardingProgressTable";
 import { EvaluationGridsTab } from "@/components/contributor/evaluation-grids/EvaluationGridsTab";
-import { computeContributorKpis } from "@/lib/contributorStats";
 
 const appSettingsRepo = new AppSettingsRepository();
 const onboardingProgressRepo = new OnboardingProgressRepository();
@@ -178,8 +177,6 @@ export default async function ContributorSelfPage({
     });
   }
 
-  const kpis = computeContributorKpis(profile.challenges);
-
   return (
     <div className="mx-auto mt-4 max-w-4xl px-4 sm:mt-6">
       <ContributorTopBar
@@ -196,14 +193,9 @@ export default async function ContributorSelfPage({
         bio={profile.bio}
         avatarUrl={profile.avatarUrl}
         totalCP={profile.totalCP}
-        totalContributions={kpis.totalContributions}
-        totalChallenges={kpis.totalChallenges}
-        last30Days={kpis.last30Days}
         globalRank={profile.globalRank}
         rankGap={profile.rankGap}
         contributingSince={profile.contributingSince}
-        avgEvaluationScore={profile.avgEvaluationScore}
-        evaluatedContributionsCount={profile.evaluatedContributionsCount}
         avatarSlot={
           <ClickableAvatarUpload
             name={profile.displayName}

@@ -28,11 +28,11 @@ export function ChallengesHero({ stats }: ChallengesHeroProps) {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2.5">
+      <div className="hidden flex-wrap gap-2.5 sm:flex">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="flex min-w-[104px] flex-col gap-0.5 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3"
+            className="flex min-w-[104px] flex-col gap-0.5 px-4 py-3"
           >
             <span className="text-xl font-bold tracking-tight text-white sm:text-2xl">
               {stat.value}

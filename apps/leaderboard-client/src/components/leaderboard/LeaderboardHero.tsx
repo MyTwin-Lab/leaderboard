@@ -36,7 +36,7 @@ export function LeaderboardHero() {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2.5">
+      <div className="hidden flex-wrap items-baseline gap-x-6 gap-y-2.5 sm:flex">
         {headStats.map((stat) => (
           <div key={stat.label} className="flex flex-col gap-0.5">
             <span className="text-xl font-semibold tracking-tight text-white sm:text-2xl">

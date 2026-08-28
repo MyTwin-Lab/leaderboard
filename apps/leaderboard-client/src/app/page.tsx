@@ -1,8 +1,11 @@
 import { fetchHomeOverview } from "@/lib/server/home";
 import { HomeHero } from "@/components/home/HomeHero";
-import { HomeStatsCard } from "@/components/home/HomeStatsCard";
 import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
 import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
+
+// HomeStatsCard ("The Lab, right now") is temporarily hidden from the home
+// page — component kept in place, just not rendered here. HomeHero takes
+// the full width in its place.
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +18,8 @@ export default async function HomePage() {
   return (
     <div className="space-y-10 sm:space-y-14">
 
-      {/* ── Hero + live stats ────────────────────────────────────────── */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch lg:gap-10">
-        <HomeHero />
-        <HomeStatsCard stats={overview.stats} spark={overview.spark} />
-      </div>
+      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      <HomeHero />
 
       {/* ── Leaderboard + Trending challenges ───────────────────────── */}
       <div className="grid gap-8 lg:grid-cols-2">

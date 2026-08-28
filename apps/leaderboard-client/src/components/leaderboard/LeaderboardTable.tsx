@@ -6,7 +6,7 @@ import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
 import { formatCP } from "@/lib/formatters";
 import { useLeaderboardContext } from "@/components/leaderboard/LeaderboardProvider";
 
-const RANK_STYLES: Record<number, { badge: string; glow: string; leftBar: string }> = {
+export const RANK_STYLES: Record<number, { badge: string; glow: string; leftBar: string }> = {
   1: {
     badge: "bg-gradient-to-br from-yellow-300 to-yellow-500 text-yellow-900 shadow-md shadow-yellow-500/40",
     glow: "group-hover:shadow-[0_0_20px_rgba(234,179,8,0.15)]",

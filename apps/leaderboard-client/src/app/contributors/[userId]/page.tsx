@@ -7,7 +7,6 @@ import { ContributionDashboard } from "@/components/contributor/ContributionDash
 import { ContributorTabs } from "@/components/contributor/ContributorTabs";
 import { fetchContributorProfile } from "@/lib/server/leaderboard";
 import { getSessionUser } from "@/lib/auth";
-import { computeContributorKpis } from "@/lib/contributorStats";
 
 interface ContributorPageProps {
   params: Promise<{
@@ -27,7 +26,6 @@ export default async function ContributorPage({ params, searchParams }: Contribu
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const initialTab = resolvedSearchParams.tab;
-  const kpis = computeContributorKpis(profile.challenges);
 
   return (
     <div className="mx-auto mt-4 max-w-4xl px-4 sm:mt-6">
@@ -38,14 +36,9 @@ export default async function ContributorPage({ params, searchParams }: Contribu
         bio={profile.bio}
         avatarUrl={profile.avatarUrl}
         totalCP={profile.totalCP}
-        totalContributions={kpis.totalContributions}
-        totalChallenges={kpis.totalChallenges}
-        last30Days={kpis.last30Days}
         globalRank={profile.globalRank}
         rankGap={profile.rankGap}
         contributingSince={profile.contributingSince}
-        avgEvaluationScore={profile.avgEvaluationScore}
-        evaluatedContributionsCount={profile.evaluatedContributionsCount}
       />
       <ContributorTabs
         initialTab={initialTab}

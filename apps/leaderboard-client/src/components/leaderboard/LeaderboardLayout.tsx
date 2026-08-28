@@ -31,11 +31,7 @@ export function LeaderboardLayout({
       <div className="flex flex-col gap-5 sm:gap-6">
         <LeaderboardHero />
 
-        {/* Sticky filters — search box + project dropdown are untouched by
-         * the redesign, only the surrounding sticky/fade treatment is new. */}
-        <div className="sticky top-[78px] z-20 -mx-1 bg-gradient-to-b from-background from-60% to-background/70 px-1 py-2">
-          <FiltersBar />
-        </div>
+        <FiltersBar />
 
         <LeaderboardPodium />
         <LeaderboardListSection />
