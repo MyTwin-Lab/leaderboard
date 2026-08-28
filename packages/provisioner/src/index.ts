@@ -8,10 +8,11 @@ import type {
 } from './types.js';
 import { ProvisionerRegistry } from './registry.js';
 import { GitHubBranchProvider } from './providers/github-branch.provider.js';
-import { 
-  generateChallengeBranchName, 
-  generateTaskBranchName, 
-  mapRepoTypeToWorkspaceType 
+import {
+  generateChallengeBranchName,
+  generateTaskBranchName,
+  generateContributorBranchName,
+  mapRepoTypeToWorkspaceType
 } from './utils.js';
 import { ProviderNotFoundError } from './errors.js';
 
@@ -122,6 +123,42 @@ export async function provisionTaskWorkspace(
     workspaceType,
     parentRef: repoExternalId,
     name: branchName,
+    baseRef,
+  });
+}
+
+/**
+ * Provisionne le workspace personnel d'un contributeur sur un challenge code :
+ * une branche `contrib/<index>-<username>` basée sur la branche du challenge
+ * (ou main), protégée ensuite pour ce seul contributeur par l'appelant.
+ */
+export async function provisionContributorWorkspace(context: {
+  challengeIndex: number;
+  username: string;
+  repoExternalId: string;
+  repoType: string;
+  challengeBranchRef?: string;
+}): Promise<ProvisionResult> {
+  initializeProviders();
+
+  const workspaceType = mapRepoTypeToWorkspaceType(context.repoType);
+  if (!ProvisionerRegistry.hasProvider(workspaceType)) {
+    return {
+      provider: 'none', workspaceType, ref: '', url: '',
+      status: 'failed',
+      error: `No provider available for workspace type: ${workspaceType}`,
+    };
+  }
+
+  const provider = ProvisionerRegistry.getProvider(workspaceType);
+  const baseRef = context.challengeBranchRef
+    ? context.challengeBranchRef.replace('refs/heads/', '')
+    : 'main';
+
+  return provider.provision({
+    workspaceType,
+    parentRef: context.repoExternalId,
+    name: generateContributorBranchName(context.challengeIndex, context.username),
     baseRef,
   });
 }

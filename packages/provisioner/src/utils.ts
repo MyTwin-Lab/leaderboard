@@ -41,6 +41,20 @@ export function generateTaskBranchName(challengeIndex: number, taskTitle: string
 }
 
 /**
+ * Génère le nom de branche pour une workspace personnelle de contributeur
+ * Format: contrib/{challenge-index}-{username-slug}
+ * Exemple: contrib/015-alice-dupont
+ */
+export function generateContributorBranchName(challengeIndex: number, username: string): string {
+  const slug = username
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `contrib/${String(challengeIndex).padStart(3, "0")}-${slug}`;
+}
+
+/**
  * Mappe un type de repo vers un type de workspace
  */
 export function mapRepoTypeToWorkspaceType(repoType: string): string {
@@ -50,6 +64,6 @@ export function mapRepoTypeToWorkspaceType(repoType: string): string {
     'huggingface': 'hf_space',
     'figma': 'figma_project',
   };
-  
+
   return mapping[repoType] || repoType;
 }
