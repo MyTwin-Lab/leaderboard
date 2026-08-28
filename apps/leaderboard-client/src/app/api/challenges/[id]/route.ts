@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChallengeRepository } from '../../../../../../../packages/database-service/repositories';
-import { mlRewardRulesSchema } from '../../../../../../../packages/database-service/domain/mlRewardRules';
+import { parseMlRewardRules } from '../../../../../../../packages/database-service/domain/mlRewardRules';
+import { parseCodeRewardRules } from '../../../../../../../packages/database-service/domain/codeRewardRules';
 import { verifyRequestToken } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { z } from 'zod';
@@ -17,7 +18,10 @@ const updateChallengeSchema = z.object({
   roadmap: z.string().optional(),
   contribution_points_reward: z.number().int().nonnegative().optional(),
   project_id: z.string().uuid().optional(),
-  reward_rules: mlRewardRulesSchema.nullish(),
+  // Validated below via parseMlRewardRules ?? parseCodeRewardRules (not a zod
+  // union over package schemas — the app and packages resolve different zod
+  // instances on this branch, which breaks tsc structural checks).
+  reward_rules: z.unknown().nullish(),
   compute_enabled: z.boolean().optional(),
 });
 
@@ -73,6 +77,20 @@ export async function PUT(
     // Present but empty means "clear the date"; absent means "leave it alone".
     if (validated.start_date !== undefined) updateData.start_date = validated.start_date ? new Date(validated.start_date) : null;
     if (validated.end_date !== undefined) updateData.end_date = validated.end_date ? new Date(validated.end_date) : null;
+
+    // Same rule: present-but-null clears the rules, absent leaves them alone.
+    // reward_rules can hold either an ML or a code shape (same column, keyed
+    // off challenge.type), so it's parsed explicitly rather than validated by
+    // a single zod schema in updateChallengeSchema above.
+    if (validated.reward_rules !== undefined) {
+      const rewardRules = validated.reward_rules == null
+        ? null
+        : parseMlRewardRules(validated.reward_rules) ?? parseCodeRewardRules(validated.reward_rules);
+      if (validated.reward_rules != null && !rewardRules) {
+        return NextResponse.json({ error: 'Invalid reward_rules' }, { status: 400 });
+      }
+      updateData.reward_rules = rewardRules;
+    }
 
     const challenge = await challengeRepo.update(id, updateData);
 

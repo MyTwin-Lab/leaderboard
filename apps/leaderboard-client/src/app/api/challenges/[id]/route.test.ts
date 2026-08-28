@@ -51,6 +51,15 @@ function putStatus(status: string) {
   return PUT(req, { params: Promise.resolve({ id: CHALLENGE_ID }) });
 }
 
+function putBody(body: unknown) {
+  const req = new NextRequest(`http://localhost/api/challenges/${CHALLENGE_ID}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return PUT(req, { params: Promise.resolve({ id: CHALLENGE_ID }) });
+}
+
 function deleteChallenge() {
   const req = new NextRequest(`http://localhost/api/challenges/${CHALLENGE_ID}`, { method: 'DELETE' });
   return DELETE(req, { params: Promise.resolve({ id: CHALLENGE_ID }) });
@@ -126,6 +135,29 @@ describe('PUT /api/challenges/[id] — cuts active GPU compute requests when an 
     await flushMicrotasks();
 
     expect(res.status).toBe(200);
+  });
+});
+
+describe('PUT /api/challenges/[id] — reward_rules accepts either an ML or a code shape', () => {
+  beforeEach(() => {
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', status: 'active' });
+  });
+
+  it('accepts a valid code reward_rules shape', async () => {
+    const res = await putBody({ reward_rules: { version: 1, delivery: { fixed: 25, cap: 75 } } });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.reward_rules).toEqual({ version: 1, delivery: { fixed: 25, cap: 75 } });
+  });
+
+  it('rejects reward_rules matching neither the ml nor the code shape', async () => {
+    const res = await putBody({ reward_rules: { foo: 1 } });
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('Invalid reward_rules');
+    expect(mockChallengeUpdate).not.toHaveBeenCalled();
   });
 });
 
