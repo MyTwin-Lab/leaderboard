@@ -57,6 +57,9 @@ if [[ "$MODE" == "min" || "$MODE" == "minimal" ]]; then
 fi
 
 echo "Production mode: $MODE"
+echo "Resyncing reward caches (contributions.reward, challenges.completion)..."
+npx tsx "$ROOT_DIR/scripts/db-resync-rewards.ts"
+
 echo "Building Next.js app (apps/leaderboard-client)..."
 pushd "$ROOT_DIR/apps/leaderboard-client" >/dev/null
 npm run build

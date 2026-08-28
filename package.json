@@ -13,6 +13,7 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx db_data/seed.ts",
+    "db:resync-rewards": "tsx scripts/db-resync-rewards.ts",
     "db:seed:force": "tsx db_data/seed.ts --force",
     "db:seed:demo": "tsx db_data/seed-demo.ts",
     "db:setup": "drizzle-kit push && tsx db_data/seed.ts",
