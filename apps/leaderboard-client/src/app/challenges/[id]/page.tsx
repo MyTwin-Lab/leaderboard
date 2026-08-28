@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useParams } from 'next/navigation';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import {
-  ArrowLeft, CheckCircle2, Circle, CalendarDays, BrainCircuit,
+  ArrowLeft, CheckCircle2, CalendarDays, BrainCircuit,
   GitBranch, GitPullRequest, Trophy, BarChart2, FlaskConical, Medal, FileText, Info,
   Database, Cpu, ExternalLink,
 } from 'lucide-react';
@@ -16,7 +16,10 @@ import { ValidationChallengeFlow } from '@/components/challenges/ValidationChall
 import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseAuthorPanel';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
-import { ContributorTaskBoard } from '@/components/contributor/ContributorTaskBoard';
+import { type BoardTask } from '@/components/contributor/ContributorTaskBoard';
+import {
+  CodeChallengePanel, type CodeParticipation, type ProjectContribution,
+} from '@/components/challenges/CodeChallengePanel';
 import { MeetingsSection } from '@/components/challenges/MeetingsSection';
 import { HeroStatCard } from '@/components/challenges/HeroStatCard';
 import { HeroStatCarousel } from '@/components/challenges/HeroStatCarousel';
@@ -35,23 +38,25 @@ interface Challenge {
   end_date?: string | null;
   contribution_points_reward: number;
   project_id: string;
+  workspace_mode?: string;
 }
 
-interface TaskWithAssignees {
-  uuid: string;
-  title: string;
-  description?: string;
-  status: 'todo' | 'in_progress' | 'done';
-  parent_task_id?: string;
+// A task row from the overview — either a template task (no `user_id`) or
+// an entry on a specific contributor's personal board.
+interface ChallengeTask extends BoardTask {
+  user_id?: string | null;
 }
 
-// Ledger entries (ML/validation contributions) — unrelated to the personal
-// task board now, but still used for the challenge's stat cards below.
+// Ledger entries (ML/validation/code contributions) — unrelated to the
+// personal task board, but still used for the challenge's stat cards below
+// and (for `type === 'project'`) the code-challenge evaluation status.
 interface BoardContribution {
   uuid: string;
   task_id?: string;
   user_id: string;
+  type?: string;
   evaluation?: { globalScore?: number } | null;
+  evaluation_status?: string;
   reward: number;
   submitted_at: string;
 }
@@ -117,6 +122,14 @@ export default function ChallengeDetailPage() {
     if (challengeId) trackOnboardingStep('clicked_challenge');
   }, [challengeId]);
 
+  // Declared before overviewQuery so its refetchInterval closure (below) can
+  // read meQuery.data without a temporal-dead-zone hazard.
+  const meQuery = useQuery({
+    queryKey: ['me'],
+    queryFn: () => fetchJson('/api/contributors/me'),
+    staleTime: 5 * 60_000,
+  });
+
   // Challenge, team, tasks, meetings, repos and contributions all come from
   // one aggregated request instead of 6 separate ones — see the route for why
   // repo-activity stays its own call. Shared query key + shape with
@@ -131,8 +144,19 @@ export default function ChallengeDetailPage() {
       meetings: SyncMeeting[];
       repos: any[];
       contributions: BoardContribution[];
+      participants: CodeParticipation[];
     }>,
     enabled: !!challengeId,
+    // Polling while a project evaluation is in flight — the run is async
+    // server-side, so this is how the panel notices it finished without the
+    // user reloading. Stops as soon as the current user's project
+    // contribution leaves pending/running.
+    refetchInterval: (query) => {
+      const cs = query.state.data?.contributions ?? [];
+      const myId = meQuery.data?.user?.id ?? null;
+      const mine = cs.find((c: any) => c.user_id === myId && c.type === 'project');
+      return mine && ['pending', 'running'].includes(mine.evaluation_status ?? '') ? 3000 : false;
+    },
   });
 
   const repoActivityQuery = useQuery({
@@ -163,17 +187,11 @@ export default function ChallengeDetailPage() {
     staleTime: 5 * 60_000,
   });
 
-  const meQuery = useQuery({
-    queryKey: ['me'],
-    queryFn: () => fetchJson('/api/contributors/me'),
-    staleTime: 5 * 60_000,
-  });
-
   const challenge = overviewQuery.data?.challenge ?? null;
   const team: TeamMember[] = (overviewQuery.data?.team ?? []).map((m: any) => ({
     id: m.uuid, fullName: m.full_name, avatarUrl: m.avatar_url ?? undefined,
   }));
-  const tasks: TaskWithAssignees[] = overviewQuery.data?.tasks ?? [];
+  const tasks: ChallengeTask[] = overviewQuery.data?.tasks ?? [];
   const meetings = overviewQuery.data?.meetings ?? [];
   const meetingsEnabled = modulesQuery.data?.meetings_enabled !== false;
   const repoTypes: string[] = (overviewQuery.data?.repos ?? []).map((r: any) => r.repo_type ?? r.type ?? '');
@@ -181,6 +199,17 @@ export default function ChallengeDetailPage() {
   const repoActivity = repoActivityQuery.data ?? null;
   const currentUserId = meQuery.data?.user?.id ?? null;
   const isAdmin = meQuery.data?.user?.role === 'admin';
+
+  // ── Personal code-challenge board: split the raw task list into "my
+  // board" (owned by the current user) vs the admin-authored template
+  // (no user_id) shown as a teaser to non-members. ──
+  const participants: CodeParticipation[] = overviewQuery.data?.participants ?? [];
+  const myParticipation = participants.find(p => p.user_id === currentUserId) ?? null;
+  const isMember = !!myParticipation;
+  const myTasks = tasks.filter(t => t.user_id === currentUserId);
+  const templateTasks = tasks.filter(t => !t.user_id);
+  const myProjectContribution: ProjectContribution | null =
+    contributions.find(c => c.user_id === currentUserId && c.type === 'project') ?? null;
 
   const isML = challenge?.type === 'ml' || repoTypes.some(t => ML_REPO_TYPES.includes(t));
   const isValidation = challenge?.type === 'validation';
@@ -206,8 +235,10 @@ export default function ChallengeDetailPage() {
     );
   }
 
-  const doneTasks = tasks.filter(t => t.status === 'done').length;
-  const completion = tasks.length === 0 ? 0 : Math.round((doneTasks / tasks.length) * 100);
+  // Completion of the CURRENT USER's personal board, not the whole
+  // challenge's task pool — each contributor has their own board now.
+  const myDoneTasks = myTasks.filter(t => t.status === 'done').length;
+  const myCompletion = myTasks.length === 0 ? 0 : Math.round((myDoneTasks / myTasks.length) * 100);
   // Actually distributed, not the pool/cap set at creation — reward is already
   // reconciled with the ledger (ML/validation) or the cached column (code).
   const awardedTotal = contributions.reduce((sum, c) => sum + (c.reward ?? 0), 0);
@@ -329,13 +360,21 @@ export default function ChallengeDetailPage() {
                   value={String(contributions.length)}
                   meta="submissions & verdicts recorded"
                 />
+              ) : isMember ? (
+                <HeroStatCard
+                  key="tasks"
+                  label="Tasks"
+                  value={`${myCompletion}%`}
+                  meta={`${myDoneTasks} of ${myTasks.length} tasks done · your board`}
+                  barWidth={`${myCompletion}%`}
+                />
               ) : (
                 <HeroStatCard
                   key="tasks"
                   label="Tasks"
-                  value={`${completion}%`}
-                  meta={`${doneTasks} of ${tasks.length} tasks validated`}
-                  barWidth={`${completion}%`}
+                  value={String(team.length)}
+                  unit={team.length === 1 ? 'participant' : 'participants'}
+                  meta="join the challenge to start your board"
                 />
               ),
               <HeroStatCard
@@ -386,10 +425,13 @@ export default function ChallengeDetailPage() {
           panel: (
             <TabTasks
               challengeId={challengeId}
-              tasks={tasks}
+              workspaceMode={(challenge.workspace_mode as 'provided_repo' | 'own_repo' | undefined) ?? 'provided_repo'}
+              myTasks={myTasks}
+              templateTasks={templateTasks}
+              myParticipation={myParticipation}
+              myProjectContribution={myProjectContribution}
+              isMember={isMember}
               onReload={reloadBoard}
-              doneTasks={doneTasks}
-              completion={completion}
             />
           ),
         },
@@ -420,16 +462,21 @@ export default function ChallengeDetailPage() {
 // ─── Tab: Tasks (code) ────────────────────────────────────────────────────
 
 function TabTasks({
-  challengeId, tasks, onReload,
-  doneTasks, completion,
+  challengeId, workspaceMode, myTasks, templateTasks, myParticipation, myProjectContribution, isMember, onReload,
 }: {
   challengeId: string;
-  tasks: TaskWithAssignees[];
+  workspaceMode: 'provided_repo' | 'own_repo';
+  myTasks: ChallengeTask[];
+  templateTasks: ChallengeTask[];
+  myParticipation: CodeParticipation | null;
+  myProjectContribution: ProjectContribution | null;
+  isMember: boolean;
   onReload: () => Promise<void> | void;
-  doneTasks: number;
-  completion: number;
 }) {
-  const parentCount = tasks.filter(t => !t.parent_task_id).length;
+  // "x/y" header reflects the current user's own board now — each
+  // contributor has a separate board, there's no single shared total.
+  const doneTasks = myTasks.filter(t => t.status === 'done').length;
+  const completion = myTasks.length === 0 ? 0 : Math.round((doneTasks / myTasks.length) * 100);
   return (
     <div className="space-y-6">
       <div className="space-y-3">
@@ -438,28 +485,28 @@ function TabTasks({
             <CheckCircle2 className="h-3.5 w-3.5 text-primary-100/35" />
             Tasks
           </h2>
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-white/30">{doneTasks}/{tasks.length}</span>
-            {tasks.length > 0 && (
-              <div className="h-1 w-20 overflow-hidden rounded-full bg-white/8">
-                <div className="h-full rounded-full bg-brandCP/60 transition-[width] duration-700" style={{ width: `${completion}%` }} />
-              </div>
-            )}
-          </div>
+          {isMember && (
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="text-xs text-white/30">{doneTasks}/{myTasks.length}</span>
+              {myTasks.length > 0 && (
+                <div className="h-1 w-20 overflow-hidden rounded-full bg-white/8">
+                  <div className="h-full rounded-full bg-brandCP/60 transition-[width] duration-700" style={{ width: `${completion}%` }} />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {parentCount === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] py-12 text-center">
-            <Circle className="h-7 w-7 text-white/15" />
-            <p className="text-xs text-white/25">No tasks available</p>
-          </div>
-        ) : (
-          <ContributorTaskBoard
-            challengeId={challengeId}
-            tasks={tasks}
-            onReload={onReload}
-          />
-        )}
+        <CodeChallengePanel
+          challengeId={challengeId}
+          workspaceMode={workspaceMode}
+          myTasks={myTasks}
+          templateTasks={templateTasks}
+          myParticipation={myParticipation}
+          myProjectContribution={myProjectContribution}
+          isMember={isMember}
+          onReload={onReload}
+        />
       </div>
     </div>
   );
