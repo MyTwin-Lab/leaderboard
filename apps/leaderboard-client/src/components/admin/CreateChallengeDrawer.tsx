@@ -15,6 +15,7 @@ import { ChallengeTasksEditor } from '@/components/admin/ChallengeTasksEditor';
 import { ChallengeSlackSignalsEditor } from '@/components/admin/ChallengeSlackSignalsEditor';
 import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
 import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
+import { flushTemplateTasks } from './templateTasksFlush';
 import {
   DEFAULT_ML_REWARD_RULES,
   parseMlRewardRules,
@@ -109,8 +110,16 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
   // Template tasks, buffered locally until the challenge exists (create mode
   // only — edit mode uses ChallengeTasksEditor, which hits /api/tasks directly).
-  const [pendingTasks, setPendingTasks] = useState<{ title: string }[]>([]);
+  // `id` is a local-only key (never sent to the API) so removing a row doesn't
+  // rely on its position in the array.
+  const [pendingTasks, setPendingTasks] = useState<{ id: string; title: string }[]>([]);
   const [pendingTaskTitle, setPendingTaskTitle] = useState('');
+  const nextPendingTaskId = useRef(0);
+
+  // Set only when the challenge saved but one or more template tasks failed
+  // to flush — the submit button turns into an explicit "Continue" the admin
+  // must click, so the failure banner isn't wiped by an auto-navigate.
+  const [pendingChallengeId, setPendingChallengeId] = useState<string | null>(null);
 
   // Fires on the false → true transition only. Callers pass a freshly spread
   // `challenge` object, so keying this on its identity would refill the form —
@@ -123,6 +132,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
     setSuccess(false);
     setError('');
+    setPendingChallengeId(null);
     setTimeout(() => titleRef.current?.focus(), 80);
 
     if (challenge) {
@@ -191,17 +201,27 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     setApiPackagingEnabled(true);
     setPendingTasks([]);
     setPendingTaskTitle('');
+    setPendingChallengeId(null);
   };
 
   const addPendingTask = () => {
     const t = pendingTaskTitle.trim();
     if (!t) return;
-    setPendingTasks(prev => [...prev, { title: t }]);
+    setPendingTasks(prev => [...prev, { id: String(nextPendingTaskId.current++), title: t }]);
     setPendingTaskTitle('');
   };
 
-  const removePendingTask = (index: number) => {
-    setPendingTasks(prev => prev.filter((_, i) => i !== index));
+  const removePendingTask = (id: string) => {
+    setPendingTasks(prev => prev.filter(t => t.id !== id));
+  };
+
+  /** Admin has read the partial-failure banner and clicked Continue. */
+  const handleAcknowledgeFailure = () => {
+    const id = pendingChallengeId;
+    if (!id) return;
+    resetForm();
+    onCreated(id);
+    onClose();
   };
 
   const handleSubmit = async () => {
@@ -272,36 +292,17 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         // itself already saved, so a task failure shouldn't block the flow.
         let failedTasks = 0;
         if (!isEdit && type === 'code' && newChallengeId && pendingTasks.length > 0) {
-          for (const task of pendingTasks) {
-            try {
-              const taskRes = await fetch('/api/tasks', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  challenge_id: newChallengeId,
-                  title: task.title,
-                  template: true,
-                }),
-              });
-              if (!taskRes.ok) failedTasks++;
-            } catch {
-              failedTasks++;
-            }
-          }
+          failedTasks = (await flushTemplateTasks(newChallengeId, pendingTasks)).failed;
         }
-
-        // Whatever happened to them, these attempts are done — don't let a
-        // reopened drawer resubmit or re-display them for a new challenge.
-        setPendingTasks([]);
-        setPendingTaskTitle('');
 
         setSuccess(true);
         if (failedTasks > 0) {
-          // The challenge saved fine — don't hide that behind an auto-close.
-          // Surface the partial failure and let the admin dismiss manually
-          // (they can still add the missed tasks from the edit drawer).
+          // The challenge saved fine, but silently auto-navigating away (the
+          // normal success path) would carry the admin off before they ever
+          // see this. Hold here — no resetForm/onCreated/onClose — until they
+          // click Continue in the footer.
           setError(`Challenge created, but ${failedTasks} template task${failedTasks > 1 ? 's' : ''} failed to save — add ${failedTasks > 1 ? 'them' : 'it'} from the edit drawer.`);
-          onCreated(newChallengeId ?? challenge!.uuid);
+          setPendingChallengeId(newChallengeId ?? challenge!.uuid);
         } else {
           setTimeout(() => {
             if (!isEdit) resetForm();
@@ -678,13 +679,13 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                 </p>
               ) : (
                 <div className="space-y-1.5">
-                  {pendingTasks.map((task, i) => (
-                    <div key={i} className="group flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                  {pendingTasks.map(task => (
+                    <div key={task.id} className="group flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
                       <span className="min-w-0 flex-1 truncate text-sm" style={{ color: fgAt(0.75) }}>
                         {task.title}
                       </span>
                       <button
-                        onClick={() => removePendingTask(i)}
+                        onClick={() => removePendingTask(task.id)}
                         className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
                         aria-label="Remove task"
                       >
@@ -791,8 +792,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           </button>
 
           <button
-            onClick={handleSubmit}
-            disabled={saving || success}
+            onClick={pendingChallengeId ? handleAcknowledgeFailure : handleSubmit}
+            disabled={saving || (success && !pendingChallengeId)}
             className={`flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60
               ${success
                 ? 'bg-green-500/20 text-green-400'
@@ -801,9 +802,11 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {success && <CheckCircle2 className="h-4 w-4" />}
-            {isEdit
-              ? (success ? 'Saved!' : saving ? 'Saving…' : 'Save changes')
-              : (success ? 'Created!' : saving ? 'Creating…' : 'Create challenge')}
+            {pendingChallengeId
+              ? 'Continue'
+              : isEdit
+                ? (success ? 'Saved!' : saving ? 'Saving…' : 'Save changes')
+                : (success ? 'Created!' : saving ? 'Creating…' : 'Create challenge')}
           </button>
         </div>
       </div>
