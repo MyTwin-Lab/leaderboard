@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
   CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck, Cpu, Package,
+  ListTodo, Trash2,
 } from 'lucide-react';
 import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
@@ -106,6 +107,11 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [success, setSuccess] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
+  // Template tasks, buffered locally until the challenge exists (create mode
+  // only — edit mode uses ChallengeTasksEditor, which hits /api/tasks directly).
+  const [pendingTasks, setPendingTasks] = useState<{ title: string }[]>([]);
+  const [pendingTaskTitle, setPendingTaskTitle] = useState('');
+
   // Fires on the false → true transition only. Callers pass a freshly spread
   // `challenge` object, so keying this on its identity would refill the form —
   // and wipe whatever is being typed — on every parent re-render.
@@ -183,6 +189,19 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     setRequiredValidations(3);
     setComputeEnabled(false);
     setApiPackagingEnabled(true);
+    setPendingTasks([]);
+    setPendingTaskTitle('');
+  };
+
+  const addPendingTask = () => {
+    const t = pendingTaskTitle.trim();
+    if (!t) return;
+    setPendingTasks(prev => [...prev, { title: t }]);
+    setPendingTaskTitle('');
+  };
+
+  const removePendingTask = (index: number) => {
+    setPendingTasks(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -246,12 +265,50 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
       if (res.ok) {
         const data = await res.json();
+        const newChallengeId = data.uuid ?? data.id;
+
+        // Create mode + code challenge: flush the buffered template tasks now
+        // that the challenge exists. Sequential, and non-fatal — the challenge
+        // itself already saved, so a task failure shouldn't block the flow.
+        let failedTasks = 0;
+        if (!isEdit && type === 'code' && newChallengeId && pendingTasks.length > 0) {
+          for (const task of pendingTasks) {
+            try {
+              const taskRes = await fetch('/api/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  challenge_id: newChallengeId,
+                  title: task.title,
+                  template: true,
+                }),
+              });
+              if (!taskRes.ok) failedTasks++;
+            } catch {
+              failedTasks++;
+            }
+          }
+        }
+
+        // Whatever happened to them, these attempts are done — don't let a
+        // reopened drawer resubmit or re-display them for a new challenge.
+        setPendingTasks([]);
+        setPendingTaskTitle('');
+
         setSuccess(true);
-        setTimeout(() => {
-          if (!isEdit) resetForm();
-          onCreated(data.uuid ?? data.id ?? challenge!.uuid);
-          onClose();
-        }, 900);
+        if (failedTasks > 0) {
+          // The challenge saved fine — don't hide that behind an auto-close.
+          // Surface the partial failure and let the admin dismiss manually
+          // (they can still add the missed tasks from the edit drawer).
+          setError(`Challenge created, but ${failedTasks} template task${failedTasks > 1 ? 's' : ''} failed to save — add ${failedTasks > 1 ? 'them' : 'it'} from the edit drawer.`);
+          onCreated(newChallengeId ?? challenge!.uuid);
+        } else {
+          setTimeout(() => {
+            if (!isEdit) resetForm();
+            onCreated(newChallengeId ?? challenge!.uuid);
+            onClose();
+          }, 900);
+        }
       } else {
         const d = await res.json();
         setError(d.error || `Failed to ${isEdit ? 'update' : 'create'} challenge`);
@@ -595,9 +652,71 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             />
           </Field>
 
-          {/* ── Tasks (code only, edit only) — independent CRUD via the tasks API ── */}
+          {/* ── Tasks (code, edit) — independent CRUD via the tasks API ── */}
           {type === 'code' && isEdit && (
             <ChallengeTasksEditor challengeId={challenge!.uuid} open={open} />
+          )}
+
+          {/* ── Tasks (code, create) — buffered locally, flushed to the tasks
+              API once the challenge exists (no challenge uuid yet to CRUD against) ── */}
+          {type === 'code' && !isEdit && (
+            <div className="space-y-3">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest" style={{ color: fgAt(0.3) }}>
+                <ListTodo className="h-3.5 w-3.5" />
+                Template tasks
+                <span className="ml-1 rounded-full bg-white/8 px-1.5 py-0.5 text-[9px] font-normal" style={{ color: fgAt(0.4) }}>
+                  {pendingTasks.length}
+                </span>
+              </p>
+              <p className="-mt-2 text-xs" style={{ color: fgAt(0.3) }}>
+                Copied to each contributor&apos;s personal board when they join. Saved once the challenge is created.
+              </p>
+
+              {pendingTasks.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
+                  No template task yet. Add the first one below.
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {pendingTasks.map((task, i) => (
+                    <div key={i} className="group flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                      <span className="min-w-0 flex-1 truncate text-sm" style={{ color: fgAt(0.75) }}>
+                        {task.title}
+                      </span>
+                      <button
+                        onClick={() => removePendingTask(i)}
+                        className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                        aria-label="Remove task"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                <input
+                  type="text"
+                  value={pendingTaskTitle}
+                  onChange={e => setPendingTaskTitle(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPendingTask(); } }}
+                  placeholder="New template task title…"
+                  className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
+                  style={{ color: 'var(--foreground)' }}
+                />
+                <div className="flex items-center justify-end">
+                  <button
+                    onClick={addPendingTask}
+                    disabled={!pendingTaskTitle.trim()}
+                    className="flex items-center gap-1.5 rounded-lg bg-brandCP/15 px-3 py-1.5 text-xs font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* ── Slack discussion signals (edit only, both types) — independent CRUD ── */}
