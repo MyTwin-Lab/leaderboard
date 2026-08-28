@@ -63,7 +63,7 @@ describe('GET /api/tasks/[id]', () => {
 
 describe('PUT /api/tasks/[id]', () => {
   it('returns 400 on an invalid body (Zod)', async () => {
-    const res = await putTask({ type: 'not-a-valid-type' });
+    const res = await putTask({ status: 'not-a-valid-status' });
 
     expect(res.status).toBe(400);
     expect(mockUpdate).not.toHaveBeenCalled();

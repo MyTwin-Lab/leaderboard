@@ -21,6 +21,19 @@ import { GET } from './route';
 
 const CHALLENGE_ID = 'challenge-1';
 
+/** A minimal but zod-valid MlRewardRules — reward_rules now goes through
+ * parseMlRewardRules, so fixtures must satisfy the full schema, not just the
+ * fields the test cares about. */
+function mlRules(metric: { name: string; baseline: number; blockThreshold?: number }) {
+  return {
+    version: 1,
+    dataset: { cap: 300 },
+    model: { cap: 500, metric, beatBestBonus: 50 },
+    apiPackaging: { cap: 200 },
+    reuse: { datasetShare: 0.2, modelShare: 0.2 },
+  };
+}
+
 function getRewards() {
   const req = new NextRequest(`http://localhost/api/challenges/${CHALLENGE_ID}/ml-rewards`);
   return GET(req, { params: Promise.resolve({ id: CHALLENGE_ID }) });
@@ -83,7 +96,7 @@ describe('GET /api/challenges/[id]/ml-rewards', () => {
       uuid: CHALLENGE_ID,
       type: 'ml',
       contribution_points_reward: 1000,
-      reward_rules: { model: { metric: { name: 'accuracy', baseline: 0.5 } } },
+      reward_rules: mlRules({ name: 'accuracy', baseline: 0.5 }),
     });
     mockFindByChallenge.mockResolvedValue([
       { user_id: 'u1', points: 10, rule_key: 'model_metric', meta: { metricValue: 0.7 } },
@@ -125,7 +138,7 @@ describe('GET /api/challenges/[id]/ml-rewards', () => {
       uuid: CHALLENGE_ID,
       type: 'ml',
       contribution_points_reward: 1000,
-      reward_rules: { model: { metric: { name: 'auc', baseline: 0.5, blockThreshold: 0.9 } } },
+      reward_rules: mlRules({ name: 'auc', baseline: 0.5, blockThreshold: 0.9 }),
     });
     mockFindByChallenge.mockResolvedValue([]);
     mockBestMetricValue.mockResolvedValue(0.9);
@@ -142,7 +155,7 @@ describe('GET /api/challenges/[id]/ml-rewards', () => {
       uuid: CHALLENGE_ID,
       type: 'ml',
       contribution_points_reward: 1000,
-      reward_rules: { model: { metric: { name: 'auc', baseline: 0.5, blockThreshold: 0.9 } } },
+      reward_rules: mlRules({ name: 'auc', baseline: 0.5, blockThreshold: 0.9 }),
     });
     mockFindByChallenge.mockResolvedValue([]);
     mockBestMetricValue.mockResolvedValue(0.85);
@@ -159,7 +172,7 @@ describe('GET /api/challenges/[id]/ml-rewards', () => {
       uuid: CHALLENGE_ID,
       type: 'ml',
       contribution_points_reward: 1000,
-      reward_rules: { model: { metric: { name: 'auc', baseline: 0.5 } } },
+      reward_rules: mlRules({ name: 'auc', baseline: 0.5 }),
     });
     mockFindByChallenge.mockResolvedValue([]);
     mockBestMetricValue.mockResolvedValue(0.99);

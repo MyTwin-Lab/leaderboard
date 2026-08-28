@@ -44,7 +44,7 @@ export async function GET(
 
     const [team, tasks, meetings, repos, contributions] = await Promise.all([
       challengeTeamRepo.findTeamMembers(id),
-      taskRepo.findByChallengeWithAssignees(id),
+      taskRepo.findByChallenge(id),
       new SyncMeetingService().getMeetingsByChallengeId(id),
       challengeRepoRepo.findByChallengeWithRepo(id),
       contributionRepo.findByChallenge(id),

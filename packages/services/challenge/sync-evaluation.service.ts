@@ -69,7 +69,6 @@ export class SyncEvaluationService {
         uuid: t.uuid,
         title: t.title,
         description: t.description,
-        type: t.type,
         status: t.status
       }))
     };

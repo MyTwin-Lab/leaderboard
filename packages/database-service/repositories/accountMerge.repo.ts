@@ -7,7 +7,7 @@ import {
   reward_entries,
   validation_attempts,
   compute_requests,
-  task_assignees,
+  tasks,
   evaluation_runs,
   evaluation_grids,
   challenge_documents,
@@ -57,7 +57,7 @@ export class AccountMergeRepository {
       await tx.update(validation_attempts).set({ validator_user_id: p }).where(eq(validation_attempts.validator_user_id, g));
       await tx.update(compute_requests).set({ user_id: p }).where(eq(compute_requests.user_id, g));
       await tx.update(compute_requests).set({ decided_by: p }).where(eq(compute_requests.decided_by, g));
-      await tx.update(task_assignees).set({ user_id: p }).where(eq(task_assignees.user_id, g));
+      await tx.update(tasks).set({ user_id: p }).where(eq(tasks.user_id, g));
       await tx.update(evaluation_runs).set({ createdBy: p }).where(eq(evaluation_runs.createdBy, g));
       await tx.update(evaluation_grids).set({ created_by: p }).where(eq(evaluation_grids.created_by, g));
       await tx.update(challenge_documents).set({ uploaded_by: p }).where(eq(challenge_documents.uploaded_by, g));

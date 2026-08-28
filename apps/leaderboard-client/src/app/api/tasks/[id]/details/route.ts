@@ -1,20 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   TaskRepository,
-  TaskAssigneeRepository,
-  TaskWorkspaceRepository,
   ChallengeRepository,
   ContributionRepository,
-  RepoRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import { jwtVerify } from 'jose';
 
 const taskRepo = new TaskRepository();
-const taskAssigneeRepo = new TaskAssigneeRepository();
-const taskWorkspaceRepo = new TaskWorkspaceRepository();
 const challengeRepo = new ChallengeRepository();
 const contributionRepo = new ContributionRepository();
-const repoRepo = new RepoRepository();
 
 async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
   const token = request.cookies.get('access_token')?.value;
@@ -30,6 +24,12 @@ async function getUserIdFromRequest(request: NextRequest): Promise<string | null
 }
 
 // GET /api/tasks/[id]/details - Récupérer les détails complets d'une tâche
+//
+// NOTE: interim version — task_assignees/task_workspaces were removed with
+// the personal-boards refactor (tasks are now owned via tasks.user_id, and
+// workspace state lives on challenge_teams). This route is rewritten to the
+// new model in a later task; for now it just drops the assignees/workspaces
+// enrichment so the app keeps compiling.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -47,30 +47,10 @@ export async function GET(
     }
 
     // Fetch all related data in parallel
-    const [challenge, assignees, taskWorkspaces, subTasks] = await Promise.all([
+    const [challenge, subTasks] = await Promise.all([
       challengeRepo.findById(task.challenge_id),
-      taskRepo.findAssignees(taskId),
-      taskWorkspaceRepo.findByTaskWithRepo(taskId),
       taskRepo.findSubTasks(taskId),
     ]);
-
-    // Enrich workspaces with repo info
-    const workspaces = await Promise.all(
-      taskWorkspaces.map(async (tw) => {
-        const repo = await repoRepo.findById(tw.repo_id);
-        return {
-          repo_id: tw.repo_id,
-          repo_title: repo?.title ?? 'Unknown',
-          repo_type: tw.repo_type,
-          repo_external_id: tw.repo_external_id,
-          workspace_provider: tw.workspace_provider,
-          workspace_ref: tw.workspace_ref,
-          workspace_url: tw.workspace_url,
-          workspace_status: tw.workspace_status,
-          workspace_meta: tw.workspace_meta,
-        };
-      })
-    );
 
     // Fetch contribution for the current user (if authenticated)
     let contribution = null;
@@ -90,13 +70,6 @@ export async function GET(
             contribution_points_reward: challenge.contribution_points_reward,
           }
         : null,
-      assignees: assignees.map((a) => ({
-        uuid: a.uuid,
-        full_name: a.full_name,
-        github_username: a.github_username,
-        avatar_url: a.avatar_url,
-      })),
-      workspaces,
       subTasks,
       contribution,
     });

@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const {
-  mockChallengeFindById, mockFindTeamMembers, mockFindByChallengeWithAssignees,
+  mockChallengeFindById, mockFindTeamMembers, mockFindByChallenge,
   mockGetMeetingsByChallengeId, mockFindByChallengeWithRepo, mockContributionsFindByChallenge,
 } = vi.hoisted(() => ({
   mockChallengeFindById: vi.fn(),
   mockFindTeamMembers: vi.fn(),
-  mockFindByChallengeWithAssignees: vi.fn(),
+  mockFindByChallenge: vi.fn(),
   mockGetMeetingsByChallengeId: vi.fn(),
   mockFindByChallengeWithRepo: vi.fn(),
   mockContributionsFindByChallenge: vi.fn(),
@@ -16,7 +16,7 @@ const {
 vi.mock('../../../../../../../../packages/database-service/repositories', () => ({
   ChallengeRepository: class { findById = mockChallengeFindById; },
   ChallengeTeamRepository: class { findTeamMembers = mockFindTeamMembers; },
-  TaskRepository: class { findByChallengeWithAssignees = mockFindByChallengeWithAssignees; },
+  TaskRepository: class { findByChallenge = mockFindByChallenge; },
   ChallengeRepoRepository: class { findByChallengeWithRepo = mockFindByChallengeWithRepo; },
   ContributionRepository: class { findByChallenge = mockContributionsFindByChallenge; },
 }));
@@ -38,7 +38,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, title: 'Challenge', status: 'active' });
   mockFindTeamMembers.mockResolvedValue([{ uuid: 'u1', full_name: 'Alix' }]);
-  mockFindByChallengeWithAssignees.mockResolvedValue([{ uuid: 't1', title: 'Task', assignees: [] }]);
+  mockFindByChallenge.mockResolvedValue([{ uuid: 't1', title: 'Task', assignees: [] }]);
   mockGetMeetingsByChallengeId.mockResolvedValue([{ uuid: 'm1', title: 'Sync' }]);
   mockFindByChallengeWithRepo.mockResolvedValue([{ repo_id: 'r1', repo_type: 'github' }]);
   mockContributionsFindByChallenge.mockResolvedValue([{ uuid: 'c1', reward: 10 }]);
@@ -63,7 +63,7 @@ describe('GET /api/challenges/[id]/overview', () => {
     // All five should have been called — proves the route doesn't skip any
     // of them short-circuiting on the challenge lookup alone.
     expect(mockFindTeamMembers).toHaveBeenCalledWith(CHALLENGE_ID);
-    expect(mockFindByChallengeWithAssignees).toHaveBeenCalledWith(CHALLENGE_ID);
+    expect(mockFindByChallenge).toHaveBeenCalledWith(CHALLENGE_ID);
     expect(mockGetMeetingsByChallengeId).toHaveBeenCalledWith(CHALLENGE_ID);
     expect(mockFindByChallengeWithRepo).toHaveBeenCalledWith(CHALLENGE_ID);
     expect(mockContributionsFindByChallenge).toHaveBeenCalledWith(CHALLENGE_ID);

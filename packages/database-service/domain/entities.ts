@@ -1,6 +1,7 @@
 // domain/entities.ts
 
 import type { MlRewardRules } from "./mlRewardRules.js";
+import type { CodeRewardRules } from "./codeRewardRules.js";
 
 export interface Project {
   uuid: string;
@@ -35,7 +36,13 @@ export interface ChallengeRepo {
 export interface ChallengeTeam {
   challenge_id: string; // FK -> challenges.uuid
   user_id: string;      // FK -> users.uuid
+  workspace_provider?: 'github' | 'external';
+  workspace_ref?: string;
+  workspace_url?: string;
+  workspace_status?: WorkspaceStatus;
 }
+
+export type ChallengeWorkspaceMode = 'provided_repo' | 'own_repo';
 
 export interface Challenge {
   uuid: string;
@@ -50,7 +57,8 @@ export interface Challenge {
   contribution_points_reward: number;
   completion: number;
   project_id: string; // FK -> projects.uuid
-  reward_rules?: MlRewardRules | null; // ML uniquement
+  reward_rules?: MlRewardRules | CodeRewardRules | null;
+  workspace_mode?: ChallengeWorkspaceMode | null; // Code challenges uniquement
   source_challenge_id?: string | null; // Validation uniquement — le challenge ML validé
   cp_per_validation?: number | null;   // Validation uniquement — CP fixe par validation
   required_validations?: number | null; // Validation uniquement — nb de verdicts requis avant résolution (impair)
@@ -268,22 +276,18 @@ export interface RefreshToken {
   created_at: Date;
 }
 
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
+
 export interface Task {
   uuid: string;
   challenge_id: string;
-  repo_id?: string;
+  /** null/undefined = tâche template (admin), sinon propriétaire du board. */
+  user_id?: string | null;
   parent_task_id?: string;
   title: string;
   description?: string;
-  type: "solo" | "concurrent";
-  status: "todo" | "done";
+  status: TaskStatus;
   created_at: Date;
-}
-
-export interface TaskAssignee {
-  task_id: string;
-  user_id: string;
-  assigned_at: Date;
 }
 
 // --- WORKSPACE TYPES ---
@@ -296,17 +300,6 @@ export interface WorkspaceMeta {
   error?: string;
   sha?: string;
   [key: string]: unknown;
-}
-
-export interface TaskWorkspace {
-  task_id: string;
-  repo_id: string;
-  // Workspace provisioning fields
-  workspace_provider?: string;
-  workspace_ref?: string;
-  workspace_url?: string;
-  workspace_status?: WorkspaceStatus;
-  workspace_meta?: WorkspaceMeta;
 }
 
 // --- EVALUATION RUNS ---

@@ -61,8 +61,9 @@ export class ChallengeRepository {
     // Without this, MlRewardsService.award() writing { completion } here was a
     // silent no-op — the field passed Zod validation but never made it into
     // dbData, so challenges.completion stayed 0 no matter how much CP was
-    // distributed. Code challenges never hit this: TaskRepository.completeTask
-    // writes completion directly, bypassing this allow-list entirely.
+    // distributed. Code challenge completion is no longer task-driven (the old
+    // TaskRepository.completeTask was removed with task_assignees) — how it's
+    // computed post-personal-boards is decided in a later task.
     if (validated.completion !== undefined) dbData.completion = validated.completion;
 
     const [updated] = await db.update(challenges)

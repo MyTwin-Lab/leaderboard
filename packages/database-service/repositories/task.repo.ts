@@ -1,8 +1,8 @@
 import { db } from "../db/drizzle";
-import { tasks, task_assignees, users, challenges } from "../db/drizzle";
-import { eq, and, inArray } from "drizzle-orm";
-import { toDomainTask, toDbTask, toDomainUser } from "../db/mappers";
-import type { Task, User } from "../domain/entities";
+import { tasks } from "../db/drizzle";
+import { eq, and, isNull } from "drizzle-orm";
+import { toDomainTask, toDbTask } from "../db/mappers";
+import type { Task } from "../domain/entities";
 import { taskSchema } from "../domain/schemas_zod";
 
 export class TaskRepository {
@@ -21,14 +21,23 @@ export class TaskRepository {
     return rows.map(toDomainTask);
   }
 
+  /** Board personnel d'un contributeur sur un challenge. */
+  async findPersonalTasks(challengeId: string, userId: string): Promise<Task[]> {
+    const rows = await db.select().from(tasks)
+      .where(and(eq(tasks.challenge_id, challengeId), eq(tasks.user_id, userId)));
+    return rows.map(toDomainTask);
+  }
+
+  /** Tâches template (user_id NULL) définies par l'admin/manager. */
+  async findTemplateTasks(challengeId: string): Promise<Task[]> {
+    const rows = await db.select().from(tasks)
+      .where(and(eq(tasks.challenge_id, challengeId), isNull(tasks.user_id)));
+    return rows.map(toDomainTask);
+  }
+
   async findByUser(userId: string): Promise<Task[]> {
-    const results = await db
-      .select({ task: tasks })
-      .from(task_assignees)
-      .leftJoin(tasks, eq(task_assignees.task_id, tasks.uuid))
-      .where(eq(task_assignees.user_id, userId));
-    
-    return results.filter(r => r.task !== null).map(r => toDomainTask(r.task!));
+    const rows = await db.select().from(tasks).where(eq(tasks.user_id, userId));
+    return rows.map(toDomainTask);
   }
 
   async findSubTasks(parentTaskId: string): Promise<Task[]> {
@@ -36,89 +45,37 @@ export class TaskRepository {
     return rows.map(toDomainTask);
   }
 
-  async findAssignees(taskId: string): Promise<User[]> {
-    const results = await db
-      .select({ user: users })
-      .from(task_assignees)
-      .leftJoin(users, eq(task_assignees.user_id, users.uuid))
-      .where(eq(task_assignees.task_id, taskId));
-
-    return results.filter(r => r.user !== null).map(r => toDomainUser(r.user!));
-  }
-
-  async findByChallengeWithAssignees(challengeId: string): Promise<(Task & { assignees: User[] })[]> {
-    const taskList = await this.findByChallenge(challengeId);
-    if (taskList.length === 0) return [];
-
-    // Single query for all assignees of every task in this challenge, instead
-    // of one findAssignees() round-trip per task (was N+1: 1 + N SQL queries).
-    const rows = await db
-      .select({ taskId: task_assignees.task_id, user: users })
-      .from(task_assignees)
-      .leftJoin(users, eq(task_assignees.user_id, users.uuid))
-      .where(inArray(task_assignees.task_id, taskList.map(t => t.uuid)));
-
-    const assigneesByTask = new Map<string, User[]>();
-    for (const row of rows) {
-      if (!row.user || !row.taskId) continue;
-      const list = assigneesByTask.get(row.taskId) ?? [];
-      list.push(toDomainUser(row.user));
-      assigneesByTask.set(row.taskId, list);
-    }
-
-    return taskList.map(task => ({
-      ...task,
-      assignees: assigneesByTask.get(task.uuid) ?? [],
-    }));
-  }
-
-  async completeTask(taskId: string): Promise<Task> {
-    const task = await this.findById(taskId);
-    if (!task) throw new Error("Task not found");
-    if (task.status === "done") return task;
-    // marquer la tâche comme done
-    const [updatedTask] = await db.update(tasks)
-      .set({ status: "done" })
-      .where(eq(tasks.uuid, taskId))
+  async updateStatus(uuid: string, status: Task["status"]): Promise<Task> {
+    const [updated] = await db.update(tasks)
+      .set({ status })
+      .where(eq(tasks.uuid, uuid))
       .returning();
-    // calculer la complétion du challenge
-    const challengeId = updatedTask.challenge_id;
-    if (!challengeId) {
-      return toDomainTask(updatedTask);
-    }
-    const allTasks = await db.select()
-      .from(tasks)
-      .where(eq(tasks.challenge_id, challengeId));
-    const total = allTasks.length;
-    const doneCount = allTasks.filter((t) => t.status === "done").length;
-    const completion = total === 0 ? 0 : doneCount / total;
-    await db.update(challenges)
-      .set({ completion })
-      .where(eq(challenges.uuid, challengeId));
-    return toDomainTask(updatedTask);
+    if (!updated) throw new Error("Task not found");
+    return toDomainTask(updated);
   }
 
   async create(entity: Omit<Task, "uuid" | "created_at">): Promise<Task> {
     const validated = taskSchema.omit({ uuid: true, created_at: true }).parse(entity);
-    const dbData = toDbTask(validated);
-    const [inserted] = await db.insert(tasks).values(dbData).returning();
+    const [inserted] = await db.insert(tasks).values(toDbTask(validated)).returning();
     return toDomainTask(inserted);
+  }
+
+  /** Copie du template au join — un insert pour tout le board initial. */
+  async createMany(entities: Omit<Task, "uuid" | "created_at">[]): Promise<Task[]> {
+    if (entities.length === 0) return [];
+    const validated = entities.map(e => taskSchema.omit({ uuid: true, created_at: true }).parse(e));
+    const inserted = await db.insert(tasks).values(validated.map(toDbTask)).returning();
+    return inserted.map(toDomainTask);
   }
 
   async update(uuid: string, entity: Partial<Omit<Task, "uuid" | "created_at">>): Promise<Task> {
     const validated = taskSchema.omit({ uuid: true, created_at: true }).partial().parse(entity);
-    const dbData: any = {};
-    if (validated.challenge_id !== undefined) dbData.challenge_id = validated.challenge_id || null;
-    if (validated.repo_id !== undefined) dbData.repo_id = validated.repo_id || null;
-    if (validated.parent_task_id !== undefined) dbData.parent_task_id = validated.parent_task_id || null;
+    const dbData: Record<string, unknown> = {};
     if (validated.title) dbData.title = validated.title;
     if (validated.description !== undefined) dbData.description = validated.description || null;
-    if (validated.type) dbData.type = validated.type;
-
-    const [updated] = await db.update(tasks)
-      .set(dbData)
-      .where(eq(tasks.uuid, uuid))
-      .returning();
+    if (validated.status) dbData.status = validated.status;
+    if (validated.parent_task_id !== undefined) dbData.parent_task_id = validated.parent_task_id || null;
+    const [updated] = await db.update(tasks).set(dbData).where(eq(tasks.uuid, uuid)).returning();
     return toDomainTask(updated);
   }
 

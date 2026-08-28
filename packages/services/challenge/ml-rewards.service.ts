@@ -13,7 +13,7 @@ import type {
   ChallengeRepoRole,
   Contribution,
 } from "../../database-service/domain/entities.js";
-import type { MlRewardRules } from "../../database-service/domain/mlRewardRules.js";
+import { parseMlRewardRules, type MlRewardRules } from "../../database-service/domain/mlRewardRules.js";
 import { ConnectorRegistry } from "../../connectors/registry.js";
 import type { KaggleRepoActivity } from "../../connectors/interfaces.js";
 import { SnapshotService } from "./snapshot.service.js";
@@ -118,7 +118,7 @@ export class MlRewardsService {
     const challenge = await this.deps.challengeRepo.findById(challengeId);
     if (!challenge || challenge.type !== 'ml') return;
 
-    const rules = challenge.reward_rules;
+    const rules = parseMlRewardRules(challenge.reward_rules);
     if (!rules) {
       console.warn(`[MlRewardsService] Challenge ${challengeId} has no reward rules — skipping award`);
       return;

@@ -10,7 +10,7 @@ import { Toggle } from '@/components/ui/Toggle';
 import { MlRewardRulesEditor } from './MlRewardRulesEditor';
 import { ValidationTargetsEditor } from './ValidationTargetsEditor';
 import { ValidationRewardsPanel } from './ValidationRewardsPanel';
-import { DEFAULT_ML_REWARD_RULES, type MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
+import { DEFAULT_ML_REWARD_RULES, parseMlRewardRules, type MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
 import type { Challenge, Project, Task } from '../../../../../packages/database-service/domain/entities';
 
 interface ChallengeFormProps {
@@ -34,7 +34,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
   });
 
   const [rewardRules, setRewardRules] = useState<MlRewardRules>(
-    challenge?.reward_rules ?? DEFAULT_ML_REWARD_RULES
+    parseMlRewardRules(challenge?.reward_rules) ?? DEFAULT_ML_REWARD_RULES
   );
   const [computeEnabled, setComputeEnabled] = useState((challenge as any)?.compute_enabled ?? false);
   const [apiPackagingEnabled, setApiPackagingEnabled] = useState(true);

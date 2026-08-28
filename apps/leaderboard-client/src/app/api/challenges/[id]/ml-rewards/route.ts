@@ -3,6 +3,7 @@ import {
   ChallengeRepository,
   RewardEntryRepository,
 } from '../../../../../../../../packages/database-service/repositories';
+import { parseMlRewardRules } from '../../../../../../../../packages/database-service/domain/mlRewardRules';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,7 @@ export async function GET(
     if (challenge.type !== 'ml') {
       return NextResponse.json({ error: 'Not an ML challenge' }, { status: 400 });
     }
+    const mlRules = parseMlRewardRules(challenge.reward_rules);
 
     const entries = await rewardRepo.findByChallenge(challengeId);
 
@@ -40,7 +42,7 @@ export async function GET(
 
     // Best reported metric per contributor — feeds the "beat the leader" timeline.
     // No userId in the response: the timeline only plots values, never names.
-    const metric = challenge.reward_rules
+    const metric = mlRules
       ? (() => {
           const best = new Map<string, number>();
           for (const e of entries) {
@@ -50,8 +52,8 @@ export async function GET(
             if (!best.has(e.user_id) || value > best.get(e.user_id)!) best.set(e.user_id, value);
           }
           return {
-            name: challenge.reward_rules.model.metric.name,
-            baseline: challenge.reward_rules.model.metric.baseline,
+            name: mlRules.model.metric.name,
+            baseline: mlRules.model.metric.baseline,
             points: [...best.values()].sort((a, b) => b - a),
           };
         })()
@@ -60,8 +62,8 @@ export async function GET(
     // SQL MAX(...) rather than deriving from `metric.points[0]` computed above:
     // this is the exact same source the ml-workspace PATCH gate reads before
     // blocking a submission, so the two can never disagree on "is it reached".
-    const bestValue = challenge.reward_rules ? await rewardRepo.bestMetricValue(challengeId) : null;
-    const blockThreshold = challenge.reward_rules?.model.metric.blockThreshold ?? null;
+    const bestValue = mlRules ? await rewardRepo.bestMetricValue(challengeId) : null;
+    const blockThreshold = mlRules?.model.metric.blockThreshold ?? null;
     const thresholdReached =
       blockThreshold != null && bestValue != null && bestValue >= blockThreshold;
 
@@ -69,7 +71,7 @@ export async function GET(
       pool,
       distributed,
       remaining: Math.max(0, pool - distributed),
-      rules: challenge.reward_rules ?? null,
+      rules: mlRules ?? null,
       metric,
       bestValue,
       thresholdReached,

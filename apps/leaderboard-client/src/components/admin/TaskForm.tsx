@@ -15,24 +15,23 @@ interface TaskFormProps {
   task?: Task;
   challengeId: string;
   availableParentTasks: Task[];
+  // NOTE: kept in props for now — the repo picker below is unused since
+  // tasks no longer carry a repo_id (personal-boards refactor). A later
+  // task removes this prop once callers stop passing it.
   availableRepos: ChallengeRepoInfo[];
   onSubmit: (data: {
     title: string;
     description?: string;
-    type: 'solo' | 'concurrent';
-    repo_id?: string;
     parent_task_id?: string;
     challenge_id: string;
   }) => void;
   onCancel: () => void;
 }
 
-export function TaskForm({ task, challengeId, availableParentTasks, availableRepos, onSubmit, onCancel }: TaskFormProps) {
+export function TaskForm({ task, challengeId, availableParentTasks, onSubmit, onCancel }: TaskFormProps) {
   const [formData, setFormData] = useState({
     title: task?.title ?? '',
     description: task?.description ?? '',
-    type: (task?.type ?? 'solo') as 'solo' | 'concurrent',
-    repo_id: task?.repo_id ?? '',
     parent_task_id: task?.parent_task_id ?? '',
   });
 
@@ -41,8 +40,6 @@ export function TaskForm({ task, challengeId, availableParentTasks, availableRep
     onSubmit({
       title: formData.title,
       description: formData.description || undefined,
-      type: formData.type,
-      repo_id: formData.repo_id || undefined,
       parent_task_id: formData.parent_task_id || undefined,
       challenge_id: challengeId,
     });
@@ -69,26 +66,6 @@ export function TaskForm({ task, challengeId, availableParentTasks, availableRep
             placeholder="Task title"
             autoFocus
           />
-        </FormField>
-
-        <FormField label="Type" required>
-          <select value={formData.type} onChange={set('type')} className={selectClass}>
-            <option value="solo">Solo</option>
-            <option value="concurrent">Concurrent</option>
-          </select>
-        </FormField>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <FormField label="Repository">
-          <select value={formData.repo_id} onChange={set('repo_id')} className={selectClass}>
-            <option value="">No specific repo</option>
-            {availableRepos.map((r) => (
-              <option key={r.repo_id} value={r.repo_id}>
-                {r.repo_external_id || r.repo_id} ({r.repo_type})
-              </option>
-            ))}
-          </select>
         </FormField>
 
         <FormField label="Parent Task">

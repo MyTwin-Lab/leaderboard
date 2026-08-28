@@ -69,8 +69,7 @@ export interface TaskInfo {
   uuid: string;
   title: string;
   description?: string;
-  type: "solo" | "concurrent";
-  status: "todo" | "done";
+  status: "todo" | "in_progress" | "done";
 }
 
 /**

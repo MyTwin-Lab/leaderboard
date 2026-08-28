@@ -31,7 +31,7 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
                   <div className="text-xs text-white/40 mt-0.5 truncate">{task.description}</div>
                 )}
               </div>
-              <Badge label={task.type} />
+              <Badge label={task.status} />
             </div>
             <div className="flex gap-1 shrink-0 ml-2">
               <Button size="sm" variant="ghost" onClick={() => onEdit(task)} title="Edit">
@@ -56,7 +56,7 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
                     <div className="text-xs text-white/40 truncate">{sub.description}</div>
                   )}
                 </div>
-                <Badge label={sub.type} />
+                <Badge label={sub.status} />
               </div>
               <div className="flex gap-1 shrink-0 ml-2">
                 <Button size="sm" variant="ghost" onClick={() => onEdit(sub)} title="Edit">

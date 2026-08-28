@@ -8,6 +8,7 @@ import {
   RewardEntryRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import type { ChallengeRepoRole } from '../../../../../../../../packages/database-service/domain/entities';
+import { parseMlRewardRules } from '../../../../../../../../packages/database-service/domain/mlRewardRules';
 import { normalizeArtifactUrl } from '../../../../../../../../packages/services/challenge/artifactUrl';
 import { jwtVerify } from 'jose';
 
@@ -142,7 +143,8 @@ export async function PATCH(
     // toggling a community dataset pick, stay allowed even past the threshold.
     if (hasWorkspaceUrl && workspace_url !== null && existing.role && BLOCKABLE_ROLES.includes(existing.role)) {
       const challenge = await challengeRepo.findById(challengeId);
-      const threshold = challenge?.reward_rules?.model.metric.blockThreshold;
+      const mlRules = parseMlRewardRules(challenge?.reward_rules);
+      const threshold = mlRules?.model.metric.blockThreshold;
       if (threshold != null) {
         const best = await rewardRepo.bestMetricValue(challengeId);
         if (best != null && best >= threshold) {

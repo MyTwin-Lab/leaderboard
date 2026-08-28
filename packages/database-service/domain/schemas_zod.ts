@@ -1,6 +1,7 @@
 // domain/schemas.ts
 import { z } from "zod";
 import { mlRewardRulesSchema } from "./mlRewardRules.js";
+import { codeRewardRulesSchema } from "./codeRewardRules.js";
 
 export const projectSchema = z.object({
   uuid: z.string().uuid(),
@@ -29,6 +30,10 @@ export const challengeRepoSchema = z.object({
 export const challengeTeamSchema = z.object({
   challenge_id: z.string().uuid(),
   user_id: z.string().uuid(),
+  workspace_provider: z.enum(['github', 'external']).optional(),
+  workspace_ref: z.string().max(200).optional(),
+  workspace_url: z.string().optional(),
+  workspace_status: z.enum(['pending', 'ready', 'failed']).optional(),
 });
 
 export const challengeSchema = z.object({
@@ -44,7 +49,8 @@ export const challengeSchema = z.object({
   contribution_points_reward: z.number().int().nonnegative(),
   completion: z.number().min(0).max(1).default(0),
   project_id: z.string().uuid(),
-  reward_rules: mlRewardRulesSchema.nullish(),
+  reward_rules: z.union([mlRewardRulesSchema, codeRewardRulesSchema]).nullish(),
+  workspace_mode: z.enum(['provided_repo', 'own_repo']).nullish(),
   source_challenge_id: z.string().uuid().nullish(),
   cp_per_validation: z.number().int().nonnegative().nullish(),
   required_validations: z.number().int().positive().nullish(),
@@ -221,19 +227,12 @@ export const refreshTokenSchema = z.object({
 export const taskSchema = z.object({
   uuid: z.string().uuid(),
   challenge_id: z.string().uuid(),
-  repo_id: z.string().uuid().optional(),
+  user_id: z.string().uuid().nullish(),
   parent_task_id: z.string().uuid().optional(),
   title: z.string().min(1),
   description: z.string().optional(),
-  type: z.enum(["solo", "concurrent"]),
-  status: z.enum(["todo", "done"]),
+  status: z.enum(["todo", "in_progress", "done"]),
   created_at: z.coerce.date(),
-});
-
-export const taskAssigneeSchema = z.object({
-  task_id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  assigned_at: z.coerce.date(),
 });
 
 // --- EVALUATION RUNS ---

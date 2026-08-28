@@ -297,7 +297,15 @@ describe('PATCH /api/challenges/[id]/ml-workspace', () => {
   describe('metric block threshold', () => {
     const withThreshold = (threshold: number) => ({
       uuid: CHALLENGE_ID,
-      reward_rules: { model: { metric: { name: 'auc', baseline: 0, blockThreshold: threshold } } },
+      // A zod-valid MlRewardRules — reward_rules now goes through
+      // parseMlRewardRules, so the fixture must satisfy the full schema.
+      reward_rules: {
+        version: 1,
+        dataset: { cap: 300 },
+        model: { cap: 500, metric: { name: 'auc', baseline: 0, blockThreshold: threshold }, beatBestBonus: 50 },
+        apiPackaging: { cap: 200 },
+        reuse: { datasetShare: 0.2, modelShare: 0.2 },
+      },
     });
 
     it('returns 403 for a dataset submission once the best metric reaches the threshold', async () => {

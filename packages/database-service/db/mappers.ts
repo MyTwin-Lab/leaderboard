@@ -14,8 +14,6 @@ import {
   contributions,
   refresh_tokens,
   tasks,
-  task_assignees,
-  task_workspaces,
   evaluation_runs,
   evaluation_run_contributions,
   evaluation_grids,
@@ -56,8 +54,6 @@ import type {
   Contribution,
   RefreshToken,
   Task,
-  TaskAssignee,
-  TaskWorkspace,
   WorkspaceStatus,
   WorkspaceMeta,
   EvaluationRun,
@@ -94,8 +90,6 @@ type DbContribution = InferSelectModel<typeof contributions>;
 type DbRewardEntry = InferSelectModel<typeof reward_entries>;
 type DbRefreshToken = InferSelectModel<typeof refresh_tokens>;
 type DbTask = InferSelectModel<typeof tasks>;
-type DbTaskAssignee = InferSelectModel<typeof task_assignees>;
-type DbTaskWorkspace = InferSelectModel<typeof task_workspaces>;
 type DbEvaluationRun = InferSelectModel<typeof evaluation_runs>;
 type DbEvaluationRunContribution = InferSelectModel<typeof evaluation_run_contributions>;
 type DbEvaluationGrid = InferSelectModel<typeof evaluation_grids>;
@@ -141,6 +135,7 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     completion: row.completion ?? 0,
     project_id: row.project_id ?? "",
     reward_rules: parseMlRewardRules(row.reward_rules),
+    workspace_mode: (row.workspace_mode as Challenge["workspace_mode"]) ?? undefined,
     source_challenge_id: row.source_challenge_id ?? null,
     cp_per_validation: row.cp_per_validation ?? null,
     required_validations: row.required_validations ?? null,
@@ -165,6 +160,10 @@ export function toDomainChallengeTeam(row: DbChallengeTeam): ChallengeTeam {
   return {
     challenge_id: row.challenge_id ?? "",
     user_id: row.user_id ?? "",
+    workspace_provider: (row.workspace_provider as ChallengeTeam["workspace_provider"]) ?? undefined,
+    workspace_ref: row.workspace_ref ?? undefined,
+    workspace_url: row.workspace_url ?? undefined,
+    workspace_status: (row.workspace_status as WorkspaceStatus) ?? undefined,
   };
 }
 
@@ -250,6 +249,7 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenge
     completion: entity.completion ?? 0,
     project_id: entity.project_id || null,
     reward_rules: entity.reward_rules ?? null,
+    workspace_mode: entity.workspace_mode ?? null,
     source_challenge_id: entity.source_challenge_id ?? null,
     cp_per_validation: entity.cp_per_validation ?? null,
     required_validations: entity.required_validations ?? null,
@@ -308,12 +308,11 @@ export function toDomainTask(row: DbTask): Task {
   return {
     uuid: row.uuid,
     challenge_id: row.challenge_id ?? "",
-    repo_id: row.repo_id ?? undefined,
+    user_id: row.user_id ?? null,
     parent_task_id: row.parent_task_id ?? undefined,
     title: row.title,
     description: row.description ?? undefined,
-    type: row.type as "solo" | "concurrent",
-    status: (row.status as "todo" | "done") ?? "todo",
+    status: (row.status as Task["status"]) ?? "todo",
     created_at: new Date(row.created_at ?? Date.now()),
   };
 }
@@ -321,51 +320,11 @@ export function toDomainTask(row: DbTask): Task {
 export function toDbTask(entity: Omit<Task, "uuid" | "created_at">): typeof tasks.$inferInsert {
   return {
     challenge_id: entity.challenge_id || null,
-    repo_id: entity.repo_id || null,
+    user_id: entity.user_id ?? null,
     parent_task_id: entity.parent_task_id || null,
     title: entity.title,
     description: entity.description || null,
-    type: entity.type,
     status: entity.status,
-  };
-}
-
-export function toDomainTaskAssignee(row: DbTaskAssignee): TaskAssignee {
-  return {
-    task_id: row.task_id ?? "",
-    user_id: row.user_id ?? "",
-    assigned_at: new Date(row.assigned_at ?? Date.now()),
-  };
-}
-
-export function toDbTaskAssignee(entity: Omit<TaskAssignee, "assigned_at">): typeof task_assignees.$inferInsert {
-  return {
-    task_id: entity.task_id,
-    user_id: entity.user_id,
-  };
-}
-
-export function toDomainTaskWorkspace(row: DbTaskWorkspace): TaskWorkspace {
-  return {
-    task_id: row.task_id ?? "",
-    repo_id: row.repo_id ?? "",
-    workspace_provider: row.workspace_provider ?? undefined,
-    workspace_ref: row.workspace_ref ?? undefined,
-    workspace_url: row.workspace_url ?? undefined,
-    workspace_status: (row.workspace_status as WorkspaceStatus) ?? undefined,
-    workspace_meta: (row.workspace_meta as WorkspaceMeta) ?? undefined,
-  };
-}
-
-export function toDbTaskWorkspace(entity: TaskWorkspace): typeof task_workspaces.$inferInsert {
-  return {
-    task_id: entity.task_id,
-    repo_id: entity.repo_id,
-    workspace_provider: entity.workspace_provider ?? null,
-    workspace_ref: entity.workspace_ref ?? null,
-    workspace_url: entity.workspace_url ?? null,
-    workspace_status: entity.workspace_status ?? null,
-    workspace_meta: entity.workspace_meta ?? null,
   };
 }
 

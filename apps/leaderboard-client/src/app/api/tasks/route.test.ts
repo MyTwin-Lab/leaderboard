@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindByChallenge, mockFindByChallengeWithAssignees, mockCreate, mockChallengeFindById } = vi.hoisted(() => ({
+const { mockFindByChallenge, mockCreate, mockChallengeFindById } = vi.hoisted(() => ({
   mockFindByChallenge: vi.fn(),
-  mockFindByChallengeWithAssignees: vi.fn(),
   mockCreate: vi.fn(),
   mockChallengeFindById: vi.fn(),
 }));
@@ -11,7 +10,6 @@ const { mockFindByChallenge, mockFindByChallengeWithAssignees, mockCreate, mockC
 vi.mock('../../../../../../packages/database-service/repositories', () => ({
   TaskRepository: class {
     findByChallenge = mockFindByChallenge;
-    findByChallengeWithAssignees = mockFindByChallengeWithAssignees;
     create = mockCreate;
   },
   ChallengeRepository: class {
@@ -49,19 +47,7 @@ describe('GET /api/tasks', () => {
     expect(mockFindByChallenge).not.toHaveBeenCalled();
   });
 
-  it('returns tasks with assignees when include=assignees', async () => {
-    const tasks = [{ uuid: 'task-1', assignees: [] }];
-    mockFindByChallengeWithAssignees.mockResolvedValue(tasks);
-
-    const res = await getTasks(`?challenge_id=${CHALLENGE_ID}&include=assignees`);
-
-    expect(res.status).toBe(200);
-    expect(mockFindByChallengeWithAssignees).toHaveBeenCalledWith(CHALLENGE_ID);
-    expect(mockFindByChallenge).not.toHaveBeenCalled();
-    expect(await res.json()).toEqual(tasks);
-  });
-
-  it('returns plain tasks when include is not set', async () => {
+  it('returns plain tasks', async () => {
     const tasks = [{ uuid: 'task-1' }];
     mockFindByChallenge.mockResolvedValue(tasks);
 
@@ -85,11 +71,10 @@ describe('POST /api/tasks', () => {
   const validBody = {
     challenge_id: CHALLENGE_ID,
     title: 'New task',
-    type: 'solo' as const,
   };
 
   it('returns 400 on an invalid body (Zod)', async () => {
-    const res = await postTask({ ...validBody, type: 'invalid-type' });
+    const res = await postTask({ challenge_id: 'not-a-uuid', title: 'New task' });
 
     expect(res.status).toBe(400);
     expect(mockChallengeFindById).not.toHaveBeenCalled();
