@@ -10,12 +10,12 @@ import { sql } from "drizzle-orm";
  *    écriture ledger, mais un UPDATE manuel de `reward` ou une période
  *    pré-trigger peuvent laisser un écart : on le détecte et on le corrige.
  *
- * 2. challenges.completion — cache mis à jour applicativement, avec une
- *    formule par type de challenge :
- *    - ml         : CP distribués (hors 'slack_signal', hors pool) / pool
- *                   (cf. MlRewardsService.remainingPool)
- *    - validation : CP distribués / pool (cf. ValidationChallengeService.remainingPool)
- *    - code       : tâches done / total tâches (cf. TaskRepository)
+ * 2. challenges.completion — cache mis à jour applicativement. Les trois
+ *    types de challenge (ml, validation, code) partagent désormais la même
+ *    formule à pool : completion = min(1, CP distribués / pool) — cf.
+ *    MlRewardsService.remainingPool, ValidationChallengeService.remainingPool
+ *    et CodeRewardsService.evaluate. Seuls les challenges ml excluent les
+ *    lignes 'slack_signal' du décompte (signal Slack hors pool).
  *    Toute écriture ledger hors de ces services (fix SQL, ligne corrective)
  *    laisse la completion stale : on recalcule et on corrige.
  *
@@ -46,9 +46,9 @@ async function resyncContributionRewards(): Promise<number> {
 }
 
 async function resyncChallengeCompletions(): Promise<number> {
-  // Challenges à pool (ml + validation) : completion = distribués / pool.
-  // Seule différence entre les deux : les signaux Slack sont hors pool pour
-  // les challenges ml.
+  // Challenges à pool (ml + validation + code) : completion = distribués / pool.
+  // Seule particularité : les signaux Slack sont hors pool pour les
+  // challenges ml (cf. MlRewardsService.remainingPool).
   const { rows: poolRows } = await db.execute(sql`
     SELECT
       ch.uuid, ch.title, ch.type, ch.completion,
@@ -59,17 +59,7 @@ async function resyncChallengeCompletions(): Promise<number> {
           AND (ch.type <> 'ml' OR re.rule_key <> 'slack_signal')
       ), 0)::int AS distributed
     FROM challenges ch
-    WHERE ch.type IN ('ml', 'validation')
-  `);
-
-  // Challenges code : completion = tâches done / total.
-  const { rows: codeRows } = await db.execute(sql`
-    SELECT
-      ch.uuid, ch.title, ch.type, ch.completion,
-      (SELECT COUNT(*) FROM tasks t WHERE t.challenge_id = ch.uuid)::int AS total_tasks,
-      (SELECT COUNT(*) FROM tasks t WHERE t.challenge_id = ch.uuid AND t.status = 'done')::int AS done_tasks
-    FROM challenges ch
-    WHERE COALESCE(ch.type, 'code') = 'code'
+    WHERE COALESCE(ch.type, 'code') IN ('ml', 'validation', 'code')
   `);
 
   let fixed = 0;
@@ -81,20 +71,6 @@ async function resyncChallengeCompletions(): Promise<number> {
     if (Math.abs(stored - expected) <= COMPLETION_EPSILON) continue;
     console.log(
       `  ✗ [${row.type}] "${row.title}" (${row.uuid}) : completion=${stored.toFixed(4)} ≠ ${expected.toFixed(4)} (${row.distributed}/${pool} CP) → fix`
-    );
-    await db.execute(sql`
-      UPDATE challenges SET completion = ${expected} WHERE uuid = ${row.uuid}
-    `);
-    fixed++;
-  }
-
-  for (const row of codeRows) {
-    const total = Number(row.total_tasks);
-    const expected = total > 0 ? Number(row.done_tasks) / total : 0;
-    const stored = Number(row.completion ?? 0);
-    if (Math.abs(stored - expected) <= COMPLETION_EPSILON) continue;
-    console.log(
-      `  ✗ [code] "${row.title}" (${row.uuid}) : completion=${stored.toFixed(4)} ≠ ${expected.toFixed(4)} (${row.done_tasks}/${total} tâches) → fix`
     );
     await db.execute(sql`
       UPDATE challenges SET completion = ${expected} WHERE uuid = ${row.uuid}

@@ -77,13 +77,13 @@ export default function ChallengesPage() {
   };
 
   const handleClose = async (id: string) => {
-    const ok = await confirm({ title: 'Close Challenge', message: 'This will close the challenge and distribute rewards. This cannot be undone.', confirmLabel: 'Close & Distribute', variant: 'danger' });
+    const ok = await confirm({ title: 'Close Challenge', message: 'This will mark the challenge as completed. This cannot be undone.', confirmLabel: 'Close', variant: 'danger' });
     if (!ok) return;
     setActionLoading(`close-${id}`);
     try {
       const res = await fetch(`/api/challenges/${id}/close`, { method: 'POST' });
       const data = await res.json();
-      if (res.ok) { toast(`${data.count} rewards distributed`, 'success'); await fetchChallenges(); }
+      if (res.ok) { toast('Challenge closed', 'success'); await fetchChallenges(); }
       else toast(data.error ?? 'Failed to close challenge', 'error');
     } finally { setActionLoading(null); }
   };

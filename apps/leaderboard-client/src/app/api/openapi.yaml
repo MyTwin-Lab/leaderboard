@@ -1173,10 +1173,13 @@ paths:
     post:
       tags: [Challenges]
       summary: Clôturer un challenge
-      description: Clôture le challenge et distribue les rewards (contribution points).
+      description: >-
+        Passe le challenge au statut 'completed'. Ne calcule plus aucun
+        reward : code, ML et validation versent déjà en live via le ledger
+        reward_entries.
       responses:
         '200':
-          description: Challenge clôturé avec rewards distribués
+          description: Challenge clôturé
           content:
             application/json:
               schema:
@@ -1184,12 +1187,20 @@ paths:
                 properties:
                   success:
                     type: boolean
-                  count:
-                    type: integer
-                  rewards:
-                    type: array
-                    items:
-                      type: object
+                  challenge:
+                    type: object
+        '404':
+          description: Challenge introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /challenges/{id}/join:
     parameters:

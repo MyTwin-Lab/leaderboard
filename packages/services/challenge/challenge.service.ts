@@ -1,7 +1,6 @@
-import type { Evaluation, ContributionReward } from "../../evaluator/types.js";
+import type { Evaluation } from "../../evaluator/types.js";
 import { ChallengeContextService } from "./challenge-context.service.js";
 import { SyncEvaluationService } from "./sync-evaluation.service.js";
-import { RewardsService } from "./rewards.service.js";
 import { RunLogger } from "../run-logger.js";
 import type { EvaluationRunTriggerType } from "../../database-service/domain/entities.js";
 
@@ -23,13 +22,11 @@ export interface RunSyncOptions {
 export class ChallengeService {
   private contextService: ChallengeContextService;
   private syncEvaluationService: SyncEvaluationService;
-  private rewardsService: RewardsService;
   private runLogger: RunLogger;
 
   constructor() {
     this.contextService = new ChallengeContextService();
     this.syncEvaluationService = new SyncEvaluationService();
-    this.rewardsService = new RewardsService();
     this.runLogger = new RunLogger();
   }
 
@@ -145,15 +142,5 @@ export class ChallengeService {
         }
       }
     }
-  }
-
-  /**
-   * End of Challenge - Compute rewards et mise à jour du leaderboard
-   * 
-   * @param challengeId - ID du challenge à clôturer
-   * @returns Liste des rewards distribués
-   */
-  async computeChallengeRewards(challengeId: string): Promise<ContributionReward[]> {
-    return this.rewardsService.computeChallengeRewards(challengeId);
   }
 }

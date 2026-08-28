@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockComputeChallengeRewards } = vi.hoisted(() => ({
-  mockComputeChallengeRewards: vi.fn(),
+const { mockFindById, mockUpdate } = vi.hoisted(() => ({
+  mockFindById: vi.fn(),
+  mockUpdate: vi.fn(),
 }));
 
-vi.mock('../../../../../../../../packages/services/challenge/challenge.service', () => ({
-  ChallengeService: class {
-    computeChallengeRewards = mockComputeChallengeRewards;
+vi.mock('../../../../../../../../packages/database-service/repositories', () => ({
+  ChallengeRepository: class {
+    findById = mockFindById;
+    update = mockUpdate;
   },
 }));
 
@@ -25,28 +27,31 @@ beforeEach(() => {
 });
 
 describe('POST /api/challenges/[id]/close', () => {
-  it('closes the challenge and returns the computed rewards', async () => {
-    const rewards = [{ userId: 'user-1', cp: 10 }, { userId: 'user-2', cp: 5 }];
-    mockComputeChallengeRewards.mockResolvedValue(rewards);
+  it('returns 404 for an unknown challenge', async () => {
+    mockFindById.mockResolvedValue(null);
+
+    const res = await postClose();
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'Challenge not found' });
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('sets the challenge status to completed and returns it', async () => {
+    mockFindById.mockResolvedValue({ uuid: CHALLENGE_ID, status: 'active' });
+    const closed = { uuid: CHALLENGE_ID, status: 'completed' };
+    mockUpdate.mockResolvedValue(closed);
 
     const res = await postClose();
 
     expect(res.status).toBe(200);
-    expect(mockComputeChallengeRewards).toHaveBeenCalledWith(CHALLENGE_ID);
-    expect(await res.json()).toEqual({ success: true, count: 2, rewards });
+    expect(mockUpdate).toHaveBeenCalledWith(CHALLENGE_ID, { status: 'completed' });
+    expect(await res.json()).toEqual({ success: true, challenge: closed });
   });
 
-  it('returns an empty rewards list when there is nothing to distribute', async () => {
-    mockComputeChallengeRewards.mockResolvedValue([]);
-
-    const res = await postClose();
-
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ success: true, count: 0, rewards: [] });
-  });
-
-  it('returns 500 when computing rewards fails', async () => {
-    mockComputeChallengeRewards.mockRejectedValue(new Error('db down'));
+  it('returns 500 when closing fails', async () => {
+    mockFindById.mockResolvedValue({ uuid: CHALLENGE_ID, status: 'active' });
+    mockUpdate.mockRejectedValue(new Error('db down'));
 
     const res = await postClose();
 
