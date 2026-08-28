@@ -16,7 +16,7 @@ import { ValidationChallengeFlow } from '@/components/challenges/ValidationChall
 import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseAuthorPanel';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
-import { ContributorTaskBoard, type BoardContribution } from '@/components/contributor/ContributorTaskBoard';
+import { ContributorTaskBoard } from '@/components/contributor/ContributorTaskBoard';
 import { MeetingsSection } from '@/components/challenges/MeetingsSection';
 import { HeroStatCard } from '@/components/challenges/HeroStatCard';
 import { HeroStatCarousel } from '@/components/challenges/HeroStatCarousel';
@@ -41,10 +41,19 @@ interface TaskWithAssignees {
   uuid: string;
   title: string;
   description?: string;
-  type: 'solo' | 'concurrent';
-  status: string;
+  status: 'todo' | 'in_progress' | 'done';
   parent_task_id?: string;
-  assignees: TeamMember[];
+}
+
+// Ledger entries (ML/validation contributions) — unrelated to the personal
+// task board now, but still used for the challenge's stat cards below.
+interface BoardContribution {
+  uuid: string;
+  task_id?: string;
+  user_id: string;
+  evaluation?: { globalScore?: number } | null;
+  reward: number;
+  submitted_at: string;
 }
 
 interface SyncMeeting {
@@ -164,12 +173,7 @@ export default function ChallengeDetailPage() {
   const team: TeamMember[] = (overviewQuery.data?.team ?? []).map((m: any) => ({
     id: m.uuid, fullName: m.full_name, avatarUrl: m.avatar_url ?? undefined,
   }));
-  const tasks: TaskWithAssignees[] = (overviewQuery.data?.tasks ?? []).map((t: any) => ({
-    ...t,
-    assignees: Array.isArray(t.assignees)
-      ? t.assignees.map((a: any) => ({ id: a.uuid, fullName: a.full_name, avatarUrl: a.avatar_url ?? undefined }))
-      : [],
-  }));
+  const tasks: TaskWithAssignees[] = overviewQuery.data?.tasks ?? [];
   const meetings = overviewQuery.data?.meetings ?? [];
   const meetingsEnabled = modulesQuery.data?.meetings_enabled !== false;
   const repoTypes: string[] = (overviewQuery.data?.repos ?? []).map((r: any) => r.repo_type ?? r.type ?? '');
@@ -202,7 +206,7 @@ export default function ChallengeDetailPage() {
     );
   }
 
-  const doneTasks = tasks.filter(t => t.status === 'done' || t.status === 'completed').length;
+  const doneTasks = tasks.filter(t => t.status === 'done').length;
   const completion = tasks.length === 0 ? 0 : Math.round((doneTasks / tasks.length) * 100);
   // Actually distributed, not the pool/cap set at creation — reward is already
   // reconciled with the ledger (ML/validation) or the cached column (code).
@@ -383,9 +387,6 @@ export default function ChallengeDetailPage() {
             <TabTasks
               challengeId={challengeId}
               tasks={tasks}
-              contributions={contributions}
-              currentUserId={currentUserId}
-              isAdmin={isAdmin}
               onReload={reloadBoard}
               doneTasks={doneTasks}
               completion={completion}
@@ -419,14 +420,11 @@ export default function ChallengeDetailPage() {
 // ─── Tab: Tasks (code) ────────────────────────────────────────────────────
 
 function TabTasks({
-  challengeId, tasks, contributions, currentUserId, isAdmin, onReload,
+  challengeId, tasks, onReload,
   doneTasks, completion,
 }: {
   challengeId: string;
   tasks: TaskWithAssignees[];
-  contributions: BoardContribution[];
-  currentUserId: string | null;
-  isAdmin: boolean;
   onReload: () => Promise<void> | void;
   doneTasks: number;
   completion: number;
@@ -459,9 +457,6 @@ function TabTasks({
           <ContributorTaskBoard
             challengeId={challengeId}
             tasks={tasks}
-            contributions={contributions}
-            currentUserId={currentUserId}
-            isAdmin={isAdmin}
             onReload={onReload}
           />
         )}
