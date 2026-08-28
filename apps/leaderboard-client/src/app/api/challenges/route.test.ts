@@ -333,6 +333,15 @@ describe('POST /api/challenges', () => {
 
       expect(res.status).toBe(201);
     });
+
+    it('returns 400 when reward_rules matches neither the ml nor the code shape', async () => {
+      const res = await postChallenge({ ...validBody, reward_rules: { foo: 1 } }, 'valid-token');
+      const body = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(body.error).toBe('Invalid reward_rules');
+      expect(mockChallengeCreate).not.toHaveBeenCalled();
+    });
   });
 
   it('returns 500 when challenge creation fails', async () => {

@@ -6,8 +6,8 @@ import {
   ChallengeRepoRepository,
 } from '../../../../../../packages/database-service/repositories';
 import type { ChallengeRepoRole } from '../../../../../../packages/database-service/domain/entities';
-import { mlRewardRulesSchema } from '../../../../../../packages/database-service/domain/mlRewardRules';
-import { codeRewardRulesSchema } from '../../../../../../packages/database-service/domain/codeRewardRules';
+import { parseMlRewardRules } from '../../../../../../packages/database-service/domain/mlRewardRules';
+import { parseCodeRewardRules } from '../../../../../../packages/database-service/domain/codeRewardRules';
 import { repositories } from '@/lib/db';
 import { z } from 'zod';
 
@@ -28,7 +28,7 @@ const createChallengeSchema = z.object({
   contribution_points_reward: z.number().int().nonnegative(),
   project_id: z.string().uuid(),
   github_repo: z.string().optional(),
-  reward_rules: z.union([mlRewardRulesSchema, codeRewardRulesSchema]).nullish(),
+  reward_rules: z.unknown().nullish(),
   workspace_mode: z.enum(['provided_repo', 'own_repo']).optional(),
   source_challenge_id: z.string().uuid().optional(),
   cp_per_validation: z.number().int().positive().optional(),
@@ -91,6 +91,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = createChallengeSchema.parse(body);
 
+    const rewardRules = validated.reward_rules == null
+      ? null
+      : parseMlRewardRules(validated.reward_rules) ?? parseCodeRewardRules(validated.reward_rules);
+    if (validated.reward_rules != null && !rewardRules) {
+      return NextResponse.json({ error: 'Invalid reward_rules' }, { status: 400 });
+    }
+
     if (userRole !== 'admin') {
       const project = await repositories.project.findById(validated.project_id);
       if (!project || project.manager_id !== userId) {
@@ -129,6 +136,7 @@ export async function POST(request: NextRequest) {
       start_date: validated.start_date ? new Date(validated.start_date) : null,
       end_date: validated.end_date ? new Date(validated.end_date) : null,
       completion: 0,
+      reward_rules: rewardRules,
       source_challenge_id: validated.type === 'validation' ? validated.source_challenge_id : null,
       cp_per_validation: validated.type === 'validation' ? validated.cp_per_validation : null,
       required_validations: validated.type === 'validation' ? validated.required_validations : null,
