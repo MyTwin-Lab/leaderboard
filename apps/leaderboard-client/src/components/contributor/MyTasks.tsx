@@ -9,7 +9,7 @@ interface TaskWithChallenge {
   uuid: string;
   title: string;
   description?: string;
-  status: 'todo' | 'done';
+  status: 'todo' | 'in_progress' | 'done';
   challenge_id: string;
   challenge_title: string;
 }
@@ -43,14 +43,14 @@ export function MyTasks() {
     );
   }
 
-  const todoTasks = tasks.filter(t => t.status === 'todo');
+  const activeTasks = tasks.filter(t => t.status !== 'done');
   const doneTasks = tasks.filter(t => t.status === 'done');
 
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/6 bg-white/[0.02] py-14 text-center">
         <Circle className="h-7 w-7 text-white/15" />
-        <p className="text-xs text-white/25">No tasks assigned yet</p>
+        <p className="text-xs text-white/25">No tasks yet</p>
       </div>
     );
   }
@@ -65,33 +65,43 @@ export function MyTasks() {
             Active
           </h2>
           <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-white/40">
-            {todoTasks.length}
+            {activeTasks.length}
           </span>
         </div>
-        {todoTasks.length === 0 ? (
+        {activeTasks.length === 0 ? (
           <p className="py-4 text-center text-xs text-white/25">All caught up</p>
         ) : (
-          todoTasks.map((task, idx) => (
-            <Link
-              key={task.uuid}
-              href={`/tasks/${task.uuid}`}
-              className="group animate-slide-in-left flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 transition-all duration-200 hover:border-white/15 hover:bg-white/[0.06] hover:translate-x-0.5"
-              style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'both' }}
-            >
-              {/* Dot with ping */}
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-50" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-400" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-white truncate group-hover:text-white transition-colors">
-                  {task.title}
-                </p>
-                <p className="mt-0.5 text-xs text-white/30 truncate">{task.challenge_title}</p>
-              </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-white/0 transition-all group-hover:text-white/25" />
-            </Link>
-          ))
+          activeTasks.map((task, idx) => {
+            const inProgress = task.status === 'in_progress';
+            return (
+              <Link
+                key={task.uuid}
+                href={`/tasks/${task.uuid}`}
+                className="group animate-slide-in-left flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 transition-all duration-200 hover:border-white/15 hover:bg-white/[0.06] hover:translate-x-0.5"
+                style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'both' }}
+              >
+                {/* Dot with ping while in progress */}
+                <span className="relative flex h-2 w-2 shrink-0">
+                  {inProgress && (
+                    <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-50" />
+                  )}
+                  <span className={`relative inline-flex h-2 w-2 rounded-full ${inProgress ? 'bg-yellow-400' : 'bg-white/25'}`} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-white truncate group-hover:text-white transition-colors">
+                    {task.title}
+                  </p>
+                  <p className="mt-0.5 text-xs text-white/30 truncate">{task.challenge_title}</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                  inProgress ? 'bg-yellow-500/15 text-yellow-400' : 'bg-white/8 text-white/40'
+                }`}>
+                  {inProgress ? 'In progress' : 'To do'}
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-white/0 transition-all group-hover:text-white/25" />
+              </Link>
+            );
+          })
         )}
       </div>
 

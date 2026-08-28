@@ -4,72 +4,53 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
+import { fetchJson } from '@/lib/fetchJson';
 import {
-  ArrowLeft, CheckCircle2, Circle, ExternalLink,
-  GitBranch, BarChart2, Users, ChevronRight,
+  ArrowLeft, CheckCircle2, Circle, ChevronRight,
+  Pencil, Check, X, Plus, Trash2, Loader2,
 } from 'lucide-react';
 
-interface TaskDetails {
-  currentUserId: string | null;
-  task: {
-    uuid: string;
-    challenge_id: string;
-    parent_task_id?: string;
-    title: string;
-    description?: string;
-    status: 'todo' | 'done';
-    created_at: string;
-  };
-  challenge: {
-    uuid: string;
-    title: string;
-    status: string;
-    completion: number;
-    contribution_points_reward: number;
-  } | null;
-  assignees: {
-    uuid: string;
-    full_name: string;
-    github_username: string;
-    avatar_url?: string;
-  }[];
-  workspaces: {
-    repo_id: string;
-    repo_title: string;
-    repo_type: string;
-    repo_external_id?: string;
-    workspace_provider?: string;
-    workspace_ref?: string;
-    workspace_url?: string;
-    workspace_status?: string;
-    workspace_meta?: { userUrls?: Record<string, string>; [key: string]: unknown };
-  }[];
-  subTasks: {
-    uuid: string;
-    title: string;
-    description?: string;
-    status: 'todo' | 'done';
-    created_at: string;
-  }[];
-  contribution: {
-    uuid: string;
-    title: string;
-    type: string;
-    description?: string;
-    evaluation?: {
-      scores?: { criterion: string; score: number; weight: number; comment?: string }[];
-      globalScore?: number;
-    };
-    reward: number;
-    submitted_at: string;
-  } | null;
+type TaskStatus = 'todo' | 'in_progress' | 'done';
+
+interface TaskRecord {
+  uuid: string;
+  challenge_id: string;
+  user_id?: string | null;
+  parent_task_id?: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  created_at: string;
 }
 
+interface TaskDetails {
+  task: TaskRecord;
+  subTasks: TaskRecord[];
+}
+
+const STATUS_OPTIONS: { key: TaskStatus; label: string; dot: string }[] = [
+  { key: 'todo',        label: 'To do',       dot: 'bg-white/25' },
+  { key: 'in_progress', label: 'In progress', dot: 'bg-yellow-400' },
+  { key: 'done',        label: 'Done',        dot: 'bg-green-500' },
+];
+
 // Distinct error class so the query's error message can carry the 404 vs
-// generic-failure distinction the page used to derive from `res.status`.
+// generic-failure distinction the page derives from `res.status`.
 class TaskDetailsError extends Error {
   constructor(public status: number) { super(`Task details request failed with ${status}`); }
+}
+
+async function patchTask(taskId: string, body: Record<string, unknown>) {
+  const res = await fetch(`/api/tasks/${taskId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.error || 'Update failed');
+  }
+  return res.json();
 }
 
 export default function TaskDetailPage() {
@@ -78,8 +59,11 @@ export default function TaskDetailPage() {
   const queryClient = useQueryClient();
   const taskId = params.id as string;
 
-  const [evaluating, setEvaluating] = useState(false);
-  const [completing, setCompleting] = useState(false);
+  const meQuery = useQuery({
+    queryKey: ['me'],
+    queryFn: () => fetchJson('/api/contributors/me'),
+    staleTime: 5 * 60_000,
+  });
 
   const detailsQuery = useQuery({
     queryKey: ['task-details', taskId],
@@ -92,68 +76,44 @@ export default function TaskDetailPage() {
     retry: false,
   });
 
+  // ── Header edit state ──────────────────────────────────────────────────
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState('');
+  const [savingField, setSavingField] = useState<'title' | 'description' | null>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
+
+  // ── Sub-tasks state ─────────────────────────────────────────────────────
+  const [addingSubtask, setAddingSubtask] = useState(false);
+  const [subtaskTitle, setSubtaskTitle] = useState('');
+  const [creatingSubtask, setCreatingSubtask] = useState(false);
+  const [subtaskBusy, setSubtaskBusy] = useState<Record<string, boolean>>({});
+
+  // ── Danger zone ──────────────────────────────────────────────────────────
+  const [deletingTask, setDeletingTask] = useState(false);
+
   const data = detailsQuery.data ?? null;
-  const loading = detailsQuery.isLoading;
+  const loading = detailsQuery.isLoading || meQuery.isLoading;
   const error = detailsQuery.isError
     ? ((detailsQuery.error as TaskDetailsError)?.status === 404 ? 'Task not found' : 'Failed to load task')
     : null;
 
   const refetchDetails = () => queryClient.invalidateQueries({ queryKey: ['task-details', taskId] });
 
-  const handleEvaluate = async () => {
-    setEvaluating(true);
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/evaluate`, { method: 'POST' });
-      if (res.ok) {
-        await refetchDetails();
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Evaluation failed');
-      }
-    } catch {
-      alert('Evaluation failed');
-    } finally {
-      setEvaluating(false);
-    }
-  };
-
-  const handleComplete = async () => {
-    setCompleting(true);
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/complete`, { method: 'PATCH' });
-      if (res.ok) {
-        await refetchDetails();
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to complete task');
-      }
-    } catch {
-      alert('Failed to complete task');
-    } finally {
-      setCompleting(false);
-    }
-  };
-
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl animate-pulse space-y-6 pt-2">
+      <div className="mx-auto max-w-3xl animate-pulse space-y-6 pt-2">
         <div className="h-4 w-24 rounded-full bg-white/8" />
+        <div className="flex gap-2">
+          {[1, 2, 3].map(i => <div key={i} className="h-7 w-24 rounded-full bg-white/8" />)}
+        </div>
         <div className="space-y-3">
-          <div className="h-3 w-20 rounded-full bg-white/8" />
           <div className="h-8 w-2/3 rounded-xl bg-white/10" />
           <div className="h-3 w-full max-w-lg rounded-full bg-white/6" />
         </div>
-        <div className="flex gap-6">
-          <div className="h-7 w-24 rounded-full bg-white/8" />
-          <div className="h-7 w-20 rounded-full bg-white/8" />
-        </div>
-        <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
-          <div className="space-y-3">
-            {[1, 2].map(i => <div key={i} className="h-20 rounded-2xl bg-white/5" />)}
-          </div>
-          <div className="space-y-2">
-            {[1, 2, 3].map(i => <div key={i} className="h-14 rounded-xl bg-white/5" />)}
-          </div>
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <div key={i} className="h-12 rounded-xl bg-white/5" />)}
         </div>
       </div>
     );
@@ -167,11 +127,130 @@ export default function TaskDetailPage() {
     );
   }
 
-  const { task, challenge, assignees, workspaces, subTasks, contribution } = data;
-  const isDone = task.status === 'done';
+  const { task, subTasks } = data;
+  const currentUserId = meQuery.data?.user?.id ?? null;
+  const isAdmin = meQuery.data?.user?.role === 'admin';
+  const canEdit = isAdmin || (!!task.user_id && task.user_id === currentUserId);
+
+  // ── Mutations ────────────────────────────────────────────────────────────
+
+  const saveTitle = async () => {
+    const trimmed = titleDraft.trim();
+    if (!trimmed) return;
+    setSavingField('title');
+    try {
+      await patchTask(taskId, { title: trimmed });
+      await refetchDetails();
+      setEditingTitle(false);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to update title');
+    } finally {
+      setSavingField(null);
+    }
+  };
+
+  const saveDescription = async () => {
+    setSavingField('description');
+    try {
+      await patchTask(taskId, { description: descriptionDraft.trim() });
+      await refetchDetails();
+      setEditingDescription(false);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to update description');
+    } finally {
+      setSavingField(null);
+    }
+  };
+
+  const changeStatus = async (status: TaskStatus) => {
+    if (status === task.status || statusSaving) return;
+    setStatusSaving(true);
+    try {
+      await patchTask(taskId, { status });
+      await refetchDetails();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to update status');
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
+  const toggleSubtask = async (sub: TaskRecord) => {
+    if (subtaskBusy[sub.uuid]) return;
+    const next: TaskStatus = sub.status === 'done' ? 'todo' : 'done';
+    setSubtaskBusy(b => ({ ...b, [sub.uuid]: true }));
+    try {
+      await patchTask(sub.uuid, { status: next });
+      await refetchDetails();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to update sub-task');
+    } finally {
+      setSubtaskBusy(b => { const n = { ...b }; delete n[sub.uuid]; return n; });
+    }
+  };
+
+  const addSubtask = async () => {
+    const title = subtaskTitle.trim();
+    if (!title || creatingSubtask) return;
+    setCreatingSubtask(true);
+    try {
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challenge_id: task.challenge_id, parent_task_id: task.uuid, title }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Failed to add sub-task');
+      }
+      setSubtaskTitle('');
+      setAddingSubtask(false);
+      await refetchDetails();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to add sub-task');
+    } finally {
+      setCreatingSubtask(false);
+    }
+  };
+
+  const deleteSubtask = async (sub: TaskRecord) => {
+    if (!confirm('Delete this sub-task? This cannot be undone.')) return;
+    setSubtaskBusy(b => ({ ...b, [sub.uuid]: true }));
+    try {
+      const res = await fetch(`/api/tasks/${sub.uuid}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Failed to delete sub-task');
+      }
+      await refetchDetails();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to delete sub-task');
+      setSubtaskBusy(b => { const n = { ...b }; delete n[sub.uuid]; return n; });
+    }
+  };
+
+  const deleteTask = async () => {
+    if (!confirm('Delete this task? This cannot be undone.')) return;
+    setDeletingTask(true);
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'Failed to delete task');
+        setDeletingTask(false);
+        return;
+      }
+      router.push(`/challenges/${task.challenge_id}`);
+    } catch {
+      alert('Network error');
+      setDeletingTask(false);
+    }
+  };
+
+  const doneCount = subTasks.filter(s => s.status === 'done').length;
 
   return (
-    <div className="mx-auto max-w-5xl animate-fade-up">
+    <div className="mx-auto max-w-3xl animate-fade-up">
 
       {/* ── Back ── */}
       <button
@@ -179,295 +258,250 @@ export default function TaskDetailPage() {
         className="group mb-6 flex items-center gap-1.5 text-xs text-white/40 transition-colors hover:text-white/70"
       >
         <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
-        {challenge ? challenge.title : 'Back'}
+        Back
       </button>
 
-      {/* ── Hero ── */}
-      <div className="mb-10">
-        {/* Status row */}
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-            isDone ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'
-          }`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${isDone ? 'bg-green-400' : 'bg-yellow-400'}`} />
-            {isDone ? 'Done' : 'To do'}
-          </span>
-          {challenge && (
-            <>
-              <span className="text-white/20">·</span>
-              <Link
-                href={`/challenges/${challenge.uuid}`}
-                className="text-xs text-white/40 hover:text-brandCP transition-colors"
+      {/* ── Header ── */}
+      <div className="mb-10 space-y-4">
+        {/* Status chips */}
+        <div className="flex flex-wrap items-center gap-2">
+          {STATUS_OPTIONS.map(opt => {
+            const active = task.status === opt.key;
+            return (
+              <button
+                key={opt.key}
+                onClick={() => changeStatus(opt.key)}
+                disabled={!canEdit || statusSaving}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  active
+                    ? opt.key === 'done' ? 'bg-green-500/15 text-green-400'
+                      : opt.key === 'in_progress' ? 'bg-yellow-500/15 text-yellow-400'
+                      : 'bg-white/10 text-white/70'
+                    : 'bg-white/[0.03] text-white/30 hover:bg-white/[0.06] hover:text-white/50'
+                } disabled:cursor-not-allowed disabled:opacity-60`}
               >
-                {challenge.title}
-              </Link>
-            </>
-          )}
+                <span className={`h-1.5 w-1.5 rounded-full ${opt.dot}`} />
+                {opt.label}
+              </button>
+            );
+          })}
+          <Link
+            href={`/challenges/${task.challenge_id}`}
+            className="ml-auto text-xs text-white/30 transition-colors hover:text-brandCP"
+          >
+            View challenge
+          </Link>
         </div>
 
         {/* Title */}
-        <h1 className="mb-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-          {task.title}
-        </h1>
-
-        {/* Description */}
-        {task.description && (
-          <p className="max-w-2xl text-sm leading-relaxed text-white/50">
-            {task.description}
-          </p>
+        {editingTitle ? (
+          <div className="space-y-2">
+            <input
+              autoFocus
+              value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && savingField !== 'title') saveTitle();
+                if (e.key === 'Escape') setEditingTitle(false);
+              }}
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-2xl font-bold text-white focus:border-brandCP/40 focus:outline-none"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={saveTitle}
+                disabled={savingField === 'title' || !titleDraft.trim()}
+                className="flex items-center gap-1 rounded-lg bg-brandCP/15 px-3 py-1.5 text-xs font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {savingField === 'title' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                Save
+              </button>
+              <button
+                onClick={() => setEditingTitle(false)}
+                disabled={savingField === 'title'}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/40 transition-colors hover:text-white/70 disabled:opacity-40"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="group flex items-start gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{task.title}</h1>
+            {canEdit && (
+              <button
+                onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}
+                className="mt-1 shrink-0 rounded-lg p-1 text-white/0 transition-all hover:bg-white/[0.06] hover:text-white/60 group-hover:text-white/30"
+                aria-label="Edit title"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         )}
 
-        {/* Stats row */}
-        <div className="mt-6 flex flex-wrap items-center gap-5">
-          {challenge?.contribution_points_reward != null && (
-            <>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-bold text-white">
-                  {challenge.contribution_points_reward.toLocaleString()}
-                </span>
-                <span className="text-sm font-semibold text-brandCP">CP</span>
-              </div>
-              <div className="h-6 w-px bg-white/10" />
-            </>
-          )}
-          <span className="text-xs text-white/30">
-            {new Date(task.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </span>
-        </div>
-      </div>
-
-      {/* ── Body grid ── */}
-      <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
-
-        {/* ── Left column: Assignees + Sub-tasks ── */}
-        <div className="space-y-8">
-
-          {/* Assignees */}
-          <div className="space-y-3">
-            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-              <Users className="h-3.5 w-3.5" />
-              Assignees
-              {assignees.length > 0 && (
-                <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">
-                  {assignees.length}
-                </span>
-              )}
-            </h2>
-            {assignees.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] py-8 text-center">
-                <Users className="h-6 w-6 text-white/15" />
-                <p className="text-xs text-white/25">Unassigned</p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {assignees.map(a => (
-                  <div key={a.uuid} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/[0.04] transition-colors">
-                    <InitialsAvatar name={a.full_name} size={30} avatarUrl={a.avatar_url} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{a.full_name}</p>
-                      {a.github_username && (
-                        <p className="text-xs text-white/35 truncate">@{a.github_username}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Sub-tasks */}
-          {subTasks.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Sub-tasks
-                <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">
-                  {subTasks.filter(s => s.status === 'done').length}/{subTasks.length}
-                </span>
-              </h2>
-              <div className="space-y-1">
-                {subTasks.map((st, idx) => (
-                  <Link
-                    key={st.uuid}
-                    href={`/tasks/${st.uuid}`}
-                    className="group flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 transition-all duration-200 hover:border-white/15 hover:bg-white/[0.06]"
-                  >
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${
-                      st.status === 'done' ? 'bg-green-500' : 'bg-white/25'
-                    }`} />
-                    <span className={`flex-1 truncate text-sm ${
-                      st.status === 'done' ? 'text-white/35 line-through decoration-white/20' : 'text-white'
-                    }`}>
-                      {st.title}
-                    </span>
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/0 transition-all group-hover:text-white/25" />
-                  </Link>
-                ))}
-              </div>
+        {/* Description */}
+        {editingDescription ? (
+          <div className="space-y-2">
+            <textarea
+              autoFocus
+              rows={3}
+              value={descriptionDraft}
+              onChange={e => setDescriptionDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape') setEditingDescription(false); }}
+              placeholder="Description (optional)"
+              className="w-full max-w-2xl resize-none rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/70 placeholder:text-white/25 focus:border-brandCP/40 focus:outline-none"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={saveDescription}
+                disabled={savingField === 'description'}
+                className="flex items-center gap-1 rounded-lg bg-brandCP/15 px-3 py-1.5 text-xs font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {savingField === 'description' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                Save
+              </button>
+              <button
+                onClick={() => setEditingDescription(false)}
+                disabled={savingField === 'description'}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/40 transition-colors hover:text-white/70 disabled:opacity-40"
+              >
+                Cancel
+              </button>
             </div>
+          </div>
+        ) : (
+          <div className="group flex items-start gap-2">
+            {task.description ? (
+              <p className="max-w-2xl text-sm leading-relaxed text-white/50">{task.description}</p>
+            ) : (
+              <p className="max-w-2xl text-sm italic leading-relaxed text-white/25">No description</p>
+            )}
+            {canEdit && (
+              <button
+                onClick={() => { setDescriptionDraft(task.description ?? ''); setEditingDescription(true); }}
+                className="mt-0.5 shrink-0 rounded-lg p-1 text-white/0 transition-all hover:bg-white/[0.06] hover:text-white/60 group-hover:text-white/30"
+                aria-label="Edit description"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+
+        <p className="text-xs text-white/30">
+          Created {new Date(task.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </p>
+      </div>
+
+      {/* ── Sub-tasks ── */}
+      <div className="mb-10 space-y-3">
+        <div className="flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Sub-tasks
+          </h2>
+          {subTasks.length > 0 && (
+            <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">
+              {doneCount}/{subTasks.length}
+            </span>
+          )}
+          {canEdit && (
+            <button
+              onClick={() => setAddingSubtask(v => !v)}
+              className="ml-auto flex items-center gap-1 rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-semibold text-white/50 transition-colors hover:bg-white/[0.14] hover:text-white/80"
+            >
+              {addingSubtask ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+              Add
+            </button>
           )}
         </div>
 
-        {/* ── Right column: Workspaces + Evaluation ── */}
-        <div className="space-y-8">
-
-          {/* Workspaces */}
-          <div className="space-y-3">
-            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-              <GitBranch className="h-3.5 w-3.5" />
-              Workspaces
-              {workspaces.length > 0 && (
-                <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">
-                  {workspaces.length}
-                </span>
-              )}
-            </h2>
-            {workspaces.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] py-10 text-center">
-                <GitBranch className="h-7 w-7 text-white/15" />
-                <p className="text-xs text-white/25">No workspaces configured</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {workspaces.map((ws, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-4 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 transition-all duration-200 hover:border-white/15 hover:bg-white/[0.06]"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-white truncate">
-                        {ws.repo_external_id || ws.repo_title}
-                      </p>
-                      {ws.workspace_ref && (
-                        <p className="mt-0.5 font-mono text-xs text-white/35">
-                          {ws.workspace_ref.replace(/^refs\/heads\//, '')}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {ws.workspace_status && <WorkspaceStatusBadge status={ws.workspace_status} />}
-                      {ws.workspace_url && (
-                        <a
-                          href={ws.workspace_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 rounded-lg bg-brandCP/15 px-3 py-1.5 text-xs font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/25 hover:shadow-[0_0_12px_rgba(10,247,193,0.15)]"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          Open
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        {addingSubtask && (
+          <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-2.5">
+            <input
+              autoFocus
+              value={subtaskTitle}
+              onChange={e => setSubtaskTitle(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !creatingSubtask) addSubtask();
+                if (e.key === 'Escape') setAddingSubtask(false);
+              }}
+              placeholder="Sub-task title…"
+              className="flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-sm text-white placeholder:text-white/25 focus:border-brandCP/40 focus:outline-none"
+            />
+            <button
+              onClick={addSubtask}
+              disabled={creatingSubtask || !subtaskTitle.trim()}
+              className="flex items-center gap-1 rounded-lg bg-brandCP/15 px-2.5 py-1.5 text-xs font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {creatingSubtask ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            </button>
           </div>
+        )}
 
-          {/* Evaluation */}
-          <div className="space-y-3">
-            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-              <BarChart2 className="h-3.5 w-3.5" />
-              Evaluation
-            </h2>
-
-            {contribution?.evaluation ? (
-              <div className="space-y-4">
-                {/* Score banner */}
-                <div className="flex items-center gap-4 rounded-xl border border-brandCP/15 bg-brandCP/[0.04] px-4 py-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brandCP/15">
-                    <span className="text-2xl font-bold text-brandCP">
-                      {Math.round(contribution.evaluation.globalScore ?? 0)}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">Global Score</p>
-                    <p className="text-xs text-white/40 mt-0.5">
-                      {contribution.evaluation.scores?.length ?? 0} criteria · {contribution.reward.toLocaleString()} CP earned
-                    </p>
-                  </div>
-                </div>
-
-                {/* Criteria */}
-                {contribution.evaluation.scores && contribution.evaluation.scores.length > 0 && (
-                  <div className="space-y-2">
-                    {contribution.evaluation.scores.map((s, i) => (
-                      <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                        <div className="mb-2 flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium text-white">{s.criterion}</p>
-                          <div className="flex shrink-0 items-center gap-2">
-                            <span className="text-[10px] text-white/25">×{s.weight}</span>
-                            <span className="rounded-full bg-brandCP/15 px-2.5 py-0.5 text-xs font-bold text-brandCP">
-                              {s.score}/10
-                            </span>
-                          </div>
-                        </div>
-                        <div className="h-1 w-full overflow-hidden rounded-full bg-white/8">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-brandCP/60 to-brandCP transition-[width] duration-700 ease-out"
-                            style={{ width: `${s.score * 10}%` }}
-                          />
-                        </div>
-                        {s.comment && (
-                          <p className="mt-2.5 text-xs italic leading-relaxed text-white/40">{s.comment}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <p className="text-[11px] text-white/25">
-                  Evaluated {new Date(contribution.submitted_at).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] py-12 text-center">
-                <BarChart2 className="h-7 w-7 text-white/15" />
-                <p className="text-xs text-white/25">
-                  {contribution ? 'No evaluation data yet' : 'No evaluation run yet'}
-                </p>
-              </div>
-            )}
-
-            {/* Actions */}
-            {!isDone && (
-              <div className="flex gap-3 pt-1">
-                <button
-                  onClick={handleEvaluate}
-                  disabled={evaluating}
-                  className="rounded-lg bg-brandCP/15 px-4 py-2 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/25 hover:shadow-[0_0_12px_rgba(10,247,193,0.1)] disabled:cursor-not-allowed disabled:opacity-40"
+        {subTasks.length === 0 && !addingSubtask ? (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] py-10 text-center">
+            <CheckCircle2 className="h-6 w-6 text-white/15" />
+            <p className="text-xs text-white/25">No sub-tasks yet</p>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {subTasks.map(st => {
+              const busy = !!subtaskBusy[st.uuid];
+              const done = st.status === 'done';
+              return (
+                <div
+                  key={st.uuid}
+                  className="group flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 transition-all duration-200 hover:border-white/12 hover:bg-white/[0.04]"
                 >
-                  {evaluating ? 'Evaluating…' : contribution?.evaluation ? 'Re-evaluate' : 'Evaluate'}
-                </button>
-                {contribution?.evaluation && (
                   <button
-                    onClick={handleComplete}
-                    disabled={completing}
-                    className="rounded-lg bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-400 transition-all duration-200 hover:bg-green-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={() => toggleSubtask(st)}
+                    disabled={!canEdit || busy}
+                    className="shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label={done ? 'Mark as to do' : 'Mark as done'}
                   >
-                    {completing ? 'Validating…' : 'Mark as done'}
+                    {done
+                      ? <CheckCircle2 className="h-5 w-5 text-green-400" />
+                      : <Circle className="h-5 w-5 text-white/25" />}
                   </button>
-                )}
-              </div>
-            )}
+                  <span className={`flex-1 truncate text-sm ${done ? 'text-white/35 line-through decoration-white/20' : 'text-white'}`}>
+                    {st.title}
+                  </span>
+                  {busy ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-white/30" />
+                  ) : canEdit ? (
+                    <button
+                      onClick={() => deleteSubtask(st)}
+                      className="shrink-0 rounded-lg p-1 text-white/0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:text-white/25"
+                      aria-label="Delete sub-task"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/0" />
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
       </div>
+
+      {/* ── Danger zone ── */}
+      {canEdit && (
+        <div className="rounded-xl border border-red-500/15 bg-red-500/[0.03] p-5">
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-widest text-red-400/70">Danger zone</h2>
+          <p className="mb-3 text-xs text-white/40">This cannot be undone.</p>
+          <button
+            onClick={deleteTask}
+            disabled={deletingTask}
+            className="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 transition-all duration-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {deletingTask ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            {deletingTask ? 'Deleting…' : 'Delete task'}
+          </button>
+        </div>
+      )}
     </div>
-  );
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function WorkspaceStatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    ready:   'bg-green-500/15 text-green-400',
-    pending: 'bg-yellow-500/15 text-yellow-400',
-    failed:  'bg-red-500/15 text-red-400',
-  };
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles[status] ?? 'bg-white/8 text-white/40'}`}>
-      {status}
-    </span>
   );
 }
