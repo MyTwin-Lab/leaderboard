@@ -300,6 +300,41 @@ describe('POST /api/challenges', () => {
     expect(res.status).toBe(401);
   });
 
+  describe('workspace_mode', () => {
+    it('creates no repo for a "code" challenge with workspace_mode "own_repo"', async () => {
+      const res = await postChallenge({ ...validBody, workspace_mode: 'own_repo' }, 'valid-token');
+      const body = await res.json();
+
+      expect(res.status).toBe(201);
+      expect(mockRepoCreate).not.toHaveBeenCalled();
+      expect(mockChallengeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ workspace_mode: 'own_repo' })
+      );
+      expect(body.workspace_mode).toBe('own_repo');
+    });
+
+    it('creates the GitHub repo for a "code" challenge without workspace_mode (historical behavior), defaulting to provided_repo', async () => {
+      const res = await postChallenge(validBody, 'valid-token');
+      const body = await res.json();
+
+      expect(res.status).toBe(201);
+      expect(mockRepoCreate).toHaveBeenCalledTimes(1);
+      expect(mockChallengeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ workspace_mode: 'provided_repo' })
+      );
+      expect(body.workspace_mode).toBe('provided_repo');
+    });
+
+    it('accepts code reward_rules on a "code" challenge', async () => {
+      const res = await postChallenge(
+        { ...validBody, reward_rules: { version: 1, delivery: { fixed: 50, cap: 150 } } },
+        'valid-token'
+      );
+
+      expect(res.status).toBe(201);
+    });
+  });
+
   it('returns 500 when challenge creation fails', async () => {
     mockChallengeCreate.mockRejectedValue(new Error('db down'));
 

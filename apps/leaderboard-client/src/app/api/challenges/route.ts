@@ -7,6 +7,7 @@ import {
 } from '../../../../../../packages/database-service/repositories';
 import type { ChallengeRepoRole } from '../../../../../../packages/database-service/domain/entities';
 import { mlRewardRulesSchema } from '../../../../../../packages/database-service/domain/mlRewardRules';
+import { codeRewardRulesSchema } from '../../../../../../packages/database-service/domain/codeRewardRules';
 import { repositories } from '@/lib/db';
 import { z } from 'zod';
 
@@ -27,7 +28,8 @@ const createChallengeSchema = z.object({
   contribution_points_reward: z.number().int().nonnegative(),
   project_id: z.string().uuid(),
   github_repo: z.string().optional(),
-  reward_rules: mlRewardRulesSchema.nullish(),
+  reward_rules: z.union([mlRewardRulesSchema, codeRewardRulesSchema]).nullish(),
+  workspace_mode: z.enum(['provided_repo', 'own_repo']).optional(),
   source_challenge_id: z.string().uuid().optional(),
   cp_per_validation: z.number().int().positive().optional(),
   required_validations: z.number().int().positive().optional(),
@@ -131,6 +133,7 @@ export async function POST(request: NextRequest) {
       cp_per_validation: validated.type === 'validation' ? validated.cp_per_validation : null,
       required_validations: validated.type === 'validation' ? validated.required_validations : null,
       compute_enabled: validated.type === 'ml' ? (validated.compute_enabled ?? false) : false,
+      workspace_mode: validated.type === 'code' ? (validated.workspace_mode ?? 'provided_repo') : null,
     });
 
     // Extract owner/repo slug from a GitHub URL or plain slug
@@ -168,7 +171,9 @@ export async function POST(request: NextRequest) {
           ]
         : validated.type === 'validation'
           ? []
-          : [{ title: `${validated.title} — Code`, type: 'github', external_repo_id: githubSlug }];
+          : (validated.workspace_mode ?? 'provided_repo') === 'own_repo'
+            ? []
+            : [{ title: `${validated.title} — Code`, type: 'github', external_repo_id: githubSlug }];
 
     await Promise.all(
       repoDefinitions.map(async ({ title, type, role, external_repo_id }) => {
