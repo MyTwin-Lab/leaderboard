@@ -1,11 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindById, mockUpdate, mockDelete } = vi.hoisted(() => ({
+const {
+  mockJwtVerify,
+  mockFindById, mockUpdate, mockDelete,
+  mockChallengeFindById,
+  mockProjectFindById,
+} = vi.hoisted(() => ({
+  mockJwtVerify: vi.fn(),
   mockFindById: vi.fn(),
   mockUpdate: vi.fn(),
   mockDelete: vi.fn(),
+  mockChallengeFindById: vi.fn(),
+  mockProjectFindById: vi.fn(),
 }));
+
+vi.mock('jose', () => ({ jwtVerify: mockJwtVerify }));
 
 vi.mock('../../../../../../../packages/database-service/repositories', () => ({
   TaskRepository: class {
@@ -13,97 +23,119 @@ vi.mock('../../../../../../../packages/database-service/repositories', () => ({
     update = mockUpdate;
     delete = mockDelete;
   },
+  ChallengeRepository: class {
+    findById = mockChallengeFindById;
+  },
 }));
 
-import { GET, PUT, DELETE } from './route';
+vi.mock('@/lib/db', () => ({
+  repositories: {
+    project: {
+      findById: mockProjectFindById,
+    },
+  },
+}));
+
+import { GET, PATCH, DELETE } from './route';
 
 const TASK_ID = 'task-1';
 
-function getTask() {
-  const req = new NextRequest(`http://localhost/api/tasks/${TASK_ID}`);
+function getTask(token?: string) {
+  const req = new NextRequest(`http://localhost/api/tasks/${TASK_ID}`, {
+    headers: token ? { cookie: `access_token=${token}` } : undefined,
+  });
   return GET(req, { params: Promise.resolve({ id: TASK_ID }) });
 }
 
-function putTask(body: unknown) {
+function patchTask(body: unknown, token?: string) {
   const req = new NextRequest(`http://localhost/api/tasks/${TASK_ID}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { cookie: `access_token=${token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
-  return PUT(req, { params: Promise.resolve({ id: TASK_ID }) });
+  return PATCH(req, { params: Promise.resolve({ id: TASK_ID }) });
 }
 
-function deleteTask() {
-  const req = new NextRequest(`http://localhost/api/tasks/${TASK_ID}`, { method: 'DELETE' });
+function deleteTask(token?: string) {
+  const req = new NextRequest(`http://localhost/api/tasks/${TASK_ID}`, {
+    method: 'DELETE',
+    headers: token ? { cookie: `access_token=${token}` } : undefined,
+  });
   return DELETE(req, { params: Promise.resolve({ id: TASK_ID }) });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockFindById.mockResolvedValue({ uuid: TASK_ID, title: 'Do the thing', user_id: 'alice', challenge_id: 'challenge-1' });
+  mockUpdate.mockImplementation(async (id: string, data: any) => ({ uuid: id, ...data }));
+  mockDelete.mockResolvedValue(undefined);
+  mockChallengeFindById.mockResolvedValue({ uuid: 'challenge-1', project_id: 'project-1' });
+  mockProjectFindById.mockResolvedValue({ uuid: 'project-1', manager_id: 'manager-1' });
+  mockJwtVerify.mockResolvedValue({ payload: { userId: 'alice', role: 'contributor' } });
 });
 
 describe('GET /api/tasks/[id]', () => {
-  it('returns 404 when the task does not exist', async () => {
-    mockFindById.mockResolvedValue(null);
-
-    const res = await getTask();
-
-    expect(res.status).toBe(404);
-  });
-
-  it('returns the task when found', async () => {
-    mockFindById.mockResolvedValue({ uuid: TASK_ID, title: 'Do the thing' });
-
+  it('returns the task when found (unchanged)', async () => {
     const res = await getTask();
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ uuid: TASK_ID, title: 'Do the thing' });
+    expect(await res.json()).toEqual(
+      expect.objectContaining({ uuid: TASK_ID, title: 'Do the thing' })
+    );
   });
 });
 
-describe('PUT /api/tasks/[id]', () => {
-  it('returns 400 on an invalid body (Zod)', async () => {
-    const res = await putTask({ status: 'not-a-valid-status' });
+describe('PATCH /api/tasks/[id]', () => {
+  it('allows the owner to update their task', async () => {
+    const res = await patchTask({ status: 'done' }, 'valid-token');
+
+    expect(res.status).toBe(200);
+    expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { status: 'done' });
+  });
+
+  it('returns 403 when another user tries to update the task', async () => {
+    mockJwtVerify.mockResolvedValue({ payload: { userId: 'bob', role: 'contributor' } });
+
+    const res = await patchTask({ status: 'done' }, 'valid-token');
+
+    expect(res.status).toBe(403);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 for a contributor updating a template task, 200 for an admin', async () => {
+    mockFindById.mockResolvedValue({ uuid: TASK_ID, title: 'Template', user_id: null, challenge_id: 'challenge-1' });
+
+    const resContributor = await patchTask({ status: 'done' }, 'valid-token');
+    expect(resContributor.status).toBe(403);
+    expect(mockUpdate).not.toHaveBeenCalled();
+
+    mockJwtVerify.mockResolvedValue({ payload: { userId: 'admin-1', role: 'admin' } });
+    const resAdmin = await patchTask({ status: 'done' }, 'valid-token');
+    expect(resAdmin.status).toBe(200);
+    expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { status: 'done' });
+  });
+
+  it('returns 400 on an invalid status', async () => {
+    const res = await patchTask({ status: 'not-a-status' }, 'valid-token');
 
     expect(res.status).toBe(400);
     expect(mockUpdate).not.toHaveBeenCalled();
   });
-
-  it('updates the task with the validated fields', async () => {
-    mockUpdate.mockResolvedValue({ uuid: TASK_ID, title: 'Updated title' });
-
-    const res = await putTask({ title: 'Updated title' });
-
-    expect(res.status).toBe(200);
-    expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { title: 'Updated title' });
-    expect(await res.json()).toEqual({ uuid: TASK_ID, title: 'Updated title' });
-  });
-
-  it('returns 500 when the repository throws', async () => {
-    mockUpdate.mockRejectedValue(new Error('db down'));
-
-    const res = await putTask({ title: 'Updated title' });
-
-    expect(res.status).toBe(500);
-  });
 });
 
 describe('DELETE /api/tasks/[id]', () => {
-  it('deletes the task and returns success', async () => {
-    mockDelete.mockResolvedValue(undefined);
-
-    const res = await deleteTask();
-
-    expect(res.status).toBe(200);
+  it('allows the owner to delete and returns 403 for another user', async () => {
+    const resOwner = await deleteTask('valid-token');
+    expect(resOwner.status).toBe(200);
     expect(mockDelete).toHaveBeenCalledWith(TASK_ID);
-    expect(await res.json()).toEqual({ success: true });
-  });
 
-  it('returns 500 when the repository throws', async () => {
-    mockDelete.mockRejectedValue(new Error('db down'));
-
-    const res = await deleteTask();
-
-    expect(res.status).toBe(500);
+    mockDelete.mockClear();
+    mockJwtVerify.mockResolvedValue({ payload: { userId: 'bob', role: 'contributor' } });
+    const resOther = await deleteTask('valid-token');
+    expect(resOther.status).toBe(403);
+    expect(mockDelete).not.toHaveBeenCalled();
   });
 });

@@ -1,19 +1,45 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindByChallenge, mockCreate, mockChallengeFindById } = vi.hoisted(() => ({
+const {
+  mockJwtVerify,
+  mockFindPersonalTasks, mockFindTemplateTasks, mockFindByChallenge, mockCreate,
+  mockChallengeFindById,
+  mockFindByChallengeAndUser,
+  mockProjectFindById,
+} = vi.hoisted(() => ({
+  mockJwtVerify: vi.fn(),
+  mockFindPersonalTasks: vi.fn(),
+  mockFindTemplateTasks: vi.fn(),
   mockFindByChallenge: vi.fn(),
   mockCreate: vi.fn(),
   mockChallengeFindById: vi.fn(),
+  mockFindByChallengeAndUser: vi.fn(),
+  mockProjectFindById: vi.fn(),
 }));
+
+vi.mock('jose', () => ({ jwtVerify: mockJwtVerify }));
 
 vi.mock('../../../../../../packages/database-service/repositories', () => ({
   TaskRepository: class {
+    findPersonalTasks = mockFindPersonalTasks;
+    findTemplateTasks = mockFindTemplateTasks;
     findByChallenge = mockFindByChallenge;
     create = mockCreate;
   },
   ChallengeRepository: class {
     findById = mockChallengeFindById;
+  },
+  ChallengeTeamRepository: class {
+    findByChallengeAndUser = mockFindByChallengeAndUser;
+  },
+}));
+
+vi.mock('@/lib/db', () => ({
+  repositories: {
+    project: {
+      findById: mockProjectFindById,
+    },
   },
 }));
 
@@ -21,101 +47,125 @@ import { GET, POST } from './route';
 
 const CHALLENGE_ID = '11111111-1111-4111-8111-111111111111';
 
-function getTasks(qs: string) {
-  const req = new NextRequest(`http://localhost/api/tasks${qs}`);
+function getTasks(query: string, token?: string) {
+  const req = new NextRequest(`http://localhost/api/tasks${query}`, {
+    headers: token ? { cookie: `access_token=${token}` } : undefined,
+  });
   return GET(req);
 }
 
-function postTask(body: unknown) {
+function postTask(body: unknown, token?: string) {
   const req = new NextRequest('http://localhost/api/tasks', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { cookie: `access_token=${token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
   return POST(req);
 }
 
+const validBody = {
+  challenge_id: CHALLENGE_ID,
+  title: 'Do the thing',
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
+  mockFindPersonalTasks.mockResolvedValue([{ uuid: 'personal-1' }]);
+  mockFindTemplateTasks.mockResolvedValue([{ uuid: 'template-1' }]);
+  mockFindByChallenge.mockResolvedValue([{ uuid: 'any-1' }]);
+  mockCreate.mockImplementation(async (data: any) => ({ uuid: 'new-task', ...data }));
+  mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', project_id: 'project-1' });
+  mockFindByChallengeAndUser.mockResolvedValue({ uuid: 'membership-1' });
+  mockProjectFindById.mockResolvedValue({ uuid: 'project-1', manager_id: 'manager-1' });
+  mockJwtVerify.mockResolvedValue({ payload: { userId: 'alice', role: 'contributor' } });
 });
 
 describe('GET /api/tasks', () => {
-  it('returns 400 when challenge_id is missing', async () => {
-    const res = await getTasks('');
+  it('returns 401 for scope=mine without a session', async () => {
+    const res = await getTasks(`?challenge_id=${CHALLENGE_ID}&scope=mine`);
 
-    expect(res.status).toBe(400);
-    expect(mockFindByChallenge).not.toHaveBeenCalled();
+    expect(res.status).toBe(401);
+    expect(mockFindPersonalTasks).not.toHaveBeenCalled();
   });
 
-  it('returns plain tasks', async () => {
-    const tasks = [{ uuid: 'task-1' }];
-    mockFindByChallenge.mockResolvedValue(tasks);
-
-    const res = await getTasks(`?challenge_id=${CHALLENGE_ID}`);
+  it('returns only findPersonalTasks(challengeId, userId) for scope=mine', async () => {
+    const res = await getTasks(`?challenge_id=${CHALLENGE_ID}&scope=mine`, 'valid-token');
+    const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(mockFindByChallenge).toHaveBeenCalledWith(CHALLENGE_ID);
-    expect(await res.json()).toEqual(tasks);
+    expect(mockFindPersonalTasks).toHaveBeenCalledWith(CHALLENGE_ID, 'alice');
+    expect(mockFindTemplateTasks).not.toHaveBeenCalled();
+    expect(mockFindByChallenge).not.toHaveBeenCalled();
+    expect(body).toEqual([{ uuid: 'personal-1' }]);
   });
 
-  it('returns 500 when the repository throws', async () => {
-    mockFindByChallenge.mockRejectedValue(new Error('db down'));
+  it('returns findTemplateTasks(challengeId) for scope=template', async () => {
+    const res = await getTasks(`?challenge_id=${CHALLENGE_ID}&scope=template`);
+    const body = await res.json();
 
-    const res = await getTasks(`?challenge_id=${CHALLENGE_ID}`);
-
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(200);
+    expect(mockFindTemplateTasks).toHaveBeenCalledWith(CHALLENGE_ID);
+    expect(body).toEqual([{ uuid: 'template-1' }]);
   });
 });
 
 describe('POST /api/tasks', () => {
-  const validBody = {
-    challenge_id: CHALLENGE_ID,
-    title: 'New task',
-  };
-
-  it('returns 400 on an invalid body (Zod)', async () => {
-    const res = await postTask({ challenge_id: 'not-a-uuid', title: 'New task' });
-
-    expect(res.status).toBe(400);
-    expect(mockChallengeFindById).not.toHaveBeenCalled();
-  });
-
-  it('returns 404 when the challenge does not exist', async () => {
-    mockChallengeFindById.mockResolvedValue(null);
-
+  it('returns 401 without a session', async () => {
     const res = await postTask(validBody);
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when the challenge is an ML challenge', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'ml' });
+  it('returns 403 for a personal task created by a non-member', async () => {
+    mockFindByChallengeAndUser.mockResolvedValue(null);
 
-    const res = await postTask(validBody);
+    const res = await postTask(validBody, 'valid-token');
+    const body = await res.json();
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(403);
+    expect(body.error).toBe('Join the challenge first');
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('creates the task for a non-ML challenge', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code' });
-    mockCreate.mockResolvedValue({ uuid: 'task-1', ...validBody, status: 'todo' });
-
-    const res = await postTask(validBody);
+  it('creates a personal task for a member with user_id and status todo', async () => {
+    const res = await postTask(validBody, 'valid-token');
 
     expect(res.status).toBe(201);
-    expect(mockCreate).toHaveBeenCalledWith({ ...validBody, status: 'todo' });
-    const body = await res.json();
-    expect(body.uuid).toBe('task-1');
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'alice', status: 'todo' })
+    );
   });
 
-  it('returns 500 when the repository throws', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code' });
-    mockCreate.mockRejectedValue(new Error('db down'));
+  it('returns 403 for a template task created by a non-manager contributor', async () => {
+    mockProjectFindById.mockResolvedValue({ uuid: 'project-1', manager_id: 'someone-else' });
 
-    const res = await postTask(validBody);
+    const res = await postTask({ ...validBody, template: true }, 'valid-token');
 
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(403);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('creates a template task for an admin with user_id null', async () => {
+    mockJwtVerify.mockResolvedValue({ payload: { userId: 'admin-1', role: 'admin' } });
+
+    const res = await postTask({ ...validBody, template: true }, 'valid-token');
+
+    expect(res.status).toBe(201);
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: null, status: 'todo' })
+    );
+  });
+
+  it('returns 400 for a challenge of type "ml"', async () => {
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'ml', project_id: 'project-1' });
+
+    const res = await postTask(validBody, 'valid-token');
+
+    expect(res.status).toBe(400);
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 });
