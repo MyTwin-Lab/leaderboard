@@ -18,7 +18,7 @@ const ArrowIcon = ({ className = "h-3.5 w-3.5" }: { className?: string }) => (
 const PODIUM_STYLE: Record<number, { badge: string; card: string }> = {
   1: {
     badge: "bg-gradient-to-br from-yellow-300 to-yellow-500 text-yellow-900 shadow-md shadow-yellow-500/40",
-    card: "border-brandCP/25 bg-gradient-to-b from-brandCP/[0.08] to-white/[0.03] shadow-[0_20px_46px_-26px_rgba(0,0,0,0.6)]",
+    card: "border-brandCP/25 bg-gradient-to-b from-brandCP/[0.08] to-white/[0.03]",
   },
   2: {
     badge: "bg-gradient-to-br from-slate-300 to-slate-500 text-slate-900 shadow-md shadow-slate-400/30",
