@@ -34,11 +34,17 @@ export type CannotEvaluateReason =
   | "tasks_not_done"
   | "already_running";
 
-/** Parse `owner/repo` depuis une URL GitHub (repo racine ou `/tree/<branch>`). */
-function extractGithubSlug(url?: string): string | undefined {
-  if (!url) return undefined;
+/**
+ * Parse `owner/repo` (+ branche optionnelle) depuis une URL GitHub — repo
+ * racine ou `/tree/<branch>`. Seul point de vérité pour ce regex, partagé par
+ * `resolveWorkspaceTarget` (mode `external`) et `resolveTarget` (fallback du
+ * mode `github`).
+ */
+function parseGithubUrl(url?: string): { slug: string; branch?: string } | null {
+  if (!url) return null;
   const m = url.match(/github\.com\/([^/?#]+)\/([^/?#]+?)(?:\.git)?(?:\/tree\/([^?#]+))?(?:[?#]|$)/);
-  return m ? `${m[1]}/${m[2]}` : undefined;
+  if (!m) return null;
+  return { slug: `${m[1]}/${m[2]}`, branch: m[3] ?? undefined };
 }
 
 /**
@@ -55,11 +61,9 @@ export function resolveWorkspaceTarget(
     return { slug: codeRepoExternalId, branch: participation.workspace_ref.replace("refs/heads/", "") };
   }
   if (participation.workspace_provider === "external" && participation.workspace_url) {
-    const m = participation.workspace_url.match(
-      /github\.com\/([^/?#]+)\/([^/?#]+?)(?:\.git)?(?:\/tree\/([^?#]+))?(?:[?#]|$)/
-    );
-    if (!m) return null;
-    return { slug: `${m[1]}/${m[2]}`, branch: m[3] ?? undefined };
+    const parsed = parseGithubUrl(participation.workspace_url);
+    if (!parsed) return null;
+    return { slug: parsed.slug, branch: parsed.branch };
   }
   return null;
 }
@@ -67,6 +71,7 @@ export function resolveWorkspaceTarget(
 export interface CodeRewardsDeps {
   challengeRepo: Pick<ChallengeRepository, "findById" | "update">;
   challengeTeamRepo: Pick<ChallengeTeamRepository, "findByChallengeAndUser">;
+  challengeRepoRepo: Pick<ChallengeRepoRepository, "findByChallengeWithRepo">;
   taskRepo: Pick<TaskRepository, "findPersonalTasks">;
   contributionRepo: Pick<ContributionRepository, "findByChallenge" | "create" | "update">;
   rewardRepo: Pick<RewardEntryRepository, "findByUserAndChallenge" | "sumByChallenge" | "createManyAndSyncRewards">;
@@ -91,7 +96,6 @@ export class CodeRewardsService {
   private deps: CodeRewardsDeps;
   private snapshotService = new SnapshotService();
   private evaluator = new OpenAIAgentEvaluator();
-  private challengeRepoRepo = new ChallengeRepoRepository();
   private static dbProviderInitialized = false;
 
   constructor(deps?: Partial<CodeRewardsDeps>) {
@@ -102,6 +106,7 @@ export class CodeRewardsService {
     this.deps = {
       challengeRepo: new ChallengeRepository(),
       challengeTeamRepo: new ChallengeTeamRepository(),
+      challengeRepoRepo: new ChallengeRepoRepository(),
       taskRepo: new TaskRepository(),
       contributionRepo: new ContributionRepository(),
       rewardRepo: new RewardEntryRepository(),
@@ -244,10 +249,10 @@ export class CodeRewardsService {
    */
   private async resolveTarget(challenge: Challenge, participation: ChallengeTeam) {
     if (participation.workspace_provider === "github") {
-      const fromUrl = extractGithubSlug(participation.workspace_url);
+      const fromUrl = parseGithubUrl(participation.workspace_url)?.slug;
       if (fromUrl) return resolveWorkspaceTarget(participation, fromUrl);
 
-      const repos = await this.challengeRepoRepo.findByChallengeWithRepo(challenge.uuid);
+      const repos = await this.deps.challengeRepoRepo.findByChallengeWithRepo(challenge.uuid);
       const codeRepo = repos.find(r => r.repo_type === "github" && r.repo_external_id);
       return resolveWorkspaceTarget(participation, codeRepo?.repo_external_id ?? undefined);
     }

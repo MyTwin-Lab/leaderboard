@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { CodeRewardsService, PROJECT_CONTRIBUTION_TYPE, resolveWorkspaceTarget } from "./code-rewards.service.js";
-import type { Challenge, ChallengeTeam, Contribution, Task, RewardEntry } from "../../database-service/domain/entities.js";
+import type { Challenge, ChallengeTeam, Contribution, Task, RewardEntry, ChallengeRepo } from "../../database-service/domain/entities.js";
 
 const CH = "ch-1", ALICE = "alice";
 
@@ -38,6 +38,7 @@ function makeDeps(opts: {
   distributed?: number;
   score10?: number;
   agentFails?: boolean;
+  challengeRepos?: Array<ChallengeRepo & { repo_type: string; repo_external_id?: string; repo_title: string }>;
 } = {}) {
   const contributions: Contribution[] = [...(opts.contributions ?? [])];
   const created: Contribution[] = [];
@@ -53,6 +54,9 @@ function makeDeps(opts: {
     challengeTeamRepo: {
       findByChallengeAndUser: vi.fn(async () =>
         opts.participation === null ? null : makeParticipation(opts.participation)),
+    },
+    challengeRepoRepo: {
+      findByChallengeWithRepo: vi.fn(async () => opts.challengeRepos ?? []),
     },
     taskRepo: { findPersonalTasks: vi.fn(async () => opts.tasks ?? [makeTask("done")]) },
     contributionRepo: {
@@ -198,6 +202,21 @@ describe("evaluate", () => {
     await expect(new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: ALICE }))
       .rejects.toThrow("agent down");
     expect(updates[updates.length - 1].patch.evaluation_status).toBe("failed");
+  });
+
+  it("github mode with an unparseable workspace_url falls back to challenge_repos", async () => {
+    const { deps } = makeDeps({
+      participation: { workspace_url: undefined },
+      challengeRepos: [{
+        challenge_id: CH, repo_id: "repo-1", repo_type: "github", repo_external_id: "org/repo", repo_title: "repo",
+      }],
+    });
+    await new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: ALICE });
+
+    expect(deps.challengeRepoRepo.findByChallengeWithRepo).toHaveBeenCalledWith(CH);
+    expect(deps.runAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: "org/repo" })
+    );
   });
 });
 
