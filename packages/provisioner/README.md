@@ -41,14 +41,14 @@ const result = await provisionChallengeWorkspace({
 // }
 ```
 
-### Provision a workspace for a task
+### Provision a personal workspace for a contributor (code challenge, `provided_repo` mode)
 
 ```typescript
-import { provisionTaskWorkspace } from '../../provisioner/src/index.js';
+import { provisionContributorWorkspace } from '../../provisioner/src/index.js';
 
-const result = await provisionTaskWorkspace({
-  challengeIndex: 7,
-  taskTitle: 'Setup Environment',
+const result = await provisionContributorWorkspace({
+  challengeIndex: 15,
+  username: 'alice-dupont',
   repoExternalId: 'MyTwin-Lab/leaderboard',
   repoType: 'github',
   challengeBranchRef: 'refs/heads/challenge/007-admin-experience-update', // optional base branch
@@ -56,37 +56,39 @@ const result = await provisionTaskWorkspace({
 
 // result:
 // {
-//   ref: 'refs/heads/task/007-setup-environment',
-//   url: 'https://github.com/MyTwin-Lab/leaderboard/tree/task/007-setup-environment',
+//   ref: 'refs/heads/contrib/015-alice-dupont',
+//   url: 'https://github.com/MyTwin-Lab/leaderboard/tree/contrib/015-alice-dupont',
 //   status: 'ready',
 //   ...
 // }
 ```
+
+This runs once, when the contributor joins the challenge (`POST /api/challenges/:id/join`) — not per task. The branch is later protected for that contributor only (`provider.protect()`), and its owner keeps working on it directly; it isn't re-provisioned by the task board.
 
 ## Branch naming conventions
 
 | Type | Format | Example |
 |------|--------|---------|
 | Challenge | `challenge/{index}-{slug}` | `challenge/007-admin-experience-update` |
-| Task | `task/{challenge-index}-{slug}` | `task/007-setup-environment` |
+| Contributor (personal, code challenge) | `contrib/{challenge-index}-{username-slug}` | `contrib/015-alice-dupont` |
 
-Index is zero-padded to 3 digits. Titles are slugified (lowercase, hyphens).
+Index is zero-padded to 3 digits. Titles/usernames are slugified (lowercase, hyphens).
 
 ## Where results are stored
 
 Provisioning results are written to the database by the calling API route, not by the provisioner itself:
 
 - **Challenge workspaces** → `challenge_repos` table (`workspace_ref`, `workspace_url`, `workspace_status`, `workspace_meta`)
-- **Task workspaces** → `task_workspaces` table (same fields)
+- **Contributor workspaces** → `challenge_teams` table, on the participation row (`workspace_provider`, `workspace_ref`, `workspace_url`, `workspace_status`)
 
-The `workspace_ref` (e.g. `refs/heads/task/007-setup-environment`) is later read by `TaskContextService` to locate the branch when running evaluation.
+The `workspace_ref`/`workspace_url` on the participation row is later read by `CodeRewardsService` to locate the branch (mode `provided_repo`) or the contributor's own repo (mode `own_repo`, no provisioning involved) when running the project evaluation.
 
 ## When provisioning is triggered
 
 | Action | API route | What is created |
 |--------|-----------|-----------------|
 | Link a repo to a challenge | `POST /api/challenges/:id/repos` | Challenge branch on the repo |
-| Assign a contributor to a task | `POST /api/tasks/:id/assign` | Task branch based on the challenge branch |
+| Join a `provided_repo` code challenge | `POST /api/challenges/:id/join` | Personal contributor branch, protected for that contributor |
 
 ## Scaleway GPU provider
 

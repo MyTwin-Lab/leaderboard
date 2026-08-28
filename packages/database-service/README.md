@@ -22,9 +22,8 @@ database-service/
     ├── challengeTeam.repo.ts
     ├── user.repo.ts
     ├── contribution.repo.ts
+    ├── rewardEntry.repo.ts
     ├── task.repo.ts
-    ├── taskAssignee.repo.ts
-    ├── taskWorkspace.repo.ts
     ├── evaluationGrids.repo.ts
     ├── evaluationRuns.repo.ts
     ├── evaluationRunContributions.repo.ts
@@ -75,9 +74,20 @@ interface Task {
   uuid: string;
   title: string;
   description?: string;
-  type: string;            // 'code' | 'model' | 'dataset' | 'docs'
   status: string;          // 'todo' | 'in_progress' | 'done'
   challenge_id: string;
+  user_id?: string;         // NULL = template task (admin/manager); else owner's personal board
+  parent_task_id?: string;
+}
+
+interface ChallengeTeam {
+  challenge_id: string;
+  user_id: string;
+  // Personal workspace for the participant (code challenges only):
+  workspace_provider?: string; // 'github' (provided_repo) | 'external' (own_repo)
+  workspace_ref?: string;      // e.g. refs/heads/contrib/015-alice (provided_repo only)
+  workspace_url?: string;      // provisioned branch URL, or the contributor's own repo URL
+  workspace_status?: string;   // 'pending' | 'ready' | 'failed'
 }
 
 interface Contribution {
@@ -122,20 +132,29 @@ findByGithubUsername(username: string): Promise<User | null>
 ```typescript
 findByChallenge(challengeId: string): Promise<Contribution[]>
 findByUser(userId: string): Promise<Contribution[]>
-findByTaskAndUser(taskId: string, userId: string): Promise<Contribution | null>
-// findByTaskAndUser is used by TaskEvaluationService for upsert logic
 ```
 
 **`TaskRepository`**
 ```typescript
 findByChallenge(challengeId: string): Promise<Task[]>
-findAssignees(taskId: string): Promise<User[]>
+findPersonalTasks(challengeId: string, userId: string): Promise<Task[]> // scope=mine, this user's board
+findTemplateTasks(challengeId: string): Promise<Task[]>                // scope=template, user_id NULL
 ```
 
-**`TaskWorkspaceRepository`**
+**`ChallengeTeamRepository`**
 ```typescript
-findByTask(taskId: string): Promise<TaskWorkspace[]>
-// Returns workspace branches used by TaskEvaluationService
+findByChallengeAndUser(challengeId: string, userId: string): Promise<ChallengeTeam | null>
+updateWorkspace(challengeId: string, userId: string, fields): Promise<ChallengeTeam>
+// Personal workspace lives on this participation row, not on a task
+```
+
+**`RewardEntryRepository`**
+```typescript
+findByUserAndChallenge(userId: string, challengeId: string): Promise<RewardEntry[]>
+sumByChallenge(challengeId: string, opts?): Promise<number>
+createManyAndSyncRewards(entries: RewardEntryDraft[]): Promise<RewardEntry[]>
+// Immutable ledger shared by ML and code challenges; the DB trigger keeps
+// contributions.reward in sync. rule_key includes code_fixed / code_quality.
 ```
 
 **`EvaluationGridsRepository`**
@@ -171,8 +190,8 @@ const taskRepo = new TaskRepository();
 const contributionRepo = new ContributionRepository();
 
 const user = await userRepo.findByGoogleUserId('google-id-123');
-const tasks = await taskRepo.findByChallenge(challengeId);
-const existing = await contributionRepo.findByTaskAndUser(taskId, userId);
+const myTasks = await taskRepo.findPersonalTasks(challengeId, userId);
+const submissions = await contributionRepo.findByChallenge(challengeId);
 ```
 
 ## Mappers

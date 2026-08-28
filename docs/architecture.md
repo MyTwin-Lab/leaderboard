@@ -43,25 +43,25 @@ flowchart LR
 **Required at runtime:** `config` + `database-service`
 **Optional (need API keys):** `evaluator`, `connectors`, `services`, `provisioner`, `sync-meeting-agent`
 
-## Data flow — task evaluation pipeline
+## Data flow — code project evaluation pipeline
 
-Evaluation is **task-scoped**: one contributor, one task, one evaluation run. The contributor and task are already known so there is no identification or deduplication step.
+Evaluation is **project-scoped**: a contributor's personal task board is purely organizational and never scored directly. Once all of a contributor's tasks are `done` and their workspace is ready, they trigger one evaluation of their whole delivery.
 
 ```mermaid
 flowchart TD
-  A["POST /api/tasks/:id/evaluate"] --> B["TaskEvaluationService"]
-  B --> C["TaskContextService: load task + challenge + workspace branches"]
-  C --> D["ConnectorsOrchestrator: connect to GitHub branch(es)"]
+  A["POST /api/challenges/:id/project-evaluation"] --> B["CodeRewardsService"]
+  B --> C["Preconditions: board done, workspace ready, no run in progress"]
+  C --> D["ConnectorRegistry: connect to the branch (provided_repo) or contributor's repo (own_repo)"]
   D --> E["fetch commits (up to 100)"]
   E --> F["SnapshotService: build aggregated code snapshot"]
-  F --> G["EvaluationGridRegistry: load grid for task type"]
-  G --> H["OpenAIAgentEvaluator: score against grid"]
-  H --> I["ContributionRepository: upsert contribution + score"]
-  I --> J["RunLogger: log evaluation run"]
-  I --> K["leaderboard UI updated"]
+  F --> G["EvaluationGridRegistry: load the 'code' grid"]
+  G --> H["OpenAIAgentEvaluator: score against grid, normalize to /10"]
+  H --> I["computeCodeAward(): fixed + cap×score/10, positive delta, clamped to pool"]
+  I --> J["RewardEntryRepository: ledger rows + contribution.reward sync"]
+  J --> K["leaderboard UI updated (polls evaluation_status)"]
 ```
 
-> The codebase still contains `sync-evaluation.service.ts` and the `identify` / `merge` agents from the old challenge-level pipeline — these are **no longer used**.
+> The codebase still contains `sync-evaluation.service.ts` and the `identify` / `merge` agents from an earlier challenge-level pipeline — these are **no longer used**. The task-level evaluation pipeline that once lived in `packages/services/task_evaluation` has itself been removed and replaced by the project-level flow above.
 
 ## Authentication flow
 
@@ -101,6 +101,6 @@ flowchart LR
 - **No separate API server.** All backend logic lives in Next.js Route Handlers. This simplifies deployment to a single PM2 process.
 - **Optional packages.** The evaluator, connectors, services, and provisioner are all opt-in. The app runs fine with only `config` + `database-service`. This is why there are two prod modes (`prod:full` vs `prod:min`).
 - **Drizzle over raw SQL.** The schema is defined in TypeScript (`packages/database-service/db/drizzle.ts`) and pushed to Postgres with `npm run db:push`. Migrations are generated but the primary workflow is schema-push in development.
-- **Tasks as the unit of work — for code challenges.** Challenges are containers; tasks are where the actual work happens. The old challenge service is no longer used.
-- **Two reward pipelines, split by challenge type.** `type: 'code'` challenges use the task-evaluation pipeline above and split a fixed pool proportionally at close. `type: 'ml'` challenges have no tasks — contributors submit datasets/models/packaging directly, scored and rewarded live, point by point. See [`ml-rewards.md`](./ml-rewards.md).
+- **Tasks as a personal, organizational board — for code challenges.** Challenges are containers; each contributor's tasks are their own kanban and never influence the score directly. The old global/claimable task model and the old challenge-level identify/merge service are no longer used.
+- **One reward philosophy across challenge types, different submission shapes.** Both `type: 'code'` and `type: 'ml'` challenges reward live, per run, into the same `reward_entries` ledger, clamped to the pool. `code` challenges score a contributor's whole project once their board is done (see above); `ml` challenges have no tasks at all — contributors submit datasets/models/packaging directly. See [`ml-rewards.md`](./ml-rewards.md). Closing a challenge no longer computes or splits anything for either type.
 - **Project managers instead of a third role.** Rather than adding a `manager` value to `users.role`, elevated per-project access is modeled as a nullable FK (`projects.manager_id`). Role-based checks stay binary (`admin` / `contributor`); manager checks are a separate, project-scoped lookup. See [`auth.md`](./auth.md#project-managers-not-a-role).
