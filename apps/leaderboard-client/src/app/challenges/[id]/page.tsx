@@ -24,6 +24,8 @@ import { MeetingsSection } from '@/components/challenges/MeetingsSection';
 import { HeroStatCard } from '@/components/challenges/HeroStatCard';
 import { HeroStatCarousel } from '@/components/challenges/HeroStatCarousel';
 import { fetchJson } from '@/lib/fetchJson';
+import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
+import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
 
 const ML_REPO_TYPES = ['kaggle_dataset', 'kaggle_model'];
 
@@ -437,7 +439,7 @@ export default function ChallengeDetailPage() {
         },
         {
           label: 'Activity',
-          panel: <TabActivity repoActivity={repoActivity} />,
+          panel: <ChallengeActivity contributions={contributions} team={team} repoActivity={repoActivity} isML={isML} />,
         },
       ]} />
 
@@ -507,123 +509,6 @@ function TabTasks({
           isMember={isMember}
           onReload={onReload}
         />
-      </div>
-    </div>
-  );
-}
-
-// ─── Tab: Activity ────────────────────────────────────────────────────────────
-
-function TabActivity({ repoActivity }: { repoActivity: Record<string, any> | null }) {
-  function fmtDate(iso: string) {
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  }
-
-  const githubActivity = repoActivity
-    ? Object.values(repoActivity).find((a: any) => a?.type === 'github')
-    : undefined;
-
-  const commits = (githubActivity?.events ?? []).filter((e: any) => e.type === 'commit');
-  const prs = (githubActivity?.events ?? []).filter((e: any) => e.type === 'pull_request');
-
-  // Still loading
-  if (repoActivity === null) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        {[1, 2].map(i => (
-          <div key={i} className="space-y-2">
-            <div className="h-3 w-24 rounded-full bg-white/8" />
-            {[1, 2, 3].map(j => <div key={j} className="h-14 rounded-xl bg-white/5" />)}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (!githubActivity) {
-    return (
-      <div className="rounded-xl border border-dashed border-white/[0.06] px-5 py-12 text-center space-y-1">
-        <GitBranch className="mx-auto h-7 w-7 text-white/15" />
-        <p className="text-sm text-white/20">No GitHub repository linked to this challenge</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-8">
-      {/* Commits */}
-      <div className="space-y-3">
-        <h3 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-white/30">
-          <GitBranch className="h-3.5 w-3.5 text-primary-100/35" />
-          Commits
-          <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">{commits.length}</span>
-        </h3>
-        {commits.length === 0 ? (
-          <p className="text-xs text-white/25 px-1">No commits yet</p>
-        ) : (
-          <div className="space-y-1.5">
-            {commits.map((c: any, i: number) => (
-              <a
-                key={c.id}
-                href={c.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-fade-up transition-colors hover:border-white/12 hover:bg-white/[0.04]"
-                style={{ animationDelay: `${i * 20}ms` }}
-              >
-                <GitBranch className="h-3.5 w-3.5 shrink-0 text-white/20" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-white">{c.title}</p>
-                  <p className="text-xs text-white/30">{c.author} · {fmtDate(c.date)}</p>
-                </div>
-                <span className="shrink-0 rounded bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-white/25">
-                  {c.metadata?.sha?.slice(0, 7)}
-                </span>
-              </a>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Pull Requests */}
-      <div className="space-y-3">
-        <h3 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-white/30">
-          <GitPullRequest className="h-3.5 w-3.5 text-primary-100/35" />
-          Pull Requests
-          <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-white/40">{prs.length}</span>
-        </h3>
-        {prs.length === 0 ? (
-          <p className="text-xs text-white/25 px-1">No pull requests yet</p>
-        ) : (
-          <div className="space-y-1.5">
-            {prs.map((pr: any, i: number) => {
-              const state: string = pr.metadata?.state ?? 'open';
-              return (
-                <a
-                  key={pr.id}
-                  href={pr.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-fade-up transition-colors hover:border-white/12 hover:bg-white/[0.04]"
-                  style={{ animationDelay: `${i * 20}ms` }}
-                >
-                  <GitPullRequest className={`h-3.5 w-3.5 shrink-0 ${state === 'merged' ? 'text-purple-400' : state === 'open' ? 'text-green-400' : 'text-white/30'}`} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">#{pr.metadata?.prNumber} {pr.title}</p>
-                    <p className="text-xs text-white/30">{pr.author} · {fmtDate(pr.date)}</p>
-                  </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-                    state === 'merged' ? 'bg-purple-500/15 text-purple-400'
-                    : state === 'open' ? 'bg-green-500/15 text-green-400'
-                    : 'bg-white/8 text-white/40'
-                  }`}>
-                    {state}
-                  </span>
-                </a>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );
