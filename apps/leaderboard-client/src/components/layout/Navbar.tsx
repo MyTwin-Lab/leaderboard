@@ -189,7 +189,7 @@ export const Navbar = ({ session }: NavbarProps) => {
                   />
                 ) : (
                   <Link
-                    href="/api/google-auth/authorize?from=/contributors/me"
+                    href="/signin?from=/contributors/me"
                     className="flex items-center rounded-xl p-2 transition-colors"
                     style={{
                       background: invertNav
@@ -265,7 +265,7 @@ export const Navbar = ({ session }: NavbarProps) => {
           </div>
 
           <Link
-            href={session ? "/contributors/me" : "/api/google-auth/authorize?from=/contributors/me"}
+            href={session ? "/contributors/me" : "/signin?from=/contributors/me"}
             onClick={() => setMobileMenuOpen(false)}
             className={cn(
               "text-3xl font-light tracking-tight transition-all duration-300 hover:text-brandCP text-white",

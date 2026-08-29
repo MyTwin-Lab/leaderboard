@@ -1,6 +1,21 @@
 import type { NextRequest } from 'next/server';
 
 /**
+ * Narrows a caller-supplied "return here afterwards" path down to something
+ * safe to put in a Location header, falling back to the home page.
+ *
+ * The allowlist is deliberately narrower than "is a valid path": it admits
+ * only root-anchored paths made of unreserved characters, so `//evil.com`,
+ * `https://evil.com` and `/\evil.com` are all rejected as hosts, and `?`, `#`
+ * and `.` never survive. Shared by /signin and /api/google-auth/authorize —
+ * both feed the same OAuth round-trip, so a path one accepts and the other
+ * rejects would be a bug either way.
+ */
+export function safeInternalPath(raw: string | null | undefined): string {
+  return raw && /^\/[a-zA-Z0-9\-_\/]*$/.test(raw) ? raw : '/';
+}
+
+/**
  * Resolves the public base URL from the incoming request.
  *
  * Priority:

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleAuthService } from '../../../../../../../packages/services/google-workspace/google-auth.service.js';
-import { getBaseUrl } from '@/lib/url';
+import { getBaseUrl, safeInternalPath } from '@/lib/url';
 
 export async function GET(request: NextRequest) {
   try {
-    const rawFrom = request.nextUrl.searchParams.get('from') || '/';
-    // Strict validation: only allow internal paths (no protocol-relative URLs, no special chars)
-    const from = (rawFrom && /^\/[a-zA-Z0-9\-_\/]*$/.test(rawFrom)) ? rawFrom : '/';
+    // Validated even though /signin already sanitises it: this route stays
+    // reachable directly, and the value ends up in a post-OAuth redirect.
+    const from = safeInternalPath(request.nextUrl.searchParams.get('from'));
 
     const googleAuthService = new GoogleAuthService();
     const state = JSON.stringify({ from });
