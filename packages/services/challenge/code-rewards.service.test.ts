@@ -131,6 +131,12 @@ describe("canEvaluate", () => {
     const svc = new CodeRewardsService(deps);
     expect(await svc.canEvaluate(CH, ALICE)).toEqual({ ok: true });
   });
+
+  it.each(["completed", "archived"] as const)("refuses a %s challenge", async (status) => {
+    const { deps } = makeDeps({ challenge: { status } });
+    const svc = new CodeRewardsService(deps);
+    expect(await svc.canEvaluate(CH, ALICE)).toEqual({ ok: false, reason: "challenge_closed" });
+  });
 });
 
 describe("evaluate", () => {
@@ -202,6 +208,21 @@ describe("evaluate", () => {
     await expect(new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: ALICE }))
       .rejects.toThrow("agent down");
     expect(updates[updates.length - 1].patch.evaluation_status).toBe("failed");
+  });
+
+  it("skips silently when the project contribution is already running", async () => {
+    const { deps, written, updates } = makeDeps({
+      contributions: [{
+        uuid: "c-1", title: "Project delivery", type: PROJECT_CONTRIBUTION_TYPE, reward: 0,
+        user_id: ALICE, challenge_id: CH, evaluation_status: "running", submitted_at: new Date(),
+      } as Contribution],
+    });
+    await new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: ALICE });
+
+    expect(deps.runAgent).not.toHaveBeenCalled();
+    expect(written).toHaveLength(0);
+    expect(updates).toHaveLength(0);
+    expect(deps.contributionRepo.create).not.toHaveBeenCalled();
   });
 
   it("github mode with an unparseable workspace_url falls back to challenge_repos", async () => {

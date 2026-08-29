@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 
 const {
   mockJwtVerify,
-  mockFindPersonalTasks, mockFindTemplateTasks, mockFindByChallenge, mockCreate,
+  mockFindPersonalTasks, mockFindTemplateTasks, mockFindByChallenge, mockCreate, mockFindById,
   mockChallengeFindById,
   mockFindByChallengeAndUser,
   mockProjectFindById,
@@ -13,6 +13,7 @@ const {
   mockFindTemplateTasks: vi.fn(),
   mockFindByChallenge: vi.fn(),
   mockCreate: vi.fn(),
+  mockFindById: vi.fn(),
   mockChallengeFindById: vi.fn(),
   mockFindByChallengeAndUser: vi.fn(),
   mockProjectFindById: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock('../../../../../../packages/database-service/repositories', () => ({
     findTemplateTasks = mockFindTemplateTasks;
     findByChallenge = mockFindByChallenge;
     create = mockCreate;
+    findById = mockFindById;
   },
   ChallengeRepository: class {
     findById = mockChallengeFindById;
@@ -46,6 +48,7 @@ vi.mock('@/lib/db', () => ({
 import { GET, POST } from './route';
 
 const CHALLENGE_ID = '11111111-1111-4111-8111-111111111111';
+const PARENT_ID = '22222222-2222-4222-8222-222222222222';
 
 function getTasks(query: string, token?: string) {
   const req = new NextRequest(`http://localhost/api/tasks${query}`, {
@@ -158,6 +161,29 @@ describe('POST /api/tasks', () => {
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({ user_id: null, status: 'todo' })
     );
+  });
+
+  it('returns 400 when parent_task_id points at a task from another challenge', async () => {
+    mockFindById.mockResolvedValue({ uuid: PARENT_ID, challenge_id: 'other-challenge', user_id: 'alice' });
+
+    const res = await postTask({ ...validBody, parent_task_id: PARENT_ID }, 'valid-token');
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('Parent task not found on this challenge');
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when parent_task_id points at a task from a different scope (template vs personal)', async () => {
+    // Parent is a template task (user_id null) but the body creates a personal task.
+    mockFindById.mockResolvedValue({ uuid: PARENT_ID, challenge_id: CHALLENGE_ID, user_id: null });
+
+    const res = await postTask({ ...validBody, parent_task_id: PARENT_ID }, 'valid-token');
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('Parent task is not in the same scope');
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('returns 400 for a challenge of type "ml"', async () => {

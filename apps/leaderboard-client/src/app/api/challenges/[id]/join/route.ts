@@ -38,6 +38,9 @@ export async function POST(
     if (!challenge) {
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
     }
+    if (challenge.status === 'completed' || challenge.status === 'archived') {
+      return NextResponse.json({ error: 'This challenge is closed' }, { status: 403 });
+    }
 
     const existing = await challengeTeamRepo.findByChallengeAndUser(challengeId, userId);
     if (existing) {

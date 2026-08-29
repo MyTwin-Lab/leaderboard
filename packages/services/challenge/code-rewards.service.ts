@@ -32,7 +32,8 @@ export type CannotEvaluateReason =
   | "workspace_not_ready"
   | "no_tasks"
   | "tasks_not_done"
-  | "already_running";
+  | "already_running"
+  | "challenge_closed";
 
 /**
  * Parse `owner/repo` (+ branche optionnelle) depuis une URL GitHub — repo
@@ -119,6 +120,9 @@ export class CodeRewardsService {
   async canEvaluate(challengeId: string, userId: string): Promise<{ ok: boolean; reason?: CannotEvaluateReason }> {
     const challenge = await this.deps.challengeRepo.findById(challengeId);
     if (!challenge || challenge.type !== "code") return { ok: false, reason: "not_code_challenge" };
+    if (challenge.status === "completed" || challenge.status === "archived") {
+      return { ok: false, reason: "challenge_closed" };
+    }
     if (!parseCodeRewardRules(challenge.reward_rules)) return { ok: false, reason: "no_rules" };
 
     const participation = await this.deps.challengeTeamRepo.findByChallengeAndUser(challengeId, userId);
@@ -166,8 +170,15 @@ export class CodeRewardsService {
       return;
     }
 
-    // Upsert de la contribution projet, statut pending → running.
+    // Upsert de la contribution projet, statut pending → running. Re-fetch
+    // juste avant l'upsert (et non seulement dans canEvaluate) pour fermer la
+    // fenêtre où deux appels concurrents du même utilisateur passeraient tous
+    // les deux la précondition avant que l'un des deux ne pose "running".
     let contribution = await this.findContribution(challengeId, userId);
+    if (contribution?.evaluation_status === "running") {
+      console.log(`[CodeRewardsService] Evaluation already running for ${userId} on ${challengeId} — skipping`);
+      return;
+    }
     if (contribution) {
       contribution = await this.deps.contributionRepo.update(contribution.uuid, {
         artifact_url: participation.workspace_url,

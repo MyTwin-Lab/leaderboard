@@ -75,6 +75,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only code challenges have tasks' }, { status: 400 });
     }
 
+    if (validated.parent_task_id) {
+      const parent = await taskRepo.findById(validated.parent_task_id);
+      if (!parent || parent.challenge_id !== validated.challenge_id) {
+        return NextResponse.json({ error: 'Parent task not found on this challenge' }, { status: 400 });
+      }
+      // Templates and personal boards never mix — a sub-task must share its
+      // parent's scope: a template body needs a template parent, a personal
+      // body needs a parent owned by the session user.
+      const expectedParentOwner = validated.template ? null : session.userId;
+      if (parent.user_id !== expectedParentOwner) {
+        return NextResponse.json({ error: 'Parent task is not in the same scope' }, { status: 400 });
+      }
+    }
+
     if (validated.template) {
       if (!(await isChallengeManager(session, challenge.project_id))) {
         return NextResponse.json({ error: 'Only the challenge manager can edit the template' }, { status: 403 });

@@ -35,6 +35,7 @@ import {
   compute_requests,
 } from "./drizzle.js";
 import { parseMlRewardRules } from "../domain/mlRewardRules.js";
+import { parseCodeRewardRules } from "../domain/codeRewardRules.js";
 import type {
   Project,
   Repo,
@@ -134,7 +135,7 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     contribution_points_reward: row.contribution_points_reward ?? 0,
     completion: row.completion ?? 0,
     project_id: row.project_id ?? "",
-    reward_rules: parseMlRewardRules(row.reward_rules),
+    reward_rules: parseMlRewardRules(row.reward_rules) ?? parseCodeRewardRules(row.reward_rules),
     workspace_mode: (row.workspace_mode as Challenge["workspace_mode"]) ?? undefined,
     source_challenge_id: row.source_challenge_id ?? null,
     cp_per_validation: row.cp_per_validation ?? null,

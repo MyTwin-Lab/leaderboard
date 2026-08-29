@@ -39,6 +39,7 @@ vi.mock('@/lib/db', () => ({
 import { GET, PATCH, DELETE } from './route';
 
 const TASK_ID = 'task-1';
+const PARENT_ID = '22222222-2222-4222-8222-222222222222';
 
 function getTask(token?: string) {
   const req = new NextRequest(`http://localhost/api/tasks/${TASK_ID}`, {
@@ -123,6 +124,34 @@ describe('PATCH /api/tasks/[id]', () => {
 
     expect(res.status).toBe(200);
     expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { parent_task_id: null });
+  });
+
+  it('returns 400 when parent_task_id points at a task from another challenge', async () => {
+    mockFindById
+      .mockResolvedValueOnce({ uuid: TASK_ID, title: 'Do the thing', user_id: 'alice', challenge_id: 'challenge-1' }) // canTouchTask
+      .mockResolvedValueOnce({ uuid: TASK_ID, user_id: 'alice', challenge_id: 'challenge-1' }) // current, in validation
+      .mockResolvedValueOnce({ uuid: PARENT_ID, user_id: 'alice', challenge_id: 'other-challenge' }); // parent
+
+    const res = await patchTask({ parent_task_id: PARENT_ID }, 'valid-token');
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('Parent task is not in the same scope');
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when parent_task_id points at a task from a different scope', async () => {
+    mockFindById
+      .mockResolvedValueOnce({ uuid: TASK_ID, title: 'Do the thing', user_id: 'alice', challenge_id: 'challenge-1' }) // canTouchTask
+      .mockResolvedValueOnce({ uuid: TASK_ID, user_id: 'alice', challenge_id: 'challenge-1' }) // current
+      .mockResolvedValueOnce({ uuid: PARENT_ID, user_id: 'bob', challenge_id: 'challenge-1' }); // parent, owned by someone else
+
+    const res = await patchTask({ parent_task_id: PARENT_ID }, 'valid-token');
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('Parent task is not in the same scope');
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 
   it('returns 400 on an invalid status', async () => {

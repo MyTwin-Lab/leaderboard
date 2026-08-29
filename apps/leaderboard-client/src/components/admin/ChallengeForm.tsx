@@ -56,13 +56,14 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Reward rules are meaningless on code challenges — send null so a type
-    // switch does not leave stale ML rules behind on the record.
+    // Reward rules only apply to ML challenges. For other types we omit the
+    // key entirely (PUT treats an absent field as "unchanged") instead of
+    // sending null, which would wipe out a code challenge's real rules.
     // source_challenge_id / cp_per_validation are creation-only (locked after,
     // like the pool/project) — only sent when creating a new challenge.
     onSubmit({
       ...formData,
-      reward_rules: formData.type === 'ml' ? rewardRules : null,
+      ...(formData.type === 'ml' ? { reward_rules: rewardRules } : {}),
       compute_enabled: formData.type === 'ml' ? computeEnabled : false,
       ...(formData.type === 'validation' && !challenge?.uuid
         ? { source_challenge_id: sourceChallengeId, cp_per_validation: cpPerValidation, required_validations: requiredValidations }

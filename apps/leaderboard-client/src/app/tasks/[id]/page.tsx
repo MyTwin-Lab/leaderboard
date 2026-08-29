@@ -197,7 +197,15 @@ export default function TaskDetailPage() {
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ challenge_id: task.challenge_id, parent_task_id: task.uuid, title }),
+        body: JSON.stringify({
+          challenge_id: task.challenge_id,
+          parent_task_id: task.uuid,
+          title,
+          // A template task (user_id == null) has no owner — its sub-tasks
+          // must stay templates too, or POST /api/tasks would create them on
+          // the current admin/manager's own personal board instead.
+          ...(task.user_id == null ? { template: true } : {}),
+        }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));

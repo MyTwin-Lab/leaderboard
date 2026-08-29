@@ -231,16 +231,25 @@ export async function proxy(request: NextRequest) {
     if (isProtectedApiRoute) {
       const method = request.method;
 
-      // Routes accessibles aux contributeurs (self-assign/unassign/complete)
+      // Boards personnels (challenge-015) : un contributeur authentifié peut
+      // créer ses propres tâches et modifier/supprimer celles qu'il possède
+      // (l'ownership réelle — tâche perso vs template — est vérifiée dans les
+      // handlers). Les anciennes routes /assign et /complete ont été
+      // supprimées avec task_assignees/task_workspaces.
       const isTaskSelfServiceRoute =
-        pathname.startsWith('/api/tasks/') &&
-        (pathname.endsWith('/assign') || pathname.endsWith('/complete'));
+        (pathname === '/api/tasks' && method === 'POST') ||
+        (/^\/api\/tasks\/[^/]+$/.test(pathname) && ['PATCH', 'DELETE'].includes(method));
 
       // Routes ML accessibles aux contributeurs pour soumettre leur travail
       const isMLContributorRoute = pathname.includes('/ml-workspace');
 
       // Rejoindre un challenge
       const isChallengeJoinRoute = pathname.endsWith('/join');
+
+      // Lancer l'évaluation de son board personnel (code) / déclarer son repo
+      // perso en mode own_repo — ownership vérifiée dans les handlers.
+      const isChallengeSelfServiceRoute =
+        pathname.endsWith('/project-evaluation') || pathname.endsWith('/workspace');
 
       // Mise à jour du profil par le contributeur lui-même
       const isContributorSelfRoute = pathname === '/api/contributors/me' && method === 'PATCH';
@@ -266,7 +275,7 @@ export async function proxy(request: NextRequest) {
 
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isMedicalProValidationRoute) {
+        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isMedicalProValidationRoute) {
           return respond(NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }

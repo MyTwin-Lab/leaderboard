@@ -102,6 +102,17 @@ describe('POST /api/challenges/[id]/join', () => {
     expect(mockChallengeTeamCreate).not.toHaveBeenCalled();
   });
 
+  it('returns 403 when the challenge is closed (completed or archived)', async () => {
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', workspace_mode: 'provided_repo', index: 3, status: 'completed' });
+
+    const res = await joinChallenge();
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.error).toBe('This challenge is closed');
+    expect(mockChallengeTeamCreate).not.toHaveBeenCalled();
+  });
+
   it('returns 409 when already a member', async () => {
     mockChallengeTeamFindByChallengeAndUser.mockResolvedValue({ challenge_id: CHALLENGE_ID, user_id: 'alice' });
 

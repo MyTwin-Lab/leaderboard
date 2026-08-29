@@ -95,6 +95,16 @@ export async function PATCH(
     const body = await request.json();
     const validated = updateTaskSchema.parse(body);
 
+    if (validated.parent_task_id) {
+      const [current, parent] = await Promise.all([
+        taskRepo.findById(id),
+        taskRepo.findById(validated.parent_task_id),
+      ]);
+      if (!parent || !current || parent.challenge_id !== current.challenge_id || parent.user_id !== current.user_id) {
+        return NextResponse.json({ error: 'Parent task is not in the same scope' }, { status: 400 });
+      }
+    }
+
     const task = await taskRepo.update(id, validated);
     return NextResponse.json(task);
   } catch (error) {
