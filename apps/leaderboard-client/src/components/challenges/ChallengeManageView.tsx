@@ -28,6 +28,7 @@ import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
 import { MeetingsSection } from '@/components/challenges/MeetingsSection';
 import { HeroStatCard } from '@/components/challenges/HeroStatCard';
 import { HeroStatCarousel } from '@/components/challenges/HeroStatCarousel';
+import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -342,48 +343,6 @@ function TabKanban({ tasks, team }: { tasks: Task[]; team: TeamMember[] }) {
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-// ─── Participants Tab (code) ────────────────────────────────────────────────
-
-function TabParticipants({ team, tasks, participants, contributions }: {
-  team: TeamMember[];
-  tasks: Array<{ uuid: string; user_id?: string | null; status: string; parent_task_id?: string }>;
-  participants: Array<{ user_id: string; workspace_status?: string | null; workspace_url?: string | null; workspace_provider?: string | null }>;
-  contributions: Contribution[];
-}) {
-  const rows = team.map(member => {
-    const mine = tasks.filter(t => t.user_id === member.id && !t.parent_task_id);
-    const done = mine.filter(t => t.status === 'done').length;
-    const participation = participants.find(p => p.user_id === member.id);
-    const project = contributions.find(c => c.user_id === member.id && c.type === 'project');
-    return { member, total: mine.length, done, participation, project };
-  });
-
-  return (
-    <div className="space-y-1.5">
-      {rows.map(({ member, total, done, participation, project }) => (
-        <div key={member.id} className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-          <InitialsAvatar name={member.fullName} size={28} avatarUrl={member.avatarUrl} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">{member.fullName}</p>
-            <p className="text-xs text-white/30">
-              {total === 0 ? 'No tasks yet' : `${done}/${total} tasks done`}
-              {participation?.workspace_status ? ` · workspace ${participation.workspace_status}` : ''}
-            </p>
-          </div>
-          {project?.evaluation_status === 'running' && <Loader2 className="h-4 w-4 animate-spin text-brandCP" />}
-          {project?.evaluation_status === 'done' && (
-            <span className="rounded-full bg-brandCP/10 px-2.5 py-0.5 text-xs font-semibold text-brandCP">
-              {project.reward} CP
-            </span>
-          )}
-          {project?.evaluation_status === 'failed' && <span className="text-xs text-red-400">eval failed</span>}
-        </div>
-      ))}
-      {rows.length === 0 && <p className="px-2 py-8 text-center text-xs text-white/25">No participants yet</p>}
     </div>
   );
 }
@@ -988,7 +947,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
               </p>
             </div>
           )}
-          <TabParticipants team={team} tasks={tasks} participants={participants} contributions={contributions} />
+          <ParticipantsProgress team={team} tasks={tasks} participants={participants} contributions={contributions} showWorkspaceStatus />
         </div>
       ),
     },
