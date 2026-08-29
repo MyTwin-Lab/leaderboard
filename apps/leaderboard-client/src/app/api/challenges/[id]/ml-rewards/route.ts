@@ -28,7 +28,7 @@ export async function GET(
     }
     // Même garde que /overview — le challenge est déjà chargé ci-dessus.
     const session = await verifyRequestToken(request);
-    if (!session && !isPubliclyVisible(challenge.status)) {
+    if (!session && !isPubliclyVisible(challenge)) {
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
     }
     if (challenge.type !== 'ml' && challenge.type !== 'code') {

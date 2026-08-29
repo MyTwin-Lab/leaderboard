@@ -24,7 +24,7 @@ export async function GET(
     const session = await verifyRequestToken(request);
     if (!session) {
       const challenge = await challengeRepo.findById(challengeId);
-      if (!challenge || !isPubliclyVisible(challenge.status)) {
+      if (!challenge || !isPubliclyVisible(challenge)) {
         return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
       }
     }

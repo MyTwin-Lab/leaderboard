@@ -51,7 +51,7 @@ export async function GET(
     // 404 et non 401 : un visiteur anonyme ne doit pas pouvoir distinguer un
     // challenge non publié d'un challenge qui n'existe pas.
     const session = await verifyRequestToken(request);
-    if (!session && !isPubliclyVisible(challenge.status)) {
+    if (!session && !isPubliclyVisible(challenge)) {
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
     }
 

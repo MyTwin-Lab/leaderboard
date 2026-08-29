@@ -30,6 +30,7 @@ import { HeroStatCard } from '@/components/challenges/HeroStatCard';
 import { HeroStatCarousel } from '@/components/challenges/HeroStatCarousel';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
 import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
+import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
 import { fmt, sectionHeader } from '@/components/challenges/shared/format';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -257,72 +258,6 @@ function TabOverview({ challenge, team, contributions }: {
   );
 }
 
-// ─── Kanban Tab (code) ───────────────────────────────────────────────────────
-
-const KANBAN_COLS = [
-  { key: 'todo',        label: 'To do',       dot: 'bg-white/25',   statuses: ['todo', 'open', 'backlog', 'scheduled'] },
-  { key: 'in_progress', label: 'In progress',  dot: 'bg-yellow-400', statuses: ['in_progress'] },
-  { key: 'done',        label: 'Done',         dot: 'bg-green-500',  statuses: ['done', 'completed'] },
-];
-
-const GITHUB_EVENT_CONFIG = {
-  commit:         { label: 'Commit',       badge: 'bg-white/15 text-white/50' },
-  pull_request:   { label: 'Pull Request', badge: 'bg-purple-500/20 text-purple-300' },
-  pr_review:      { label: 'Review',       badge: 'bg-blue-500/20 text-blue-300' },
-  branch_created: { label: 'Branch',       badge: 'bg-green-500/20 text-green-300' },
-} as const;
-
-function TabKanban({ tasks, team }: { tasks: Task[]; team: TeamMember[] }) {
-  const memberById = new Map(team.map(m => [m.id, m]));
-  const cols = KANBAN_COLS.map(col => ({
-    ...col,
-    tasks: tasks.filter(t => col.statuses.includes(t.status)),
-  }));
-
-  return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {cols.map(col => (
-        <div key={col.key} className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className={`h-2 w-2 rounded-full ${col.dot}`} />
-            <span className="text-xs font-semibold text-white/50">{col.label}</span>
-            <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-white/30">{col.tasks.length}</span>
-          </div>
-          <div className="space-y-2 min-h-[120px]">
-            {col.tasks.map((task, i) => (
-              <div key={task.uuid}
-                className="rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-2 animate-fade-up hover:border-white/10 hover:bg-white/[0.04] transition-all"
-                style={{ animationDelay: `${i * 40}ms` }}
-              >
-                <p className="text-sm font-medium text-white leading-snug">{task.title}</p>
-                {task.description && (
-                  <p className="text-xs text-white/35 line-clamp-2">{task.description}</p>
-                )}
-                <div className="flex items-center gap-2">
-                  {task.user_id && memberById.get(task.user_id) && (
-                    <div className="ml-auto rounded-full overflow-hidden" style={{ boxShadow: '0 0 0 1.5px var(--background)' }}>
-                      <InitialsAvatar
-                        name={memberById.get(task.user_id)!.fullName}
-                        size={20}
-                        avatarUrl={memberById.get(task.user_id)!.avatarUrl}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {col.tasks.length === 0 && (
-              <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-white/[0.05]">
-                <p className="text-xs text-white/15">Empty</p>
-              </div>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ─── Activity Tab (code) ─────────────────────────────────────────────────────
 
 
@@ -387,164 +322,6 @@ function TabMLSubmissions({ mlData, team }: {
   );
 }
 
-// ─── ML Metrics Tab ──────────────────────────────────────────────────────────
-
-function MetricsLineChart({ versions }: {
-  versions: Array<{ versionNumber: number; metrics: { auc?: number; f1?: number; accuracy?: number } }>;
-}) {
-  const W = 320, H = 140;
-  const PAD = { top: 12, right: 16, bottom: 28, left: 36 };
-  const innerW = W - PAD.left - PAD.right;
-  const innerH = H - PAD.top - PAD.bottom;
-
-  const xs = versions.map(v => v.versionNumber);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const xRange = maxX - minX || 1;
-
-  const toSVGX = (x: number) => PAD.left + ((x - minX) / xRange) * innerW;
-  const toSVGY = (y: number) => PAD.top + (1 - y) * innerH;
-
-  const LINES = [
-    { key: 'auc'      as const, color: 'var(--color-brandCP, #6366f1)', label: 'AUC' },
-    { key: 'f1'       as const, color: '#22c55e',                        label: 'F1' },
-    { key: 'accuracy' as const, color: '#3b82f6',                        label: 'Accuracy' },
-  ];
-
-  const toPath = (key: 'auc' | 'f1' | 'accuracy') => {
-    const pts = versions.filter(v => v.metrics[key] !== undefined);
-    if (pts.length === 0) return '';
-    return pts.map((v, i) => {
-      const x = toSVGX(v.versionNumber);
-      const y = toSVGY(v.metrics[key]!);
-      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
-    }).join(' ');
-  };
-
-  const yTicks = [0, 0.25, 0.5, 0.75, 1.0];
-
-  return (
-    <div className="overflow-x-auto">
-      <svg width={W} height={H} className="text-white/20">
-        {yTicks.map(t => (
-          <g key={t}>
-            <line
-              x1={PAD.left} y1={toSVGY(t)}
-              x2={PAD.left + innerW} y2={toSVGY(t)}
-              stroke="currentColor" strokeWidth={0.5} strokeDasharray="2 3"
-            />
-            <text x={PAD.left - 4} y={toSVGY(t) + 4} textAnchor="end" fontSize={8} fill="currentColor">
-              {t.toFixed(2)}
-            </text>
-          </g>
-        ))}
-        {versions.map(v => (
-          <text key={v.versionNumber} x={toSVGX(v.versionNumber)} y={H - 8}
-            textAnchor="middle" fontSize={8} fill="currentColor">
-            v{v.versionNumber}
-          </text>
-        ))}
-        {LINES.map(({ key, color }) => {
-          const d = toPath(key);
-          if (!d) return null;
-          return <path key={key} d={d} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" />;
-        })}
-        {LINES.map(({ key, color }) =>
-          versions
-            .filter(v => v.metrics[key] !== undefined)
-            .map(v => (
-              <circle
-                key={`${key}-${v.versionNumber}`}
-                cx={toSVGX(v.versionNumber)} cy={toSVGY(v.metrics[key]!)}
-                r={3} fill={color}
-              />
-            ))
-        )}
-      </svg>
-      <div className="mt-2 flex gap-4">
-        {LINES.map(({ key, color, label }) => (
-          <div key={key} className="flex items-center gap-1.5">
-            <span className="h-2 w-4 rounded-full" style={{ backgroundColor: color }} />
-            <span className="text-[10px] text-white/40">{label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TabMLMetrics({ repoActivity }: { repoActivity: Record<string, any> | null }) {
-  if (repoActivity === null) {
-    return (
-      <div className="space-y-4">
-        {[1, 2].map(i => <div key={i} className="h-24 animate-pulse rounded-xl bg-white/[0.03]" />)}
-      </div>
-    );
-  }
-
-  const modelEntry = Object.values(repoActivity).find((a: any) => a?.type === 'kaggle_model');
-
-  return (
-    <div className="space-y-8">
-
-      {/* Model metrics */}
-      {modelEntry && (() => {
-        const modelVersions: Array<{ ref: string; versions: any[] }> = modelEntry.modelVersions ?? [];
-        return (
-          <div className="space-y-6">
-            {sectionHeader(<Cpu className="h-3.5 w-3.5" />, 'Model Metrics')}
-            {modelVersions.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/[0.05] py-12 text-center">
-                <p className="text-sm text-white/20">No model versions found</p>
-              </div>
-            ) : (
-              modelVersions.map(({ ref, versions }) => {
-                const hasMetrics = versions.some(v =>
-                  v.metrics.auc !== undefined || v.metrics.f1 !== undefined || v.metrics.accuracy !== undefined
-                );
-                return (
-                  <div key={ref} className="rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-5 py-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-white/70">{ref}</p>
-                      <span className="text-[10px] text-white/25">
-                        {versions.length} version{versions.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    {!hasMetrics ? (
-                      <p className="text-xs text-white/25">No metrics found in model card</p>
-                    ) : versions.length === 1 ? (
-                      <div className="flex flex-wrap gap-3">
-                        {(['auc', 'f1', 'accuracy'] as const).map(key => {
-                          const val = versions[0].metrics[key];
-                          if (val === undefined) return null;
-                          return (
-                            <div key={key} className="rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-2 text-center">
-                              <p className="text-[10px] uppercase tracking-widest text-white/30">{key.toUpperCase()}</p>
-                              <p className="text-lg font-bold text-white">{val.toFixed(3)}</p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <MetricsLineChart versions={versions} />
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Empty state */}
-      {!modelEntry && (
-        <div className="rounded-xl border border-dashed border-white/[0.05] py-12 text-center">
-          <p className="text-sm text-white/20">No model submissions yet</p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Rankings Tab ─────────────────────────────────────────────────────────────
 
@@ -764,7 +541,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
     },
     {
       label: 'Metrics',
-      panel: <TabMLMetrics repoActivity={repoActivity} />,
+      panel: <ChallengeMetrics repoActivity={repoActivity} />,
     },
     {
       label: 'Rankings',
@@ -816,10 +593,6 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
           <ParticipantsProgress team={team} tasks={tasks} participants={participants} contributions={contributions} showWorkspaceStatus />
         </div>
       ),
-    },
-    {
-      label: 'Kanban',
-      panel: <TabKanban tasks={tasks} team={team} />,
     },
     {
       label: 'Activity',

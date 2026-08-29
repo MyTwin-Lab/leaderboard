@@ -87,4 +87,19 @@ describe('GET /api/challenges/[id]/overview', () => {
 
     expect((await get()).status).toBe(200);
   });
+
+  it('hides a validation challenge from an anonymous visitor', async () => {
+    // No public view applies to this type — neither metrics nor task progress.
+    mockVerifyRequestToken.mockResolvedValue(null);
+    mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'validation' });
+
+    expect((await get()).status).toBe(404);
+  });
+
+  it('still serves a validation challenge to a signed-in visitor', async () => {
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'u9', role: 'contributor' });
+    mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'validation' });
+
+    expect((await get()).status).toBe(200);
+  });
 });
