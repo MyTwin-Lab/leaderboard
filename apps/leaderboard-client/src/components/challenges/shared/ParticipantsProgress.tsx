@@ -24,7 +24,7 @@ export function ParticipantsProgress({
   team: TeamMember[];
   tasks: Array<{ uuid: string; user_id?: string | null; status: string; parent_task_id?: string }>;
   participants: Array<{ user_id: string; workspace_status?: string | null }>;
-  contributions: Array<{ user_id: string; type: string; reward: number; evaluation_status?: string }>;
+  contributions: Array<{ user_id: string; type?: string; reward: number; evaluation_status?: string }>;
   /** Manage view only. The public payload never carries the field, and this
    *  keeps the component correct even if that ever changed. */
   showWorkspaceStatus?: boolean;

@@ -120,17 +120,28 @@ export default function ChallengeDetailPage() {
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
   const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
 
-  useEffect(() => {
-    if (challengeId) trackOnboardingStep('clicked_challenge');
-  }, [challengeId]);
-
   // Declared before overviewQuery so its refetchInterval closure (below) can
   // read meQuery.data without a temporal-dead-zone hazard.
   const meQuery = useQuery({
     queryKey: ['me'],
     queryFn: () => fetchJson('/api/contributors/me'),
     staleTime: 5 * 60_000,
+    // A 401 here means "not signed in", which is a normal state for this page
+    // since it is public. fetchJson throws on any non-2xx, so without
+    // retry:false react-query burns three attempts while `loading` below stays
+    // true and the visitor sits on the skeleton.
+    retry: false,
   });
+
+  const isAnonymous = meQuery.isError;
+
+  // Declared after meQuery on purpose: isAnonymous appears in the dependency
+  // array, which is evaluated on every render, so reading it above would hit
+  // its temporal dead zone.
+  useEffect(() => {
+    // trackOnboardingStep posts to a protected route — pointless without a session.
+    if (challengeId && !isAnonymous) trackOnboardingStep('clicked_challenge');
+  }, [challengeId, isAnonymous]);
 
   // Challenge, team, tasks, meetings, repos and contributions all come from
   // one aggregated request instead of 6 separate ones — see the route for why
@@ -225,7 +236,9 @@ export default function ChallengeDetailPage() {
   // be slow, but TabActivity/TabMLMetrics already render their own inline
   // skeleton while repoActivity is null — no reason to hold up the rest of
   // the page for it.
-  const loading = overviewQuery.isLoading || modulesQuery.isLoading || meQuery.isLoading;
+  // meQuery.isError is the anonymous case, not a failure to wait on.
+  const loading = overviewQuery.isLoading || modulesQuery.isLoading
+    || (meQuery.isLoading && !meQuery.isError);
 
   if (loading) return <Skeleton />;
 
@@ -402,7 +415,33 @@ export default function ChallengeDetailPage() {
             onJoin={link => { trackOnboardingStep('joined_meeting'); window.open(link, '_blank'); }}
           />
         )}
-        tabs={isValidation ? [
+        tabs={isAnonymous ? [
+        // Signed out: the interactive panels (join flow, personal board, ML and
+        // validation submissions) all need an account, so the page shows what
+        // has been done on the challenge instead of what you could do on it.
+        {
+          label: 'Participants',
+          panel: (
+            <ParticipantsProgress
+              team={team}
+              tasks={tasks}
+              participants={participants}
+              contributions={contributions}
+            />
+          ),
+        },
+        {
+          label: 'Activity',
+          panel: (
+            <ChallengeActivity
+              contributions={contributions}
+              team={team}
+              repoActivity={repoActivity}
+              isML={isML}
+            />
+          ),
+        },
+      ] : isValidation ? [
         {
           label: 'Validate',
           panel: (
@@ -442,6 +481,20 @@ export default function ChallengeDetailPage() {
           panel: <ChallengeActivity contributions={contributions} team={team} repoActivity={repoActivity} isML={isML} />,
         },
       ]} />
+
+      {isAnonymous && (
+        <div className="mt-10 flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-6 py-8 text-center">
+          <p className="text-sm text-white/60">
+            Sign in to join this challenge and start your own board.
+          </p>
+          <a
+            href={`/signin?from=/challenges/${challengeId}`}
+            className="inline-flex items-center justify-center rounded-xl bg-brandCP/20 px-6 py-3 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCP/40"
+          >
+            Continue with Google
+          </a>
+        </div>
+      )}
 
     </div>
 
