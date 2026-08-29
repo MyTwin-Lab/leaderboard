@@ -11,15 +11,15 @@ export function HomeHero() {
 
       {/* H1 */}
       <h1 className="text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.25rem]">
-        A global movement to reinvent health.{" "}
-        <span className="text-brandCP">Together.</span>
+        <span className="text-brandCP">Together,</span> we make the world’s best health
+        technologies accessible.
       </h1>
 
       {/* Body */}
       <p className="max-w-2xl text-sm leading-relaxed text-white/60 sm:text-base">
-        Students, engineers, clinicians, researchers and citizens who refuse to wait for
-        health innovation to happen to them. Every contribution is tracked, evaluated and
-        rewarded in CP.
+        Students, engineers, clinicians, researchers and citizens working together to
+        create, test and improve the technologies that can transform health. Every
+        contribution is tracked, evaluated and rewarded in CP.
       </p>
     </div>
   );
