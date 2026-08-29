@@ -239,6 +239,11 @@ components:
         challenge_id:
           type: string
           format: uuid
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Owner of this task's personal board. Null means this is a template task (edited by the challenge admin/manager and copied onto each contributor's board on join).
         parent_task_id:
           type: string
           format: uuid
@@ -248,15 +253,16 @@ components:
         description:
           type: string
           nullable: true
-        type:
-          type: string
-          enum: [solo, concurrent]
         status:
           type: string
+          enum: [todo, in_progress, done]
+        created_at:
+          type: string
+          format: date-time
 
     CreateTask:
       type: object
-      required: [challenge_id, title, type]
+      required: [challenge_id, title]
       properties:
         challenge_id:
           type: string
@@ -269,9 +275,9 @@ components:
           minLength: 1
         description:
           type: string
-        type:
-          type: string
-          enum: [solo, concurrent]
+        template:
+          type: boolean
+          description: true creates a template task (challenge admin/manager only) instead of a task on the caller's own personal board.
 
     UpdateTask:
       type: object
@@ -281,76 +287,23 @@ components:
           minLength: 1
         description:
           type: string
-        type:
+        status:
           type: string
-          enum: [solo, concurrent]
+          enum: [todo, in_progress, done]
         parent_task_id:
           type: string
           format: uuid
+          nullable: true
 
     TaskDetails:
       type: object
       properties:
         task:
           $ref: '#/components/schemas/Task'
-        challenge:
-          type: object
-          nullable: true
-          properties:
-            uuid:
-              type: string
-              format: uuid
-            title:
-              type: string
-            status:
-              type: string
-            completion:
-              type: number
-            contribution_points_reward:
-              type: integer
-        assignees:
-          type: array
-          items:
-            type: object
-            properties:
-              uuid:
-                type: string
-                format: uuid
-              full_name:
-                type: string
-              github_username:
-                type: string
-        workspaces:
-          type: array
-          items:
-            type: object
-            properties:
-              repo_id:
-                type: string
-                format: uuid
-              repo_title:
-                type: string
-              repo_type:
-                type: string
-              repo_external_id:
-                type: string
-              workspace_provider:
-                type: string
-              workspace_ref:
-                type: string
-              workspace_url:
-                type: string
-              workspace_status:
-                type: string
-              workspace_meta:
-                type: object
         subTasks:
           type: array
           items:
             $ref: '#/components/schemas/Task'
-        contribution:
-          type: object
-          nullable: true
 
     # ── Contributions ──
     Contribution:
@@ -1241,6 +1194,111 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /challenges/{id}/project-evaluation:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Challenges]
+      summary: Lancer l'évaluation du board personnel (challenge code)
+      description: |
+        Fire-and-forget : planifie l'évaluation IA du board personnel de l'utilisateur connecté
+        et répond immédiatement. Le statut vit sur la contribution `project`, pollée par l'UI.
+      security:
+        - cookieAuth: []
+      responses:
+        '202':
+          description: Évaluation planifiée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scheduled:
+                    type: boolean
+        '400':
+          description: Préconditions non remplies (board incomplet, workspace non prêt, challenge fermé, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  reason:
+                    type: string
+                    enum: [not_code_challenge, no_rules, not_participant, workspace_not_ready, no_tasks, tasks_not_done, challenge_closed]
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Une évaluation est déjà en cours
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  reason:
+                    type: string
+                    enum: [already_running]
+
+  /challenges/{id}/workspace:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [Challenges]
+      summary: Déclarer son repo GitHub personnel (mode own_repo)
+      description: Réservé aux challenges code en mode `own_repo` — le contributeur déclare (ou change) l'URL publique du repo qui porte son livrable.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [repo_url]
+              properties:
+                repo_url:
+                  type: string
+                  description: URL publique d'un repo GitHub (https://github.com/owner/repo[/tree/branch])
+      responses:
+        '200':
+          description: Workspace mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  participation:
+                    type: object
+        '400':
+          description: Challenge non éligible (pas code / pas own_repo) ou repo_url invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: L'utilisateur n'a pas rejoint ce challenge
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /challenges/{id}/sync:
     parameters:
       - name: id
@@ -1356,12 +1414,13 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: include
+        - name: scope
           in: query
-          description: "Passer `assignees` pour inclure les assignés"
+          description: "`mine` (le board perso de l'utilisateur connecté), `template` (les tâches modèles du challenge), ou `all` (défaut)"
           schema:
             type: string
-            enum: [assignees]
+            enum: [mine, template, all]
+            default: all
       responses:
         '200':
           description: Liste des tâches
@@ -1424,9 +1483,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-    put:
+    patch:
       tags: [Tasks]
       summary: Mettre à jour une tâche
+      description: Réservé au propriétaire de la tâche (ou admin/manager du challenge pour une tâche modèle).
       requestBody:
         required: true
         content:
@@ -1468,7 +1528,7 @@ paths:
     get:
       tags: [Tasks]
       summary: Détails complets d'une tâche
-      description: Retourne la tâche avec challenge, assignés, workspaces, sous-tâches et contribution de l'utilisateur connecté.
+      description: Retourne la tâche et ses sous-tâches.
       security:
         - cookieAuth: []
       responses:
@@ -1478,206 +1538,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TaskDetails'
-        '404':
-          description: Tâche non trouvée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /tasks/{id}/assignees:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-    get:
-      tags: [Tasks]
-      summary: Récupérer les assignés d'une tâche
-      responses:
-        '200':
-          description: Liste des assignés
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-        '404':
-          description: Tâche non trouvée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /tasks/{id}/assign:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-    post:
-      tags: [Tasks]
-      summary: S'assigner à une tâche
-      description: |
-        Assigne l'utilisateur connecté à la tâche. Provisionne automatiquement les workspaces
-        (branches Git, etc.) et protège l'accès au workspace.
-      security:
-        - cookieAuth: []
-      responses:
-        '201':
-          description: Assignation réussie avec résultats de provisioning
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  assignment:
-                    type: object
-                  provisioning:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        repo_id:
-                          type: string
-                          format: uuid
-                        status:
-                          type: string
-                        result:
-                          type: object
-        '400':
-          description: Déjà assigné ou tâche solo déjà prise
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Non authentifié
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Tâche non trouvée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    delete:
-      tags: [Tasks]
-      summary: Se désassigner d'une tâche
-      security:
-        - cookieAuth: []
-      responses:
-        '200':
-          description: Désassignation réussie
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
-        '400':
-          description: Non assigné à cette tâche
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Non authentifié
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /tasks/{id}/complete:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-    patch:
-      tags: [Tasks]
-      summary: Marquer une tâche comme complétée
-      description: Seul un admin ou un assigné peut compléter la tâche.
-      security:
-        - cookieAuth: []
-      responses:
-        '200':
-          description: Tâche complétée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Task'
-        '401':
-          description: Non authentifié
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Non autorisé (ni admin ni assigné)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Tâche non trouvée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /tasks/{id}/evaluate:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-    post:
-      tags: [Tasks]
-      summary: Évaluer une tâche
-      description: Déclenche l'évaluation IA de la tâche. Seul un admin ou un assigné peut évaluer.
-      security:
-        - cookieAuth: []
-      responses:
-        '200':
-          description: Résultat de l'évaluation
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  evaluation:
-                    type: object
-                    properties:
-                      globalScore:
-                        type: number
-                      scores:
-                        type: object
-                  contribution:
-                    type: object
-                  isUpdate:
-                    type: boolean
-        '401':
-          description: Non authentifié
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Non autorisé
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '404':
           description: Tâche non trouvée
           content:

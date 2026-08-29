@@ -60,7 +60,7 @@ The `OpenAIAgentEvaluator.evaluate()` method takes:
 
 It produces an `Evaluation` object with:
 - `scores` — per-criterion scores (0–9 each)
-- `globalScore` — final weighted score (0–100)
+- `globalScore` — weighted sum of `score × weight` across criteria; since the grid's weights sum to ~1, this lands on roughly the same 0–9 scale as the individual criteria (not 0–100)
 
 ---
 
@@ -87,7 +87,7 @@ Each criterion is scored 0–9:
 | 2–4 | Acceptable — needs revision |
 | 0–1 | Problematic — major issues |
 
-The `globalScore` (0–100) is a weighted average across all criteria.
+The `globalScore` is the weighted sum across all criteria (weights sum to ~1, so the result sits on roughly the same 0–9 scale, not 0–100). `CodeRewardsService` normalizes it to a /10 display score via `(globalScore / 9) * 10`, clamped to [0, 10] — see `runAgentDefault` in `code-rewards.service.ts`.
 
 ---
 

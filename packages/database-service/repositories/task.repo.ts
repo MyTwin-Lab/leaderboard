@@ -45,27 +45,10 @@ export class TaskRepository {
     return rows.map(toDomainTask);
   }
 
-  async updateStatus(uuid: string, status: Task["status"]): Promise<Task> {
-    const [updated] = await db.update(tasks)
-      .set({ status })
-      .where(eq(tasks.uuid, uuid))
-      .returning();
-    if (!updated) throw new Error("Task not found");
-    return toDomainTask(updated);
-  }
-
   async create(entity: Omit<Task, "uuid" | "created_at">): Promise<Task> {
     const validated = taskSchema.omit({ uuid: true, created_at: true }).parse(entity);
     const [inserted] = await db.insert(tasks).values(toDbTask(validated)).returning();
     return toDomainTask(inserted);
-  }
-
-  /** Copie du template au join — un insert pour tout le board initial. */
-  async createMany(entities: Omit<Task, "uuid" | "created_at">[]): Promise<Task[]> {
-    if (entities.length === 0) return [];
-    const validated = entities.map(e => taskSchema.omit({ uuid: true, created_at: true }).parse(e));
-    const inserted = await db.insert(tasks).values(validated.map(toDbTask)).returning();
-    return inserted.map(toDomainTask);
   }
 
   async update(uuid: string, entity: Partial<Omit<Task, "uuid" | "created_at">>): Promise<Task> {

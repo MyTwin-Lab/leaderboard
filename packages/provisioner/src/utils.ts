@@ -30,17 +30,6 @@ export function generateChallengeBranchName(index: number, title: string): strin
 }
 
 /**
- * Génère le nom de branche pour une task
- * Format: task/{challenge-index}-{task-slug}
- * Exemple: task/007-setup-environment
- */
-export function generateTaskBranchName(challengeIndex: number, taskTitle: string): string {
-  const paddedIndex = String(challengeIndex).padStart(3, '0');
-  const slug = slugify(taskTitle);
-  return `task/${paddedIndex}-${slug}`;
-}
-
-/**
  * Génère le nom de branche pour une workspace personnelle de contributeur
  * Format: contrib/{challenge-index}-{username-slug}
  * Exemple: contrib/015-alice-dupont

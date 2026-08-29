@@ -108,15 +108,3 @@ export interface ChallengeProvisionContext {
   repoExternalId: string;
   repoType: string;
 }
-
-/**
- * Configuration pour le provisioning d'une task
- */
-export interface TaskProvisionContext {
-  challengeIndex: number;
-  taskTitle: string;
-  repoExternalId: string;
-  repoType: string;
-  /** Branche du challenge parent (base pour la branche task) */
-  challengeBranchRef?: string;
-}

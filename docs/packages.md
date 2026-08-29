@@ -53,7 +53,7 @@ What it provides:
 - **Repositories** (`repositories/`) — one repository per domain area, with typed CRUD and query methods
 
 Repositories available:
-`project`, `repo`, `challenge`, `challengeRepos`, `challengeTeam`, `challengeDocument`, `challengeSignal`, `challengeSlackConfig`, `user`, `contribution`, `rewardEntry`, `task`, `taskAssignee`, `taskWorkspace`, `evaluationGrids`, `evaluationRuns`, `evaluationRunContributions`, `syncMeeting`, `meetingParticipant`, `meetingAnalysis`, `onboardingProgress`, `refreshToken`, `appSettings`
+`project`, `repo`, `challenge`, `challengeRepos`, `challengeTeam`, `challengeDocument`, `challengeSignal`, `challengeSlackConfig`, `user`, `contribution`, `rewardEntry`, `task`, `evaluationGrids`, `evaluationRuns`, `evaluationRunContributions`, `syncMeeting`, `meetingParticipant`, `meetingAnalysis`, `onboardingProgress`, `refreshToken`, `appSettings`
 
 **Key file:** `packages/database-service/db/drizzle.ts`
 
@@ -65,7 +65,7 @@ Repositories available:
 **Purpose:** AI scoring engine for code challenges, plus the pure scoring functions behind ML challenge rewards.
 
 The evaluator exposes one active agent:
-- **Evaluate** (`openai/evaluate.agent.ts`) — scores a contribution against a grid (0–9 per criterion, aggregated to 0–100)
+- **Evaluate** (`openai/evaluate.agent.ts`) — scores a contribution against a grid (0–9 per criterion, `globalScore` a weighted sum on that same ~0–9 scale since the grid's weights sum to ~1)
 
 Scoring grids (in `grids/`):
 - `code.grid.ts` — technical quality, architecture, security, maintainability, documentation, impact
@@ -108,8 +108,7 @@ GitHub, Kaggle and Slack credentials can come from an admin-connected account (e
 **Purpose:** Business logic and orchestration that combines database access, connectors, and the evaluator. The app calls these services from Route Handlers rather than calling the lower-level packages directly.
 
 Key services:
-- **`task_evaluation/task-evaluation.service.ts`** — main evaluation pipeline: task context → commits → snapshot → score → upsert contribution (code challenges only)
-- **`task_evaluation/task-context.service.ts`** — loads the task, its parent challenge, assignees, and workspace branches
+- **`challenge/code-rewards.service.ts`** (`CodeRewardsService`) — live evaluation of a code challenge's personal boards: preconditions (board complete, workspace ready, no run already in progress) → resolve the contributor's branch/repo → snapshot → agent score → ledger award, project-scoped rather than per-task — see [`evaluation.md`](./evaluation.md)
 - **`challenge.service.ts`** — challenge CRUD and state transitions
 - **`rewards.service.ts`** — distributes CP across contributors based on evaluation scores (code challenges)
 - **`challenge/ml-rewards.service.ts`** — orchestrates ML challenge scoring and the point ledger; **`challenge/artifactUrl.ts`** and **`challenge/lineage.ts`** support reuse detection — see [`ml-rewards.md`](./ml-rewards.md)
