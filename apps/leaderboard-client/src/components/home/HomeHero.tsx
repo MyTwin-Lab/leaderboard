@@ -11,15 +11,16 @@ export function HomeHero() {
 
       {/* H1 */}
       <h1 className="text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.25rem]">
-        <span className="text-brandCP">Together,</span> we make the world’s best health
-        technologies accessible.
+        <span className="text-brandCP">Together,</span> we’re building the world’s most
+        advanced digital twin of the human body.
       </h1>
 
       {/* Body */}
       <p className="max-w-2xl text-sm leading-relaxed text-white/60 sm:text-base">
-        Students, engineers, clinicians, researchers and citizens working together to
-        create, test and improve the technologies that can transform health. Every
-        contribution is tracked, evaluated and rewarded in CP.
+        Students, engineers, clinicians, researchers and citizens contributing to a shared
+        mission: creating the most advanced digital twin of the human body and making the
+        best health innovations accessible to everyone. Every contribution is tracked,
+        evaluated and rewarded in CP.
       </p>
     </div>
   );
