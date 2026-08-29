@@ -123,4 +123,32 @@ describe("fetchHomeOverview", () => {
     expect(overview.trendingChallenges.map((c) => c.id)).toEqual(["c2", "c1"]);
     expect(overview.trendingChallenges[0].recentContributions).toBe(0);
   });
+
+  it("keeps archived challenges out of trending even when they saw recent activity", async () => {
+    // Recent activity on an archived challenge is exactly when it would surface,
+    // and it is the one time it must not: the fallback path already states that
+    // drafts and archived stay hidden, so both paths have to agree.
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+
+    vi.spyOn(repositories.project, "findAll").mockResolvedValue([
+      { uuid: "p1", title: "P", description: null, created_at: new Date() },
+    ] as any);
+    vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([
+      { uuid: "c1", title: "Live", status: "active", type: "code", index: 1, contribution_points_reward: 100, completion: 0, project_id: "p1", start_date: new Date(), end_date: new Date() },
+      { uuid: "c2", title: "Retired", status: "archived", type: "code", index: 2, contribution_points_reward: 100, completion: 0, project_id: "p1", start_date: new Date(), end_date: new Date() },
+    ] as any);
+    vi.spyOn(repositories.user, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(repositories.contribution, "findAll").mockResolvedValue([
+      // The archived one is busier, so ranking alone would put it first.
+      { uuid: "a1", challenge_id: "c2", user_id: "u1", submitted_at: TWO_DAYS_AGO, reward: 1, title: "T", type: "code" },
+      { uuid: "a2", challenge_id: "c2", user_id: "u2", submitted_at: TWO_DAYS_AGO, reward: 1, title: "T", type: "code" },
+      { uuid: "a3", challenge_id: "c1", user_id: "u1", submitted_at: TWO_DAYS_AGO, reward: 1, title: "T", type: "code" },
+    ] as any);
+    vi.spyOn(repositories.challengeTeam, "findAll").mockResolvedValue([] as any);
+
+    const overview = await fetchHomeOverview();
+
+    expect(overview.trendingChallenges.map((c) => c.id)).toEqual(["c1"]);
+  });
 });

@@ -177,17 +177,23 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
     spark: sparkFromContributions(now, contributionsByChallenge.get(c.uuid) ?? []),
   });
 
+  // Both paths below share this: a draft is not published yet, and an archived
+  // challenge is over. Recent activity on an archived one — a late evaluation
+  // landing, say — used to be enough to surface it here, which is precisely
+  // when it must not appear.
+  const isTrendable = (c: (typeof challenges)[number]) =>
+    !["draft", "archived"].includes(c.status);
+
   let trendingSource = challenges
-    .filter((c) => c.status !== "draft" && recentCountByChallenge.has(c.uuid))
+    .filter((c) => isTrendable(c) && recentCountByChallenge.has(c.uuid))
     .sort((a, b) => (recentCountByChallenge.get(b.uuid) ?? 0) - (recentCountByChallenge.get(a.uuid) ?? 0));
 
   if (trendingSource.length === 0) {
     // No activity in the last 7 days → fall back to the most recently
     // created challenges. There is no created_at column, but `index` is a
-    // serial, so a higher index means a later creation. Drafts and archived
-    // stay hidden.
+    // serial, so a higher index means a later creation.
     trendingSource = challenges
-      .filter((c) => !["draft", "archived"].includes(c.status))
+      .filter(isTrendable)
       .sort((a, b) => (b.index ?? 0) - (a.index ?? 0));
   }
 
