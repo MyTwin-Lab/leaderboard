@@ -30,6 +30,14 @@ So both the page and its data are gated. The overview payload also carries
 `workspace_url`, `workspace_ref` and `workspace_status` per participant, which
 must never reach an anonymous caller.
 
+There is a precedent to follow rather than invent against. The challenges list
+already serves anonymous visitors: `fetchProjectsWithChallenges`
+(`lib/server/publicPages.ts:34`) takes `userId?: string | null` and hides
+`draft` and `archived` challenges from anyone who is not an admin or a manager
+of the project. The detail page is the missing half of a pattern the list page
+already applies, and the status rule proposed below matches the one already in
+force there.
+
 `ChallengeManageView` already contains the view we want. `TabParticipants`
 (`ChallengeManageView.tsx:351-389`) renders, per contributor, `{done}/{total}
 tasks done` plus the CP awarded. It is purely presentational: its four props
@@ -49,7 +57,9 @@ which becomes public forces the question, so they converge as part of this work.
 3. Read-only components are extracted and shared, not duplicated and not
    reached by putting `ChallengeManageView` in a read-only mode.
 4. One aggregation endpoint, with an allowlist mapper for anonymous callers.
-5. `draft` challenges stay protected. A draft is not a showcase.
+5. `draft` and `archived` challenges stay protected — the same rule the
+   challenges list and the home page's trending block already apply. One status
+   rule across the product, so nothing to remember and nothing to drift.
 
 ## Design
 
@@ -77,43 +87,52 @@ by the existing prefix.
 `/api/contributors/me` stays protected and answers 401 to anonymous callers.
 That 401 is how the page detects anonymity.
 
-### Draft challenges
+### Unpublished challenges
 
 `publicPages` and `publicApiRoutes` cannot express a status check — status lives
 in the database, not the URL. The check therefore happens in the route: when
-there is no session and `challenge.status === 'draft'`, the overview endpoint
-answers 404, and the page renders its existing "Challenge not found" state. 404
-rather than 401, so an anonymous visitor cannot use the response to learn that a
-draft challenge exists at that id.
+there is no session and the challenge's status is `draft` or `archived`, the
+overview endpoint answers 404, and the page renders its existing "Challenge not
+found" state. 404 rather than 401, so an anonymous visitor cannot use the
+response to learn that a challenge exists at that id.
 
-The draft check is not specific to `overview`: all three opened routes apply it,
-or a draft's activity and metrics would stay readable through the two other
-doors. The check belongs in one shared guard, called by each of the three.
+The check is not specific to `overview`: all three opened routes apply it, or an
+unpublished challenge's activity and metrics would stay readable through the two
+other doors. It belongs in one shared guard, called by each of the three, and it
+holds the same status list as `fetchProjectsWithChallenges` — if the two ever
+disagree, a challenge is listed but unreachable, or reachable but unlisted.
 
 ### `repo-activity` and `ml-rewards`
 
-`ml-rewards` returns a metric name, a baseline and points — nothing tied to a
-person. It is public as is, behind the draft guard.
+`ml-rewards` needs a mapper too. It returns `breakdown: [{ userId, points }]` —
+CP per person — and `rules`, the reward configuration itself
+(`ml-rewards/route.ts:70-81`). The page reads none of that: `mlRewardsQuery`
+types its result as `{ metric, bestValue }` (`challenges/[id]/page.tsx:176-179`)
+and the hero shows the best metric only. Anonymous callers therefore get those
+two fields and nothing else.
 
-`repo-activity` needs the same allowlist scrutiny as `overview`, and the
-implementation plan must resolve it before opening the route. It returns events
-keyed by repo, and this design has not established what an event carries beyond
-`type`, `title`, `author`, `date`, `url` and `metadata`. Two specific risks: on
-a `provided_repo` challenge, per-contributor branches follow the
-`contrib/<index>-<username>` convention and may appear in branch or PR events;
-and `metadata` is passed through untyped, so its contents are unaudited.
+`repo-activity` needs the same allowlist scrutiny as `overview`. Reading
+`packages/connectors/interfaces.ts:22-75` settles what it emits: `GitHubEvent`
+carries `type`, `id`, `title`, `author`, `date`, `url` and a **typed**
+`metadata` of `sha`, `additions`, `deletions`, `prNumber`, `state`,
+`reviewState`, `branchName`.
 
-The public shape is therefore an allowlist mapper of the same kind —
-`toPublicRepoActivity()` — not a pass-through. Its exact field list is an open
-item for the plan, resolved by reading what the connectors actually emit.
+Two things must not go out. `metadata.branchName` exposes the
+`contrib/<index>-<username>` branches the provisioner creates per contributor,
+and the `branch_created` event type exists only to announce a branch — both are
+dropped, the field and the whole event type. And when a connector fails, the
+route currently returns `{ error: err.message }`; a connector's error text can
+name internal hosts or tokens, so it becomes a fixed `{ error: 'unavailable' }`.
+
+Kaggle activity — `datasetMeta` and `modelVersions` — describes public Kaggle
+artifacts and passes through unchanged.
 
 ### `toPublicOverview()`
 
-The overview route reads the session (same helper approach as
-`contributors/me/tasks/route.ts:9`, which defines a local
-`getUserIdFromRequest`; this design extracts that helper to `lib/auth` so both
-call one implementation). With a session, the payload is unchanged. Without one,
-it passes through a pure allowlist mapper:
+The overview route reads the session with `verifyRequestToken(request)`, which
+already exists in `lib/auth.ts:105` — no new helper is needed. With a session,
+the payload is unchanged. Without one, it passes through a pure allowlist
+mapper:
 
 | Key | Public fields |
 |---|---|
@@ -179,8 +198,12 @@ carry the security properties. That is where the effort goes:
 - `meetings` and `repos` are absent
 - the mapped shape still satisfies what `ParticipantsProgress` reads
 - a `draft` challenge with no session yields 404, on all three opened routes
+- an `archived` challenge with no session yields 404, on all three
+- an `active` and a `completed` challenge with no session both render
+- a session reaches `draft` and `archived` normally — the guard is anonymous-only
 - a session yields the full payload, unmapped
 - `toPublicRepoActivity()` emits no branch ref matching `contrib/<n>-<user>`
+- `toPublicMlRewards()` emits neither `breakdown` nor `rules`
 - `/challenges/abc` public, `/challenges/abc/manage` protected
 - `/api/challenges/abc/overview` public, `/api/challenges/abc/join` protected,
   `/api/challenges/abc/validation-runs` protected
@@ -192,9 +215,9 @@ Their guarantee is that extraction moves code without changing logic.
 ## Accepted consequences
 
 Contributor names, avatars, GitHub handles and per-challenge CP become readable
-by anyone on the internet, for every non-draft challenge. This was decided
-deliberately: the team is already named in the hero, and hiding it lower on the
-same page would be incoherent.
+by anyone on the internet, for every `active` or `completed` challenge. This was
+decided deliberately: the team is already named in the hero, and hiding it lower
+on the same page would be incoherent.
 
 ## Out of scope
 
