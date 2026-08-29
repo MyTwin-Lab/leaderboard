@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 import { getBaseUrl } from '@/lib/url';
+import { isPublicPage, isPublicApiRoute } from '@/lib/routeVisibility';
 
 type UserRole = 'admin' | 'contributor' | 'viewer' | 'medical_pro';
 type ProtectedPage = { prefix: string; roles: readonly UserRole[] };
@@ -126,8 +127,14 @@ async function checkSessionStillValid(request: NextRequest, userId: string): Pro
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const matchedProtectedPage = protectedPages.find((route) => pathname.startsWith(route.prefix));
-  const isProtectedApiRoute = protectedApiRoutes.some(route => pathname.startsWith(route));
+  // Les allowlists priment sur les gardes par préfixe : /challenges/<id> et ses
+  // trois routes de lecture sont publiques, tandis que /challenges/<id>/manage
+  // et tous les autres /api/challenges/* restent derrière les préfixes.
+  const matchedProtectedPage = isPublicPage(pathname)
+    ? undefined
+    : protectedPages.find((route) => pathname.startsWith(route.prefix));
+  const isProtectedApiRoute = !isPublicApiRoute(pathname)
+    && protectedApiRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
 
   // Les routes d'auth sont toujours accessibles
@@ -182,10 +189,13 @@ export async function proxy(request: NextRequest) {
         );
       }
 
+      // Vers /signin plutôt que directement Google : l'utilisateur arrive ici
+      // sans avoir rien demandé (deep link vers une page protégée), donc on lui
+      // explique pourquoi on demande un compte Google avant de l'y envoyer.
       const baseUrl = getBaseUrl(request);
-      const oauthUrl = new URL('/api/google-auth/authorize', baseUrl);
-      oauthUrl.searchParams.set('from', pathname);
-      return NextResponse.redirect(oauthUrl);
+      const signInUrl = new URL('/signin', baseUrl);
+      signInUrl.searchParams.set('from', pathname);
+      return NextResponse.redirect(signInUrl);
     }
 
     // Le JWT est valide par signature mais ne prouve pas que le compte existe
@@ -211,10 +221,15 @@ export async function proxy(request: NextRequest) {
         ));
       }
 
+      // Même page, mais avec le message de reconnexion : la personne s'est
+      // déjà connectée une fois, lui re-servir l'explication initiale serait du
+      // bruit. Le compte a été fusionné ou supprimé — check-session ne sait pas
+      // dire lequel, d'où une formulation vraie dans les deux cas.
       const baseUrl = getBaseUrl(request);
-      const oauthUrl = new URL('/api/google-auth/authorize', baseUrl);
-      oauthUrl.searchParams.set('from', pathname);
-      return respond(NextResponse.redirect(oauthUrl));
+      const signInUrl = new URL('/signin', baseUrl);
+      signInUrl.searchParams.set('from', pathname);
+      signInUrl.searchParams.set('reason', 'account-updated');
+      return respond(NextResponse.redirect(signInUrl));
     }
 
     if (matchedProtectedPage) {

@@ -17,6 +17,15 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   },
 }));
 
+// The route reads the session to decide whether to serve the full payload or
+// the public one. Mocked here rather than added to the repositories mock
+// above: lib/auth instantiates RefreshTokenRepository and UserRepository at
+// module scope, which this partial mock deliberately does not provide.
+// A session is returned, so these tests keep asserting the full payload.
+vi.mock('@/lib/auth', () => ({
+  verifyRequestToken: async () => ({ userId: 'u1', role: 'admin' }),
+}));
+
 import { GET } from './route';
 
 const CHALLENGE_ID = 'challenge-1';

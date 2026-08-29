@@ -4,6 +4,9 @@ import {
   RewardEntryRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import { parseMlRewardRules } from '../../../../../../../../packages/database-service/domain/mlRewardRules';
+import { verifyRequestToken } from '@/lib/auth';
+import { isPubliclyVisible } from '@/lib/public/challengeVisibility';
+import { toPublicMlRewards } from '@/lib/public/mlRewards';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +16,7 @@ const rewardRepo = new RewardEntryRepository();
 // GET /api/challenges/[id]/ml-rewards
 // Pool state + per-user breakdown for a challenge with live rewards (ML or code).
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -21,6 +24,11 @@ export async function GET(
 
     const challenge = await challengeRepo.findById(challengeId);
     if (!challenge) {
+      return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
+    }
+    // Même garde que /overview — le challenge est déjà chargé ci-dessus.
+    const session = await verifyRequestToken(request);
+    if (!session && !isPubliclyVisible(challenge.status)) {
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
     }
     if (challenge.type !== 'ml' && challenge.type !== 'code') {
@@ -67,7 +75,7 @@ export async function GET(
     const thresholdReached =
       blockThreshold != null && bestValue != null && bestValue >= blockThreshold;
 
-    return NextResponse.json({
+    const payload = {
       pool,
       distributed,
       remaining: Math.max(0, pool - distributed),
@@ -78,7 +86,9 @@ export async function GET(
       breakdown: [...byUser.entries()]
         .map(([userId, points]) => ({ userId, points }))
         .sort((a, b) => b.points - a.points),
-    });
+    };
+
+    return NextResponse.json(session ? payload : toPublicMlRewards(payload));
   } catch (error) {
     console.error('Error fetching ML rewards:', error);
     return NextResponse.json({ error: 'Failed to fetch ML rewards' }, { status: 500 });

@@ -7,6 +7,9 @@ import {
   ContributionRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import { SyncMeetingService } from '../../../../../../../../packages/services/sync-meeting/sync-meeting.service.js';
+import { verifyRequestToken } from '@/lib/auth';
+import { isPubliclyVisible } from '@/lib/public/challengeVisibility';
+import { toPublicOverview } from '@/lib/public/overview';
 
 const challengeRepo = new ChallengeRepository();
 const challengeTeamRepo = new ChallengeTeamRepository();
@@ -45,6 +48,13 @@ export async function GET(
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
     }
 
+    // 404 et non 401 : un visiteur anonyme ne doit pas pouvoir distinguer un
+    // challenge non publié d'un challenge qui n'existe pas.
+    const session = await verifyRequestToken(request);
+    if (!session && !isPubliclyVisible(challenge.status)) {
+      return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
+    }
+
     const [team, tasks, meetings, repos, contributions, participants] = await Promise.all([
       challengeTeamRepo.findTeamMembers(id),
       taskRepo.findByChallenge(id),
@@ -54,7 +64,8 @@ export async function GET(
       challengeTeamRepo.findByChallenge(id),
     ]);
 
-    return NextResponse.json({ challenge, team, tasks, meetings, repos, contributions, participants });
+    const payload = { challenge, team, tasks, meetings, repos, contributions, participants };
+    return NextResponse.json(session ? payload : toPublicOverview(payload));
   } catch (error) {
     console.error('Error fetching challenge overview:', error);
     return NextResponse.json({ error: 'Failed to fetch challenge overview' }, { status: 500 });

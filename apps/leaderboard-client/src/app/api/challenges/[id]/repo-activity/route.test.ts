@@ -14,6 +14,21 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
       ];
     }
   },
+  // Instantiated at module scope by the route, which loads it to check whether
+  // an unpublished challenge is being reached without a session.
+  ChallengeRepository: class {
+    async findById() {
+      return { uuid: 'challenge-1', status: 'active' };
+    }
+  },
+}));
+
+// A session is returned, so these tests keep asserting the full, unmapped
+// activity payload. Mocked rather than left real because lib/auth instantiates
+// RefreshTokenRepository and UserRepository at module scope, which the partial
+// repositories mock above deliberately does not provide.
+vi.mock('@/lib/auth', () => ({
+  verifyRequestToken: async () => ({ userId: 'u1', role: 'admin' }),
 }));
 
 const mockCreateConnector = vi.fn(() => ({

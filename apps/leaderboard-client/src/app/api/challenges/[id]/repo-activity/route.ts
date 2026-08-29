@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ChallengeRepoRepository } from '../../../../../../../../packages/database-service/repositories';
+import { ChallengeRepoRepository, ChallengeRepository } from '../../../../../../../../packages/database-service/repositories';
+import { verifyRequestToken } from '@/lib/auth';
+import { isPubliclyVisible } from '@/lib/public/challengeVisibility';
+import { toPublicRepoActivity } from '@/lib/public/repoActivity';
 import { ConnectorRegistry } from '../../../../../../../../packages/connectors/registry.js';
 import { extractArtifactRef } from '../../../../../../../../packages/services/challenge/artifactUrl.js';
 import type { RepoActivity, KaggleRepoActivity } from '../../../../../../../../packages/connectors/interfaces.js';
 
 const challengeRepoRepo = new ChallengeRepoRepository();
+const challengeRepo = new ChallengeRepository();
 
 // GET /api/challenges/[id]/repo-activity
 // Returns fetchRepoActivity() results for all repos in the challenge, keyed by repo_id.
@@ -14,6 +18,17 @@ export async function GET(
 ) {
   try {
     const { id: challengeId } = await params;
+
+    // Même garde que /overview : sans session, un challenge non publié est
+    // introuvable, sinon son activité resterait lisible par cette porte.
+    const session = await verifyRequestToken(request);
+    if (!session) {
+      const challenge = await challengeRepo.findById(challengeId);
+      if (!challenge || !isPubliclyVisible(challenge.status)) {
+        return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
+      }
+    }
+
     const repos = await challengeRepoRepo.findByChallengeWithRepo(challengeId);
 
     const results = await Promise.allSettled(
@@ -91,7 +106,7 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ activities });
+    return NextResponse.json({ activities: session ? activities : toPublicRepoActivity(activities) });
   } catch (error) {
     console.error('Error fetching repo activity:', error);
     return NextResponse.json({ error: 'Failed to fetch repo activity' }, { status: 500 });
