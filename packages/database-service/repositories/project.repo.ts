@@ -42,12 +42,18 @@ export class ProjectRepository {
     const dbData: any = {};
     if (validated.title) dbData.title = validated.title;
     if (validated.description !== undefined) dbData.description = validated.description || null;
+    if (validated.manager_id !== undefined) dbData.manager_id = validated.manager_id;
 
     const [updated] = await db.update(projects)
       .set(dbData)
       .where(eq(projects.uuid, uuid))
       .returning();
     return toDomainProject(updated);
+  }
+
+  async findByManagerId(userId: string): Promise<Project[]> {
+    const rows = await db.select().from(projects).where(eq(projects.manager_id, userId));
+    return rows.map(toDomainProject);
   }
 
   async delete(uuid: string): Promise<void> {

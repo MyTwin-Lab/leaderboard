@@ -1,16 +1,33 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialog';
+import { LogOut } from 'lucide-react';
+
+const NAV_ITEMS = [
+  { href: '/admin',             label: 'Overview',      exact: true },
+  { href: '/admin/challenges',  label: 'Challenges' },
+  { href: '/admin/projects',    label: 'Projects' },
+  { href: '/admin/repos',       label: 'Repos' },
+  { href: '/admin/users',       label: 'Users' },
+  { href: '/admin/contributions', label: 'Contributions' },
+  { href: '/admin/evaluation-grids', label: 'Grids' },
+  { href: '/admin/evaluation-runs',  label: 'Runs' },
+  { href: '/admin/meetings',    label: 'Meetings' },
+];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const isChallengeDetail = /^\/admin\/challenges\/[^/]+$/.test(pathname);
+
+  const isActive = (item: typeof NAV_ITEMS[0]) =>
+    item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -18,94 +35,61 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     router.refresh();
   };
 
-  const navItems = [
-    { href: '/admin', label: 'Overview' },
-    { href: '/admin/challenges', label: 'Challenges' },
-    { href: '/admin/projects', label: 'Projects' },
-    { href: '/admin/repos', label: 'Repos' },
-    { href: '/admin/users', label: 'Users' },
-    { href: '/admin/contributions', label: 'Contributions' },
-    { href: '/admin/evaluation-grids', label: 'Grids' },
-    { href: '/admin/evaluation-runs', label: 'Runs' },
-    { href: '/admin/meetings', label: 'Meetings' },
-  ];
-
   return (
     <ToastProvider>
-    <ConfirmDialogProvider>
-    <div className="min-h-screen">
-      {/* Header avec navigation */}
-      <header className="rounded-md bg-white/5 shadow-md backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex h-14 items-center justify-between sm:h-16">
-            {/* Logo + Title */}
-            <div className="flex items-center gap-4 sm:gap-6">
-              <h1 className="text-base font-semibold text-white sm:text-lg">Admin Dashboard</h1>
-            </div>
+      <ConfirmDialogProvider>
+        <div className="min-h-screen">
 
-            {/* Desktop Navigation */}
-            <nav className="hidden items-center gap-1 md:flex">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors lg:px-4 lg:py-2 ${
-                      isActive
-                        ? 'bg-brandCP/20 text-brandCP'
-                        : 'text-white/70 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
+          {/* ── Nav ── */}
+          {!isChallengeDetail && (
+            <header className="sticky top-0 z-40 border-b border-white/[0.07] backdrop-blur-md">
+              <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 sm:px-6">
 
-            {/* Mobile menu button */}
-            <button
-              className="rounded-md p-2 text-white/70 hover:bg-white/5 hover:text-white md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              <span className="sr-only">Toggle menu</span>
-            </button>
-          </div>
+                {/* Admin pill */}
+                <span className="shrink-0 rounded-full border border-brandCP/25 bg-brandCP/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-brandCP">
+                  Admin
+                </span>
 
-          {/* Mobile Navigation */}
-          {mobileMenuOpen && (
-            <nav className="border-t border-white/10 pb-3 pt-2 md:hidden">
-              <div className="flex flex-wrap gap-1">
-                {navItems.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-brandCP/20 text-brandCP'
-                          : 'text-white/70 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
+                {/* Nav links — scrollable on mobile */}
+                <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
+                  {NAV_ITEMS.map(item => {
+                    const active = isActive(item);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`group relative shrink-0 px-3 py-3 text-sm font-medium transition-all duration-200 focus-visible:outline-none ${
+                          active ? 'text-white' : 'text-white/40 hover:text-white/70'
+                        }`}
+                      >
+                        {item.label}
+                        <span className={`absolute bottom-0 left-0 right-0 h-[2px] origin-left rounded-full bg-brandCP transition-transform duration-200 ${
+                          active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-50'
+                        }`} />
+                      </Link>
+                    );
+                  })}
+                </nav>
+
+                {/* Logout */}
+                <button
+                  onClick={handleLogout}
+                  className="shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white/30 transition-colors hover:bg-white/[0.05] hover:text-white/60"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Logout
+                </button>
               </div>
-            </nav>
+            </header>
           )}
-        </div>
-      </header>
 
-      {/* Main content */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-        {children}
-      </main>
-    </div>
-    </ConfirmDialogProvider>
+          {/* ── Content ── */}
+          <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+            {children}
+          </main>
+
+        </div>
+      </ConfirmDialogProvider>
     </ToastProvider>
   );
 }

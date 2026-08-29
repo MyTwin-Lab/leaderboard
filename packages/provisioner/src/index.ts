@@ -1,17 +1,15 @@
 // packages/provisioner/src/index.ts
 
-import type { 
-  ProvisionResult, 
-  ChallengeProvisionContext, 
-  TaskProvisionContext,
-  WorkspaceType 
+import type {
+  ProvisionResult,
+  ChallengeProvisionContext,
+  WorkspaceType
 } from './types.js';
 import { ProvisionerRegistry } from './registry.js';
 import { GitHubBranchProvider } from './providers/github-branch.provider.js';
 import {
   generateChallengeBranchName,
-  generateTaskBranchName,
-  generateUserTaskBranchName,
+  generateContributorBranchName,
   mapRepoTypeToWorkspaceType
 } from './utils.js';
 import { ProviderNotFoundError } from './errors.js';
@@ -79,52 +77,37 @@ export async function provisionChallengeWorkspace(
 }
 
 /**
- * Provisionne un workspace pour une task
- * Crée une branche dédiée à la task, basée sur la branche du challenge parent
+ * Provisionne le workspace personnel d'un contributeur sur un challenge code :
+ * une branche `contrib/<index>-<username>` basée sur la branche du challenge
+ * (ou main), protégée ensuite pour ce seul contributeur par l'appelant.
  */
-export async function provisionTaskWorkspace(
-  context: TaskProvisionContext
-): Promise<ProvisionResult> {
+export async function provisionContributorWorkspace(context: {
+  challengeIndex: number;
+  username: string;
+  repoExternalId: string;
+  repoType: string;
+  challengeBranchRef?: string;
+}): Promise<ProvisionResult> {
   initializeProviders();
-  
-  const { challengeIndex, taskTitle, repoExternalId, repoType, challengeBranchRef } = context;
-  
-  // Déterminer le type de workspace
-  const workspaceType = mapRepoTypeToWorkspaceType(repoType);
-  
-  // Vérifier si un provider existe
+
+  const workspaceType = mapRepoTypeToWorkspaceType(context.repoType);
   if (!ProvisionerRegistry.hasProvider(workspaceType)) {
-    console.warn(`[Provisioner] No provider for workspace type: ${workspaceType}`);
     return {
-      provider: 'none',
-      workspaceType,
-      ref: '',
-      url: '',
+      provider: 'none', workspaceType, ref: '', url: '',
       status: 'failed',
       error: `No provider available for workspace type: ${workspaceType}`,
     };
   }
-  
-  // Récupérer le provider
+
   const provider = ProvisionerRegistry.getProvider(workspaceType);
-  
-  // Générer le nom de branche (par utilisateur pour les tâches concurrentes)
-  const branchName = context.userIdentifier
-    ? generateUserTaskBranchName(challengeIndex, taskTitle, context.userIdentifier)
-    : generateTaskBranchName(challengeIndex, taskTitle);
-  
-  // Déterminer la branche de base (branche du challenge ou main)
-  let baseRef = 'main';
-  if (challengeBranchRef) {
-    // Extraire le nom de branche du ref complet
-    baseRef = challengeBranchRef.replace('refs/heads/', '');
-  }
-  
-  // Provisionner
+  const baseRef = context.challengeBranchRef
+    ? context.challengeBranchRef.replace('refs/heads/', '')
+    : 'main';
+
   return provider.provision({
     workspaceType,
-    parentRef: repoExternalId,
-    name: branchName,
+    parentRef: context.repoExternalId,
+    name: generateContributorBranchName(context.challengeIndex, context.username),
     baseRef,
   });
 }

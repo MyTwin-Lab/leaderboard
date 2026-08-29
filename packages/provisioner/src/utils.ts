@@ -30,26 +30,17 @@ export function generateChallengeBranchName(index: number, title: string): strin
 }
 
 /**
- * Génère le nom de branche pour une task
- * Format: task/{challenge-index}-{task-slug}
- * Exemple: task/007-setup-environment
+ * Génère le nom de branche pour une workspace personnelle de contributeur
+ * Format: contrib/{challenge-index}-{username-slug}
+ * Exemple: contrib/015-alice-dupont
  */
-export function generateTaskBranchName(challengeIndex: number, taskTitle: string): string {
-  const paddedIndex = String(challengeIndex).padStart(3, '0');
-  const slug = slugify(taskTitle);
-  return `task/${paddedIndex}-${slug}`;
-}
-
-/**
- * Génère le nom de branche pour une task concurrente (par utilisateur)
- * Format: task/{challenge-index}-{task-slug}-{user-slug}
- * Exemple: task/007-setup-environment-john-doe
- */
-export function generateUserTaskBranchName(challengeIndex: number, taskTitle: string, userIdentifier: string): string {
-  const paddedIndex = String(challengeIndex).padStart(3, '0');
-  const titleSlug = slugify(taskTitle);
-  const userSlug = slugify(userIdentifier);
-  return `task/${paddedIndex}-${titleSlug}-${userSlug}`;
+export function generateContributorBranchName(challengeIndex: number, username: string): string {
+  const slug = username
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `contrib/${String(challengeIndex).padStart(3, "0")}-${slug}`;
 }
 
 /**
@@ -62,6 +53,6 @@ export function mapRepoTypeToWorkspaceType(repoType: string): string {
     'huggingface': 'hf_space',
     'figma': 'figma_project',
   };
-  
+
   return mapping[repoType] || repoType;
 }

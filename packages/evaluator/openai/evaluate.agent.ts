@@ -3,10 +3,7 @@ import { Contribution, Evaluation, ToMergeContribution, EvaluateContext } from "
 import { EvaluationGridTemplate, DetailedEvaluationGridTemplate } from "../grids/index.js";
 import fs from "fs/promises";
 import path from "path";
-import { config } from "../../config/index.js";
-
-const client = new OpenAI({ apiKey: config.openai.apiKey });
-const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+import { getClient } from "./client.js";
 
 // Helper pour vérifier si la réponse contient des tool calls
 function hasToolCalls(response: OpenAI.Responses.Response): boolean {
@@ -63,6 +60,7 @@ export async function runEvaluateAgent(
   contribution: Contribution | ToMergeContribution, 
   context: EvaluateContext
 ): Promise<Evaluation> {
+  const client = await getClient();
   const { snapshot, grid } = context;
   const workspace = snapshot.workspacePath || "";
 
@@ -141,7 +139,7 @@ export async function runEvaluateAgent(
   `;
 
   let response = await client.responses.create({
-    model: OPENAI_MODEL,
+    model: "gpt-5.6-luna",
     tools,
     tool_choice: "auto",
     input: prompt,
@@ -191,7 +189,7 @@ export async function runEvaluateAgent(
 
     // Continue la conversation avec les résultats des tool calls
     response = await client.responses.create({
-      model: OPENAI_MODEL,
+      model: "gpt-5-nano",
       tools,
       tool_choice: "auto",
       previous_response_id: response.id,
@@ -201,10 +199,8 @@ export async function runEvaluateAgent(
 
   const text = response.output_text;
 
-  // Nettoyer les caractères de contrôle invalides et les blocs markdown
+  // Nettoyer les caractères de contrôle invalides
   const cleanedText = text
-    .replace(/^```(?:json)?\s*/i, '') // Supprimer l'ouverture du bloc markdown
-    .replace(/\s*```$/, '')           // Supprimer la fermeture du bloc markdown
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Supprimer les caractères de contrôle
     .replace(/\n/g, ' ') // Remplacer les vrais retours à la ligne par des espaces
     .trim();

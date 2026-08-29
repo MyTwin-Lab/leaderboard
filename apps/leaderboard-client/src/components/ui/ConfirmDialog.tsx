@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useCallback, useContext, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from './Button';
 
@@ -23,6 +24,12 @@ interface PendingConfirm extends ConfirmOptions {
 
 export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<PendingConfirm | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Portal to document.body: a `fixed` dialog rendered inside a subtree with
+  // any transform (e.g. an `animate-fade-up` tab panel) gets confined to that
+  // ancestor's box instead of the viewport — this escapes it.
+  useEffect(() => { setMounted(true); }, []);
 
   const confirm = useCallback((options: ConfirmOptions) => {
     return new Promise<boolean>((resolve) => {
@@ -38,9 +45,9 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   return (
     <ConfirmContext.Provider value={{ confirm }}>
       {children}
-      {pending && (
+      {pending && mounted && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="w-full max-w-sm rounded-xl border border-white/10 bg-[#1a1a2e] shadow-2xl p-6 space-y-4">
+          <div className="w-full max-w-sm rounded-xl border border-white/10 bg-background shadow-2xl p-6 space-y-4">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500/10">
                 <AlertTriangle className="h-4 w-4 text-red-400" />
@@ -64,7 +71,8 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </ConfirmContext.Provider>
   );

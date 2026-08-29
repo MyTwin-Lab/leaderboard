@@ -3,7 +3,38 @@
     "allow": [
       "Bash(find:*)",
       "Bash(ls:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(./node_modules/.bin/drizzle-kit push:*)",
+      "Bash(./node_modules/.bin/drizzle-kit --help 2>&1 | head -20)",
+      "Bash(./node_modules/.bin/drizzle-kit push:pg 2>&1)",
+      "Bash(./node_modules/.bin/drizzle-kit --version 2>&1)",
+      "Bash(node_modules/.bin/drizzle-kit --version 2>&1; ls node_modules/drizzle-kit/package.json 2>/dev/null && grep '\"version\"' node_modules/drizzle-kit/package.json)",
+      "Bash(psql:*)",
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(bash \"C:/Users/alixc/.claude/plugins/cache/claude-plugins-official/superpowers/6.1.1/skills/subagent-driven-development/scripts/task-brief\" \"C:/Users/alixc/Desktop/LEADER/leaderboard_new/leaderboard/docs/superpowers/plans/2026-07-10-theme-switcher.md\" 1)",
+      "Bash(cd:*)",
+      "Bash(node:*)",
+      "Bash(cat:*)",
+      "Bash(\"/c/Program Files/PostgreSQL/18/bin/psql.exe\" \"postgresql://lead_user:jesaispas@localhost:5432/leaderboard_db\" -f \"C:/Users/alixc/Desktop/LEADER/leaderboard_new/leaderboard/drizzle/0014_kaggle_connection.sql\")",
+      "Bash(npm show:*)",
+      "Bash(npm audit:*)",
+      "Bash(npx vitest:*)",
+      "WebFetch(domain:mytwinlab.io)",
+      "Bash(npx tsx:*)",
+      "Bash(echo \"--- TSC EXIT: $? ---\")",
+      "Bash(npx eslint *)",
+      "Bash(echo \"--- EXIT: $? ---\")",
+      "PowerShell(npx tsc --noEmit -p apps/leaderboard-client/tsconfig.json 2>&1 | Select-Object -First 30)",
+      "PowerShell(npx tsc --noEmit -p apps/leaderboard-client/tsconfig.json 2>&1 | Select-Object -First 40)",
+      "PowerShell(npx tsc --noEmit -p packages/database-service/tsconfig.json 2>&1 | Select-Object -First 30)",
+      "PowerShell(npx vitest run --root apps/leaderboard-client 2>&1 | Select-Object -Last 30)",
+      "Bash(cd *)",
+      "Bash(cd E:\\\\OneDrive\\\\Bureau\\\\PROJETS\\\\Leaderboard\\\\leaderboard\\\\apps\\\\leaderboard-client *)"
     ]
-  }
+  },
+  "spinnerTipsEnabled": true
 }

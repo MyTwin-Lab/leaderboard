@@ -1,10 +1,13 @@
 // domain/schemas.ts
 import { z } from "zod";
+import { mlRewardRulesSchema } from "./mlRewardRules.js";
+import { codeRewardRulesSchema } from "./codeRewardRules.js";
 
 export const projectSchema = z.object({
   uuid: z.string().uuid(),
   title: z.string().min(1),
   description: z.string().optional(),
+  manager_id: z.string().uuid().nullable().optional(),
   created_at: z.coerce.date(),
 });
 
@@ -16,14 +19,21 @@ export const repoSchema = z.object({
   project_id: z.string().uuid(),
 });
 
+export const challengeRepoRoleSchema = z.enum(['dataset', 'model', 'model_code', 'api']);
+
 export const challengeRepoSchema = z.object({
   challenge_id: z.string().uuid(),
   repo_id: z.string().uuid(),
+  role: challengeRepoRoleSchema.optional(),
 });
 
 export const challengeTeamSchema = z.object({
   challenge_id: z.string().uuid(),
   user_id: z.string().uuid(),
+  workspace_provider: z.enum(['github', 'external']).optional(),
+  workspace_ref: z.string().max(200).optional(),
+  workspace_url: z.string().optional(),
+  workspace_status: z.enum(['pending', 'ready', 'failed']).optional(),
 });
 
 export const challengeSchema = z.object({
@@ -31,13 +41,42 @@ export const challengeSchema = z.object({
   index: z.number().int().optional(),
   title: z.string(),
   status: z.string(),
-  start_date: z.coerce.date(),
-  end_date: z.coerce.date(),
+  type: z.string().default('code'),
+  start_date: z.coerce.date().nullish(),
+  end_date: z.coerce.date().nullish(),
   description: z.string().optional(),
   roadmap: z.string().optional(),
   contribution_points_reward: z.number().int().nonnegative(),
-  completion: z.number().int().nonnegative().default(0),
+  completion: z.number().min(0).max(1).default(0),
   project_id: z.string().uuid(),
+  reward_rules: z.union([mlRewardRulesSchema, codeRewardRulesSchema]).nullish(),
+  workspace_mode: z.enum(['provided_repo', 'own_repo']).nullish(),
+  source_challenge_id: z.string().uuid().nullish(),
+  cp_per_validation: z.number().int().nonnegative().nullish(),
+  required_validations: z.number().int().positive().nullish(),
+  compute_enabled: z.boolean().default(false),
+});
+
+export const challengeSignalSchema = z.object({
+  uuid: z.string().uuid(),
+  challenge_id: z.string().uuid(),
+  label: z.string().min(1).max(120),
+  description: z.string().optional(),
+  reward_cp: z.number().int().nonnegative(),
+  icon: z.string().max(32).nullish(),
+  position: z.number().int().nonnegative().default(0),
+  created_at: z.coerce.date(),
+});
+
+export const challengeSlackConfigSchema = z.object({
+  challenge_id: z.string().uuid(),
+  channel_id: z.string().min(1).max(32),
+  channel_name: z.string().max(120).nullish(),
+  last_ts: z.string().max(32).nullish(),
+  last_run_at: z.coerce.date().nullish(),
+  last_error: z.string().nullish(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
 });
 
 export const contributionSchema = z.object({
@@ -51,17 +90,129 @@ export const contributionSchema = z.object({
   user_id: z.string().uuid(),
   challenge_id: z.string().uuid(),
   task_id: z.string().uuid().optional(),
+  artifact_url: z.string().max(500).optional(),
+  live_endpoint_url: z.string().max(500).optional(),
+  evaluation_status: z
+    .enum(['pending', 'running', 'done', 'failed', 'skipped_reuse'])
+    .optional(),
   submitted_at: z.coerce.date(),
+});
+
+export const rewardRuleKeySchema = z.enum([
+  'dataset',
+  'model_metric',
+  'model_code',
+  'beat_best',
+  'api_packaging',
+  'reuse_dataset',
+  'reuse_model',
+  'slack_signal',
+  'validation',
+  'code_fixed',
+  'code_quality',
+]);
+
+export const rewardEntrySchema = z.object({
+  uuid: z.string().uuid(),
+  challenge_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  contribution_id: z.string().uuid().optional(),
+  rule_key: rewardRuleKeySchema,
+  points: z.number().int(),
+  source_user_id: z.string().uuid().optional(),
+  meta: z.record(z.string(), z.any()).optional(),
+  created_at: z.coerce.date(),
+});
+
+export const validationTargetSchema = z.object({
+  uuid: z.string().uuid(),
+  validation_challenge_id: z.string().uuid(),
+  contribution_id: z.string().uuid(),
+  position: z.number().int().nonnegative().default(0),
+  outcome: z.enum(['pending', 'works', 'broken']).default('pending'),
+  resolved_at: z.coerce.date().nullish(),
+  created_at: z.coerce.date(),
+});
+
+export const validationReferenceCaseSchema = z.object({
+  uuid: z.string().uuid(),
+  validation_challenge_id: z.string().uuid(),
+  author_user_id: z.string().uuid().nullable(),
+  input_bytes: z.instanceof(Buffer),
+  input_filename: z.string().min(1),
+  input_content_type: z.string().min(1),
+  expected_output_bytes: z.instanceof(Buffer),
+  expected_output_filename: z.string().nullable(),
+  expected_output_content_type: z.string().min(1),
+  created_at: z.coerce.date(),
+});
+
+export const validationCaseClaimSchema = z.object({
+  uuid: z.string().uuid(),
+  reference_case_id: z.string().uuid(),
+  contribution_id: z.string().uuid(),
+  validator_user_id: z.string().uuid(),
+  response_bytes: z.instanceof(Buffer),
+  response_content_type: z.string().min(1),
+  response_status: z.number().int(),
+  observation: z.string().nullable(),
+  observed_at: z.coerce.date().nullable(),
+  revealed_at: z.coerce.date().nullable(),
+  created_at: z.coerce.date(),
+});
+
+export const validationAttemptSchema = z.object({
+  uuid: z.string().uuid(),
+  validation_challenge_id: z.string().uuid(),
+  contribution_id: z.string().uuid(),
+  validator_user_id: z.string().uuid(),
+  verdict: z.enum(['works', 'broken']),
+  description: z.string().nullable(),
+  created_at: z.coerce.date(),
+  file_bytes: z.instanceof(Buffer).nullable(),
+  file_filename: z.string().nullable(),
+  file_content_type: z.string().nullable(),
+  response_bytes: z.instanceof(Buffer).nullable(),
+  response_content_type: z.string().nullable(),
+  response_status: z.number().int().nullable(),
+  purged_at: z.coerce.date().nullable(),
+  reference_case_claim_id: z.string().uuid().nullable(),
+});
+
+export const computeRequestSchema = z.object({
+  uuid: z.string().uuid(),
+  challenge_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  status: z.enum(['pending', 'rejected', 'approved', 'provisioning', 'ready', 'expired', 'failed']),
+  requested_at: z.coerce.date(),
+  decided_at: z.coerce.date().nullable(),
+  decided_by: z.string().uuid().nullable(),
+  approved_at: z.coerce.date().nullable(),
+  expires_at: z.coerce.date().nullable(),
+  provisioning_started_at: z.coerce.date().nullable(),
+  ready_at: z.coerce.date().nullable(),
+  expired_at: z.coerce.date().nullable(),
+  expire_reason: z.enum(['timeout', 'challenge_closed', 'challenge_deleted']).nullable(),
+  failed_at: z.coerce.date().nullable(),
+  error_message: z.string().nullable(),
+  provider_ref: z.string().nullable(),
+  provider_parent_ref: z.string().nullable(),
+  jupyter_base_url: z.string().nullable(),
+  access_token_enc: z.string().nullable(),
+  access_token_iv: z.string().nullable(),
+  access_token_revealed_at: z.coerce.date().nullable(),
+  updated_at: z.coerce.date().nullable(),
 });
 
 export const userSchema = z.object({
   uuid: z.string().uuid(),
   role: z.string(),
-  full_name: z.string(),
-  github_username: z.string().optional(),
+  full_name: z.string().min(1).max(255),
+  github_username: z.string().max(39).optional(),
   email: z.string().email().optional(),
   google_user_id: z.string().optional(),
-  bio: z.string().optional(),
+  bio: z.string().max(2000).optional(),
+  avatar_url: z.string().max(700_000).nullable().optional(),
   created_at: z.coerce.date(),
 });
 
@@ -76,19 +227,12 @@ export const refreshTokenSchema = z.object({
 export const taskSchema = z.object({
   uuid: z.string().uuid(),
   challenge_id: z.string().uuid(),
-  repo_id: z.string().uuid().optional(),
-  parent_task_id: z.string().uuid().optional(),
+  user_id: z.string().uuid().nullish(),
+  parent_task_id: z.string().uuid().nullable().optional(),
   title: z.string().min(1),
   description: z.string().optional(),
-  type: z.enum(["solo", "concurrent"]),
-  status: z.enum(["todo", "done"]),
+  status: z.enum(["todo", "in_progress", "done"]),
   created_at: z.coerce.date(),
-});
-
-export const taskAssigneeSchema = z.object({
-  task_id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  assigned_at: z.coerce.date(),
 });
 
 // --- EVALUATION RUNS ---
@@ -267,3 +411,15 @@ export const onboardingProgressSchema = z.object({
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
 });
+
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+export const appSettingsSchema = z.object({
+  theme_key: z.string().max(64),
+  primary_color: z.string().regex(HEX_COLOR).nullable().optional(),
+  background_color: z.string().regex(HEX_COLOR).nullable().optional(),
+  theme_mode: z.enum(["dark", "light"]),
+  updated_at: z.coerce.date().optional(),
+});
+
+export type AppSettingsInput = z.infer<typeof appSettingsSchema>;

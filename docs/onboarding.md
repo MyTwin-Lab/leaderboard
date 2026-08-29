@@ -17,29 +17,30 @@ When a new contributor joins, they don't immediately have full context on how ch
 
 ## How it works
 
-Onboarding progress is tracked per user in the `onboarding_progress` table. Each record stores which missions the user has completed.
+Onboarding progress is tracked per user in a single `onboarding_progress` row — one boolean per quest, flipped to `true` as the contributor completes each step.
 
-The app reads this progress at:
-- `GET /api/onboarding` — returns the user's current onboarding state
-- `POST /api/onboarding` — marks a mission as completed
+The app reads and writes this progress at:
+- `GET /api/onboarding` — returns the authenticated user's onboarding state
+- `POST /api/onboarding` — marks a quest as completed
+- `GET /api/onboarding/all` — admin-only; returns every contributor's progress in one list, for the "Onboarding" tab in `/contributors/me`
 
-Progress is shown in the contributor's profile page (`/contributors/me`).
+Progress is shown in the contributor's own profile page (`/contributors/me`) via the onboarding drawer. An admin can hide this drawer instance-wide from the Modules tab (see [`admin-settings.md`](./admin-settings.md)) — tracking still happens in the background even when the drawer is hidden.
 
 ---
 
-## Missions
+## Quests
 
-The onboarding flow consists of sequential missions. Each mission is completed by taking a real action in the app:
+The onboarding flow is five quests. Each is completed by taking a real action in the app, and each maps to one boolean column on `onboarding_progress`:
 
-| Mission | What the contributor does |
-|---------|---------------------------|
-| **Join a challenge** | Find an active challenge and join the team |
-| **Pick a task** | Select an available task from a challenge |
-| **Work on a task** | Use the task workspace to do the work |
-| **Participate in evaluation** | Go through the evaluation process for a contribution |
-| **Get your first reward** | Receive CP from an evaluated contribution |
+| Quest | Column | What the contributor does |
+|-------|--------|---------------------------|
+| Explore | `clicked_challenge` | Open a challenge for the first time |
+| Assign | `assigned_task` | Get assigned to a task |
+| Evaluate | `evaluated_contribution` | Have a contribution go through evaluation |
+| Validate | `validated_task` | Have a task marked complete |
+| Join | `joined_meeting` | Join a sync meeting |
 
-Missions unlock progressively — completing one unlocks the next.
+When all five are done, `completed_at` is set and the onboarding drawer stops appearing for that user.
 
 ---
 
@@ -47,11 +48,14 @@ Missions unlock progressively — completing one unlocks the next.
 
 ```
 users
-  └── onboarding_progress
+  └── onboarding_progress (one row per user)
         ├── user_id
-        ├── mission (string identifier)
-        ├── completed_at
-        └── metadata (optional JSON)
+        ├── clicked_challenge: boolean
+        ├── assigned_task: boolean
+        ├── evaluated_contribution: boolean
+        ├── validated_task: boolean
+        ├── joined_meeting: boolean
+        └── completed_at: timestamp | null
 ```
 
 **Key files:**
@@ -59,3 +63,4 @@ users
 - `apps/leaderboard-client/src/lib/onboarding-track.ts`
 - `apps/leaderboard-client/src/lib/server/onboarding.ts`
 - `apps/leaderboard-client/src/app/api/onboarding/route.ts`
+- `apps/leaderboard-client/src/app/api/onboarding/all/route.ts`

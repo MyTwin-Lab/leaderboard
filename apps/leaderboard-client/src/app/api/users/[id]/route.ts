@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserRepository } from '../../../../../../../packages/database-service/repositories';
+import { getSessionUser } from '@/lib/auth';
 import { z } from 'zod';
 
 const userRepo = new UserRepository();
@@ -23,11 +24,18 @@ export async function GET(
   }
 }
 
+// PATCH — admin only. No server-side check existed here before challenge-014;
+// fixed now because granting `medical_pro` (the trust boundary this whole
+// feature relies on) goes through this exact route.
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (session.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
     const { id } = await params;
     const body = await request.json();
     const validated = updateUserSchema.parse(body);
@@ -42,11 +50,16 @@ export async function PATCH(
   }
 }
 
+// DELETE — admin only, same rationale as PATCH above.
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (session.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
     const { id } = await params;
     await userRepo.delete(id);
     return NextResponse.json({ success: true });

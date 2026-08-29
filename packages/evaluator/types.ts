@@ -26,7 +26,7 @@ export interface ToMergeContribution {
  */
 export interface CriterionScore {
     criterion: string;
-    score: number;      // 0–100
+    score: number;      // 0–9
     weight: number;
     comment?: string;
 }
@@ -69,8 +69,7 @@ export interface TaskInfo {
   uuid: string;
   title: string;
   description?: string;
-  type: "solo" | "concurrent";
-  status: "todo" | "done";
+  status: "todo" | "in_progress" | "done";
 }
 
 /**

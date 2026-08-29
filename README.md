@@ -42,6 +42,11 @@ Create a root `.env` file:
 DATABASE_URL=postgresql://leaderboard_user:leaderboard_password@localhost:5432/mytwin_leaderboard
 JWT_SECRET=replace-with-a-32+char-secret-at-least
 
+# Required — Google OAuth (used for login, see docs/google-setup.md)
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/api/google-auth/callback
+
 # Optional (only needed for connectors / evaluator / API usage)
 OPENAI_API_KEY=
 GITHUB_TOKEN=
@@ -50,7 +55,13 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_REFRESH_TOKEN=
 GOOGLE_REDIRECT_URI=
 GOOGLE_FOLDER_ID=
+
+# Optional — only needed for ML challenges (Kaggle), see docs/admin-settings.md
+KAGGLE_USERNAME=
+KAGGLE_KEY=
 ```
+
+See [`docs/getting-started.md`](./docs/getting-started.md) for the full list of optional env vars (GitHub OAuth connection, sync meetings, observability).
 
 Then copy it for the Next.js app:
 
@@ -171,6 +182,55 @@ server {
   }
 }
 ```
+
+## GitHub OAuth Connection (admin)
+
+Admins can connect a GitHub organization account directly from the UI — replacing the static `GITHUB_TOKEN` in `.env` with an encrypted token stored in the database. This enables repository operations (branches, commits, PRs) without touching server config.
+
+### Setup
+
+**1. Register a GitHub OAuth App**
+
+Go to [github.com/settings/developers](https://github.com/settings/developers) → **OAuth Apps** → **New OAuth App**.
+
+| Field | Value |
+|-------|-------|
+| Homepage URL | `http://localhost:3000` (or your production URL) |
+| Authorization callback URL | `http://localhost:3000/api/github-oauth/callback` |
+
+Copy the **Client ID** and generate a **Client Secret**.
+
+**2. Generate an encryption key**
+
+```bash
+openssl rand -hex 32
+```
+
+**3. Add to `.env`**
+
+```env
+GITHUB_CLIENT_ID=Iv1.xxxxxxxxxxxxxxxx
+GITHUB_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/api/github-oauth/callback
+GITHUB_TOKEN_ENCRYPTION_KEY=<output of openssl rand -hex 32>
+```
+
+Copy to `apps/leaderboard-client/.env.local` as well.
+
+**4. Connect via the UI**
+
+Log in as an admin → `/contributors/me` → **Appearance** tab → **Connect GitHub Account**.
+
+GitHub will ask you to authorize the app. The account must be an **owner or admin of a GitHub organization** — personal accounts without an org are rejected with a clear error message.
+
+### How it works
+
+- The OAuth token is encrypted with **AES-256-GCM** before being stored in the `app_settings` table. The encryption key never enters the database.
+- All connectors (`ConnectorRegistry`) automatically use the database token when available, falling back to `GITHUB_TOKEN` in `.env` if not connected.
+- Admins can disconnect at any time from the same Appearance tab; connectors immediately revert to the `.env` fallback.
+- The token is never returned raw in any API response.
+
+Kaggle accounts (used for ML challenges) can be connected the same way, from the same Appearance tab. See [`docs/admin-settings.md`](./docs/admin-settings.md) for both, and [`docs/github-setup.md`](./docs/github-setup.md) for registering the GitHub OAuth App itself.
 
 ## Troubleshooting
 

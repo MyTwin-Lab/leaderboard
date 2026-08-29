@@ -57,9 +57,15 @@ export interface ProvisionResult {
   
   /** Métadonnées additionnelles */
   meta?: Record<string, unknown>;
-  
+
   /** Message d'erreur si status = 'failed' */
   error?: string;
+
+  /**
+   * Secret nécessaire pour accéder au workspace (ex: jeton d'instance).
+   * Ne jamais logger ni exposer à un rôle non autorisé à le consulter.
+   */
+  secret?: string;
 }
 
 /**
@@ -101,18 +107,4 @@ export interface ChallengeProvisionContext {
   challengeTitle: string;
   repoExternalId: string;
   repoType: string;
-}
-
-/**
- * Configuration pour le provisioning d'une task
- */
-export interface TaskProvisionContext {
-  challengeIndex: number;
-  taskTitle: string;
-  repoExternalId: string;
-  repoType: string;
-  /** Branche du challenge parent (base pour la branche task) */
-  challengeBranchRef?: string;
-  /** Identifiant utilisateur pour les tâches concurrentes (génère une branche par utilisateur) */
-  userIdentifier?: string;
 }

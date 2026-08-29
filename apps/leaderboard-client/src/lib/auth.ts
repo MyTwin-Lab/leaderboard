@@ -121,6 +121,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     githubUsername: user.github_username ?? '',
     email: user.email ?? '',
     role: user.role,
+    avatarUrl: user.avatar_url ?? undefined,
   } satisfies SessionUser;
 }
 

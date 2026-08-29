@@ -42,8 +42,22 @@ const envSchema = z
     // Kaggle
     KAGGLE_USERNAME: z.string().optional(),
     KAGGLE_KEY: z.string().optional(),
+    // Slack (fallback dev — la connexion normale passe par app_settings)
+    SLACK_BOT_TOKEN: z.string().optional(),
     // Cron Security
     CRON_SECRET: z.string().optional(),
+    // GitHub OAuth App
+    GITHUB_CLIENT_ID: z.string().optional(),
+    GITHUB_CLIENT_SECRET: z.string().optional(),
+    GITHUB_OAUTH_REDIRECT_URI: z.string().optional(),
+    GITHUB_TOKEN_ENCRYPTION_KEY: z.string().optional(),
+    // Validation challenges — local dev only, never set in production. Lets
+    // the SSRF guard accept localhost/private endpoints so a test model API
+    // running on the same machine as the app can be validated.
+    VALIDATION_ALLOW_PRIVATE_ENDPOINTS: z
+      .string()
+      .optional()
+      .transform((v) => v === "true"),
   })
   .strict();
 
@@ -72,7 +86,13 @@ const envInput = {
   GOOGLE_OAUTH_REDIRECT_URI: process.env.GOOGLE_OAUTH_REDIRECT_URI,
   KAGGLE_USERNAME: process.env.KAGGLE_USERNAME,
   KAGGLE_KEY: process.env.KAGGLE_KEY,
+  SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
   CRON_SECRET: process.env.CRON_SECRET,
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
+  GITHUB_OAUTH_REDIRECT_URI: process.env.GITHUB_OAUTH_REDIRECT_URI,
+  GITHUB_TOKEN_ENCRYPTION_KEY: process.env.GITHUB_TOKEN_ENCRYPTION_KEY,
+  VALIDATION_ALLOW_PRIVATE_ENDPOINTS: process.env.VALIDATION_ALLOW_PRIVATE_ENDPOINTS,
 };
 
 const parsedEnv = envSchema.safeParse(envInput);
@@ -131,8 +151,20 @@ export const config = {
     username: env.KAGGLE_USERNAME,
     apiKey: env.KAGGLE_KEY,
   },
+  slack: {
+    botToken: env.SLACK_BOT_TOKEN,
+  },
   cron: {
     secret: env.CRON_SECRET,
+  },
+  githubOAuth: {
+    clientId: env.GITHUB_CLIENT_ID,
+    clientSecret: env.GITHUB_CLIENT_SECRET,
+    redirectUri: env.GITHUB_OAUTH_REDIRECT_URI,
+    encryptionKey: env.GITHUB_TOKEN_ENCRYPTION_KEY,
+  },
+  validation: {
+    allowPrivateEndpoints: env.VALIDATION_ALLOW_PRIVATE_ENDPOINTS,
   },
 } as const;
 

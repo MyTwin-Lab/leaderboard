@@ -1,6 +1,6 @@
 # evaluator
 
-AI scoring engine for contributor work. Takes a contribution (metadata + code snapshot) and an evaluation grid, and returns per-criterion scores with a global score (0–100).
+AI scoring engine for contributor work. Takes a contribution (metadata + code snapshot) and an evaluation grid, and returns per-criterion scores (0–9 each) with a `globalScore` that is their weighted sum — since the grid's weights sum to ~1, `globalScore` lands on roughly that same 0–9 scale, not 0–100.
 
 Used by `packages/services/task_evaluation` — not called directly from the app.
 
@@ -47,7 +47,7 @@ interface Contribution {
 
 interface Evaluation {
   scores: CriterionScore[];   // per-criterion scores (0–9 each)
-  globalScore: number;         // weighted average (0–100)
+  globalScore: number;         // sum(score × weight); weights sum to ~1, so this is ~0–9, not 0–100
   contribution?: Contribution;
 }
 
@@ -75,7 +75,7 @@ const evaluation = await evaluator.evaluate(isUpdate, contribution, {
   snapshot: preparedSnapshot,
   grid,
 });
-// evaluation.globalScore → 0–100
+// evaluation.globalScore → ~0–9 (weighted sum, weights sum to ~1 — not 0–100)
 // evaluation.scores      → per-criterion breakdown
 ```
 

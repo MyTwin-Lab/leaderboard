@@ -4,8 +4,61 @@ import {
   ConnectorAuthConfig,
   ExternalItem,
   ConnectorType,
-  ExternalItemContent,
+  KaggleModelMetrics,
 } from "../interfaces.js";
+
+/**
+ * Best-effort metric extraction from a Kaggle model version's overview/description field.
+ * Tries JSON.parse first, then falls back to regex.
+ * Never throws — returns {} on any failure.
+ */
+export function parseMetrics(overview: string): KaggleModelMetrics {
+  if (!overview) return {};
+
+  // Attempt 1: the whole field is JSON
+  try {
+    const parsed = JSON.parse(overview);
+    if (typeof parsed === 'object' && parsed !== null) {
+      const result: KaggleModelMetrics = {};
+      for (const key of ['auc', 'f1', 'accuracy'] as const) {
+        const val = parsed[key];
+        if (typeof val === 'number' && isFinite(val)) result[key] = val;
+      }
+      if (Object.keys(result).length > 0) return result;
+    }
+  } catch {
+    // not JSON
+  }
+
+  // Attempt 2: embedded JSON block { ... } inside markdown
+  const jsonMatch = overview.match(/\{[^{}]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (typeof parsed === 'object' && parsed !== null) {
+        const result: KaggleModelMetrics = {};
+        for (const key of ['auc', 'f1', 'accuracy'] as const) {
+          const val = parsed[key];
+          if (typeof val === 'number' && isFinite(val)) result[key] = val;
+        }
+        if (Object.keys(result).length > 0) return result;
+      }
+    } catch {
+      // not a valid JSON block
+    }
+  }
+
+  // Attempt 3: key: value regex patterns (e.g. "auc: 0.92" or `"auc": 0.92`)
+  const result: KaggleModelMetrics = {};
+  for (const key of ['auc', 'f1', 'accuracy'] as const) {
+    const match = overview.match(new RegExp(`["']?${key}["']?\\s*:\\s*([0-9]*\\.?[0-9]+)`, 'i'));
+    if (match) {
+      const val = parseFloat(match[1]);
+      if (isFinite(val)) result[key] = val;
+    }
+  }
+  return result;
+}
 
 export interface KaggleConnectorOptions {
   username: string;
@@ -111,7 +164,7 @@ export class KaggleConnector implements ExternalConnector {
   async testConnection(): Promise<boolean> {
     try {
       if (this.subtype === "kaggle_dataset") {
-        await this.kaggleFetch(`/datasets/metadata/${this.owner}/${this.slug}`);
+        await this.kaggleFetch(`/datasets/view/${this.owner}/${this.slug}`);
       } else {
         await this.kaggleFetch(`/models/${this.owner}/${this.slug}/get`);
       }
@@ -125,6 +178,68 @@ export class KaggleConnector implements ExternalConnector {
     // Nothing to clean up
   }
 
+  // ─── fetchRepoActivity ────────────────────────────────────────────────────
+
+  async fetchRepoActivity(): Promise<import('../interfaces.js').KaggleRepoActivity> {
+    if (this.subtype === 'kaggle_dataset') {
+      return this.fetchDatasetActivity();
+    }
+    return this.fetchModelActivity();
+  }
+
+  private async fetchDatasetActivity(): Promise<import('../interfaces.js').KaggleRepoActivity> {
+    const metadata = await this.kaggleFetch(`/datasets/view/${this.owner}/${this.slug}`);
+
+    return {
+      type: 'kaggle_dataset',
+      datasetMeta: {
+        title: metadata.title || this.slug,
+        description: metadata.description,
+        tags: Array.isArray(metadata.tags) ? metadata.tags.map((t: any) => t.name ?? t) : [],
+        url: `https://www.kaggle.com/datasets/${this.owner}/${this.slug}`,
+        lastUpdated: metadata.lastUpdated,
+      },
+    };
+  }
+
+  private async fetchModelActivity(): Promise<import('../interfaces.js').KaggleRepoActivity> {
+    // The Kaggle API has no working "list instances" / "list versions" endpoints
+    // (both 404 in practice) — `/models/{owner}/{slug}/get` already returns
+    // everything available: the model's own description and each instance's
+    // current overview/usage. There's no exposed version history, so this
+    // reports the model's current state as a single version.
+    let metadata: any;
+    try {
+      metadata = await this.kaggleFetch(`/models/${this.owner}/${this.slug}/get`);
+    } catch {
+      return { type: 'kaggle_model', modelVersions: [] };
+    }
+
+    const instances: any[] = Array.isArray(metadata.instances) ? metadata.instances : [];
+
+    // The metric is written wherever the contributor could put it — the
+    // model's top-level description (the field Kaggle's "New Model" flow
+    // actually exposes) or an instance's overview/usage — so all of it is
+    // searched together.
+    const combinedText = [
+      metadata.description,
+      ...instances.map((inst: any) => [inst.overview, inst.usage].filter(Boolean).join('\n')),
+    ].filter(Boolean).join('\n');
+
+    const version: import('../interfaces.js').KaggleModelVersion = {
+      versionNumber: instances[0]?.versionNumber ?? 0,
+      createdAt: metadata.updateTime ?? metadata.publishTime ?? new Date(0).toISOString(),
+      metrics: parseMetrics(combinedText),
+    };
+
+    return {
+      type: 'kaggle_model',
+      modelVersions: [
+        { ref: `${this.owner}/${this.slug}`, versions: [version] },
+      ],
+    };
+  }
+
   // ─── fetchItems ───────────────────────────────────────────────────────────
 
   async fetchItems(): Promise<ExternalItem[]> {
@@ -136,7 +251,7 @@ export class KaggleConnector implements ExternalConnector {
 
   private async fetchDatasetItem(): Promise<ExternalItem[]> {
     const metadata = await this.kaggleFetch(
-      `/datasets/metadata/${this.owner}/${this.slug}`
+      `/datasets/view/${this.owner}/${this.slug}`
     );
 
     // Find README among dataset files (case-insensitive)
@@ -200,7 +315,20 @@ export class KaggleConnector implements ExternalConnector {
    * Returns the same shape as the GitHub connector so the snapshot service
    * can process Kaggle resources without any changes.
    */
-  async fetchItemContent(itemId: string): Promise<ExternalItemContent> {
+  async fetchItemContent(itemId: string): Promise<{
+    commitSha: string;
+    modifiedFiles: Array<{
+      path: string;
+      status: string;
+      additions: number;
+      deletions: number;
+      changes: number;
+      sha: string;
+      isBinary: boolean;
+      contentEncoding: string;
+      content: string;
+    }>;
+  }> {
     if (this.subtype === "kaggle_dataset") {
       return this.fetchDatasetContent(itemId);
     }
@@ -222,7 +350,7 @@ export class KaggleConnector implements ExternalConnector {
         );
       } catch {
         const metadata = await this.kaggleFetch(
-          `/datasets/metadata/${this.owner}/${this.slug}`
+          `/datasets/view/${this.owner}/${this.slug}`
         );
         content =
           metadata.description ||
@@ -251,63 +379,17 @@ export class KaggleConnector implements ExternalConnector {
   }
 
   private async fetchModelContent(itemId: string) {
-    const TARGET_FILES = new Set([
-      "metrics.json",
-      "train.py",
-      "inference.py",
-      "config.yaml",
-    ]);
-
-    // 1. Get model metadata + first instance info
     const metadata = await this.kaggleFetch(
       `/models/${this.owner}/${this.slug}/get`
     );
+    const content = JSON.stringify(metadata, null, 2);
+    const lineCount = content.split("\n").length;
 
-    const modifiedFiles: any[] = [];
-
-    // Always include full metadata as model_card.json
-    const modelCardContent = JSON.stringify(metadata, null, 2);
-    modifiedFiles.push({
-      path: "model_card.json",
-      status: "added",
-      additions: modelCardContent.split("\n").length,
-      deletions: 0,
-      changes: modelCardContent.split("\n").length,
-      sha: "",
-      isBinary: false,
-      contentEncoding: "utf-8",
-      content: modelCardContent,
-    });
-
-    const instances: any[] = metadata.instances ?? [];
-    const instance = instances[0];
-    if (!instance) {
-      return { commitSha: itemId, modifiedFiles };
-    }
-
-    const { framework, slug: instanceSlug, versionNumber } = instance;
-    const versionBase = `/models/${this.owner}/${this.slug}/${framework}/${instanceSlug}/${versionNumber}`;
-
-    // 2. List files for this instance version
-    let fileNames: string[] = [];
-    try {
-      const filesData = await this.kaggleFetch(`${versionBase}/files`);
-      const files: any[] = filesData.files ?? [];
-      fileNames = files.map((f: any) => f.name).filter(Boolean);
-    } catch {
-      // Files listing unavailable — proceed with model_card.json only
-    }
-
-    // 3. Download target files and notebooks
-    for (const name of fileNames) {
-      if (!TARGET_FILES.has(name) && !name.endsWith(".ipynb")) continue;
-      try {
-        const content = await this.kaggleFetchText(
-          `${versionBase}/download/${name}`
-        );
-        const lineCount = content.split("\n").length;
-        modifiedFiles.push({
-          path: name,
+    return {
+      commitSha: itemId,
+      modifiedFiles: [
+        {
+          path: "model_card.json",
           status: "added",
           additions: lineCount,
           deletions: 0,
@@ -316,12 +398,8 @@ export class KaggleConnector implements ExternalConnector {
           isBinary: false,
           contentEncoding: "utf-8",
           content,
-        });
-      } catch {
-        // File not downloadable, skip silently
-      }
-    }
-
-    return { commitSha: itemId, modifiedFiles };
+        },
+      ],
+    };
   }
 }

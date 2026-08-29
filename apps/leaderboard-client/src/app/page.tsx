@@ -1,29 +1,36 @@
-import { LeaderboardLayout } from "@/components/leaderboard/LeaderboardLayout";
-import { fetchLeaderboard } from "@/lib/server/leaderboard";
+import { fetchHomeOverview } from "@/lib/server/home";
+import { HomeHero } from "@/components/home/HomeHero";
+import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
+import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
 
-export const dynamic = 'force-dynamic';
+// HomeStatsCard ("The Lab, right now") is temporarily hidden from the home
+// page — component kept in place, just not rendered here. HomeHero takes
+// the full width in its place.
 
-type LeaderboardSearchParams = {
-  projectId?: string;
-  q?: string;
-};
+export const dynamic = "force-dynamic";
 
-export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<LeaderboardSearchParams> }) {
-  const resolvedSearchParams = await searchParams;
-
-  const initialProjectId = resolvedSearchParams.projectId ?? "all";
-  const initialSearchTerm = resolvedSearchParams.q ?? "";
-
-  const initialData = await fetchLeaderboard(initialProjectId);
+export default async function HomePage() {
+  // Single aggregated read — see fetchHomeOverview() for why this replaces
+  // separate fetchLeaderboard()/fetchTrendingChallenges() calls (each of
+  // which re-fetched the same projects/challenges/contributions/users).
+  const overview = await fetchHomeOverview();
 
   return (
-    <div className="space-y-6">
-      <LeaderboardLayout
-        initialEntries={initialData.entries}
-        initialProjectId={initialProjectId}
-        initialSearchTerm={initialSearchTerm}
-        projects={initialData.filters.projects}
-      />
+    <div className="space-y-10 sm:space-y-14">
+
+      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      <HomeHero />
+
+      {/* ── Leaderboard + Trending challenges ───────────────────────── */}
+      <div className="grid gap-8 lg:grid-cols-2">
+        <HomeLeaderboardPreview
+          podium={overview.podium}
+          rest={overview.rest}
+          contributorsRanked={overview.contributorsRanked}
+        />
+        <HomeChallengesPreview challenges={overview.trendingChallenges} />
+      </div>
+
     </div>
   );
 }

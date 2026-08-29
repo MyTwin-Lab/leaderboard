@@ -1,26 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/components/ui/FormField';
-import type { User, Challenge } from '../../../../../packages/database-service/domain/entities';
+import type { User, Challenge, Contribution } from '../../../../../packages/database-service/domain/entities';
 
 interface ContributionFormProps {
   users: User[];
   challenges: Challenge[];
+  contribution?: Contribution;
   onSubmit: (contribution: any) => void;
   onCancel: () => void;
 }
 
-export function ContributionForm({ users, challenges, onSubmit, onCancel }: ContributionFormProps) {
+export function ContributionForm({ users, challenges, contribution, onSubmit, onCancel }: ContributionFormProps) {
   const [formData, setFormData] = useState({
-    title: '',
-    type: 'code',
-    description: '',
-    user_id: '',
-    challenge_id: '',
-    reward: 0,
+    title: contribution?.title ?? '',
+    type: contribution?.type ?? 'code',
+    description: contribution?.description ?? '',
+    user_id: contribution?.user_id ?? '',
+    challenge_id: contribution?.challenge_id ?? '',
+    reward: contribution?.reward ?? 0,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Le reward d'une contribution adossée à la ledger est un cache de
+  // SUM(reward_entries.points), resynchronisé par trigger Postgres — l'éditer
+  // à la main serait écrasé à la prochaine écriture ledger.
+  const [hasLedgerEntries, setHasLedgerEntries] = useState(false);
+
+  useEffect(() => {
+    if (!contribution) return;
+    let cancelled = false;
+    fetch(`/api/contributions/${contribution.uuid}/rewards`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.entries?.length > 0) setHasLedgerEntries(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [contribution]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,13 +124,19 @@ export function ContributionForm({ users, challenges, onSubmit, onCancel }: Cont
             onChange={set('reward')}
             className={inputClass}
             placeholder="0"
+            disabled={hasLedgerEntries}
           />
+          {hasLedgerEntries && (
+            <p className="mt-1 text-xs text-white/40">
+              This reward is computed from the reward ledger and cannot be edited manually.
+            </p>
+          )}
         </FormField>
       </FormSection>
 
       <FormFooter
         onCancel={onCancel}
-        submitLabel="Create Contribution"
+        submitLabel={contribution ? 'Update Contribution' : 'Create Contribution'}
         loading={isSubmitting}
       />
     </form>

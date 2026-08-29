@@ -10,14 +10,12 @@
  * Exécution: npx tsx packages/test/test-provisioner.ts
  */
 
-import { 
+import {
   ProvisionerRegistry,
   GitHubBranchProvider,
   provisionChallengeWorkspace,
-  provisionTaskWorkspace,
   slugify,
   generateChallengeBranchName,
-  generateTaskBranchName,
   mapRepoTypeToWorkspaceType,
 } from '../provisioner/src/index.js';
 import type { 
@@ -107,14 +105,6 @@ const FAKE_CHALLENGE = {
   project_id: 'project-uuid-001',
 };
 
-const FAKE_TASK = {
-  uuid: 'task-uuid-001',
-  challenge_id: FAKE_CHALLENGE.uuid,
-  title: 'Setup Development Environment',
-  type: 'solo' as const,
-  status: 'todo' as const,
-};
-
 const FAKE_REPO = {
   uuid: 'repo-uuid-001',
   title: 'leaderboard',
@@ -155,14 +145,6 @@ async function testUtils() {
   console.log(`      Index 7, "Admin Experience Update" → "${challengeBranch}"`);
   console.log(`      ${challengeBranch === expectedChallengeBranch ? '✅' : '❌'} Expected: ${expectedChallengeBranch}`);
   if (challengeBranch !== expectedChallengeBranch) allPassed = false;
-
-  // Test generateTaskBranchName
-  console.log('\n   Testing generateTaskBranchName():');
-  const taskBranch = generateTaskBranchName(7, 'Setup Development Environment');
-  const expectedTaskBranch = 'task/007-setup-development-environment';
-  console.log(`      Challenge 7, "Setup Development Environment" → "${taskBranch}"`);
-  console.log(`      ${taskBranch === expectedTaskBranch ? '✅' : '❌'} Expected: ${expectedTaskBranch}`);
-  if (taskBranch !== expectedTaskBranch) allPassed = false;
 
   // Test mapRepoTypeToWorkspaceType
   console.log('\n   Testing mapRepoTypeToWorkspaceType():');
@@ -258,27 +240,6 @@ async function testMockProvisioning() {
     challengeResult.ref === 'refs/heads/challenge/007-admin-experience-update';
   console.log(`      ${challengeOk ? '✅' : '❌'} Challenge workspace provisioned`);
 
-  // Test: Provision task workspace (based on challenge branch)
-  console.log('\n   Testing provisionTaskWorkspace():');
-  const taskResult = await provisionTaskWorkspace({
-    challengeIndex: FAKE_CHALLENGE.index,
-    taskTitle: FAKE_TASK.title,
-    repoExternalId: FAKE_REPO.external_repo_id,
-    repoType: FAKE_REPO.type,
-    challengeBranchRef: challengeResult.ref,
-  });
-
-  console.log(`      Provider: ${taskResult.provider}`);
-  console.log(`      Ref: ${taskResult.ref}`);
-  console.log(`      URL: ${taskResult.url}`);
-  console.log(`      Status: ${taskResult.status}`);
-  console.log(`      Meta: ${JSON.stringify(taskResult.meta)}`);
-
-  const taskOk = 
-    taskResult.status === 'ready' &&
-    taskResult.ref === 'refs/heads/task/007-setup-development-environment';
-  console.log(`      ${taskOk ? '✅' : '❌'} Task workspace provisioned`);
-
   // Test: Re-provision same challenge (should detect existing)
   console.log('\n   Testing re-provisioning (existing branch):');
   const reProvisionResult = await provisionChallengeWorkspace({
@@ -296,7 +257,7 @@ async function testMockProvisioning() {
   console.log(`      Error message: ${reProvisionResult.error || 'none'}`);
   console.log(`      ${existingOk ? '✅' : '❌'} Existing branch detected correctly`);
 
-  return challengeOk && taskOk && existingOk;
+  return challengeOk && existingOk;
 }
 
 async function testRealGitHubProvisioning() {

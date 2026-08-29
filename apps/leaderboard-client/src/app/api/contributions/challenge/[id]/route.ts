@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ContributionRepository } from '../../../../../../../../packages/database-service/repositories';
+import {
+  ContributionRepository,
+} from '../../../../../../../../packages/database-service/repositories';
 
 const contributionRepo = new ContributionRepository();
 
@@ -10,7 +12,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    // contributions.reward is kept in sync with the reward_entries ledger by
+    // the trg_sync_contribution_reward trigger (drizzle/0018_reward_ledger_sync_trigger.sql)
+    // — no need to recompute it from the ledger here anymore.
     const contributions = await contributionRepo.findByChallenge(id);
+
     return NextResponse.json(contributions);
   } catch (error) {
     console.error('Error fetching contributions:', error);

@@ -58,6 +58,7 @@ export class UserRepository {
     if (validated.email !== undefined) dbData.email = validated.email;
     if (validated.google_user_id !== undefined) dbData.google_user_id = validated.google_user_id;
     if (validated.bio !== undefined) dbData.bio = validated.bio;
+    if (validated.avatar_url !== undefined) dbData.avatar_url = validated.avatar_url;
     const [updated] = await db.update(users)
       .set(dbData)
       .where(eq(users.uuid, uuid))

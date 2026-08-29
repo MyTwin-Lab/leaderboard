@@ -9,7 +9,7 @@ import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 import { useToast } from '@/components/ui/Toast';
 import type { User } from '../../../../../packages/database-service/domain/entities';
 
-const ROLES = ['admin', 'contributor', 'viewer'];
+const ROLES = ['admin', 'contributor', 'viewer', 'medical_pro'];
 
 interface UserListProps {
   users: User[];

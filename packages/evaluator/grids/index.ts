@@ -132,8 +132,8 @@ export class EvaluationGridRegistry {
 
 // Auto-register all grids
 import { evaluationGrid as codeGrid } from './code.grid.js';
-import { modelGrid } from './kaggle_model.grid.js';
-import { datasetGrid } from './kaggle_dataset.grid.js';
+import { modelGrid } from './model.grid.js';
+import { datasetGrid } from './dataset.grid.js';
 
 EvaluationGridRegistry.register(codeGrid);
 EvaluationGridRegistry.register(modelGrid);

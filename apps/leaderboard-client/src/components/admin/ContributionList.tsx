@@ -2,15 +2,19 @@
 
 import { Table } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { Contribution, User, Challenge } from '../../../../../packages/database-service/domain/entities';
 
 interface ContributionListProps {
   contributions: Contribution[];
   users: User[];
   challenges: Challenge[];
+  onEdit: (contribution: Contribution) => void;
+  onDelete: (id: string) => void;
 }
 
-export function ContributionList({ contributions, users, challenges }: ContributionListProps) {
+export function ContributionList({ contributions, users, challenges, onEdit, onDelete }: ContributionListProps) {
   const columns = [
     {
       key: 'title',
@@ -67,6 +71,21 @@ export function ContributionList({ contributions, users, challenges }: Contribut
       header: 'Reward',
       render: (contrib: Contribution) => (
         <div className="text-sm font-medium text-brandCP">{contrib.reward} CP</div>
+      ),
+      width: '90px',
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (contrib: Contribution) => (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => onEdit(contrib)} title="Edit contribution">
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="danger" size="sm" onClick={() => onDelete(contrib.uuid)} title="Delete contribution">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       ),
       width: '90px',
     },

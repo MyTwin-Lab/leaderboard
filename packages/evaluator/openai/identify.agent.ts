@@ -1,10 +1,8 @@
-import { config } from "../../config/index.js";
-import OpenAI from "openai";
 import { IdentifyContext, Contribution } from "../types.js";
-
-const client = new OpenAI({ apiKey: config.openai.apiKey });
+import { getClient } from "./client.js";
 
 export async function runIdentifyAgent(context: IdentifyContext): Promise<Contribution[]> {
+    const client = await getClient();
     const { roadmap, ...otherContext } = context;
     
     const prompt = `

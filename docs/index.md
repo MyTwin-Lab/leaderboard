@@ -26,8 +26,12 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 |------|-------------|
 | [`challenges-and-tasks.md`](./challenges-and-tasks.md) | How challenges and tasks work — the core workflow |
 | [`evaluation.md`](./evaluation.md) | AI evaluation pipeline, scoring grids, rewards |
+| [`ml-rewards.md`](./ml-rewards.md) | Reward rules for ML challenges — live scoring, reuse, and the point ledger |
+| [`validation-challenges.md`](./validation-challenges.md) | Manually testing a submitted ML API live — drop a file, see the output, earn CP |
 | [`sync-meetings.md`](./sync-meetings.md) | Creating meetings in Google Workspace + AI analysis |
+| [`slack-signals.md`](./slack-signals.md) | Slack contribution signals — AI-detected rewards from channel discussions |
 | [`onboarding.md`](./onboarding.md) | New contributor onboarding missions |
+| [`admin-settings.md`](./admin-settings.md) | Instance-wide theme, GitHub/Kaggle/Slack connections, and module toggles |
 
 ## Dev & ops
 

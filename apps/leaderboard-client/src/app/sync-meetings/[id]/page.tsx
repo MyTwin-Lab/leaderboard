@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter, useParams } from 'next/navigation';
+import { fetchJson } from '@/lib/fetchJson';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -129,66 +131,32 @@ export default function SyncMeetingDetailPage() {
   const params = useParams();
   const meetingId = params.id as string;
 
-  const [meeting, setMeeting] = useState<SyncMeeting | null>(null);
-  const [participants, setParticipants] = useState<MeetingParticipant[]>([]);
-  const [analysis, setAnalysis] = useState<MeetingAnalysis | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [analysisLoading, setAnalysisLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AnalysisTab>('summary');
 
-  useEffect(() => {
-    if (meetingId) fetchAll();
-  }, [meetingId]);
+  const meetingQuery = useQuery({
+    queryKey: ['sync-meeting', meetingId],
+    queryFn: async () => (await fetchJson(`/api/sync-meetings/${meetingId}`)).meeting as SyncMeeting,
+    enabled: !!meetingId,
+  });
 
-  const fetchAll = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([fetchMeeting(), fetchParticipants(), fetchAnalysis()]);
-    } catch (error) {
-      console.error('Error fetching meeting data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const participantsQuery = useQuery({
+    queryKey: ['sync-meeting', meetingId, 'participants'],
+    queryFn: async () => (await fetchJson(`/api/sync-meetings/${meetingId}/participants`)).participants as MeetingParticipant[] ?? [],
+    enabled: !!meetingId,
+  });
 
-  const fetchMeeting = async () => {
-    try {
-      const res = await fetch(`/api/sync-meetings/${meetingId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMeeting(data.meeting);
-      }
-    } catch (error) {
-      console.error('Error fetching meeting:', error);
-    }
-  };
+  const analysisQuery = useQuery({
+    queryKey: ['sync-meeting', meetingId, 'analysis'],
+    queryFn: async () => (await fetchJson(`/api/sync-meetings/${meetingId}/analysis`)).analysis as MeetingAnalysis | null,
+    enabled: !!meetingId,
+    retry: false, // analysis may legitimately not exist yet — don't retry a 404
+  });
 
-  const fetchParticipants = async () => {
-    try {
-      const res = await fetch(`/api/sync-meetings/${meetingId}/participants`);
-      if (res.ok) {
-        const data = await res.json();
-        setParticipants(data.participants || []);
-      }
-    } catch (error) {
-      console.error('Error fetching participants:', error);
-    }
-  };
-
-  const fetchAnalysis = async () => {
-    setAnalysisLoading(true);
-    try {
-      const res = await fetch(`/api/sync-meetings/${meetingId}/analysis`);
-      if (res.ok) {
-        const data = await res.json();
-        setAnalysis(data.analysis);
-      }
-    } catch {
-      // Analysis may not exist yet
-    } finally {
-      setAnalysisLoading(false);
-    }
-  };
+  const meeting = meetingQuery.data ?? null;
+  const participants = participantsQuery.data ?? [];
+  const analysis = analysisQuery.data ?? null;
+  const loading = meetingQuery.isLoading || participantsQuery.isLoading || analysisQuery.isLoading;
+  const analysisLoading = analysisQuery.isLoading;
 
   // --- Render ---
 
@@ -262,7 +230,7 @@ export default function SyncMeetingDetailPage() {
               {meeting.meet_link && isLive && (
                 <Button
                   size="sm"
-                  className="flex items-center"
+                  className="flex items-center transition-all duration-300 hover:scale-[1.05]"
                   onClick={() => window.open(meeting.meet_link, '_blank')}
                 >
                   <Video className="mr-2 h-4 w-4" />
@@ -272,7 +240,7 @@ export default function SyncMeetingDetailPage() {
             </div>
           </Card>
 
-          {/* Right — Participants (avatar badges like concurrent tasks) */}
+          {/* Right — Participants */}
           <Card>
             <div className="p-4">
               <div className="flex items-center gap-2 mb-3">
@@ -317,17 +285,17 @@ export default function SyncMeetingDetailPage() {
           </div>
 
           {analysisLoading ? (
-            <div className="rounded-md bg-white/5 p-8 flex items-center justify-center gap-2 text-white/50">
+            <div className="rounded-2xl bg-white/5 border border-white/10 p-8 flex items-center justify-center gap-2 text-white/50">
               <Loader2 className="h-5 w-5 animate-spin" />
               <span className="text-sm">Loading analysis…</span>
             </div>
           ) : !analysis ? (
-            <div className="rounded-md bg-white/5 p-8 text-center">
+            <div className="rounded-2xl bg-white/5 border border-white/10 p-8 text-center">
               <Brain className="h-10 w-10 text-white/20 mx-auto mb-2" />
               <p className="text-xs text-white/70 sm:text-sm">No analysis available yet</p>
             </div>
           ) : analysis.status === 'failed' ? (
-            <div className="rounded-md bg-white/5 p-6 space-y-2">
+            <div className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-2">
               <div className="flex items-center gap-2 text-red-400">
                 <AlertCircle className="h-5 w-5" />
                 <span className="text-sm font-medium">Analysis failed</span>
@@ -337,19 +305,19 @@ export default function SyncMeetingDetailPage() {
               )}
             </div>
           ) : analysis.status !== 'completed' ? (
-            <div className="rounded-md bg-white/5 p-8 flex items-center justify-center gap-2 text-white/50">
+            <div className="rounded-2xl bg-white/5 border border-white/10 p-8 flex items-center justify-center gap-2 text-white/50">
               <Loader2 className="h-5 w-5 animate-spin" />
               <span className="text-sm">Analysis is {analysis.status}…</span>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Tab switcher */}
-              <div className="flex items-center justify-center gap-0 rounded-md bg-white/5 p-1">
+              <div className="flex items-center justify-center gap-0 rounded-2xl bg-white/5 border border-white/10 p-1">
                 {tabs.map((tab) => (
                   <button
                     key={tab.value}
                     onClick={() => setActiveTab(tab.value)}
-                    className={`flex-1 rounded-sm px-3 py-1.5 text-xs font-medium transition-all sm:px-6 sm:py-2 sm:text-sm ${
+                    className={`flex-1 rounded-xl px-3 py-1.5 text-xs font-medium transition-all duration-300 hover:scale-[1.05] sm:px-6 sm:py-2 sm:text-sm ${
                       activeTab === tab.value
                         ? 'bg-white/10 text-white'
                         : 'text-white/60 hover:text-white'
@@ -362,7 +330,7 @@ export default function SyncMeetingDetailPage() {
 
               {/* Tab content */}
               {activeTab === 'summary' ? (
-                <div className="rounded-md bg-white/5 p-4 sm:p-5">
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-4 sm:p-5">
                   {analysis.summary ? (
                     <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">{analysis.summary}</p>
                   ) : (
@@ -381,7 +349,7 @@ export default function SyncMeetingDetailPage() {
                       </h3>
                       <div className="space-y-2">
                         {analysis.decisions.map((d, i) => (
-                          <div key={i} className="p-3 rounded-lg bg-white/5 border border-white/10 space-y-1.5">
+                          <div key={i} className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
                             <p className="text-sm text-white font-medium">{d.description}</p>
                             {d.context && (
                               <p className="text-xs text-white/60">{d.context}</p>
@@ -403,7 +371,7 @@ export default function SyncMeetingDetailPage() {
 
                   {/* Actions */}
                   {analysis.actions && analysis.actions.length > 0 && (
-                    <div className="rounded-md bg-white/5 p-4 sm:p-5">
+                    <div className="rounded-2xl bg-white/5 border border-white/10 p-4 sm:p-5">
                       <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                         <Target className="h-4 w-4 text-brandCP" />
                         Actions
@@ -411,7 +379,7 @@ export default function SyncMeetingDetailPage() {
                       </h3>
                       <div className="space-y-2">
                         {analysis.actions.map((a, i) => (
-                          <div key={i} className="p-3 rounded-lg bg-white/5 border border-white/10">
+                          <div key={i} className="p-3 rounded-2xl bg-white/5 border border-white/10">
                             <div className="flex items-start justify-between gap-2">
                               <p className="text-sm text-white font-medium flex-1">{a.description}</p>
                               {a.priority && (
@@ -432,7 +400,7 @@ export default function SyncMeetingDetailPage() {
 
                   {/* Contribution Signals */}
                   {analysis.contribution_signals && analysis.contribution_signals.length > 0 && (
-                    <div className="rounded-md bg-white/5 p-4 sm:p-5">
+                    <div className="rounded-2xl bg-white/5 border border-white/10 p-4 sm:p-5">
                       <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                         <Users className="h-4 w-4 text-brandCP" />
                         Contribution Signals
@@ -440,7 +408,7 @@ export default function SyncMeetingDetailPage() {
                       </h3>
                       <div className="space-y-2">
                         {analysis.contribution_signals.map((s, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10">
                             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brandCP text-[10px] font-semibold text-slate-900 shrink-0">
                               {s.display_name
                                 .split(' ')
@@ -474,7 +442,7 @@ export default function SyncMeetingDetailPage() {
                   {(!analysis.decisions || analysis.decisions.length === 0) &&
                    (!analysis.actions || analysis.actions.length === 0) &&
                    (!analysis.contribution_signals || analysis.contribution_signals.length === 0) && (
-                    <div className="rounded-md bg-white/5 p-6 text-center">
+                    <div className="rounded-2xl bg-white/5 border border-white/10 p-6 text-center">
                       <p className="text-xs text-white/50 sm:text-sm">No details available</p>
                     </div>
                   )}

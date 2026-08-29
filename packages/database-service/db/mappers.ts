@@ -14,8 +14,6 @@ import {
   contributions,
   refresh_tokens,
   tasks,
-  task_assignees,
-  task_workspaces,
   evaluation_runs,
   evaluation_run_contributions,
   evaluation_grids,
@@ -25,19 +23,38 @@ import {
   meeting_participants,
   meeting_analyses,
   onboarding_progress,
+  app_settings,
+  challenge_documents,
+  challenge_signals,
+  challenge_slack_configs,
+  reward_entries,
+  validation_targets,
+  validation_attempts,
+  validation_reference_cases,
+  validation_case_claims,
+  compute_requests,
 } from "./drizzle.js";
+import { parseMlRewardRules } from "../domain/mlRewardRules.js";
+import { parseCodeRewardRules } from "../domain/codeRewardRules.js";
 import type {
   Project,
   Repo,
   Challenge,
   ChallengeRepo,
+  ChallengeRepoRole,
   ChallengeTeam,
+  ChallengeDocument,
+  ChallengeSignal,
+  ChallengeSlackConfig,
+  ValidationTarget,
+  ValidationAttempt,
+  ValidationReferenceCase,
+  ValidationCaseClaim,
+  ComputeRequest,
   User,
   Contribution,
   RefreshToken,
   Task,
-  TaskAssignee,
-  TaskWorkspace,
   WorkspaceStatus,
   WorkspaceMeta,
   EvaluationRun,
@@ -56,6 +73,11 @@ import type {
   MeetingAnalysis,
   MeetingAnalysisStatus,
   OnboardingProgress,
+  AppSettings,
+  ContributionEvaluationStatus,
+  RewardEntry,
+  RewardEntryMeta,
+  RewardRuleKey,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -66,10 +88,9 @@ type DbChallengeRepo = InferSelectModel<typeof challenge_repos>;
 type DbChallengeTeam = InferSelectModel<typeof challenge_teams>;
 type DbUser = InferSelectModel<typeof users>;
 type DbContribution = InferSelectModel<typeof contributions>;
+type DbRewardEntry = InferSelectModel<typeof reward_entries>;
 type DbRefreshToken = InferSelectModel<typeof refresh_tokens>;
 type DbTask = InferSelectModel<typeof tasks>;
-type DbTaskAssignee = InferSelectModel<typeof task_assignees>;
-type DbTaskWorkspace = InferSelectModel<typeof task_workspaces>;
 type DbEvaluationRun = InferSelectModel<typeof evaluation_runs>;
 type DbEvaluationRunContribution = InferSelectModel<typeof evaluation_run_contributions>;
 type DbEvaluationGrid = InferSelectModel<typeof evaluation_grids>;
@@ -85,6 +106,7 @@ export function toDomainProject(row: DbProject): Project {
     uuid: row.uuid,
     title: row.title,
     description: row.description ?? "",
+    manager_id: row.manager_id ?? undefined,
     created_at: new Date(row.created_at ?? Date.now()),
   };
 }
@@ -105,13 +127,20 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     index: row.index,
     title: row.title,
     status: row.status,
-    start_date: row.start_date ? new Date(row.start_date) : new Date(),
-    end_date: row.end_date ? new Date(row.end_date) : new Date(),
+    type: row.type ?? 'code',
+    start_date: row.start_date ? new Date(row.start_date) : undefined,
+    end_date: row.end_date ? new Date(row.end_date) : undefined,
     description: row.description ?? "",
     roadmap: row.roadmap ?? "",
     contribution_points_reward: row.contribution_points_reward ?? 0,
     completion: row.completion ?? 0,
     project_id: row.project_id ?? "",
+    reward_rules: parseMlRewardRules(row.reward_rules) ?? parseCodeRewardRules(row.reward_rules),
+    workspace_mode: (row.workspace_mode as Challenge["workspace_mode"]) ?? undefined,
+    source_challenge_id: row.source_challenge_id ?? null,
+    cp_per_validation: row.cp_per_validation ?? null,
+    required_validations: row.required_validations ?? null,
+    compute_enabled: row.compute_enabled ?? false,
   };
 }
 
@@ -119,6 +148,7 @@ export function toDomainChallengeRepo(row: DbChallengeRepo): ChallengeRepo {
   return {
     challenge_id: row.challenge_id ?? "",
     repo_id: row.repo_id ?? "",
+    role: (row.role as ChallengeRepoRole) ?? undefined,
     workspace_provider: row.workspace_provider ?? undefined,
     workspace_ref: row.workspace_ref ?? undefined,
     workspace_url: row.workspace_url ?? undefined,
@@ -131,6 +161,10 @@ export function toDomainChallengeTeam(row: DbChallengeTeam): ChallengeTeam {
   return {
     challenge_id: row.challenge_id ?? "",
     user_id: row.user_id ?? "",
+    workspace_provider: (row.workspace_provider as ChallengeTeam["workspace_provider"]) ?? undefined,
+    workspace_ref: row.workspace_ref ?? undefined,
+    workspace_url: row.workspace_url ?? undefined,
+    workspace_status: (row.workspace_status as WorkspaceStatus) ?? undefined,
   };
 }
 
@@ -143,6 +177,7 @@ export function toDomainUser(row: DbUser): User {
     email: row.email ?? undefined,
     google_user_id: row.google_user_id ?? undefined,
     bio: row.bio ?? undefined,
+    avatar_url: row.avatar_url ?? undefined,
     created_at: new Date(row.created_at ?? Date.now()),
   };
 }
@@ -159,7 +194,24 @@ export function toDomainContribution(row: DbContribution): Contribution {
     user_id: row.user_id ?? "",
     challenge_id: row.challenge_id ?? "",
     task_id: row.task_id ?? undefined,
+    artifact_url: row.artifact_url ?? undefined,
+    live_endpoint_url: row.live_endpoint_url ?? undefined,
+    evaluation_status: (row.evaluation_status as ContributionEvaluationStatus) ?? undefined,
     submitted_at: new Date(row.submitted_at),
+  };
+}
+
+export function toDomainRewardEntry(row: DbRewardEntry): RewardEntry {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challenge_id,
+    user_id: row.user_id,
+    contribution_id: row.contribution_id ?? undefined,
+    rule_key: row.rule_key as RewardRuleKey,
+    points: row.points,
+    source_user_id: row.source_user_id ?? undefined,
+    meta: (row.meta as RewardEntryMeta) ?? undefined,
+    created_at: new Date(row.created_at),
   };
 }
 
@@ -171,6 +223,7 @@ export function toDbProject(entity: Omit<Project, "uuid" | "created_at">): typeo
   return {
     title: entity.title,
     description: entity.description || null,
+    manager_id: entity.manager_id ?? null,
   };
 }
 
@@ -188,13 +241,20 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenge
     // index est auto-généré par PostgreSQL (serial)
     title: entity.title,
     status: entity.status,
-    start_date: entity.start_date.toISOString().split("T")[0], // YYYY-MM-DD
-    end_date: entity.end_date.toISOString().split("T")[0],
+    type: entity.type ?? 'code',
+    start_date: entity.start_date?.toISOString().split("T")[0] ?? null, // YYYY-MM-DD
+    end_date: entity.end_date?.toISOString().split("T")[0] ?? null,
     description: entity.description || null,
     roadmap: entity.roadmap || null,
     contribution_points_reward: entity.contribution_points_reward,
     completion: entity.completion ?? 0,
     project_id: entity.project_id || null,
+    reward_rules: entity.reward_rules ?? null,
+    workspace_mode: entity.workspace_mode ?? null,
+    source_challenge_id: entity.source_challenge_id ?? null,
+    cp_per_validation: entity.cp_per_validation ?? null,
+    required_validations: entity.required_validations ?? null,
+    compute_enabled: entity.compute_enabled ?? false,
   };
 }
 
@@ -220,6 +280,9 @@ export function toDbContribution(entity: Omit<Contribution, "uuid">): typeof con
     user_id: entity.user_id || null,
     challenge_id: entity.challenge_id || null,
     task_id: entity.task_id || null,
+    artifact_url: entity.artifact_url || null,
+    live_endpoint_url: entity.live_endpoint_url || null,
+    evaluation_status: entity.evaluation_status ?? null,
     submitted_at: entity.submitted_at,
   };
 }
@@ -246,12 +309,11 @@ export function toDomainTask(row: DbTask): Task {
   return {
     uuid: row.uuid,
     challenge_id: row.challenge_id ?? "",
-    repo_id: row.repo_id ?? undefined,
+    user_id: row.user_id ?? null,
     parent_task_id: row.parent_task_id ?? undefined,
     title: row.title,
     description: row.description ?? undefined,
-    type: row.type as "solo" | "concurrent",
-    status: (row.status as "todo" | "done") ?? "todo",
+    status: (row.status as Task["status"]) ?? "todo",
     created_at: new Date(row.created_at ?? Date.now()),
   };
 }
@@ -259,51 +321,11 @@ export function toDomainTask(row: DbTask): Task {
 export function toDbTask(entity: Omit<Task, "uuid" | "created_at">): typeof tasks.$inferInsert {
   return {
     challenge_id: entity.challenge_id || null,
-    repo_id: entity.repo_id || null,
+    user_id: entity.user_id ?? null,
     parent_task_id: entity.parent_task_id || null,
     title: entity.title,
     description: entity.description || null,
-    type: entity.type,
     status: entity.status,
-  };
-}
-
-export function toDomainTaskAssignee(row: DbTaskAssignee): TaskAssignee {
-  return {
-    task_id: row.task_id ?? "",
-    user_id: row.user_id ?? "",
-    assigned_at: new Date(row.assigned_at ?? Date.now()),
-  };
-}
-
-export function toDbTaskAssignee(entity: Omit<TaskAssignee, "assigned_at">): typeof task_assignees.$inferInsert {
-  return {
-    task_id: entity.task_id,
-    user_id: entity.user_id,
-  };
-}
-
-export function toDomainTaskWorkspace(row: DbTaskWorkspace): TaskWorkspace {
-  return {
-    task_id: row.task_id ?? "",
-    repo_id: row.repo_id ?? "",
-    workspace_provider: row.workspace_provider ?? undefined,
-    workspace_ref: row.workspace_ref ?? undefined,
-    workspace_url: row.workspace_url ?? undefined,
-    workspace_status: (row.workspace_status as WorkspaceStatus) ?? undefined,
-    workspace_meta: (row.workspace_meta as WorkspaceMeta) ?? undefined,
-  };
-}
-
-export function toDbTaskWorkspace(entity: TaskWorkspace): typeof task_workspaces.$inferInsert {
-  return {
-    task_id: entity.task_id,
-    repo_id: entity.repo_id,
-    workspace_provider: entity.workspace_provider ?? null,
-    workspace_ref: entity.workspace_ref ?? null,
-    workspace_url: entity.workspace_url ?? null,
-    workspace_status: entity.workspace_status ?? null,
-    workspace_meta: entity.workspace_meta ?? null,
   };
 }
 
@@ -577,5 +599,288 @@ export function toDomainOnboardingProgress(row: DbOnboardingProgress): Onboardin
     completed_at: row.completed_at ?? undefined,
     created_at: row.created_at!,
     updated_at: row.updated_at!,
+  };
+}
+
+// ============================================================
+// CHALLENGE DOCUMENTS MAPPERS
+// ============================================================
+
+type DbChallengeDocument = InferSelectModel<typeof challenge_documents>;
+
+export function toDomainChallengeDocument(row: DbChallengeDocument): ChallengeDocument {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challenge_id,
+    filename: row.filename,
+    content: row.content,
+    uploaded_by: row.uploaded_by ?? undefined,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbChallengeDocument(
+  entity: Omit<ChallengeDocument, "uuid" | "created_at">
+): typeof challenge_documents.$inferInsert {
+  return {
+    challenge_id: entity.challenge_id,
+    filename: entity.filename,
+    content: entity.content,
+    uploaded_by: entity.uploaded_by ?? null,
+  };
+}
+
+// ============================================================
+// CHALLENGE SIGNALS & SLACK CONFIG MAPPERS
+// ============================================================
+
+type DbChallengeSignal = InferSelectModel<typeof challenge_signals>;
+type DbChallengeSlackConfig = InferSelectModel<typeof challenge_slack_configs>;
+
+export function toDomainChallengeSignal(row: DbChallengeSignal): ChallengeSignal {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challenge_id,
+    label: row.label,
+    description: row.description ?? undefined,
+    reward_cp: row.reward_cp ?? 0,
+    icon: row.icon ?? null,
+    position: row.position ?? 0,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbChallengeSignal(
+  entity: Omit<ChallengeSignal, "uuid" | "created_at">
+): typeof challenge_signals.$inferInsert {
+  return {
+    challenge_id: entity.challenge_id,
+    label: entity.label,
+    description: entity.description || null,
+    reward_cp: entity.reward_cp,
+    icon: entity.icon || null,
+    position: entity.position ?? 0,
+  };
+}
+
+type DbValidationTarget = InferSelectModel<typeof validation_targets>;
+type DbValidationAttempt = InferSelectModel<typeof validation_attempts>;
+type DbValidationReferenceCase = InferSelectModel<typeof validation_reference_cases>;
+type DbValidationCaseClaim = InferSelectModel<typeof validation_case_claims>;
+
+export function toDomainValidationTarget(row: DbValidationTarget): ValidationTarget {
+  return {
+    uuid: row.uuid,
+    validation_challenge_id: row.validation_challenge_id,
+    contribution_id: row.contribution_id,
+    position: row.position ?? 0,
+    outcome: (row.outcome as ValidationTarget['outcome']) ?? 'pending',
+    resolved_at: row.resolved_at ? new Date(row.resolved_at) : null,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbValidationTarget(
+  entity: Omit<ValidationTarget, "uuid" | "created_at" | "outcome" | "resolved_at">
+): typeof validation_targets.$inferInsert {
+  return {
+    validation_challenge_id: entity.validation_challenge_id,
+    contribution_id: entity.contribution_id,
+    position: entity.position ?? 0,
+  };
+}
+
+export function toDomainValidationReferenceCase(row: Partial<DbValidationReferenceCase> & Pick<DbValidationReferenceCase, "uuid" | "validation_challenge_id">): ValidationReferenceCase {
+  return {
+    uuid: row.uuid,
+    validation_challenge_id: row.validation_challenge_id,
+    author_user_id: row.author_user_id ?? null,
+    // Undefined (rather than null/throwing) means the column wasn't
+    // selected — summary reads never load either blob column.
+    input_bytes: row.input_bytes ?? (null as unknown as Buffer),
+    input_filename: row.input_filename ?? '',
+    input_content_type: row.input_content_type ?? '',
+    expected_output_bytes: row.expected_output_bytes ?? (null as unknown as Buffer),
+    expected_output_filename: row.expected_output_filename ?? null,
+    expected_output_content_type: row.expected_output_content_type ?? '',
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbValidationReferenceCase(
+  entity: Omit<ValidationReferenceCase, "uuid" | "created_at">
+): typeof validation_reference_cases.$inferInsert {
+  return {
+    validation_challenge_id: entity.validation_challenge_id,
+    author_user_id: entity.author_user_id ?? null,
+    input_bytes: entity.input_bytes,
+    input_filename: entity.input_filename,
+    input_content_type: entity.input_content_type,
+    expected_output_bytes: entity.expected_output_bytes,
+    expected_output_filename: entity.expected_output_filename ?? null,
+    expected_output_content_type: entity.expected_output_content_type,
+  };
+}
+
+export function toDomainValidationCaseClaim(row: Partial<DbValidationCaseClaim> & Pick<DbValidationCaseClaim, "uuid" | "reference_case_id" | "contribution_id" | "validator_user_id">): ValidationCaseClaim {
+  return {
+    uuid: row.uuid,
+    reference_case_id: row.reference_case_id,
+    contribution_id: row.contribution_id,
+    validator_user_id: row.validator_user_id,
+    // Undefined means response_bytes wasn't selected (summary reads).
+    response_bytes: row.response_bytes ?? (null as unknown as Buffer),
+    response_content_type: row.response_content_type ?? '',
+    response_status: row.response_status ?? 0,
+    observation: row.observation ?? null,
+    observed_at: row.observed_at ? new Date(row.observed_at) : null,
+    revealed_at: row.revealed_at ? new Date(row.revealed_at) : null,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbValidationCaseClaim(
+  entity: Omit<ValidationCaseClaim, "uuid" | "created_at" | "observation" | "observed_at" | "revealed_at">
+): typeof validation_case_claims.$inferInsert {
+  return {
+    reference_case_id: entity.reference_case_id,
+    contribution_id: entity.contribution_id,
+    validator_user_id: entity.validator_user_id,
+    response_bytes: entity.response_bytes,
+    response_content_type: entity.response_content_type,
+    response_status: entity.response_status,
+  };
+}
+
+export function toDomainValidationAttempt(row: Partial<DbValidationAttempt> & Pick<DbValidationAttempt, "uuid" | "validation_challenge_id" | "contribution_id" | "validator_user_id" | "verdict">): ValidationAttempt {
+  return {
+    uuid: row.uuid,
+    validation_challenge_id: row.validation_challenge_id,
+    contribution_id: row.contribution_id,
+    validator_user_id: row.validator_user_id,
+    verdict: row.verdict as ValidationAttempt['verdict'],
+    description: row.description ?? null,
+    created_at: new Date(row.created_at ?? Date.now()),
+    // Undefined (rather than null) means these columns weren't selected —
+    // e.g. the narrow-column reads used everywhere except findById/create,
+    // which deliberately don't load the blob columns for performance.
+    file_bytes: row.file_bytes ?? null,
+    file_filename: row.file_filename ?? null,
+    file_content_type: row.file_content_type ?? null,
+    response_bytes: row.response_bytes ?? null,
+    response_content_type: row.response_content_type ?? null,
+    response_status: row.response_status ?? null,
+    purged_at: row.purged_at ? new Date(row.purged_at) : null,
+    reference_case_claim_id: row.reference_case_claim_id ?? null,
+  };
+}
+
+export function toDbValidationAttempt(
+  entity: Omit<ValidationAttempt, "uuid" | "created_at" | "purged_at">
+): typeof validation_attempts.$inferInsert {
+  return {
+    validation_challenge_id: entity.validation_challenge_id,
+    contribution_id: entity.contribution_id,
+    validator_user_id: entity.validator_user_id,
+    verdict: entity.verdict,
+    description: entity.description ?? null,
+    file_bytes: entity.file_bytes ?? null,
+    file_filename: entity.file_filename ?? null,
+    file_content_type: entity.file_content_type ?? null,
+    response_bytes: entity.response_bytes ?? null,
+    response_content_type: entity.response_content_type ?? null,
+    response_status: entity.response_status ?? null,
+    reference_case_claim_id: entity.reference_case_claim_id ?? null,
+  };
+}
+
+type DbComputeRequest = InferSelectModel<typeof compute_requests>;
+
+export function toDomainComputeRequest(row: Partial<DbComputeRequest> & Pick<DbComputeRequest, "uuid" | "challenge_id" | "user_id" | "status">): ComputeRequest {
+  return {
+    uuid: row.uuid,
+    challenge_id: row.challenge_id,
+    user_id: row.user_id,
+    status: row.status as ComputeRequest['status'],
+    requested_at: new Date(row.requested_at ?? Date.now()),
+    decided_at: row.decided_at ? new Date(row.decided_at) : null,
+    decided_by: row.decided_by ?? null,
+    approved_at: row.approved_at ? new Date(row.approved_at) : null,
+    expires_at: row.expires_at ? new Date(row.expires_at) : null,
+    provisioning_started_at: row.provisioning_started_at ? new Date(row.provisioning_started_at) : null,
+    ready_at: row.ready_at ? new Date(row.ready_at) : null,
+    expired_at: row.expired_at ? new Date(row.expired_at) : null,
+    expire_reason: (row.expire_reason as ComputeRequest['expire_reason']) ?? null,
+    failed_at: row.failed_at ? new Date(row.failed_at) : null,
+    error_message: row.error_message ?? null,
+    provider_ref: row.provider_ref ?? null,
+    provider_parent_ref: row.provider_parent_ref ?? null,
+    jupyter_base_url: row.jupyter_base_url ?? null,
+    // Undefined (rather than null) means these columns weren't selected —
+    // the "summary" reads used everywhere except the service's internal
+    // findById deliberately don't load the encrypted token columns.
+    access_token_enc: row.access_token_enc ?? null,
+    access_token_iv: row.access_token_iv ?? null,
+    access_token_revealed_at: row.access_token_revealed_at ? new Date(row.access_token_revealed_at) : null,
+    updated_at: row.updated_at ? new Date(row.updated_at) : null,
+  };
+}
+
+export function toDbComputeRequest(
+  entity: Pick<ComputeRequest, "challenge_id" | "user_id">
+): typeof compute_requests.$inferInsert {
+  return {
+    challenge_id: entity.challenge_id,
+    user_id: entity.user_id,
+  };
+}
+
+export function toDomainChallengeSlackConfig(row: DbChallengeSlackConfig): ChallengeSlackConfig {
+  return {
+    challenge_id: row.challenge_id,
+    channel_id: row.channel_id,
+    channel_name: row.channel_name ?? null,
+    last_ts: row.last_ts ?? null,
+    last_run_at: row.last_run_at ?? null,
+    last_error: row.last_error ?? null,
+    created_at: new Date(row.created_at ?? Date.now()),
+    updated_at: new Date(row.updated_at ?? Date.now()),
+  };
+}
+
+// ============================================================
+// APP SETTINGS MAPPERS
+// ============================================================
+
+export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>): AppSettings {
+  return {
+    theme_key: row.theme_key,
+    primary_color: row.primary_color ?? null,
+    background_color: row.background_color ?? null,
+    theme_mode: row.theme_mode ?? "dark",
+    updated_at: row.updated_at ?? undefined,
+    github_org: row.github_org ?? null,
+    github_connected_at: row.github_connected_at ?? null,
+    github_connected_by: row.github_connected_by ?? null,
+    github_is_connected: !!row.github_token_enc,
+    kaggle_username: row.kaggle_username ?? null,
+    kaggle_connected_at: row.kaggle_connected_at ?? null,
+    kaggle_connected_by: row.kaggle_connected_by ?? null,
+    kaggle_is_connected: !!row.kaggle_key_enc,
+    openai_connected_at: row.openai_connected_at ?? null,
+    openai_connected_by: row.openai_connected_by ?? null,
+    openai_is_connected: !!row.openai_key_enc,
+    slack_team_name: row.slack_team_name ?? null,
+    slack_connected_at: row.slack_connected_at ?? null,
+    slack_connected_by: row.slack_connected_by ?? null,
+    slack_is_connected: !!row.slack_token_enc,
+    modules_meetings_enabled: row.modules_meetings_enabled ?? true,
+    modules_onboarding_enabled: row.modules_onboarding_enabled ?? true,
+    scaleway_project_id: row.scaleway_project_id ?? null,
+    scaleway_zone: row.scaleway_zone ?? null,
+    scaleway_connected_at: row.scaleway_connected_at ?? null,
+    scaleway_connected_by: row.scaleway_connected_by ?? null,
+    scaleway_is_connected: !!row.scaleway_secret_key_enc && !row.scaleway_disconnect_requested_at,
+    scaleway_disconnect_requested_at: row.scaleway_disconnect_requested_at ?? null,
   };
 }

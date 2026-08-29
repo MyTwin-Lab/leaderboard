@@ -1,9 +1,13 @@
 // domain/entities.ts
 
+import type { MlRewardRules } from "./mlRewardRules.js";
+import type { CodeRewardRules } from "./codeRewardRules.js";
+
 export interface Project {
   uuid: string;
   title: string;
   description?: string;
+  manager_id?: string | null; // FK → users.uuid, nullable
   created_at: Date;
 }
 
@@ -15,9 +19,13 @@ export interface Repo {
   project_id: string; // FK -> projects.uuid
 }
 
+/** Rôle d'un repo dans le flow ML. Null pour les challenges de type code. */
+export type ChallengeRepoRole = 'dataset' | 'model' | 'model_code' | 'api';
+
 export interface ChallengeRepo {
   challenge_id: string; // FK -> challenges.uuid
   repo_id: string;      // FK -> repos.uuid
+  role?: ChallengeRepoRole;
   workspace_provider?: string;
   workspace_ref?: string;
   workspace_url?: string;
@@ -28,21 +36,74 @@ export interface ChallengeRepo {
 export interface ChallengeTeam {
   challenge_id: string; // FK -> challenges.uuid
   user_id: string;      // FK -> users.uuid
+  workspace_provider?: 'github' | 'external';
+  workspace_ref?: string;
+  workspace_url?: string;
+  workspace_status?: WorkspaceStatus;
 }
+
+export type ChallengeWorkspaceMode = 'provided_repo' | 'own_repo';
 
 export interface Challenge {
   uuid: string;
   index?: number;
   title: string;
   status: string;
-  start_date: Date;
-  end_date: Date;
+  type: string; // 'code' | 'ml' | ...
+  start_date?: Date | null;
+  end_date?: Date | null;
   description?: string;
   roadmap?: string;
   contribution_points_reward: number;
   completion: number;
   project_id: string; // FK -> projects.uuid
+  reward_rules?: MlRewardRules | CodeRewardRules | null;
+  workspace_mode?: ChallengeWorkspaceMode | null; // Code challenges uniquement
+  source_challenge_id?: string | null; // Validation uniquement — le challenge ML validé
+  cp_per_validation?: number | null;   // Validation uniquement — CP fixe par validation
+  required_validations?: number | null; // Validation uniquement — nb de verdicts requis avant résolution (impair)
+  compute_enabled?: boolean; // ML uniquement — active la demande de puissance de calcul Scaleway sur ce challenge
 }
+
+/** Signal de contribution détectable dans un canal de discussion (Slack). */
+export interface ChallengeSignal {
+  uuid: string;
+  challenge_id: string; // FK -> challenges.uuid
+  label: string;
+  description?: string;
+  reward_cp: number;
+  icon?: string | null; // clé d'icône lucide (ex: 'lightbulb')
+  position: number;
+  created_at: Date;
+}
+
+/** Canal Slack surveillé pour un challenge + état du cron d'ingestion. */
+export interface ChallengeSlackConfig {
+  challenge_id: string; // PK, FK -> challenges.uuid
+  channel_id: string;
+  channel_name?: string | null;
+  last_ts?: string | null; // ts Slack (string décimale), curseur exclusif
+  last_run_at?: Date | null;
+  last_error?: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface ChallengeDocument {
+  uuid: string;
+  challenge_id: string; // FK -> challenges.uuid
+  filename: string;
+  content: string;
+  uploaded_by?: string; // FK -> users.uuid
+  created_at: Date;
+}
+
+export type ContributionEvaluationStatus =
+  | 'pending'
+  | 'running'
+  | 'done'
+  | 'failed'
+  | 'skipped_reuse';
 
 export interface Contribution {
   uuid: string;
@@ -55,7 +116,144 @@ export interface Contribution {
   user_id: string;      // FK -> users.uuid
   challenge_id: string; // FK -> challenges.uuid
   task_id?: string;     // FK -> tasks.uuid
+  artifact_url?: string;
+  live_endpoint_url?: string; // api_packaging uniquement — endpoint déployé
+  evaluation_status?: ContributionEvaluationStatus;
   submitted_at: Date;
+}
+
+// --- REWARD ENTRIES (ledger ML) ---
+
+export type RewardRuleKey =
+  | 'dataset'
+  | 'model_metric'
+  | 'model_code'
+  | 'beat_best'
+  | 'api_packaging'
+  | 'reuse_dataset'
+  | 'reuse_model'
+  | 'slack_signal'
+  | 'validation'
+  | 'code_fixed'
+  | 'code_quality';
+
+export interface RewardEntryMeta {
+  metricValue?: number;
+  agentScore?: number;
+  rawPoints?: number;
+  clampedTo?: number;
+  sourceContributionId?: string;
+  [key: string]: unknown;
+}
+
+export interface RewardEntry {
+  uuid: string;
+  challenge_id: string;
+  user_id: string;
+  contribution_id?: string;
+  rule_key: RewardRuleKey;
+  points: number; // négatif pour un prélèvement
+  source_user_id?: string;
+  meta?: RewardEntryMeta;
+  created_at: Date;
+}
+
+// --- VALIDATION CHALLENGES ---
+
+/** Une soumission api_packaging exposée pour validation manuelle. */
+export interface ValidationTarget {
+  uuid: string;
+  validation_challenge_id: string; // FK -> challenges.uuid
+  contribution_id: string;         // FK -> contributions.uuid (la soumission api_packaging)
+  position: number;
+  outcome: 'pending' | 'works' | 'broken';
+  resolved_at: Date | null;
+  created_at: Date;
+}
+
+/**
+ * Un cas de vérité terrain (entrée connue -> sortie attendue), écrit par un
+ * medical_pro. Partagé par tout le challenge de validation — voir
+ * challenges/challenge-014-qualified_validation/SPEC.md section 4.3.
+ */
+export interface ValidationReferenceCase {
+  uuid: string;
+  validation_challenge_id: string; // FK -> challenges.uuid
+  author_user_id: string | null;   // FK -> users.uuid (le medical_pro auteur)
+  input_bytes: Buffer;
+  input_filename: string;
+  input_content_type: string;
+  expected_output_bytes: Buffer;         // ne jamais exposer hors de la révélation
+  expected_output_filename: string | null;
+  expected_output_content_type: string;
+  created_at: Date;
+}
+
+/**
+ * La réclamation d'un cas de référence par un medical_pro sur un target
+ * donné : réponse réelle capturée à la réclamation (un seul geste atomique),
+ * puis observation, puis révélation — dans cet ordre, appliqué côté service.
+ */
+export interface ValidationCaseClaim {
+  uuid: string;
+  reference_case_id: string;   // FK -> validation_reference_cases.uuid
+  contribution_id: string;     // FK -> contributions.uuid (le target testé)
+  validator_user_id: string;   // FK -> users.uuid
+  response_bytes: Buffer;
+  response_content_type: string;
+  response_status: number;
+  observation: string | null;      // noté avant la révélation
+  observed_at: Date | null;
+  revealed_at: Date | null;        // non-null seulement après observed_at
+  created_at: Date;
+}
+
+/** Un verdict (works/broken) rendu par un medical_pro sur une cible donnée. */
+export interface ValidationAttempt {
+  uuid: string;
+  validation_challenge_id: string; // FK -> challenges.uuid
+  contribution_id: string;         // FK -> contributions.uuid (la cible validée)
+  validator_user_id: string;       // FK -> users.uuid
+  verdict: 'works' | 'broken';
+  description: string | null;      // requis côté API quel que soit le verdict
+  created_at: Date;
+  file_bytes: Buffer | null;             // legacy — toujours null depuis challenge-014
+  file_filename: string | null;
+  file_content_type: string | null;
+  response_bytes: Buffer | null;         // legacy — toujours null depuis challenge-014
+  response_content_type: string | null;
+  response_status: number | null;
+  purged_at: Date | null;                // non-null une fois le contenu purgé (plus déclenché automatiquement)
+  reference_case_claim_id: string | null; // FK -> validation_case_claims.uuid
+}
+
+export type ComputeRequestStatus = 'pending' | 'rejected' | 'approved' | 'provisioning' | 'ready' | 'expired' | 'failed';
+export type ComputeRequestExpireReason = 'timeout' | 'challenge_closed' | 'challenge_deleted';
+
+/** Une demande de puissance de calcul GPU (Scaleway) sur un challenge ML. */
+export interface ComputeRequest {
+  uuid: string;
+  challenge_id: string; // FK -> challenges.uuid
+  user_id: string;      // FK -> users.uuid
+  status: ComputeRequestStatus;
+  requested_at: Date;
+  decided_at: Date | null;
+  decided_by: string | null;   // FK -> users.uuid (manager/admin)
+  approved_at: Date | null;
+  expires_at: Date | null;     // figé à approved_at + 24h
+  provisioning_started_at: Date | null;
+  ready_at: Date | null;
+  expired_at: Date | null;
+  expire_reason: ComputeRequestExpireReason | null;
+  failed_at: Date | null;
+  error_message: string | null;
+  provider_ref: string | null;         // ex: "fr-par-2/<serverId>"
+  provider_parent_ref: string | null;  // ex: le project_id Scaleway
+  jupyter_base_url: string | null;     // jamais le token
+  access_token_enc: string | null;
+  access_token_iv: string | null;
+  access_token_revealed_at: Date | null;
+  updated_at: Date | null;
 }
 
 export interface User {
@@ -66,6 +264,7 @@ export interface User {
   email?: string;
   google_user_id?: string;
   bio?: string;
+  avatar_url?: string | null;
   created_at: Date;
 }
 
@@ -77,22 +276,19 @@ export interface RefreshToken {
   created_at: Date;
 }
 
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
+
 export interface Task {
   uuid: string;
   challenge_id: string;
-  repo_id?: string;
-  parent_task_id?: string;
+  /** null/undefined = tâche template (admin), sinon propriétaire du board. */
+  user_id?: string | null;
+  /** null = pas de parent (ou détaché explicitement), undefined = non renseigné. */
+  parent_task_id?: string | null;
   title: string;
   description?: string;
-  type: "solo" | "concurrent";
-  status: "todo" | "done";
+  status: TaskStatus;
   created_at: Date;
-}
-
-export interface TaskAssignee {
-  task_id: string;
-  user_id: string;
-  assigned_at: Date;
 }
 
 // --- WORKSPACE TYPES ---
@@ -105,17 +301,6 @@ export interface WorkspaceMeta {
   error?: string;
   sha?: string;
   [key: string]: unknown;
-}
-
-export interface TaskWorkspace {
-  task_id: string;
-  repo_id: string;
-  // Workspace provisioning fields
-  workspace_provider?: string;
-  workspace_ref?: string;
-  workspace_url?: string;
-  workspace_status?: WorkspaceStatus;
-  workspace_meta?: WorkspaceMeta;
 }
 
 // --- EVALUATION RUNS ---
@@ -280,6 +465,51 @@ export interface MeetingAnalysis {
   processed_at?: Date;
   error_message?: string;
   created_at: Date;
+}
+
+// --- APP SETTINGS ---
+export interface AppSettings {
+  theme_key: string;
+  primary_color?: string | null;
+  background_color?: string | null;
+  theme_mode: string; // "dark" | "light"
+  updated_at?: Date;
+  github_org?: string | null;
+  github_connected_at?: Date | null;
+  github_connected_by?: string | null;
+  github_is_connected: boolean; // derived: !!github_token_enc in DB
+  kaggle_username?: string | null;
+  kaggle_connected_at?: Date | null;
+  kaggle_connected_by?: string | null;
+  kaggle_is_connected: boolean; // derived: !!kaggle_key_enc in DB
+  openai_connected_at?: Date | null;
+  openai_connected_by?: string | null;
+  openai_is_connected: boolean; // derived: !!openai_key_enc in DB
+  slack_team_name?: string | null;
+  slack_connected_at?: Date | null;
+  slack_connected_by?: string | null;
+  slack_is_connected: boolean; // derived: !!slack_token_enc in DB
+  modules_meetings_enabled: boolean;
+  modules_onboarding_enabled: boolean;
+  scaleway_project_id?: string | null;
+  scaleway_zone?: string | null;
+  scaleway_connected_at?: Date | null;
+  scaleway_connected_by?: string | null;
+  scaleway_is_connected: boolean; // derived: !!scaleway_secret_key_enc && !scaleway_disconnect_requested_at
+  scaleway_disconnect_requested_at?: Date | null;
+}
+
+// --- ONBOARDING PROGRESS WITH USER ---
+export interface OnboardingProgressWithUser {
+  user_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  clicked_challenge: boolean;
+  assigned_task: boolean;
+  evaluated_contribution: boolean;
+  validated_task: boolean;
+  joined_meeting: boolean;
+  completed_at?: Date;
 }
 
 // --- ONBOARDING PROGRESS ---

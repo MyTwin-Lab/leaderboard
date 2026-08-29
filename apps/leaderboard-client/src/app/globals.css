@@ -1,16 +1,19 @@
 @import "tailwindcss";
 
 :root {
+  /* ── Overrideable theme tokens ──────────────────────────────
+     These are set as inline styles on <html> by the root layout
+     (server-side, from app_settings in DB). Inline styles have
+     higher specificity than this :root block, so they always win.
+     Tailwind @theme inline references these vars, which causes
+     utility classes to resolve dynamically at runtime.            */
   --background: #0a0a0a;
   --background-dark: #030208;
   --foreground: #ededed;
-  --color-brandCP: #0af7c1;
-  --color-primary-100: #8ad0ff;
-  --color-primary-200: #52c1ff;
-  --color-primary-300: #1ba5ff;
-  --gradient-from: #0A1C3F;
-  --gradient-via: #0D224F;
-  --gradient-to: #050B1F;
+  --theme-primary: #0af7c1;
+  --theme-primary-100: #8ad0ff;
+  --theme-primary-200: #52c1ff;
+  --theme-primary-300: #1ba5ff;
 }
 
 @theme inline {
@@ -20,10 +23,14 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  --color-primary-100: var(--color-primary-100);
-  --color-primary-200: var(--color-primary-200);
-  --color-primary-300: var(--color-primary-300);
-  --color-brandCP: var(--color-brandCP);
+  --color-primary-100: var(--theme-primary-100);
+  --color-primary-200: var(--theme-primary-200);
+  --color-primary-300: var(--theme-primary-300);
+  --color-brandCP: var(--theme-primary);
+}
+
+html {
+  overflow-x: clip;
 }
 
 body {
@@ -32,17 +39,128 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-@keyframes slide-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ── Light mode overrides ─────────────────────────────────── */
+/* data-mode="light" is set on <html> by the root layout.      */
+/* Tailwind utility classes (text-white/*) are hardcoded white; */
+/* we override them here so light mode actually shows dark text. */
+
+html[data-mode="light"] {
+  color-scheme: light;
 }
 
+/* Any element whose class contains "text-white" gets dark text */
+html[data-mode="light"] [class*="text-white"] {
+  color: var(--foreground) !important;
+}
+
+/* Borders that use white/opacity stay subtle in light mode */
+html[data-mode="light"] [class*="border-white"] {
+  border-color: rgb(0 0 0 / 0.12) !important;
+}
+
+/* Translucent white backgrounds flip to translucent black */
+html[data-mode="light"] [class*="bg-white/"] {
+  background-color: rgb(0 0 0 / 0.04) !important;
+}
+
+/* Placeholder pseudo-element (not matched by class selectors above) */
+html[data-mode="light"] input::placeholder,
+html[data-mode="light"] textarea::placeholder {
+  color: rgb(0 0 0 / 0.35) !important;
+}
+
+/* Inputs & selects — covers inline backgroundColor styles too */
+html[data-mode="light"] input,
+html[data-mode="light"] textarea,
+html[data-mode="light"] select {
+  background-color: rgb(0 0 0 / 0.04) !important;
+  color: var(--foreground) !important;
+  border-color: rgb(0 0 0 / 0.12) !important;
+}
+
+/* Select options — override hardcoded dark colors */
+html[data-mode="light"] option {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* SVG icons — force foreground color on all SVG elements in light mode
+   so icons using currentColor or stroke="currentColor" render dark */
+html[data-mode="light"] svg {
+  color: var(--foreground);
+}
+
+/* But keep accent-colored elements (brandCP) as-is */
+html[data-mode="light"] [class*="text-brandCP"] svg,
+html[data-mode="light"] [class*="text-primary"] svg {
+  color: inherit;
+}
+
+/* Monochrome icon images (white SVGs used as <img>) — invert in light mode */
+html[data-mode="light"] img[alt="Sign in"] {
+  filter: invert(0.8);
+}
+
+/* Scrollbar in light mode */
+html[data-mode="light"] {
+  scrollbar-color: rgb(0 0 0 / 0.15) transparent;
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .animate-slide-in {
   animation: slide-in 0.2s ease-out;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fade-up 0.35s ease-out both;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);
+  background-size: 200% auto;
+  animation: shimmer 2.4s linear infinite;
+}
+
+@keyframes count-in {
+  from { opacity: 0; transform: scale(0.8) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-count-in {
+  animation: count-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(10, 247, 193, 0); }
+  50%       { box-shadow: 0 0 14px 3px rgba(10, 247, 193, 0.18); }
+}
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes ping-slow {
+  0%    { transform: scale(1);   opacity: 0.8; }
+  80%   { transform: scale(2.2); opacity: 0; }
+  100%  { transform: scale(2.2); opacity: 0; }
+}
+.animate-ping-slow {
+  animation: ping-slow 2s ease-out infinite;
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-left {
+  animation: slide-in-left 0.25s ease-out both;
 }

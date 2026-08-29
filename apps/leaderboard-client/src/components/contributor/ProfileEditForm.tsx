@@ -1,6 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
+import { CheckCircle2, AlertCircle, Loader2, User } from "lucide-react";
+import { GitHubIcon as Github } from "@/components/ui/GitHubIcon";
 
 type EditableField = "firstName" | "lastName" | "githubUsername";
 
@@ -13,31 +16,27 @@ interface FormValues {
 interface ProfileEditFormProps {
   initialValues: FormValues;
   fields?: EditableField[];
+  initialAvatarUrl?: string | null; // kept for avatar preview in the form
 }
 
-const fieldConfig: Record<EditableField, { label: string; placeholder: string }> = {
-  firstName: { label: "Prénom", placeholder: "Jean" },
-  lastName: { label: "Nom", placeholder: "Dupont" },
-  githubUsername: { label: "GitHub Username", placeholder: "jeandupont" },
-};
-
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+
 
 export function ProfileEditForm({
   initialValues,
   fields = ["firstName", "lastName", "githubUsername"],
+  initialAvatarUrl = null,
 }: ProfileEditFormProps) {
   const [values, setValues] = useState(initialValues);
   const [status, setStatus] = useState<SaveStatus>("idle");
+  const [avatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
   const savedValues = useRef<FormValues>(initialValues);
+
+  const displayName = [values.firstName, values.lastName].filter(Boolean).join(" ") || "—";
 
   const save = async (current: FormValues) => {
     setStatus("saving");
-
-    const fullName = [current.firstName.trim(), current.lastName.trim()]
-      .filter(Boolean)
-      .join(" ");
-
+    const fullName = [current.firstName.trim(), current.lastName.trim()].filter(Boolean).join(" ");
     const res = await fetch("/api/contributors/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -46,7 +45,6 @@ export function ProfileEditForm({
         github_username: current.githubUsername,
       }),
     });
-
     if (res.ok) {
       savedValues.current = current;
       setStatus("saved");
@@ -58,84 +56,120 @@ export function ProfileEditForm({
   };
 
   const handleBlur = (field: EditableField, current: FormValues) => {
-    if (current[field] !== savedValues.current[field]) {
-      save(current);
-    }
+    if (current[field] !== savedValues.current[field]) save(current);
   };
 
-  const showNameRow = fields.includes("firstName") || fields.includes("lastName");
+  const showName = fields.includes("firstName") || fields.includes("lastName");
   const showGithub = fields.includes("githubUsername");
 
   return (
-    <div className="space-y-3">
-      {showNameRow && (
-        <div className="grid grid-cols-2 gap-3">
-          {fields.includes("firstName") && (
-            <div>
-              <label className="block text-xs font-medium text-white/50 mb-1">
-                {fieldConfig.firstName.label}
-              </label>
+    <div className="animate-fade-up space-y-8">
+      {/* Fields */}
+      <div className="space-y-5">
+
+        {/* Name */}
+        {showName && (
+          <div>
+            <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
+              <User className="h-3.5 w-3.5" />
+              Identity
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              {fields.includes("firstName") && (
+                <Field
+                  label="First name"
+                  value={values.firstName}
+                  placeholder="Jean"
+                  onChange={v => setValues(prev => ({ ...prev, firstName: v }))}
+                  onBlur={() => handleBlur("firstName", values)}
+                />
+              )}
+              {fields.includes("lastName") && (
+                <Field
+                  label="Last name"
+                  value={values.lastName}
+                  placeholder="Dupont"
+                  onChange={v => setValues(prev => ({ ...prev, lastName: v }))}
+                  onBlur={() => handleBlur("lastName", values)}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* GitHub */}
+        {showGithub && (
+          <div>
+            <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
+              <Github className="h-3.5 w-3.5" />
+              GitHub
+            </h2>
+            <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-200 focus-within:border-brandCP/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]">
+              <span className="select-none pl-3.5 text-sm text-white/25">@</span>
               <input
                 type="text"
-                value={values.firstName}
-                placeholder={fieldConfig.firstName.placeholder}
-                onChange={(e) =>
-                  setValues((v) => ({ ...v, firstName: e.target.value }))
-                }
-                onBlur={() => handleBlur("firstName", values)}
-                className="w-full rounded-md bg-white/5 border border-white/10 px-2.5 py-1.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-brandCP focus:border-brandCP/50 transition"
+                value={values.githubUsername}
+                placeholder="username"
+                onChange={e => setValues(prev => ({ ...prev, githubUsername: e.target.value }))}
+                onBlur={() => handleBlur("githubUsername", values)}
+                className="flex-1 bg-transparent py-2.5 pr-3.5 pl-1 text-sm text-white placeholder:text-white/20 focus:outline-none"
               />
             </div>
-          )}
-          {fields.includes("lastName") && (
-            <div>
-              <label className="block text-xs font-medium text-white/50 mb-1">
-                {fieldConfig.lastName.label}
-              </label>
-              <input
-                type="text"
-                value={values.lastName}
-                placeholder={fieldConfig.lastName.placeholder}
-                onChange={(e) =>
-                  setValues((v) => ({ ...v, lastName: e.target.value }))
-                }
-                onBlur={() => handleBlur("lastName", values)}
-                className="w-full rounded-md bg-white/5 border border-white/10 px-2.5 py-1.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-brandCP focus:border-brandCP/50 transition"
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {showGithub && (
-        <div>
-          <label className="block text-xs font-medium text-white/50 mb-1">
-            {fieldConfig.githubUsername.label}
-          </label>
-          <input
-            type="text"
-            value={values.githubUsername}
-            placeholder={fieldConfig.githubUsername.placeholder}
-            onChange={(e) =>
-              setValues((v) => ({ ...v, githubUsername: e.target.value }))
-            }
-            onBlur={() => handleBlur("githubUsername", values)}
-            className="w-full rounded-md bg-white/5 border border-white/10 px-2.5 py-1.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-brandCP focus:border-brandCP/50 transition"
-          />
-        </div>
-      )}
-
-      <div className="h-4 flex items-center">
-        {status === "saving" && (
-          <span className="text-xs text-white/40">Sauvegarde...</span>
-        )}
-        {status === "saved" && (
-          <span className="text-xs text-green-400">Enregistré</span>
-        )}
-        {status === "error" && (
-          <span className="text-xs text-red-400">Erreur lors de la sauvegarde</span>
+          </div>
         )}
       </div>
+
+      {/* Save status */}
+      <div className="flex items-center justify-end h-5">
+        {status === "saving" && (
+          <span className="animate-slide-in flex items-center gap-1.5 text-xs text-white/35">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Saving…
+          </span>
+        )}
+        {status === "saved" && (
+          <span className="animate-slide-in flex items-center gap-1.5 text-xs text-green-400">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Saved
+          </span>
+        )}
+        {status === "error" && (
+          <span className="animate-slide-in flex items-center gap-1.5 text-xs text-red-400">
+            <AlertCircle className="h-3.5 w-3.5" />
+            Failed to save
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  placeholder,
+  onChange,
+  onBlur,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (v: string) => void;
+  onBlur: () => void;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-white/25">
+        {label}
+      </label>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={e => onChange(e.target.value)}
+        onBlur={onBlur}
+        className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 transition-all duration-200 focus:border-brandCP/40 focus:bg-white/[0.05] focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
+      />
     </div>
   );
 }

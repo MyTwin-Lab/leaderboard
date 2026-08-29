@@ -40,14 +40,6 @@ packages/**/package-lock.json
 scalingo*
 scalingo
 
-docs/superpowers/*
-
 .claude/*
 .ship-safe/*
 PRESENTATION.md
-
-challenges/challenge-000-pattern_update/*
-
-# Thèmes white-label (sauf le thème default MyTwin)
-apps/leaderboard-client/themes/*/
-!apps/leaderboard-client/themes/default/
