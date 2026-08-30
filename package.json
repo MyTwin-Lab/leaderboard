@@ -12,6 +12,7 @@
     "populate-db": "tsx db_data/seed.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
+    "db:push:deploy": "drizzle-kit push --force --verbose",
     "db:seed": "tsx db_data/seed.ts",
     "db:resync-rewards": "tsx scripts/db-resync-rewards.ts",
     "db:seed:force": "tsx db_data/seed.ts --force",
