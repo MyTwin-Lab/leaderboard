@@ -33,3 +33,32 @@ What a reviewer should receive at the end.
 export function findBrief<T extends { filename: string }>(docs: T[]): T | null {
   return docs.find(d => d.filename === BRIEF_FILENAME) ?? null;
 }
+
+/**
+ * Types de challenge dont l'accès passe par le brief.
+ *
+ * Les challenges de validation en sont exclus : aucune de leurs routes ne
+ * vérifie l'appartenance à l'équipe, et rien n'y ajoute un validateur
+ * implicitement. Les mettre derrière le brief ne changerait pas seulement
+ * l'affichage, ça leur imposerait une adhésion préalable qu'ils n'ont jamais
+ * demandée.
+ */
+export const BRIEF_GATED_TYPES = ['code', 'ml'];
+
+/**
+ * Le brief remplace-t-il les KPI et l'espace de travail ?
+ *
+ * Un visiteur anonyme ne le voit pas : il garde l'invitation à se connecter,
+ * qui est la seule action qu'il puisse faire. Un membre non plus — il a déjà
+ * rejoint, son brief reste dans le tiroir Docs.
+ */
+export function shouldShowBrief({ isAnonymous, isMember, challengeType, brief }: {
+  isAnonymous: boolean;
+  isMember: boolean;
+  challengeType: string | null | undefined;
+  brief: string | null | undefined;
+}): boolean {
+  if (isAnonymous || isMember) return false;
+  if (!brief || !brief.trim()) return false;
+  return BRIEF_GATED_TYPES.includes(challengeType ?? '');
+}

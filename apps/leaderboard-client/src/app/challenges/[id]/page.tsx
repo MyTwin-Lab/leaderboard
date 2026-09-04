@@ -15,6 +15,7 @@ import { MLChallengeFlow } from '@/components/challenges/MLChallengeFlow';
 import { ValidationChallengeFlow } from '@/components/challenges/ValidationChallengeFlow';
 import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseAuthorPanel';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
+import { ChallengeBrief } from '@/components/challenges/ChallengeBrief';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
 import { type BoardTask } from '@/components/contributor/ContributorTaskBoard';
 import {
@@ -27,6 +28,8 @@ import { fetchJson } from '@/lib/fetchJson';
 import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
 import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
+import { findBrief, shouldShowBrief } from '@/lib/challengeBrief';
+import { useJoinChallenge } from '@/lib/useJoinChallenge';
 
 const ML_REPO_TYPES = ['kaggle_dataset', 'kaggle_model'];
 
@@ -233,13 +236,35 @@ export default function ChallengeDetailPage() {
     await queryClient.invalidateQueries({ queryKey: ['challenge-overview', challengeId] });
   };
 
+  // Rejoindre bascule `isMember` via l'overview : la page passe du brief à
+  // l'espace de travail sans rechargement, et sans que ce hook n'ait à le savoir.
+  const { join, joining, error: joinError } = useJoinChallenge(challengeId, reloadBoard);
+
+  // Le brief n'intéresse que le contributeur connecté qui n'a pas encore
+  // rejoint — ni l'anonyme, ni le membre ne le lisent ici. La requête ne part
+  // donc que pour lui.
+  const briefNeeded = !isAnonymous && !isMember && !!challenge;
+  const briefQuery = useQuery({
+    queryKey: ['challenge-brief', challengeId],
+    queryFn: async () => {
+      const docs = await fetchJson(`/api/challenges/${challengeId}/documents`) as { filename: string; content: string }[];
+      return findBrief(Array.isArray(docs) ? docs : [])?.content ?? null;
+    },
+    enabled: !!challengeId && briefNeeded,
+    staleTime: 5 * 60_000,
+  });
+
   // repo-activity is excluded on purpose: it hits external connectors and can
   // be slow, but TabActivity/TabMLMetrics already render their own inline
   // skeleton while repoActivity is null — no reason to hold up the rest of
   // the page for it.
   // meQuery.isError is the anonymous case, not a failure to wait on.
+  // The brief only holds the page for the visitor it can actually redirect:
+  // rendering the workspace first and swapping it for the brief a tick later
+  // would be a visible flash.
   const loading = overviewQuery.isLoading || modulesQuery.isLoading
-    || (meQuery.isLoading && !meQuery.isError);
+    || (meQuery.isLoading && !meQuery.isError)
+    || (briefNeeded && briefQuery.isLoading);
 
   if (loading) return <Skeleton />;
 
@@ -265,6 +290,16 @@ export default function ChallengeDetailPage() {
   const mlRewards = mlRewardsQuery.data;
   const bestMetricValue = mlRewards?.bestValue ?? mlRewards?.metric?.points?.[0] ?? null;
   const bestMetricLabel = mlRewards?.metric?.name ? mlRewards.metric.name.toUpperCase() : null;
+
+  // Le brief prend la place des KPI et de l'espace de travail : avant d'avoir
+  // rejoint, un contributeur n'a ni board, ni branche, ni soumission dont ces
+  // blocs pourraient parler.
+  const showBrief = shouldShowBrief({
+    isAnonymous,
+    isMember,
+    challengeType: challenge.type,
+    brief: briefQuery.data,
+  });
 
   const upcomingMeetings = meetings
     .filter(m => ['scheduled', 'in_progress'].includes(m.status))
@@ -347,7 +382,8 @@ export default function ChallengeDetailPage() {
           </p>
         )}
 
-        {/* Hero stat cards */}
+        {/* Hero stat cards — masqués derrière le brief */}
+        {!showBrief && (
         <div className="mt-6">
           <HeroStatCarousel
             cards={[
@@ -403,7 +439,19 @@ export default function ChallengeDetailPage() {
             ]}
           />
         </div>
+        )}
       </div>
+
+      {/* ── Brief: le contributeur connecté qui n'a pas encore rejoint ── */}
+      {showBrief && (
+        <ChallengeBrief
+          content={briefQuery.data!}
+          challengeType={challenge.type}
+          onJoin={join}
+          joining={joining}
+          error={joinError}
+        />
+      )}
 
       {/* ── Signed out: one block, no tabs ───────────────── */}
       {/* Every interactive panel below needs an account, so an anonymous
@@ -423,7 +471,7 @@ export default function ChallengeDetailPage() {
       )}
 
       {/* ── Tabs ─────────────────────────────────────────── */}
-      {!isAnonymous && (
+      {!isAnonymous && !showBrief && (
       <ContributorTabs
         extra={meetingsEnabled && (
           <MeetingsSection
