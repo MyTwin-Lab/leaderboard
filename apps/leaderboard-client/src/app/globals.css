@@ -122,6 +122,15 @@ html[data-mode="light"] {
   animation: fade-up 0.35s ease-out both;
 }
 
+/* Popups and cards landing in place — from the Claude Design mockup. */
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-pop-in {
+  animation: pop-in 0.2s ease-out both;
+}
+
 @keyframes shimmer {
   0%   { background-position: -200% center; }
   100% { background-position:  200% center; }

@@ -91,6 +91,16 @@ const STATEMENTS: Array<{ label: string; sql: string }> = [
     label: "idx_tasks_challenge_user",
     sql: `CREATE INDEX IF NOT EXISTS idx_tasks_challenge_user ON tasks(challenge_id, user_id)`,
   },
+
+  // tasks.type is a leftover from the very first migration: the drizzle schema
+  // dropped it long ago, so no insert supplies it any more, and the column is
+  // still NOT NULL with no default — every task creation fails with
+  //   null value in column "type" violates not-null constraint
+  // Dropping the constraint rather than the column keeps existing rows intact.
+  {
+    label: "tasks.type (drop leftover NOT NULL)",
+    sql: `ALTER TABLE tasks ALTER COLUMN type DROP NOT NULL`,
+  },
 ];
 
 async function main() {

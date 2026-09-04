@@ -117,69 +117,94 @@ export function CodeChallengePanel({
 
   return (
     <div className="space-y-5">
-      {/* Workspace */}
-      <div className="rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+      {/* Workspace — the branch we provisioned, or the contributor's own repo.
+          One row: icon, what it is, where it points, and a status pill pushed
+          to the far end. */}
+      <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+        <GitBranch className="h-[15px] w-[15px] shrink-0 text-white/40" />
         {workspaceMode === 'own_repo' ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <GitBranch className="h-4 w-4 text-white/30" />
-            <input
-              type="url"
-              value={repoUrl}
-              onChange={e => setRepoUrl(e.target.value)}
-              placeholder="https://github.com/you/your-repo (public)"
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white focus:border-brandCP/40 focus:outline-none"
-            />
-            <button onClick={saveRepoUrl} className="rounded-lg bg-white/[0.06] px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/[0.1]">
-              Save
-            </button>
-          </div>
+          <input
+            type="url"
+            value={repoUrl}
+            onChange={e => setRepoUrl(e.target.value)}
+            // The mockup has no save button: the field commits on Enter and on
+            // blur, so the URL is never left typed-but-unsaved.
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveRepoUrl(); } }}
+            onBlur={() => { if (repoUrl.trim() && repoUrl !== myParticipation?.workspace_url) saveRepoUrl(); }}
+            placeholder="https://github.com/you/your-repo (public)"
+            className="min-w-0 flex-1 rounded-[10px] border border-white/10 bg-white/[0.03] px-3 py-2 text-[13px] text-white placeholder:text-white/25 focus:border-brandCP/40 focus:outline-none"
+          />
         ) : (
-          <div className="flex items-center gap-2 text-sm">
-            <GitBranch className="h-4 w-4 text-white/30" />
+          <>
+            <span className="text-xs text-white/45">Your branch</span>
             {myParticipation?.workspace_status === 'ready' && myParticipation.workspace_url ? (
-              <a href={myParticipation.workspace_url} target="_blank" rel="noopener noreferrer"
-                 className="flex items-center gap-1 text-brandCP hover:underline">
-                {myParticipation.workspace_ref?.replace('refs/heads/', '')} <ExternalLink className="h-3 w-3" />
-              </a>
+              <>
+                <a href={myParticipation.workspace_url} target="_blank" rel="noopener noreferrer"
+                   className="inline-flex min-w-0 items-center gap-1.5 truncate font-mono text-[13px] font-semibold text-brandCP hover:underline">
+                  {myParticipation.workspace_ref?.replace('refs/heads/', '')}
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
+                <StatusPill tone="ready">Ready</StatusPill>
+              </>
             ) : myParticipation?.workspace_status === 'failed' ? (
-              <span className="flex items-center gap-1 text-red-400"><XCircle className="h-3.5 w-3.5" /> Branch provisioning failed</span>
+              <StatusPill tone="failed">Provisioning failed</StatusPill>
             ) : (
-              <span className="flex items-center gap-1 text-white/40"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Provisioning your branch…</span>
+              <StatusPill tone="pending">
+                <Loader2 className="h-3 w-3 animate-spin" /> Provisioning…
+              </StatusPill>
             )}
-          </div>
+          </>
         )}
       </div>
 
       {/* Board perso */}
       <ContributorTaskBoard challengeId={challengeId} tasks={myTasks} onReload={onReload} />
 
-      {/* Évaluation globale */}
-      <div className="rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-4 space-y-2">
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={launchEvaluation}
-            disabled={!!disabledReason || launching}
-            className="flex items-center gap-2 rounded-xl bg-brandCP/20 px-5 py-2.5 text-sm font-semibold text-brandCP transition-all hover:bg-brandCP/30 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {running || launching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
-            {running ? 'Evaluating…' : evalStatus === 'done' ? 'Re-evaluate my project' : 'Launch evaluation'}
-          </button>
-          {disabledReason && !running && <span className="text-xs text-white/30">{disabledReason}</span>}
-        </div>
+      {/* Evaluation — launch on the left, why it is locked next to it, and the
+          score pushed to the far end once it has run. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-[20px] border border-white/[0.08] bg-white/[0.03] px-4 py-4">
+        <button
+          onClick={launchEvaluation}
+          disabled={!!disabledReason || launching}
+          className="inline-flex items-center gap-2 rounded-full bg-brandCP/20 px-5 py-2.5 text-[13px] font-semibold text-brandCP transition-all hover:bg-brandCP/30 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {running || launching ? <Loader2 className="h-[15px] w-[15px] animate-spin" /> : <Rocket className="h-[15px] w-[15px]" />}
+          {running ? 'Evaluating…' : evalStatus === 'done' ? 'Re-evaluate my project' : 'Launch evaluation'}
+        </button>
+        {disabledReason && !running && <span className="text-xs text-white/40">{disabledReason}</span>}
 
         {evalStatus === 'done' && typeof score === 'number' && (
-          <p className="flex items-center gap-2 text-sm text-white/70">
-            <CheckCircle2 className="h-4 w-4 text-green-400" />
-            Score {(Math.min(10, (score / 9) * 10)).toFixed(1)}/10 · {myProjectContribution!.reward} CP earned
-          </p>
+          <div className="ml-auto flex items-center gap-2 text-sm text-white">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-green-400" />
+            <span>
+              Score {(Math.min(10, (score / 9) * 10)).toFixed(1)}/10 ·{' '}
+              <span className="font-semibold">{myProjectContribution!.reward} CP</span> earned
+            </span>
+          </div>
         )}
-        {evalStatus === 'failed' && (
-          <p className="flex items-center gap-2 text-xs text-red-400">
-            <XCircle className="h-3.5 w-3.5" /> Evaluation failed — check your repository and try again.
-          </p>
-        )}
-        {error && <p className="text-xs text-red-400">{error}</p>}
       </div>
+
+      {evalStatus === 'failed' && (
+        <p className="flex items-center gap-2 text-xs text-red-400">
+          <XCircle className="h-3.5 w-3.5" /> Evaluation failed — check your repository and try again.
+        </p>
+      )}
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
+  );
+}
+
+/** Small pill carrying the workspace state, in the mockup's far-end slot. */
+function StatusPill({ tone, children }: { tone: 'ready' | 'pending' | 'failed'; children: React.ReactNode }) {
+  const toneClass = tone === 'ready'
+    ? 'bg-green-500/10 text-green-400'
+    : tone === 'failed'
+      ? 'bg-red-500/10 text-red-400'
+      : 'bg-white/[0.06] text-white/45';
+  return (
+    <span className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-[3px] text-[11px] font-semibold ${toneClass}`}>
+      {tone === 'ready' && <span className="h-1.5 w-1.5 rounded-full bg-green-500" />}
+      {children}
+    </span>
   );
 }

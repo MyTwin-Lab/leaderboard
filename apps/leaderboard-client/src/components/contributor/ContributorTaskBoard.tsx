@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors,
   useDraggable, useDroppable, pointerWithin,
   type DragStartEvent, type DragEndEvent,
 } from '@dnd-kit/core';
-import { Loader2, MoreVertical, Trash2, Plus, X } from 'lucide-react';
+import { Loader2, MoreVertical, Trash2, Plus } from 'lucide-react';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -22,10 +23,11 @@ export interface BoardTask {
 
 type ColKey = 'todo' | 'in_progress' | 'done';
 
-const COLUMNS: { key: ColKey; label: string; dot: string }[] = [
+const COLUMNS: { key: ColKey; label: string; dot: string; empty?: string }[] = [
+  // "To do" has no empty state: the add-a-task button already fills the column.
   { key: 'todo',        label: 'To do',       dot: 'bg-white/25' },
-  { key: 'in_progress', label: 'In progress', dot: 'bg-yellow-400' },
-  { key: 'done',        label: 'Done',        dot: 'bg-green-500' },
+  { key: 'in_progress', label: 'In progress', dot: 'bg-yellow-400', empty: 'Nothing in progress' },
+  { key: 'done',        label: 'Done',        dot: 'bg-green-500',  empty: 'Nothing done yet' },
 ];
 
 // ─── Board ────────────────────────────────────────────────────────────────────
@@ -45,6 +47,9 @@ export function ContributorTaskBoard({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ taskId: string; x: number; y: number } | null>(null);
   const [addingTask, setAddingTask] = useState(false);
+  // document.body only exists once mounted — the drag overlay is portalled there.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -127,26 +132,7 @@ export function ContributorTaskBoard({
     <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 md:grid md:snap-none md:grid-cols-3 md:gap-4 md:overflow-visible md:pb-0">
         {COLUMNS.map(col => (
-          <Column
-            key={col.key}
-            col={col}
-            count={grouped[col.key].length}
-            headerRight={col.key === 'todo' ? (
-              <button
-                onClick={() => setAddingTask(v => !v)}
-                className="flex items-center gap-1 rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-semibold text-white/50 transition-colors hover:bg-white/[0.14] hover:text-white/80"
-              >
-                {addingTask ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                New task
-              </button>
-            ) : undefined}
-          >
-            {col.key === 'todo' && addingTask && (
-              <NewTaskForm
-                onCancel={() => setAddingTask(false)}
-                onCreate={async (title, description) => { await runCreate(title, description); setAddingTask(false); }}
-              />
-            )}
+          <Column key={col.key} col={col} count={grouped[col.key].length}>
             {grouped[col.key].map(task => (
               <Card
                 key={task.uuid}
@@ -158,11 +144,26 @@ export function ContributorTaskBoard({
                 onOpenMenu={openMenu}
               />
             ))}
-            {grouped[col.key].length === 0 && !(col.key === 'todo' && addingTask) && (
-              <div className="flex h-20 items-center justify-center rounded-[14px] border border-dashed border-white/[0.05]">
-                <p className="text-xs text-white/15">Empty</p>
+            {grouped[col.key].length === 0 && col.empty && (
+              <div className="flex h-[76px] items-center justify-center rounded-[14px] border border-dashed border-white/[0.07]">
+                <p className="text-xs text-white/20">{col.empty}</p>
               </div>
             )}
+            {/* Creation lives at the foot of "To do", where the next card lands. */}
+            {col.key === 'todo' && (addingTask ? (
+              <NewTaskForm
+                onCancel={() => setAddingTask(false)}
+                onCreate={async (title, description) => { await runCreate(title, description); setAddingTask(false); }}
+              />
+            ) : (
+              <button
+                onClick={() => setAddingTask(true)}
+                className="flex items-center justify-center gap-1.5 rounded-[14px] border border-dashed border-white/[0.12] p-2.5 text-xs font-semibold text-white/35 transition-all hover:border-brandCP/40 hover:bg-brandCP/[0.04] hover:text-brandCP"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add a task
+              </button>
+            ))}
           </Column>
         ))}
       </div>
@@ -171,9 +172,17 @@ export function ContributorTaskBoard({
         Drag cards across columns to track your progress. Finish everything to unlock the evaluation.
       </p>
 
-      <DragOverlay dropAnimation={null}>
-        {activeTask ? <CardShell task={activeTask} dragging /> : null}
-      </DragOverlay>
+      {/* Portalled into document.body for the same reason as the delete menu:
+          the overlay positions itself with position:fixed, and the animated
+          (transform) wrapper ContributorTabs puts around the tab panel would
+          otherwise become its containing block — the card would then trail the
+          cursor at an offset instead of following it. */}
+      {mounted && createPortal(
+        <DragOverlay dropAnimation={null}>
+          {activeTask ? <CardShell task={activeTask} dragging /> : null}
+        </DragOverlay>,
+        document.body,
+      )}
 
       {menu && parents.some(t => t.uuid === menu.taskId) && (
         <DeleteMenu
@@ -191,28 +200,25 @@ export function ContributorTaskBoard({
 // ─── Column (droppable) ───────────────────────────────────────────────────────
 
 function Column({
-  col, count, headerRight, children,
+  col, count, children,
 }: {
-  col: { key: ColKey; label: string; dot: string };
+  col: { key: ColKey; label: string; dot: string; empty?: string };
   count: number;
-  headerRight?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key });
   return (
-    <div className="min-w-[80vw] shrink-0 snap-center space-y-3 md:min-w-0 md:shrink">
+    <div className="min-w-[80vw] shrink-0 snap-center space-y-2.5 md:min-w-0 md:shrink">
       <div className="flex items-center gap-2 px-1">
         <span className={`h-2 w-2 rounded-full ${col.dot}`} />
-        <span className="text-xs font-semibold text-white/50">{col.label}</span>
-        <div className="ml-auto flex items-center gap-1.5">
-          <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-white/30">{count}</span>
-          {headerRight}
-        </div>
+        <span className="text-xs font-semibold text-white/60">{col.label}</span>
+        <span className="ml-auto rounded-full bg-white/[0.06] px-2 py-px text-[11px] font-semibold text-white/45">{count}</span>
       </div>
+      {/* Dashed, so the column still reads as a drop target when it is empty. */}
       <div
         ref={setNodeRef}
-        className={`min-h-[140px] space-y-2 rounded-[20px] border p-2.5 transition-colors ${
-          isOver ? 'border-brandCP/30 bg-brandCP/[0.04]' : 'border-white/[0.06] bg-white/[0.01]'
+        className={`flex min-h-[150px] flex-col gap-2.5 rounded-[20px] border border-dashed p-2.5 transition-colors ${
+          isOver ? 'border-brandCP/45 bg-brandCP/[0.06]' : 'border-white/[0.09] bg-white/[0.015]'
         }`}
       >
         {children}
@@ -250,8 +256,10 @@ function Card({
       ref={setNodeRef}
       {...(draggable ? { ...listeners, ...attributes } : {})}
       onClick={handleClick}
-      className={`group select-none rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-3.5 py-3 transition-all
-        ${isDragging ? 'opacity-40' : 'hover:border-white/12 hover:bg-white/[0.05]'}
+      // pop-in replays whenever the card is remounted — on creation, and when a
+      // drop moves it into another column — so it visibly lands in its new spot.
+      className={`group animate-pop-in select-none rounded-[14px] border border-white/[0.08] bg-white/[0.04] px-3.5 py-3 shadow-[0_6px_18px_-14px_rgba(6,44,34,0.5)] transition-all duration-150
+        ${isDragging ? 'opacity-35' : 'hover:border-brandCP/30 hover:shadow-[0_10px_24px_-14px_rgba(6,44,34,0.55)]'}
         ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
       style={{ touchAction: draggable ? 'none' : undefined }}
     >
@@ -280,7 +288,7 @@ function Card({
 function CardShell({ task, dragging }: { task: BoardTask; dragging?: boolean }) {
   return (
     <div className={dragging ? 'w-[280px] max-w-[80vw] rounded-xl border border-brandCP/30 bg-backgroundDark px-3.5 py-3 shadow-2xl' : ''}>
-      <p className="text-sm font-medium leading-snug text-white">{task.title}</p>
+      <p className="text-sm font-semibold leading-snug text-white">{task.title}</p>
       {task.description && (
         <p className="mt-0.5 line-clamp-2 text-xs text-white/35">{task.description}</p>
       )}
@@ -374,6 +382,9 @@ function DeleteMenu({
   onClose: () => void; onDelete: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -382,14 +393,22 @@ function DeleteMenu({
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
   }, [onClose]);
 
-  // Keep the popup within the viewport horizontally.
-  const left = Math.min(x, (typeof window !== 'undefined' ? window.innerWidth : 320) - 200);
+  if (!mounted) return null;
 
-  return (
+  // Keep the popup within the viewport.
+  const left = Math.min(x, window.innerWidth - 190);
+  const top = Math.min(y + 8, window.innerHeight - 70);
+
+  // Rendered through a portal into document.body: ContributorTabs wraps the
+  // active tab panel in an animated div whose `both` fill mode leaves a
+  // transform applied, which would otherwise become the containing block for
+  // this position:fixed menu and drop it at the bottom of the tab instead of
+  // next to the cursor.
+  return createPortal(
     <div
       ref={ref}
-      style={{ position: 'fixed', top: y + 8, left, zIndex: 9999 }}
-      className="w-44 rounded-xl border border-white/10 bg-backgroundDark p-1.5 shadow-2xl"
+      style={{ position: 'fixed', top, left, zIndex: 9999 }}
+      className="w-44 animate-pop-in rounded-xl border border-white/10 bg-background p-1.5 shadow-2xl"
     >
       <button
         disabled={busy}
@@ -397,8 +416,9 @@ function DeleteMenu({
         className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-red-400 transition-colors hover:bg-red-500/[0.1] hover:text-red-300 disabled:opacity-40"
       >
         <Trash2 className="h-4 w-4 shrink-0 text-red-400/70" />
-        Delete
+        Delete task
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 }
