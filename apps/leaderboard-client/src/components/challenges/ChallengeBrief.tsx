@@ -29,7 +29,7 @@ export function ChallengeBrief({
 }) {
   return (
     <div className="animate-fade-up space-y-6">
-      <div className="h-px w-full bg-white/10" />
+      <div className="h-0.5 w-full rounded-full bg-white/15" />
 
       {/* Colonne de lecture : la largeur du texte prime sur celle de la page. */}
       <div className="mx-auto w-full max-w-[760px]">
