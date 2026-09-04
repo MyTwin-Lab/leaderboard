@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ChallengeDocumentRepository } from '../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
+import { BRIEF_FILENAME } from '@/lib/challengeBrief';
 
 const docRepo = new ChallengeDocumentRepository();
 
@@ -47,6 +48,18 @@ export async function POST(
     }
     if (content.length > 500_000) {
       return NextResponse.json({ error: 'File too large (max 500KB)' }, { status: 400 });
+    }
+
+    // Le brief est unique par challenge : le réenregistrer remplace le
+    // document existant au lieu d'en empiler un second du même nom. Limité au
+    // brief — pour un dépôt de fichier ordinaire, deux versions homonymes
+    // peuvent être voulues, et ce POST est aussi celui du tiroir Docs.
+    if (filename === BRIEF_FILENAME) {
+      const existing = await docRepo.findByChallengeAndFilename(id, BRIEF_FILENAME);
+      if (existing) {
+        const updated = await docRepo.updateContent(existing.uuid, content, user.id);
+        return NextResponse.json(updated, { status: 200 });
+      }
     }
 
     const doc = await docRepo.create({
