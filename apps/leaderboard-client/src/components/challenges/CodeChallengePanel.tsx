@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, GitBranch, Rocket, CheckCircle2, XCircle, ExternalLink, Users } from 'lucide-react';
+import { Loader2, GitBranch, Rocket, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import { ContributorTaskBoard, type BoardTask } from '@/components/contributor/ContributorTaskBoard';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
+import { useJoinChallenge } from '@/lib/useJoinChallenge';
+import { JoinButton } from '@/components/challenges/JoinButton';
 
 export interface CodeParticipation {
   user_id: string;
@@ -32,20 +34,11 @@ export function CodeChallengePanel({
   isMember: boolean;
   onReload: () => Promise<void> | void;
 }) {
-  const [joining, setJoining] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [repoUrl, setRepoUrl] = useState(myParticipation?.workspace_url ?? '');
   const [error, setError] = useState('');
 
-  const join = async () => {
-    setJoining(true); setError('');
-    try {
-      const res = await fetch(`/api/challenges/${challengeId}/join`, { method: 'POST' });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error || 'Failed to join'); return; }
-      await onReload();
-    } catch { setError('Network error'); }
-    finally { setJoining(false); }
-  };
+  const { join, joining, error: joinError } = useJoinChallenge(challengeId, onReload);
 
   const saveRepoUrl = async () => {
     setError('');
@@ -84,15 +77,8 @@ export function CodeChallengePanel({
             ))}
           </div>
         )}
-        <button
-          onClick={join}
-          disabled={joining}
-          className="flex items-center gap-2 rounded-xl bg-brandCP/20 px-6 py-2.5 text-sm font-semibold text-brandCP transition-all hover:bg-brandCP/30 disabled:opacity-60"
-        >
-          {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
-          Join the challenge
-        </button>
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        <JoinButton onClick={join} joining={joining} />
+        {joinError && <p className="text-xs text-red-400">{joinError}</p>}
       </div>
     );
   }
