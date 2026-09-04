@@ -2,15 +2,15 @@
 
 `type: 'ml'` challenges (datasets, models, packaging work) use a different reward system than regular `type: 'code'` challenges.
 
-**Requires:** `OPENAI_API_KEY` (for code/dataset scoring) + a connected Kaggle account (see [`admin-settings.md`](./admin-settings.md))
+**Requires:** `OPENAI_API_KEY` (for code/dataset scoring) + a connected Kaggle account (see [`admin-settings.md`](./admin-settings.md)). Optionally a connected Scaleway account, to offer contributors GPU compute — see [`compute-power.md`](./compute-power.md).
 
 ---
 
 ## Why a separate system
 
-Code challenges distribute a **fixed pool proportionally to scores, once the challenge closes** (see [`evaluation.md`](./evaluation.md)): everyone's share depends on everyone else's score, and nothing is final until the end.
+ML challenges have a different *shape* of work: contributors submit a dataset, a model, and packaging work as separate steps, and each step should award **points immediately** as it is evaluated — not wait for a challenge close. So ML challenges score per submission, against a fixed budget per step.
 
-ML challenges need the opposite: contributors submit a dataset, a model, and packaging work as separate steps, and each step should award **points immediately** as it's evaluated — not wait for a challenge close. So ML challenges use a live, event-driven system with its own fixed budget per step, instead of a single end-of-challenge split.
+Code challenges have since adopted the same live philosophy — a contributor triggers one evaluation of their whole delivery and is paid on the spot (see [`challenges-and-tasks.md`](./challenges-and-tasks.md#rewards)). Closing a challenge no longer computes or splits anything for either type. What remains specific to ML is the submission shape below: several independent artifacts, one of them scored from a reported metric rather than by an agent, and reuse between contributors.
 
 **ML challenges never have tasks.** There is no kanban, no task assignment — contributors submit their work directly through a dedicated ML workspace flow on the challenge page.
 

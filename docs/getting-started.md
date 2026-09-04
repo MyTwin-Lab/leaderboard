@@ -70,8 +70,14 @@ GOOGLE_WORKSPACE_SERVICE_ACCOUNT_EMAIL=
 GOOGLE_WORKSPACE_SERVICE_ACCOUNT_KEY=
 GOOGLE_WORKSPACE_ADMIN_EMAIL=
 
-# Optional — secures the meeting-polling cron endpoint
+# Optional — secures every cron endpoint (meetings, Slack signals, GPU compute)
 CRON_SECRET=
+
+# Optional — Slack contribution signals, if not connected via the UI
+SLACK_BOT_TOKEN=
+
+# Optional — local dev only: lets validation challenges call a private/localhost endpoint
+VALIDATION_ALLOW_PRIVATE_ENDPOINTS=
 
 # Optional — observability (Grafana Cloud)
 OTEL_EXPORTER_OTLP_ENDPOINT=
@@ -90,6 +96,8 @@ Copy-Item .env apps/leaderboard-client/.env.local
 ```
 
 > The root `.env` is used by Drizzle (schema push) and the seed script. The `apps/leaderboard-client/.env.local` is used by Next.js at runtime. Both must exist.
+
+> Kaggle, Slack, OpenAI and GitHub credentials can also be connected from the admin UI instead of `.env` — and Scaleway (GPU compute) **only** from the UI, it has no env var at all. See [`admin-settings.md`](./admin-settings.md).
 
 ---
 
@@ -154,8 +162,12 @@ The app runs at [http://localhost:3000](http://localhost:3000).
 npm run dev            # Start Next.js dev server
 npm run db:push        # Apply schema changes to local DB
 npm run db:studio      # Open Drizzle Studio (DB browser)
-npm run populate-db    # Reset + seed the database
-npm test               # Run all tests
+npm run db:seed        # Reset + seed the database (alias: populate-db)
+npm run db:setup       # Push the schema and seed in one go
+
+cd apps/leaderboard-client
+npx vitest run         # Run the tests — see testing.md for why not from the root
+npx tsc --noEmit       # Type-check
 ```
 
 See [`deployment.md`](./deployment.md) for production setup.

@@ -1,6 +1,10 @@
 # Deployment
 
-The app is deployed as a single Next.js process managed by **PM2** on a VPS.
+The app is a single Next.js process. Three deployment shapes are in use:
+
+- **PM2 on a VPS** — the setup this document describes in detail.
+- **Scalingo** — driven by `Procfile` (see [Deploying on Scalingo](#deploying-on-scalingo)).
+- **Vercel** — `vercel.json` declares the cron schedules.
 
 ---
 
@@ -103,6 +107,21 @@ Enable HTTPS with Certbot: `certbot --nginx -d lab.my-twin.io`
 
 ---
 
+## Deploying on Scalingo
+
+`Procfile` declares two processes:
+
+```
+web: cd apps/leaderboard-client && npm run start -- -p $PORT
+postdeploy: npm run db:apply-schema && npm run db:resync-rewards
+```
+
+The `postdeploy` hook is what keeps the database in step. It deliberately does **not** run `drizzle-kit push`: push has to disambiguate moved columns through an interactive prompt, and a deploy has no TTY. `scripts/db-apply-schema.ts` applies explicit, idempotent `IF NOT EXISTS` statements instead — so **a new column added to `drizzle.ts` must also be added there**. See [`database.md`](./database.md#migrations).
+
+`scripts/db-resync-rewards.ts` then rebuilds the derived caches (`contributions.reward`, `challenges.completion`).
+
+---
+
 ## Environment variables for production
 
 The `.env` at the repo root is read by both Drizzle and the Next.js build. The `apps/leaderboard-client/.env.local` should also be set (or symlinked):
@@ -142,18 +161,22 @@ KAGGLE_KEY=...
 SLACK_BOT_TOKEN=...
 ```
 
+GPU compute has no env fallback at all — Scaleway credentials are only ever set from the admin UI (see [`compute-power.md`](./compute-power.md)).
+
 ---
 
 ## Cron jobs
 
-Two endpoints must be hit on a schedule, both secured by `Authorization: Bearer $CRON_SECRET`:
+Four endpoints must be hit on a schedule, all secured by `Authorization: Bearer $CRON_SECRET`:
 
 | Endpoint | Schedule | Purpose |
 |----------|----------|---------|
 | `/api/cron/check-meetings` | every minute | Detect completed meetings and trigger analysis |
-| `/api/cron/slack-signals` | daily | Detect Slack contribution signals (see [`slack-signals.md`](./slack-signals.md)) |
+| `/api/cron/slack-signals` | daily, 06:00 UTC | Detect Slack contribution signals (see [`slack-signals.md`](./slack-signals.md)) |
+| `/api/cron/compute-provisioning` | every minute | Flip GPU instances to `ready` once Scaleway answers (see [`compute-power.md`](./compute-power.md)) |
+| `/api/cron/compute-expiration` | every minute | Terminate GPU instances past their 24h window |
 
-On **Vercel**, `vercel.json` declares both crons and nothing else is needed. On **Scalingo / PM2**, there is no built-in scheduler: use the Scalingo Scheduler addon, a system crontab, or an external service (e.g. cron-job.org) to `curl` the endpoints:
+On **Vercel**, `vercel.json` declares all four crons and nothing else is needed. On **Scalingo / PM2**, there is no built-in scheduler: use the Scalingo Scheduler addon, a system crontab, or an external service (e.g. cron-job.org) to `curl` the endpoints:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/slack-signals

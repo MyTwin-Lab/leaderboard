@@ -9,9 +9,10 @@ The onboarding system guides **new contributors** through a set of missions to g
 When a new contributor joins, they don't immediately have full context on how challenges, tasks, and evaluations work. The onboarding missions provide a structured first experience:
 
 1. Get oriented in the platform
-2. Pick a task and work on it
-3. Participate in an evaluation
-4. Validate your first contribution
+2. Start your own board
+3. Follow your work
+4. Deliver and trigger an evaluation
+5. Join the team's sync meeting
 
 ---
 
@@ -21,7 +22,7 @@ Onboarding progress is tracked per user in a single `onboarding_progress` row �
 
 The app reads and writes this progress at:
 - `GET /api/onboarding` — returns the authenticated user's onboarding state
-- `POST /api/onboarding` — marks a quest as completed
+- `PATCH /api/onboarding` — marks a quest as completed
 - `GET /api/onboarding/all` — admin-only; returns every contributor's progress in one list, for the "Onboarding" tab in `/contributors/me`
 
 Progress is shown in the contributor's own profile page (`/contributors/me`) via the onboarding drawer. An admin can hide this drawer instance-wide from the Modules tab (see [`admin-settings.md`](./admin-settings.md)) — tracking still happens in the background even when the drawer is hidden.
@@ -32,13 +33,15 @@ Progress is shown in the contributor's own profile page (`/contributors/me`) via
 
 The onboarding flow is five quests. Each is completed by taking a real action in the app, and each maps to one boolean column on `onboarding_progress`:
 
-| Quest | Column | What the contributor does |
-|-------|--------|---------------------------|
-| Explore | `clicked_challenge` | Open a challenge for the first time |
-| Assign | `assigned_task` | Get assigned to a task |
-| Evaluate | `evaluated_contribution` | Have a contribution go through evaluation |
-| Validate | `validated_task` | Have a task marked complete |
-| Join | `joined_meeting` | Join a sync meeting |
+| Quest | Column | What actually flips it |
+|-------|--------|------------------------|
+| Explore | `clicked_challenge` | Opening a challenge page while signed in |
+| Get to work | `assigned_task` | Creating your first task on a personal board |
+| Review | `evaluated_contribution` | Opening your "My tasks" view |
+| Deliver | `validated_task` | Launching a project evaluation |
+| Join | `joined_meeting` | Clicking through to a sync meeting link |
+
+> The column names predate the personal-board model — `assigned_task` no longer has anything to do with assignment, and `validated_task` fires on a project evaluation, not a task. They were kept rather than migrated; read the right-hand column, not the name.
 
 When all five are done, `completed_at` is set and the onboarding drawer stops appearing for that user.
 

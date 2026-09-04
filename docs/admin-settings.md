@@ -1,6 +1,6 @@
 # Admin Settings
 
-A handful of instance-wide settings — appearance, external integrations, and feature toggles — are controlled by admins from the **Appearance** and **Modules** tabs on their own profile page (`/contributors/me`). All of them are stored in a single singleton database row (`app_settings`, `id = 1`) and take effect immediately for every user.
+A handful of instance-wide settings — appearance, external integrations, and feature toggles — are controlled by admins from the **Appearance**, **Integrations** and **Modules** tabs on their own profile page (`/contributors/me`). All of them are stored in a single singleton database row (`app_settings`, `id = 1`) and take effect immediately for every user.
 
 ---
 
@@ -13,7 +13,7 @@ Admins can pick a predefined color theme for the whole app (e.g. Blue, Purple, G
 
 ---
 
-## Integrations: GitHub, Kaggle, Slack & OpenAI
+## Integrations: GitHub, Kaggle, Slack, OpenAI & Scaleway
 
 All integrations follow the same pattern: instead of relying solely on a static token in `.env`, an admin connects an account from the UI. The credential is encrypted (AES-256-GCM) and stored in `app_settings`; the encryption key itself never enters the database. Connectors automatically prefer the database credential and fall back to the `.env` value if nothing is connected.
 
@@ -64,6 +64,16 @@ The OpenAI key powers every AI feature: contribution evaluation, meeting analysi
 - `DELETE /api/openai/connection` — disconnects, falling back to the `OPENAI_API_KEY` env var if set.
 - `GET /api/openai/status` — public, returns whether an OpenAI key is connected (never the key).
 
+### Scaleway
+
+Scaleway powers **GPU compute requests** on ML challenges: a contributor asks for a temporary GPU instance, a manager approves, and the platform provisions it (see [`compute-power.md`](./compute-power.md)).
+
+Unlike the four integrations above, this one has **no `.env` fallback** — if no account is connected, the compute panel is hidden entirely rather than offering a button that cannot work.
+
+- `POST /api/scaleway/connection` (admin-only) — takes a `secret_key`, a `project_id` and a `zone`, verifies them live against the Scaleway API, then encrypts and stores them (`app_settings.scaleway_secret_key_enc` / `scaleway_secret_key_iv` / `scaleway_project_id` / `scaleway_zone` / `scaleway_connected_at` / `scaleway_connected_by`).
+- `DELETE /api/scaleway/connection` — **soft**-disconnect. It sets `scaleway_disconnect_requested_at` rather than wiping the key: from that point on, no new request or approval is allowed and the panel disappears, but an instance already running keeps living until its natural 24h expiry, and the crons can still reach Scaleway to poll and terminate it. Nothing is left orphaned. Two accessors encode this: `isScalewayUserFacingConnected()` for every gate, `getScalewayCredentials()` (which ignores the flag) for the crons.
+- `GET /api/scaleway/status` — public, returns whether an account is connected plus the project ID (never the key).
+
 ---
 
 ## Modules: feature toggles
@@ -93,11 +103,13 @@ A related admin-only view, the **Onboarding** tab, lists every contributor's onb
 | `packages/config/kaggleCredentials.ts` | Same pattern for Kaggle credentials |
 | `packages/config/slackCredentials.ts` | Same pattern for the Slack bot token |
 | `packages/config/openaiCredentials.ts` | Same pattern for the OpenAI API key |
+| `packages/config/scalewayCredentials.ts` | Same pattern for Scaleway — DB only, no `.env` fallback |
 | `apps/leaderboard-client/src/lib/themes.ts` | Predefined theme palette definitions |
 | `apps/leaderboard-client/src/app/api/admin/theme/route.ts` | Theme update endpoint |
 | `apps/leaderboard-client/src/app/api/github-oauth/` | GitHub OAuth connect/disconnect/status routes |
 | `apps/leaderboard-client/src/app/api/kaggle/` | Kaggle connect/disconnect/status routes |
 | `apps/leaderboard-client/src/app/api/slack/` | Slack connect/disconnect/status/channels routes |
 | `apps/leaderboard-client/src/app/api/openai/` | OpenAI connect/disconnect/status routes |
+| `apps/leaderboard-client/src/app/api/scaleway/` | Scaleway connect/disconnect/status routes |
 | `apps/leaderboard-client/src/app/api/modules/route.ts` | Module toggle read/update |
 | `apps/leaderboard-client/src/app/api/onboarding/all/route.ts` | Admin view of all contributors' onboarding progress |

@@ -37,7 +37,9 @@ Variables it validates:
 - `OTEL_*` — observability config (optional)
 - `VALIDATION_ALLOW_PRIVATE_ENDPOINTS` — optional, **local dev only** (lets the validation-challenge SSRF guard accept localhost/private endpoints — see [`validation-challenges.md`](./validation-challenges.md))
 
-**Key file:** `packages/config/index.ts`
+> Scaleway has **no** env fallback — GPU compute credentials only ever come from the admin-connected account (see [`compute-power.md`](./compute-power.md)).
+
+**Key files:** `packages/config/index.ts`, plus one module per encrypted credential: `githubToken.ts`, `kaggleCredentials.ts`, `slackCredentials.ts`, `openaiCredentials.ts`, `scalewayCredentials.ts`
 
 ---
 
@@ -53,7 +55,7 @@ What it provides:
 - **Repositories** (`repositories/`) — one repository per domain area, with typed CRUD and query methods
 
 Repositories available:
-`project`, `repo`, `challenge`, `challengeRepos`, `challengeTeam`, `challengeDocument`, `challengeSignal`, `challengeSlackConfig`, `user`, `contribution`, `rewardEntry`, `task`, `evaluationGrids`, `evaluationRuns`, `evaluationRunContributions`, `syncMeeting`, `meetingParticipant`, `meetingAnalysis`, `onboardingProgress`, `refreshToken`, `appSettings`
+`accountMerge`, `appSettings`, `caseClaim`, `challenge`, `challengeDocument`, `challengeRepos`, `challengeSignal`, `challengeSlackConfig`, `challengeTeam`, `computeRequest`, `contribution`, `evaluationGrids`, `evaluationRunContributions`, `evaluationRuns`, `meetingAnalysis`, `meetingParticipant`, `onboardingProgress`, `project`, `referenceCase`, `refreshToken`, `repo`, `rewardEntry`, `syncMeeting`, `task`, `user`, `validationAttempt`, `validationTarget`
 
 **Key file:** `packages/database-service/db/drizzle.ts`
 
@@ -68,14 +70,13 @@ The evaluator exposes one active agent:
 - **Evaluate** (`openai/evaluate.agent.ts`) — scores a contribution against a grid (0–9 per criterion, `globalScore` a weighted sum on that same ~0–9 scale since the grid's weights sum to ~1)
 
 Scoring grids (in `grids/`):
-- `code.grid.ts` — technical quality, architecture, security, maintainability, documentation, impact
-- `model.grid.ts` — kept but currently unused (see [`ml-rewards.md`](./ml-rewards.md) — Kaggle models are scored from their metric, not by this grid)
-- `dataset.grid.ts` — dataset contributions
-- `docs.grid.ts` — documentation contributions
+- `code.grid.ts` — technical quality, architecture, security, maintainability, documentation, impact. Used by the code challenge project evaluation **and** by the ML `model code` and `API packaging` steps.
+- `dataset.grid.ts` — ML `dataset` submissions
+- `model.grid.ts` — kept but currently unused (see [`ml-rewards.md`](./ml-rewards.md) — Kaggle models are scored from their reported metric, not by an agent)
 
 Each agent call is wrapped with 3-retry logic (1-second backoff).
 
-`reward.ts` distributes a fixed pool proportionally at challenge close (code challenges). `ml-reward.ts` computes live, absolute point awards for ML challenges (caps, metric normalization, lead bonus, reuse deductions) — see [`ml-rewards.md`](./ml-rewards.md).
+`code-reward.ts` computes a code challenge's live award (`computeCodeAward()` — fixed + quality, positive delta, pool-clamped; see [`challenges-and-tasks.md`](./challenges-and-tasks.md#rewards)). `ml-reward.ts` computes live, absolute point awards for ML challenges (caps, metric normalization, lead bonus, reuse deductions) — see [`ml-rewards.md`](./ml-rewards.md). Neither splits a pool at challenge close any more.
 
 > The package also contains `openai/identify.agent.ts` and `openai/merge.agent.ts` from the old challenge-level pipeline — these are **no longer used**.
 
@@ -98,7 +99,7 @@ Interface methods: `connect()`, `testConnection()`, `fetchItems()`, `fetchItemCo
 
 GitHub, Kaggle and Slack credentials can come from an admin-connected account (encrypted, stored in `app_settings`) or fall back to `.env` — see [`admin-settings.md`](./admin-settings.md).
 
-**Key files:** `packages/connectors/github/`, `packages/connectors/kaggle/`, `packages/connectors/google-drive/`
+**Key files:** `packages/connectors/implementation/` (`Github.connector.ts`, `Kaggle.connector.ts`, `GD.connector.ts`, `Slack.connector.ts`), `packages/connectors/registry.ts`, `packages/connectors/interfaces.ts`
 
 ---
 
@@ -109,36 +110,31 @@ GitHub, Kaggle and Slack credentials can come from an admin-connected account (e
 
 Key services:
 - **`challenge/code-rewards.service.ts`** (`CodeRewardsService`) — live evaluation of a code challenge's personal boards: preconditions (board complete, workspace ready, no run already in progress) → resolve the contributor's branch/repo → snapshot → agent score → ledger award, project-scoped rather than per-task — see [`evaluation.md`](./evaluation.md)
-- **`challenge.service.ts`** — challenge CRUD and state transitions
-- **`rewards.service.ts`** — distributes CP across contributors based on evaluation scores (code challenges)
+- **`challenge/challenge.service.ts`** — challenge CRUD and state transitions
 - **`challenge/ml-rewards.service.ts`** — orchestrates ML challenge scoring and the point ledger; **`challenge/artifactUrl.ts`** and **`challenge/lineage.ts`** support reuse detection — see [`ml-rewards.md`](./ml-rewards.md)
-- **`google-auth.service.ts`** — manages Google OAuth2 tokens (used for login and Google integrations)
-- **`google-calendar.service.ts`** — creates and manages Google Calendar events
-- **`google-meet.service.ts`** — provisions Google Meet links
-- **`evaluation-grid.service.ts`** — CRUD for evaluation grids stored in the DB
+- **`challenge/snapshot.service.ts`** — builds the aggregated code snapshot handed to the evaluator
+- **`challenge/validation-challenge.service.ts`** + **`challenge/reference-case.service.ts`** + **`challenge/endpoint-proxy.ts`** + **`challenge/ssrf-guard.ts`** — the validation challenge flow — see [`validation-challenges.md`](./validation-challenges.md)
+- **`compute/`** — GPU compute requests: `compute-request.service.ts` plus the two cron entry points — see [`compute-power.md`](./compute-power.md)
+- **`google-workspace/`** — `google-auth.service.ts` (OAuth2 tokens, used for login too), `google-calendar.service.ts`, `google-meet.service.ts`
+- **`evaluation-grid.service.ts`** / **`database-grid-provider.ts`** — evaluation grids stored in the DB
 - **`sync-meeting/`** — full sync meeting lifecycle (creation → polling → ingestion → analysis)
 - **`slack/`** — daily Slack signal ingestion: `slack-signals.service.ts` (per-challenge cursor, author resolution, LLM detection, ledger writes) and `cron-slack-signals.ts` (loops over configured challenges) — see [`slack-signals.md`](./slack-signals.md)
+- **`run-logger.ts`** — shared evaluation-run logging
 
-> `challenge-context.service.ts` and `sync-evaluation.service.ts` are still in the codebase but are **no longer used** — they belonged to the old challenge-level identify/merge/evaluate pipeline. `webhook.service.ts` also remains but is orphaned: the `POST /api/webhooks/github` route that used to call it has been removed, so nothing in the app invokes it anymore.
+> `challenge/challenge-context.service.ts` and `challenge/sync-evaluation.service.ts` are still in the codebase but are **no longer used** — they belonged to the old challenge-level identify/merge/evaluate pipeline (the `/api/challenges/:id/context` and `/sync` routes are their remaining surface). `webhook.service.ts` also remains but is orphaned: the `POST /api/webhooks/github` route that used to call it has been removed, so nothing in the app invokes it anymore.
 
 ---
 
 ## `packages/provisioner`
 
-**Optional** — requires `GITHUB_TOKEN`
-**Purpose:** Creates workspaces for tasks on external platforms. Currently supports creating GitHub branches for a challenge/task.
+**Optional** — requires a GitHub token (for branches) or a connected Scaleway account (for GPU instances)
+**Purpose:** Provisions the external resources a challenge hands to a contributor, behind one provider registry.
 
-```typescript
-const result = await provisionChallengeWorkspace({
-  challengeIndex: 7,
-  challengeTitle: 'My Challenge',
-  repoExternalId: 'org/repo',
-  repoType: 'github',
-});
-// Returns: { provider, ref, url, status, meta }
-```
+Providers:
+- **`github-branch.provider.ts`** — a personal branch per contributor on the challenge's repo, protected so only they can push. Entry point: `provisionContributorWorkspace()`.
+- **`scaleway-gpu.provider.ts`** — a temporary GPU instance (`L4-1-24G` by default) — see [`compute-power.md`](./compute-power.md).
 
-**Key file:** `packages/provisioner/github-branch.provider.ts`
+**Key files:** `packages/provisioner/src/index.ts`, `packages/provisioner/src/registry.ts`, `packages/provisioner/src/providers/`
 
 ---
 
@@ -154,6 +150,15 @@ Output schema (validated with Zod):
 - Contribution signals extracted (who did what)
 
 **Key file:** `packages/sync-meeting-agent/meeting-analyzer.ts`
+
+---
+
+## `packages/scaleway`
+
+**Optional** — requires a Scaleway account connected by an admin
+**Purpose:** A thin client for the Scaleway Instances API — create, read, delete a server, and `testConnection()` used to verify credentials at connection time. It carries no ML tooling of its own: the toolchain is expected to already be on the marketplace image.
+
+**Key file:** `packages/scaleway/client.ts` — see [`compute-power.md`](./compute-power.md)
 
 ---
 
@@ -180,7 +185,14 @@ See [`slack-signals.md`](./slack-signals.md) for the full pipeline.
 Examples:
 ```bash
 npx tsx packages/test/test-db-connection.ts
-npx tsx packages/test/test-github-connector.ts
+npx tsx packages/test/test-github.ts
+npx tsx packages/test/test-gd.ts
+npx tsx packages/test/test-provisioner.ts
+npx tsx packages/test/test-challenge-service.ts
+npx tsx packages/test/test-create-challenge.ts
+npx tsx packages/test/test-webhook-service.ts
 ```
+
+> Some of these predate the current model (`test-webhook-service.ts` exercises the orphaned webhook service) — treat them as scratch tools, not a suite.
 
 > Some scripts require optional env variables (GitHub, Google, OpenAI).

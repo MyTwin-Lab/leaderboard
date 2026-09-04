@@ -70,11 +70,13 @@ Grids define the scoring criteria. A code project evaluation always uses the `co
 
 | Grid | Used for | Criteria |
 |------|----------|------|
-| `code` | Code challenge project evaluation | Technical quality, architecture, security, maintainability, documentation, impact |
-| `model` | ML `model` submissions | Model architecture, training quality, performance metrics, reproducibility |
+| `code` | Code challenge project evaluation, and the ML `model code` and `API packaging` submissions | Technical quality, architecture, security, maintainability, documentation, impact |
 | `dataset` | ML `dataset` submissions | Data quality, coverage, labeling accuracy, documentation |
+| `model` | **Currently unused** — a Kaggle model is scored from its reported metric, not by an agent (see [`ml-rewards.md`](./ml-rewards.md)) | Model architecture, training quality, performance metrics, reproducibility |
 
-Grids can also be defined and stored in the database via the admin panel (`/admin/evaluation-grids`), and are loaded at runtime by `DatabaseGridProvider`.
+Grids can also be defined and stored in the database via the admin panel (`/admin/evaluation-grids`), and are loaded at runtime by `DatabaseGridProvider`. `POST /api/evaluation-grids/:id/test-run` scores a sample against a grid so it can be sanity-checked before being put to work.
+
+Every run is recorded in `evaluation_runs` / `evaluation_run_contributions`, browsable and retriable from `/admin/evaluation-runs`.
 
 ### Scoring scale
 

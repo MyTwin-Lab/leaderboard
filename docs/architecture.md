@@ -12,13 +12,15 @@ leaderboard/
 ├── apps/
 │   └── leaderboard-client/   ← Next.js app (the only deployed app)
 └── packages/
-    ├── config/               ← env validation (required by all)
+    ├── config/               ← env validation + encrypted credentials (required by all)
     ├── database-service/     ← Drizzle ORM + repositories (required by all)
     ├── evaluator/            ← AI scoring pipeline (optional)
-    ├── connectors/           ← GitHub + Google Drive (optional)
+    ├── connectors/           ← GitHub / Kaggle / Google Drive / Slack (optional)
     ├── services/             ← orchestration logic (optional)
-    ├── provisioner/          ← workspace provisioning (optional)
+    ├── provisioner/          ← branch + GPU instance provisioning (optional)
+    ├── scaleway/             ← Scaleway Instances API client (optional)
     ├── sync-meeting-agent/   ← meeting AI analysis (optional)
+    ├── slack-signal-agent/   ← Slack signal detection (optional)
     └── test/                 ← ad-hoc test scripts
 ```
 
@@ -41,7 +43,7 @@ flowchart LR
 ```
 
 **Required at runtime:** `config` + `database-service`
-**Optional (need API keys):** `evaluator`, `connectors`, `services`, `provisioner`, `sync-meeting-agent`
+**Optional (need API keys or a connected account):** `evaluator`, `connectors`, `services`, `provisioner`, `scaleway`, `sync-meeting-agent`, `slack-signal-agent`
 
 ## Data flow — code project evaluation pipeline
 
@@ -101,6 +103,7 @@ flowchart LR
 - **No separate API server.** All backend logic lives in Next.js Route Handlers. This simplifies deployment to a single PM2 process.
 - **Optional packages.** The evaluator, connectors, services, and provisioner are all opt-in. The app runs fine with only `config` + `database-service`. This is why there are two prod modes (`prod:full` vs `prod:min`).
 - **Drizzle over raw SQL.** The schema is defined in TypeScript (`packages/database-service/db/drizzle.ts`) and pushed to Postgres with `npm run db:push`. Migrations are generated but the primary workflow is schema-push in development.
+- **Four roles, one of which is a qualification.** `admin` / `contributor` / `viewer` are permission levels; `medical_pro` is not "more than a contributor", it marks someone qualified to judge a validation challenge. See [`auth.md`](./auth.md#roles).
 - **Tasks as a personal, organizational board — for code challenges.** Challenges are containers; each contributor's tasks are their own kanban and never influence the score directly. The old global/claimable task model and the old challenge-level identify/merge service are no longer used.
 - **One reward philosophy across challenge types, different submission shapes.** Both `type: 'code'` and `type: 'ml'` challenges reward live, per run, into the same `reward_entries` ledger, clamped to the pool. `code` challenges score a contributor's whole project once their board is done (see above); `ml` challenges have no tasks at all — contributors submit datasets/models/packaging directly. See [`ml-rewards.md`](./ml-rewards.md). Closing a challenge no longer computes or splits anything for either type.
 - **Project managers instead of a third role.** Rather than adding a `manager` value to `users.role`, elevated per-project access is modeled as a nullable FK (`projects.manager_id`). Role-based checks stay binary (`admin` / `contributor`); manager checks are a separate, project-scoped lookup. See [`auth.md`](./auth.md#project-managers-not-a-role).
