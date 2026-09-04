@@ -159,12 +159,7 @@ export function ChallengeCard({
 
         {/* Footer */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] pt-3.5">
-          <div className="flex items-center gap-3">
-            <TeamAvatars members={teamMembers} maxDisplay={3} variant="floating" />
-            <span className="text-xs text-white/45">
-              {teamMembers.length} in the team
-            </span>
-          </div>
+          <TeamAvatars members={teamMembers} maxDisplay={3} variant="floating" />
           <span
             className="inline-flex shrink-0 items-center gap-2 rounded-full px-4.5 py-2.5 text-[13px] font-semibold transition-all duration-200 group-hover:gap-2.5"
             style={done
