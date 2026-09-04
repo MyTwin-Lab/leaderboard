@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
+import { TabPills } from '@/components/ui/TabPills';
 import { ChallengeList } from '@/components/admin/ChallengeList';
 import { ChallengeForm } from '@/components/admin/ChallengeForm';
 import { TeamModal } from '@/components/admin/TeamModal';
@@ -150,27 +151,7 @@ function ControlledTabs({ tabs, active, onChange }: {
 }) {
   return (
     <div>
-      <div className="mb-6 flex overflow-x-auto border-b border-white/10">
-        {tabs.map((tab, i) => (
-          <button
-            key={i}
-            onClick={() => onChange(i)}
-            className={`group relative shrink-0 px-4 py-2.5 font-medium transition-all duration-200 focus-visible:outline-none ${
-              active === i ? 'text-[15px] text-white' : 'text-[13px] text-white/40 hover:text-white/70'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              {tab.label}
-              {tab.count !== undefined && (
-                <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-normal text-white/40">{tab.count}</span>
-              )}
-            </span>
-            <span className={`absolute bottom-0 left-0 right-0 h-[2px] origin-left rounded-full bg-brandCP transition-transform duration-200 ${
-              active === i ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-50'
-            }`} />
-          </button>
-        ))}
-      </div>
+      <TabPills tabs={tabs} active={active} onChange={onChange} className="mb-6" />
       <div key={active} className="animate-fade-up">{tabs[active].panel}</div>
     </div>
   );

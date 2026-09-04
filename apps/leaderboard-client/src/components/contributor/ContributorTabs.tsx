@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TabPills } from "@/components/ui/TabPills";
 
 interface TabItem {
   label: string;
@@ -16,32 +17,7 @@ export function ContributorTabs({ tabs, initialTab, extra }: { tabs: TabItem[]; 
 
   return (
     <div>
-      {/* Tab bar */}
-      <div className="mb-6 flex overflow-x-auto border-b border-white/10">
-        {tabs.map((tab, i) => {
-          const isActive = active === i;
-          return (
-            <button
-              key={i}
-              onClick={() => setActive(i)}
-              className={`group relative shrink-0 px-[18px] py-3 font-medium transition-all duration-200 focus-visible:outline-none ${
-                isActive
-                  ? "text-[15px] text-white"
-                  : "text-[13px] text-white/40 hover:text-white/70"
-              }`}
-            >
-              {tab.label}
-
-              {/* Underline — always rendered, slides via scaleX */}
-              <span
-                className={`absolute bottom-0 left-0 right-0 h-[2px] origin-left rounded-full bg-brandCP transition-transform duration-250 ${
-                  isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-50"
-                }`}
-              />
-            </button>
-          );
-        })}
-      </div>
+      <TabPills tabs={tabs} active={active} onChange={setActive} className="mb-6" />
 
       {/* Content shared across every tab — meetings, in the redesign */}
       {extra && <div className="mb-6">{extra}</div>}
