@@ -32,7 +32,7 @@ export function HeroStatCard({
       )}
       {team && team.length > 0 && (
         <div className="pt-0.5">
-          <TeamAvatars members={team} variant="floating" />
+          <TeamAvatars members={team} variant="floating" size={26} />
         </div>
       )}
     </div>

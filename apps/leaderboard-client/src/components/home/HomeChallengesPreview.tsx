@@ -118,22 +118,6 @@ export function HomeChallengesPreview({ challenges }: HomeChallengesPreviewProps
           ))}
         </div>
       )}
-
-      {/* CTA banner */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white/[0.06] p-5 sm:p-6">
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="text-base font-semibold text-white">No expertise required.</span>
-          <span className="text-[13px] leading-relaxed text-white/55">
-            You grow by contributing — code, design, research, feedback.
-          </span>
-        </div>
-        <Link
-          href="/challenges"
-          className="inline-flex shrink-0 items-center rounded-full bg-brandCP px-5 py-2.5 text-[13px] font-semibold text-black transition-all duration-200 hover:-translate-y-0.5"
-        >
-          Get started
-        </Link>
-      </div>
     </div>
   );
 }

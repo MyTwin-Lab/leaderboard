@@ -36,7 +36,7 @@ export function ManagerRolePopup({ x, y, challengeId, onClose, isAdmin = false }
     <div
       ref={ref}
       style={{ position: 'fixed', top: y + 8, left: x, zIndex: 9999 }}
-      className="w-52 rounded-xl border border-white/10 bg-backgroundDark p-1.5 shadow-2xl"
+      className="w-52 rounded-xl border border-white/10 bg-background p-1.5 shadow-2xl"
     >
       <button
         onClick={() => { onClose(); router.push(`/challenges/${challengeId}`); }}

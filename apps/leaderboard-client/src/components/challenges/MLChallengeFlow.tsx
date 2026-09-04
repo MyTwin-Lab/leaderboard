@@ -6,7 +6,6 @@ import {
   ExternalLink, Users, ChevronRight, Loader2, AlertCircle, Lock,
 } from 'lucide-react';
 import { ComputeRequestPanel } from './ComputeRequestPanel';
-import { MlMetricTimeline } from './MlMetricTimeline';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -223,11 +222,6 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
 
   return (
     <div className="space-y-6 animate-fade-up">
-
-      {/* ── Metric to beat ── */}
-      {pool?.metric && pool.metric.points.length > 0 && (
-        <MlMetricTimeline {...pool.metric} />
-      )}
 
       {/* ── Stepper header ── */}
       {/* px so the first/last circle isn't flush against the edge — their
