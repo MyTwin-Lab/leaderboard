@@ -26,7 +26,10 @@ interface MLRepo {
 }
 
 interface MLWorkspaceData {
+  /** Identité de l'appelant. */
   currentUserId: string | null;
+  /** Clé de lecture de workspace_meta : lui-même en solo, le porteur en groupe. */
+  workspaceOwnerId: string | null;
   repos: MLRepo[];
   users?: Record<string, { fullName: string; avatarUrl?: string }>;
 }
@@ -59,10 +62,10 @@ function getUserUrl(repo: MLRepo, userId: string | null): string | undefined {
   return repo.workspace_meta?.userUrls?.[userId];
 }
 
-function getCommunityUrls(repo: MLRepo, currentUserId: string | null): { userId: string; url: string }[] {
+function getCommunityUrls(repo: MLRepo, boardOwnerId: string | null): { userId: string; url: string }[] {
   const userUrls = repo.workspace_meta?.userUrls ?? {};
   return Object.entries(userUrls)
-    .filter(([uid]) => uid !== currentUserId)
+    .filter(([uid]) => uid !== boardOwnerId)
     .map(([userId, url]) => ({ userId, url }));
 }
 
@@ -205,7 +208,9 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
   if (!data) return null;
 
   const stepRepos = assignReposToSteps(data.repos);
-  const { currentUserId } = data;
+  // Clé de lecture de workspace_meta : le visiteur en solo, le porteur du
+  // groupe sinon. `currentUserId` (identité) ne sert pas ici.
+  const boardOwnerId: string | null = data.workspaceOwnerId ?? data.currentUserId ?? null;
 
   // API Packaging can be disabled for the whole challenge at creation — no
   // repo ever gets a role of 'api' then, so the step just never appears.
@@ -216,7 +221,7 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
   const steps = activeStepConfigs.map(cfg => ({
     ...cfg,
     repos: stepRepos[cfg.key],
-    done: isStepComplete(stepRepos[cfg.key], currentUserId),
+    done: isStepComplete(stepRepos[cfg.key], boardOwnerId),
     locked: !!pool?.thresholdReached && (cfg.key === 'dataset' || cfg.key === 'model'),
   }));
 
@@ -287,7 +292,7 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
         <StepPanel
           step={steps[activeStep]}
           challengeId={challengeId}
-          currentUserId={currentUserId}
+          boardOwnerId={boardOwnerId}
           users={data.users}
           onSaved={fetchData}
           onNext={activeStep < steps.length - 1 ? () => setActiveStep(activeStep + 1) : undefined}
@@ -306,14 +311,14 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
 function StepPanel({
   step,
   challengeId,
-  currentUserId,
+  boardOwnerId,
   users,
   onSaved,
   onNext,
 }: {
   step: typeof STEP_CONFIG[number] & { repos: MLRepo[]; done: boolean; locked: boolean };
   challengeId: string;
-  currentUserId: string | null;
+  boardOwnerId: string | null;
   users?: Record<string, { fullName: string; avatarUrl?: string }>;
   onSaved: () => void;
   onNext?: () => void;
@@ -363,7 +368,7 @@ function StepPanel({
           key={repo.repo_id}
           repo={repo}
           challengeId={challengeId}
-          currentUserId={currentUserId}
+          boardOwnerId={boardOwnerId}
           users={users}
           showCommunityPicker={step.key === 'dataset'}
           locked={step.locked}
@@ -392,7 +397,7 @@ function StepPanel({
 function RepoSubmission({
   repo,
   challengeId,
-  currentUserId,
+  boardOwnerId,
   users,
   showCommunityPicker = false,
   locked = false,
@@ -400,15 +405,15 @@ function RepoSubmission({
 }: {
   repo: MLRepo;
   challengeId: string;
-  currentUserId: string | null;
+  boardOwnerId: string | null;
   users?: Record<string, { fullName: string; avatarUrl?: string }>;
   showCommunityPicker?: boolean;
   locked?: boolean;
   onSaved: () => void;
 }) {
-  const myUrl = getUserUrl(repo, currentUserId);
-  const community = getCommunityUrls(repo, currentUserId);
-  const myDatasetUrls = getMyDatasetUrls(repo, currentUserId);
+  const myUrl = getUserUrl(repo, boardOwnerId);
+  const community = getCommunityUrls(repo, boardOwnerId);
+  const myDatasetUrls = getMyDatasetUrls(repo, boardOwnerId);
   const meta = repo.role ? ROLE_META[repo.role] : null;
 
   const [urlInput, setUrlInput] = useState(myUrl ?? '');

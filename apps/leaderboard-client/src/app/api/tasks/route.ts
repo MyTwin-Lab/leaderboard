@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskRepository, ChallengeRepository, ChallengeTeamRepository } from '../../../../../../packages/database-service/repositories';
 import { repositories } from '@/lib/db';
+import { resolveWorkspaceOwner } from '../../../../../../packages/services/challenge/group';
 import { jwtVerify } from 'jose';
 import { z } from 'zod';
 
@@ -48,7 +49,10 @@ export async function GET(request: NextRequest) {
     if (scope === 'mine') {
       const session = await getSession(request);
       if (!session) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-      return NextResponse.json(await taskRepo.findPersonalTasks(challengeId, session.userId));
+      // "mine" désigne le board sur lequel je travaille, pas les tâches dont
+      // je suis le propriétaire en base : en groupe c'est celui du porteur.
+      const ownerId = await resolveWorkspaceOwner(challengeId, session.userId, { challengeTeamRepo });
+      return NextResponse.json(await taskRepo.findPersonalTasks(challengeId, ownerId));
     }
     if (scope === 'template') {
       return NextResponse.json(await taskRepo.findTemplateTasks(challengeId));
@@ -75,6 +79,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only code challenges have tasks' }, { status: 400 });
     }
 
+    // Board de travail de l'appelant : le sien en solo, celui du porteur en
+    // groupe. Résolu avant le contrôle du parent, qui s'y compare.
+    const boardOwnerId = await resolveWorkspaceOwner(validated.challenge_id, session.userId, { challengeTeamRepo });
+
     if (validated.parent_task_id) {
       const parent = await taskRepo.findById(validated.parent_task_id);
       if (!parent || parent.challenge_id !== validated.challenge_id) {
@@ -82,8 +90,8 @@ export async function POST(request: NextRequest) {
       }
       // Templates and personal boards never mix — a sub-task must share its
       // parent's scope: a template body needs a template parent, a personal
-      // body needs a parent owned by the session user.
-      const expectedParentOwner = validated.template ? null : session.userId;
+      // body needs a parent owned by the board the caller works on.
+      const expectedParentOwner = validated.template ? null : boardOwnerId;
       if (parent.user_id !== expectedParentOwner) {
         return NextResponse.json({ error: 'Parent task is not in the same scope' }, { status: 400 });
       }
@@ -110,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
     const task = await taskRepo.create({
       challenge_id: validated.challenge_id,
-      user_id: session.userId,
+      user_id: boardOwnerId,
       parent_task_id: validated.parent_task_id,
       title: validated.title,
       description: validated.description,

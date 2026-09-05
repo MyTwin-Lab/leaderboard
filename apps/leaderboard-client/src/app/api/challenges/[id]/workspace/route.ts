@@ -4,6 +4,7 @@ import {
   ChallengeRepository,
   ChallengeTeamRepository,
 } from '../../../../../../../../packages/database-service/repositories';
+import { resolveWorkspaceOwner } from '../../../../../../../../packages/services/challenge/group';
 import { z } from 'zod';
 
 const challengeRepo = new ChallengeRepository();
@@ -51,7 +52,10 @@ export async function PATCH(
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid repo_url' }, { status: 400 });
     }
 
-    const participation = await challengeTeamRepo.updateWorkspace(challengeId, session.userId, {
+    // Le repo se déclare sur la participation du porteur : un groupe livre
+    // depuis un seul dépôt. En solo le porteur est l'appelant lui-même.
+    const ownerId = await resolveWorkspaceOwner(challengeId, session.userId, { challengeTeamRepo });
+    const participation = await challengeTeamRepo.updateWorkspace(challengeId, ownerId, {
       workspace_provider: 'external',
       workspace_url: parsed.data.repo_url,
       workspace_status: 'ready',

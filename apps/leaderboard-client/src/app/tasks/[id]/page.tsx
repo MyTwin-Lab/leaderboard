@@ -26,6 +26,8 @@ interface TaskRecord {
 interface TaskDetails {
   task: TaskRecord;
   subTasks: TaskRecord[];
+  /** Porteur du board — le visiteur lui-même en solo, le créateur du groupe sinon. */
+  board_owner_id?: string | null;
 }
 
 const STATUS_OPTIONS: { key: TaskStatus; label: string; dot: string }[] = [
@@ -130,7 +132,10 @@ export default function TaskDetailPage() {
   const { task, subTasks } = data;
   const currentUserId = meQuery.data?.user?.id ?? null;
   const isAdmin = meQuery.data?.user?.role === 'admin';
-  const canEdit = isAdmin || (!!task.user_id && task.user_id === currentUserId);
+  // La tâche appartient au board, pas à la personne : en groupe c'est le
+  // porteur qui la porte, et tous les membres peuvent l'éditer.
+  const boardOwnerId = data.board_owner_id ?? currentUserId;
+  const canEdit = isAdmin || (!!task.user_id && task.user_id === boardOwnerId);
 
   // ── Mutations ────────────────────────────────────────────────────────────
 
