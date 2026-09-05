@@ -33,6 +33,8 @@ Contributors submit a URL for each step from the challenge's ML workspace view (
 
 ## How points are awarded
 
+Contributors can also work as a group, in which case the whole flow below runs once for the group rather than once per member, and the award is scaled then split — see [`challenge-groups.md`](./challenge-groups.md).
+
 Each ML challenge defines its own **reward rules** (a JSON config on `challenges.reward_rules`, editable by admins and project managers when creating or configuring the challenge): a points cap for each step, and how the model's cap splits between "the metric itself" and "the code quality."
 
 - **Dataset / API packaging / model code** — points scale with the AI score (0–100%) against that step's cap.

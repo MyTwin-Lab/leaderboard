@@ -64,7 +64,8 @@ All request bodies are JSON unless noted (a few validation routes take `multipar
 | `POST` | `/api/challenges/:id/close` | Close a challenge — flips the status only, nothing is computed. | Admin |
 | `GET` | `/api/challenges/:id/context` | Full evaluation context (commits, notes). Legacy — belongs to the retired challenge-level pipeline. | Admin |
 | `POST` | `/api/challenges/:id/sync` | Legacy challenge-level evaluation sync. Superseded by per-contributor project evaluation. | Admin |
-| `POST` | `/api/challenges/:id/join` | Join a challenge — creates the participation, copies the task template, provisions the personal branch. | Contributor+ |
+| `POST` | `/api/challenges/:id/join` | Join a challenge — creates the participation, copies the task template, provisions the personal branch. Optional body: `{ mode: 'group' }` creates a group and returns its invite token, `{ group: <uuid> }` joins one (no board copy, no provisioning). | Contributor+ |
+| `GET` | `/api/challenges/:id/group/:token` | Who holds an invited group and whether it can still be joined. Answers only on an exact token, lists nothing. | Contributor+ |
 | `PATCH` | `/api/challenges/:id/workspace` | `own_repo` mode: declare or change your public GitHub repo URL. | Contributor (self) |
 | `POST` | `/api/challenges/:id/project-evaluation` | Trigger the evaluation of your own delivery. Fire-and-forget; poll the contribution's `evaluation_status`. | Contributor (self) |
 | `GET` | `/api/challenges/:id/repos` | Repos linked to a challenge. | Public |
@@ -133,7 +134,7 @@ Tasks are personal boards on `code` challenges (see [`challenges-and-tasks.md`](
 | `GET` | `/api/tasks` | List tasks. `?challenge_id=…&scope=mine\|template\|all`. | Public |
 | `POST` | `/api/tasks` | Create a task — a personal one on your own board, or a template one. | Member (personal) / admin or manager (template) |
 | `GET` | `/api/tasks/:id` | Get a task. | Public |
-| `PATCH` | `/api/tasks/:id` | Update a task (this is what a board drag does). | Owner / admin or manager (template) |
+| `PATCH` | `/api/tasks/:id` | Update a task (this is what a board drag does). Optional `from_status` makes the write conditional and answers `409` if someone else moved the card first. | Owner / admin or manager (template) |
 | `DELETE` | `/api/tasks/:id` | Delete a task. | Owner / admin or manager (template) |
 | `GET` | `/api/tasks/:id/details` | A task with its sub-tasks. | Public |
 

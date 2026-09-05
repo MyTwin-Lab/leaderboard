@@ -14,6 +14,8 @@ For the full rationale and design history, see the spec:
 A challenge has a `type`: `code` (the default), `ml`, or `validation`.
 
 - **`code`** challenges work as described in this document — personal task boards, a per-contributor workspace, and a project-wide evaluation triggered by the contributor.
+- **Groups.** Two or three contributors can join together and share a single workspace — one board, one branch, one evaluation, one contribution — with a collective bonus and a split reward. Everything below describes a solo participation, which is what a group holder's workspace looks like from the inside; see [`challenge-groups.md`](./challenge-groups.md) for what changes.
+
 - **`ml`** challenges are for dataset/model/packaging work. They have **no tasks at all** — contributors submit directly through a dedicated ML workspace flow, scored and rewarded live. See [`ml-rewards.md`](./ml-rewards.md) for that entire flow. Code challenges now follow the same live-reward philosophy (see below), just with a different workspace and evaluation shape.
 - **`validation`** challenges have no tasks and no repos of their own — they link 1:1 to an existing `ml` challenge (`source_challenge_id`) and let contributors manually test its submitted API packagings by dropping a file and seeing the live output. See [`validation-challenges.md`](./validation-challenges.md).
 

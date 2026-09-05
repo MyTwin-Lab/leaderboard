@@ -95,6 +95,8 @@ The `globalScore` is the weighted sum across all criteria (weights sum to ~1, so
 
 ## Reward distribution
 
+When the contributor belongs to a group, the award is multiplied by `1 + 0.4 × (n − 1)` before the clamp and then split into equal shares — see [`challenge-groups.md`](./challenge-groups.md).
+
 Rewards are paid live, per run, from the challenge's `reward_rules` (`{ fixed, cap }`) rather than split at close time across all contributors. Pure calculation logic lives in `packages/evaluator/code-reward.ts` (`computeCodeAward()`): fixed part on the first successful run, `cap × score/10` scaled by the agent score, paid as the positive delta over what was already awarded for that `rule_key`, clamped to the pool remaining. See [`challenges-and-tasks.md`](./challenges-and-tasks.md#rewards) for the full breakdown.
 
 The ledger rows (`reward_entries`) are written by `RewardEntryRepository.createManyAndSyncRewards`, whose DB trigger keeps `contributions.reward` in sync — the same mechanism used by ML challenges.

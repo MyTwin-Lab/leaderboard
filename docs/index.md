@@ -25,6 +25,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | File | Description |
 |------|-------------|
 | [`challenges-and-tasks.md`](./challenges-and-tasks.md) | How challenges and tasks work — the core workflow |
+| [`challenge-groups.md`](./challenge-groups.md) | Two or three contributors sharing one workspace, one contribution, and a split reward |
 | [`evaluation.md`](./evaluation.md) | AI evaluation pipeline, scoring grids, rewards |
 | [`ml-rewards.md`](./ml-rewards.md) | Reward rules for ML challenges — live scoring, reuse, and the point ledger |
 | [`validation-challenges.md`](./validation-challenges.md) | Qualified reviewers testing a submitted ML API against ground-truth reference cases |
