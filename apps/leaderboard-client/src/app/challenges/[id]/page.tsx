@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import {
   ArrowLeft, CheckCircle2, CalendarDays, BrainCircuit,
   GitBranch, GitPullRequest, Trophy, BarChart2, FlaskConical, Medal, FileText, Info,
-  Database, Cpu, ExternalLink,
+  Database, Cpu, ExternalLink, Users,
 } from 'lucide-react';
 import type { TeamMember } from '@/lib/types';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
@@ -15,7 +15,11 @@ import { MLChallengeFlow } from '@/components/challenges/MLChallengeFlow';
 import { ValidationChallengeFlow } from '@/components/challenges/ValidationChallengeFlow';
 import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseAuthorPanel';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
-import { ChallengeBrief } from '@/components/challenges/ChallengeBrief';
+import { ChallengeBrief, type GroupInvite } from '@/components/challenges/ChallengeBrief';
+import { GroupInviteModal } from '@/components/challenges/GroupInviteModal';
+// groupPolicy et non group : ce dernier instancie un repository, donc un
+// client Postgres, qui n'a rien à faire dans le bundle navigateur.
+import { GROUP_MAX_SIZE } from '../../../../../../packages/services/challenge/groupPolicy';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
 import { type BoardTask } from '@/components/contributor/ContributorTaskBoard';
 import {
@@ -123,6 +127,10 @@ export default function ChallengeDetailPage() {
 
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
   const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  // Couvre la fenêtre entre la création du groupe et le rechargement de
+  // l'overview, qui est la source de vérité une fois arrivée.
+  const [ownGroupId, setOwnGroupId] = useState<string | null>(null);
 
   // Declared before overviewQuery so its refetchInterval closure (below) can
   // read meQuery.data without a temporal-dead-zone hazard.
@@ -162,16 +170,24 @@ export default function ChallengeDetailPage() {
       repos: any[];
       contributions: BoardContribution[];
       participants: CodeParticipation[];
+      /** Porteur du workspace du visiteur : lui-même en solo, le créateur du groupe sinon. */
+      my_workspace_owner_id: string | null;
     }>,
     enabled: !!challengeId,
+    // Désactivé globalement dans providers.tsx, réactivé ici : un board de
+    // groupe change sous nos pieds, et on n'y revient qu'après un aller-retour
+    // dans Slack ou l'IDE. C'est ce moment-là qu'il faut rafraîchir — pas
+    // besoin d'un polling permanent pour ça.
+    refetchOnWindowFocus: true,
     // Polling while a project evaluation is in flight — the run is async
     // server-side, so this is how the panel notices it finished without the
     // user reloading. Stops as soon as the current user's project
     // contribution leaves pending/running.
     refetchInterval: (query) => {
       const cs = query.state.data?.contributions ?? [];
-      const myId = meQuery.data?.user?.id ?? null;
-      const mine = cs.find((c: any) => c.user_id === myId && c.type === 'project');
+      // La contribution suivie est celle du board — en groupe, celle du porteur.
+      const ownerId = query.state.data?.my_workspace_owner_id ?? meQuery.data?.user?.id ?? null;
+      const mine = cs.find((c: any) => c.user_id === ownerId && c.type === 'project');
       return mine && ['pending', 'running'].includes(mine.evaluation_status ?? '') ? 3000 : false;
     },
   });
@@ -221,12 +237,24 @@ export default function ChallengeDetailPage() {
   // board" (owned by the current user) vs the admin-authored template
   // (no user_id) shown as a teaser to non-members. ──
   const participants: CodeParticipation[] = overviewQuery.data?.participants ?? [];
-  const myParticipation = participants.find(p => p.user_id === currentUserId) ?? null;
-  const isMember = !!myParticipation;
-  const myTasks = tasks.filter(t => t.user_id === currentUserId);
+  // Deux questions distinctes : "est-ce que je participe" porte sur moi, alors
+  // que le board, la branche et la contribution appartiennent au workspace sur
+  // lequel je travaille — le mien en solo, celui du porteur en groupe.
+  const isMember = participants.some(p => p.user_id === currentUserId);
+  const workspaceOwnerId = overviewQuery.data?.my_workspace_owner_id ?? currentUserId;
+  const myParticipation = participants.find(p => p.user_id === workspaceOwnerId) ?? null;
+  // Seul le group_id du visiteur est publié : chez les autres il est masqué,
+  // puisque c'est le jeton qui permet de rejoindre. `ownGroupId` couvre la
+  // fenêtre entre la création du groupe et le rechargement de l'overview.
+  const myGroupId =
+    ownGroupId ?? participants.find(p => p.user_id === currentUserId)?.group_id ?? null;
+  const myGroupSize = myGroupId
+    ? participants.filter(p => p.group_owner_id === workspaceOwnerId).length
+    : 0;
+  const myTasks = tasks.filter(t => t.user_id === workspaceOwnerId);
   const templateTasks = tasks.filter(t => !t.user_id);
   const myProjectContribution: ProjectContribution | null =
-    contributions.find(c => c.user_id === currentUserId && c.type === 'project') ?? null;
+    contributions.find(c => c.user_id === workspaceOwnerId && c.type === 'project') ?? null;
 
   const isML = challenge?.type === 'ml' || repoTypes.some(t => ML_REPO_TYPES.includes(t));
   const isValidation = challenge?.type === 'validation';
@@ -239,6 +267,35 @@ export default function ChallengeDetailPage() {
   // Rejoindre bascule `isMember` via l'overview : la page passe du brief à
   // l'espace de travail sans rechargement, et sans que ce hook n'ait à le savoir.
   const { join, joining, error: joinError } = useJoinChallenge(challengeId, reloadBoard);
+
+  // Le jeton d'invitation vit dans l'URL — c'est lui, l'invitation : il n'y a
+  // ni row en attente, ni notification à aller chercher.
+  const inviteToken = useSearchParams().get('group');
+  const inviteQuery = useQuery({
+    queryKey: ['challenge-group-invite', challengeId, inviteToken],
+    queryFn: () => fetchJson(`/api/challenges/${challengeId}/group/${inviteToken}`) as Promise<GroupInvite>,
+    enabled: !!challengeId && !!inviteToken && !isAnonymous,
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const createGroup = async () => {
+    const result = await join({ mode: 'group' });
+    if (!result?.groupId) return;
+    setOwnGroupId(result.groupId);
+    setInviteOpen(true);
+  };
+
+  const acceptInvite = async () => {
+    if (!inviteToken) return;
+    const result = await join({ group: inviteToken });
+    if (!result) return;
+    if (result.missingGithub?.length) {
+      alert(`${result.missingGithub.join(', ')} has no GitHub account connected and will not be able to push to the branch.`);
+    }
+    // Le jeton a fait son office : le laisser rouvrirait l'écran d'invitation.
+    router.replace(`/challenges/${challengeId}`);
+  };
 
   // Le brief n'intéresse que le contributeur connecté qui n'a pas encore
   // rejoint — ni l'anonyme, ni le membre ne le lisent ici. La requête ne part
@@ -442,14 +499,38 @@ export default function ChallengeDetailPage() {
         )}
       </div>
 
+      {/* ── Groupe : rappel du lien, seul endroit où il se retrouve ── */}
+      {!showBrief && myGroupId && (
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[16px] border border-brandCP/20 bg-brandCP/[0.06] px-4 py-3">
+          <Users className="h-4 w-4 shrink-0 text-brandCP" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-white">
+              You are working as a group{myGroupSize > 1 ? ` of ${myGroupSize}` : ''}
+            </p>
+            <p className="text-xs text-white/40">
+              Teammates who open your invite link share this board, branch and contribution.
+            </p>
+          </div>
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="shrink-0 text-xs font-semibold text-brandCP transition-colors hover:text-brandCP/80"
+          >
+            Show link
+          </button>
+        </div>
+      )}
+
       {/* ── Brief: le contributeur connecté qui n'a pas encore rejoint ── */}
       {showBrief && (
         <ChallengeBrief
           content={briefQuery.data!}
           challengeType={challenge.type}
-          onJoin={join}
+          onJoin={() => join()}
+          onJoinGroup={createGroup}
+          onAcceptInvite={acceptInvite}
           joining={joining}
           error={joinError}
+          invite={inviteToken ? inviteQuery.data ?? null : null}
         />
       )}
 
@@ -552,6 +633,16 @@ export default function ChallengeDetailPage() {
       open={rulesDrawerOpen}
       onClose={() => setRulesDrawerOpen(false)}
     />
+    {/* Hors du conteneur animé, comme les drawers : un transform casse le
+        positionnement fixed de l'overlay. */}
+    {inviteOpen && myGroupId && (
+      <GroupInviteModal
+        inviteUrl={`${window.location.origin}/challenges/${challengeId}?group=${myGroupId}`}
+        memberCount={Math.max(1, myGroupSize)}
+        maxSize={GROUP_MAX_SIZE}
+        onClose={() => setInviteOpen(false)}
+      />
+    )}
     </>
   );
 }

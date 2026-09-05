@@ -9,6 +9,10 @@ import { JoinButton } from '@/components/challenges/JoinButton';
 
 export interface CodeParticipation {
   user_id: string;
+  /** Jeton d'invitation — publié uniquement sur sa propre participation. */
+  group_id?: string;
+  /** Porteur du board, publié pour tous : dit qui travaille avec qui. */
+  group_owner_id?: string | null;
   workspace_provider?: 'github' | 'external';
   workspace_ref?: string;
   workspace_url?: string;
