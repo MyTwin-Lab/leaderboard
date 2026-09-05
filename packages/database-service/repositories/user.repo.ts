@@ -1,6 +1,6 @@
 import { db } from "../db/drizzle";
 import { users, contributions } from "../db/drizzle";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, gte, lt } from "drizzle-orm";
 import { toDomainUser, toDomainContribution, toDbUser } from "../db/mappers";
 import type { User, Contribution } from "../domain/entities";
 import { userSchema } from "../domain/schemas_zod";
@@ -8,6 +8,19 @@ import { userSchema } from "../domain/schemas_zod";
 export class UserRepository {
   async findAll(): Promise<User[]> {
     const rows = await db.select().from(users);
+    return rows.map(toDomainUser);
+  }
+
+
+  /**
+   * Fenêtre [start, end) — bornes half-open, pour qu'une row tombant
+   * exactement sur une borne appartienne à exactement un digest.
+   */
+  async findCreatedBetween(start: Date, end: Date): Promise<User[]> {
+    const rows = await db
+      .select()
+      .from(users)
+      .where(and(gte(users.created_at, start), lt(users.created_at, end)));
     return rows.map(toDomainUser);
   }
 

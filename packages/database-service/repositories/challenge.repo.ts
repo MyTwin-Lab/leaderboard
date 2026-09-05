@@ -1,6 +1,6 @@
 import { db } from "../db/drizzle";
 import { challenges, challenge_repos, repos, contributions } from "../db/drizzle";
-import { eq } from "drizzle-orm";
+import { eq, and, gte, lt, isNotNull } from "drizzle-orm";
 import { toDomainChallenge, toDomainRepo, toDomainContribution, toDbChallenge } from "../db/mappers";
 import type { Challenge, Repo, Contribution } from "../domain/entities";
 import { challengeSchema } from "../domain/schemas_zod";
@@ -36,6 +36,32 @@ export class ChallengeRepository {
   async findById(uuid: string): Promise<Challenge | null> {
     const [row] = await db.select().from(challenges).where(eq(challenges.uuid, uuid));
     return row ? toDomainChallenge(row) : null;
+  }
+
+
+  /**
+   * Fenêtre [start, end) — bornes half-open, pour qu'une row tombant
+   * exactement sur une borne appartienne à exactement un digest.
+   */
+  async findCreatedBetween(start: Date, end: Date): Promise<Challenge[]> {
+    const rows = await db
+      .select()
+      .from(challenges)
+      .where(and(gte(challenges.created_at, start), lt(challenges.created_at, end)));
+    return rows.map(toDomainChallenge);
+  }
+
+  /** Challenges passés à 'completed' dans la fenêtre — voir closedAtPatch. */
+  async findClosedBetween(start: Date, end: Date): Promise<Challenge[]> {
+    const rows = await db
+      .select()
+      .from(challenges)
+      .where(and(
+        isNotNull(challenges.closed_at),
+        gte(challenges.closed_at, start),
+        lt(challenges.closed_at, end),
+      ));
+    return rows.map(toDomainChallenge);
   }
 
   async findRepos(challengeId: string): Promise<Repo[]> {
