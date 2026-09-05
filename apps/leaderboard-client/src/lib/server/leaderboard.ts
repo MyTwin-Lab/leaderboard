@@ -70,6 +70,20 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
   // groupe, `contributions.user_id` est le porteur. Un co-membre ne verrait
   // donc rien de son propre travail sans ce complément.
   const shareByContribution = new Map(myShares.map((m) => [m.contribution_id, m.share_cp]));
+
+  // Co-équipiers de chaque contribution de groupe, pour les pastilles. Soi-même
+  // est retiré : la fiche dit "j'ai fait ça avec X et Y", pas "avec moi".
+  const userById = new Map(allUsers.map((u) => [u.uuid, u]));
+  const coMembersByContribution = new Map<string, ContributorProfile["challenges"][number]["contributions"][number]["coMembers"]>();
+  for (const member of allMembers) {
+    if (member.user_id === userId) continue;
+    if (!shareByContribution.has(member.contribution_id)) continue;
+    const user = userById.get(member.user_id);
+    if (!user) continue;
+    const list = coMembersByContribution.get(member.contribution_id) ?? [];
+    list.push({ id: user.uuid, fullName: user.full_name, avatarUrl: user.avatar_url ?? undefined });
+    coMembersByContribution.set(member.contribution_id, list);
+  }
   const ownIds = new Set(ownContributions.map((c) => c.uuid));
   const contributions = [
     ...ownContributions,
@@ -120,6 +134,7 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
         // Only the author can see the AI evaluation detail — everyone can see
         // the contribution itself, so this hint is scoped to the viewer.
         hasEvaluation: contribution.evaluation != null && viewerId === userId,
+        coMembers: coMembersByContribution.get(contribution.uuid),
       });
     }
 

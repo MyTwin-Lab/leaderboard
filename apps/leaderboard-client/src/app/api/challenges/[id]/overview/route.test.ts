@@ -21,6 +21,7 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   TaskRepository: class { findByChallenge = async () => []; },
   ChallengeRepoRepository: class { findByChallengeWithRepo = async () => []; },
   ContributionRepository: class { findByChallenge = async () => []; },
+  ContributionMemberRepository: class { findByContributions = async () => []; },
 }));
 
 vi.mock('../../../../../../../../packages/services/sync-meeting/sync-meeting.service.js', () => ({

@@ -5,6 +5,7 @@ import {
   TaskRepository,
   ChallengeRepoRepository,
   ContributionRepository,
+  ContributionMemberRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import { SyncMeetingService } from '../../../../../../../../packages/services/sync-meeting/sync-meeting.service.js';
 import { verifyRequestToken } from '@/lib/auth';
@@ -17,6 +18,7 @@ const challengeTeamRepo = new ChallengeTeamRepository();
 const taskRepo = new TaskRepository();
 const challengeRepoRepo = new ChallengeRepoRepository();
 const contributionRepo = new ContributionRepository();
+const contributionMemberRepo = new ContributionMemberRepository();
 
 // GET /api/challenges/[id]/overview
 //
@@ -88,10 +90,19 @@ export async function GET(
       group_owner_id: p.group_id ? ownerByGroup.get(p.group_id) ?? null : null,
     }));
 
+    // Qui a produit chaque contribution de groupe. Seulement les identifiants :
+    // les noms et avatars sont déjà dans `team`, le client fait la jointure.
+    // `share_cp` n'y est pas — la répartition ne regarde pas la page.
+    const contributionMembers = session
+      ? (await contributionMemberRepo.findByContributions(contributions.map(c => c.uuid)))
+          .map(m => ({ contribution_id: m.contribution_id, user_id: m.user_id }))
+      : [];
+
     const payload = {
       challenge, team, tasks, meetings, repos, contributions,
       participants: safeParticipants,
       my_workspace_owner_id: myWorkspaceOwnerId,
+      contribution_members: contributionMembers,
     };
     return NextResponse.json(session ? payload : toPublicOverview(payload));
   } catch (error) {

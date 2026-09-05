@@ -23,6 +23,12 @@ export type ContributorContribution = {
   reward: number;
   submittedAt: string | null;
   hasEvaluation: boolean;
+  /**
+   * Les autres membres du groupe qui a produit cette contribution — vide pour
+   * une contribution solo. `reward` porte alors la part de ce contributeur,
+   * pas le total du groupe.
+   */
+  coMembers?: TeamMember[];
 };
 
 export type ContributorDiscussionSignal = {
