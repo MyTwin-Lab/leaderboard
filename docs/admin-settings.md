@@ -90,6 +90,21 @@ Turning a module off only hides the UI — onboarding progress keeps being track
 - `GET /api/modules` — public, returns `{ meetings_enabled, onboarding_enabled }`.
 - `PATCH /api/modules` — admin-only, updates either flag.
 
+---
+
+## Digest
+
+A **Digest** tab lets an admin browse the platform's activity history, cut into frozen periods, and configure how often a new one is generated. Two fields on `app_settings` back it:
+
+| Field | Purpose |
+|-------|---------|
+| `digest_enabled` | Master switch for the daily cron. Defaults to `false` — an admin feature does not turn itself on for existing instances. |
+| `digest_frequency_days` | Days between two automatic digests (default `7`, range 1–365). |
+
+`PATCH /api/admin/digest-settings` updates them. **Generate now** ignores `digest_enabled` entirely: the toggle governs the cron, not the button. See [`digest.md`](./digest.md).
+
+---
+
 A related admin-only view, the **Onboarding** tab, lists every contributor's onboarding progress (5 quests) regardless of whether the module is enabled for others — backed by `GET /api/onboarding/all`. See [`onboarding.md`](./onboarding.md).
 
 ---

@@ -167,7 +167,7 @@ GPU compute has no env fallback at all — Scaleway credentials are only ever se
 
 ## Cron jobs
 
-Four endpoints must be hit on a schedule, all secured by `Authorization: Bearer $CRON_SECRET`:
+Five endpoints must be hit on a schedule, all secured by `Authorization: Bearer $CRON_SECRET`:
 
 | Endpoint | Schedule | Purpose |
 |----------|----------|---------|
@@ -175,8 +175,9 @@ Four endpoints must be hit on a schedule, all secured by `Authorization: Bearer 
 | `/api/cron/slack-signals` | daily, 06:00 UTC | Detect Slack contribution signals (see [`slack-signals.md`](./slack-signals.md)) |
 | `/api/cron/compute-provisioning` | every minute | Flip GPU instances to `ready` once Scaleway answers (see [`compute-power.md`](./compute-power.md)) |
 | `/api/cron/compute-expiration` | every minute | Terminate GPU instances past their 24h window |
+| `/api/cron/digest` | daily, 05:00 UTC | Generate an activity digest when one is due (see [`digest.md`](./digest.md)) |
 
-On **Vercel**, `vercel.json` declares all four crons and nothing else is needed. On **Scalingo / PM2**, there is no built-in scheduler: use the Scalingo Scheduler addon, a system crontab, or an external service (e.g. cron-job.org) to `curl` the endpoints:
+On **Vercel**, `vercel.json` declares all five crons and nothing else is needed. On **Scalingo / PM2**, there is no built-in scheduler: use the Scalingo Scheduler addon, a system crontab, or an external service (e.g. cron-job.org) to `curl` the endpoints:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/slack-signals

@@ -238,12 +238,16 @@ See [`admin-settings.md`](./admin-settings.md) for what each of these controls.
 | `GET` | `/api/scaleway/status` | Scaleway connection state (connected, project ID, date — never the key). | Public |
 | `POST` | `/api/scaleway/connection` | Connect Scaleway (`secret_key`, `project_id`, `zone` — verified live, stored encrypted). | Admin |
 | `DELETE` | `/api/scaleway/connection` | Request disconnection — see [`compute-power.md`](./compute-power.md). | Admin |
+| `GET` | `/api/admin/digests` | Digest history, newest first (paginated; counts, not payloads). | Admin |
+| `GET` | `/api/admin/digests/:id` | One digest's full payload. | Admin |
+| `POST` | `/api/admin/digests/generate` | Generate a digest now, over `[last period_end, now]`. Works even when the schedule is off. | Admin |
+| `PATCH` | `/api/admin/digest-settings` | Update `digest_enabled` / `digest_frequency_days`. | Admin |
 
 ---
 
 ## Cron
 
-All four are secured by `Authorization: Bearer $CRON_SECRET` and declared in `vercel.json`.
+All five are secured by `Authorization: Bearer $CRON_SECRET` and declared in `vercel.json`.
 
 | Method | Path | Schedule | Purpose |
 |--------|------|----------|---------|
@@ -251,6 +255,7 @@ All four are secured by `Authorization: Bearer $CRON_SECRET` and declared in `ve
 | `GET` | `/api/cron/slack-signals` | daily, 06:00 UTC | Slack signal detection + CP awards. See [`slack-signals.md`](./slack-signals.md). |
 | `GET` | `/api/cron/compute-provisioning` | every minute | Poll GPU instances still provisioning and flip them to `ready`. |
 | `GET` | `/api/cron/compute-expiration` | every minute | Terminate GPU instances past their 24h window. |
+| `GET` | `/api/cron/digest` | daily, 05:00 UTC | Generate an activity digest when one is due. See [`digest.md`](./digest.md). |
 
 Outside Vercel there is no built-in scheduler — see [`deployment.md`](./deployment.md#cron-jobs).
 

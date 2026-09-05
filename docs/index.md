@@ -34,6 +34,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`slack-signals.md`](./slack-signals.md) | Slack contribution signals — AI-detected rewards from channel discussions |
 | [`onboarding.md`](./onboarding.md) | New contributor onboarding missions |
 | [`admin-settings.md`](./admin-settings.md) | Instance-wide theme, GitHub/Kaggle/Slack connections, and module toggles |
+| [`digest.md`](./digest.md) | Periodic, frozen snapshots of platform activity, browsable by admins |
 
 ## Dev & ops
 
