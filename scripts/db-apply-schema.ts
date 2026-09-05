@@ -202,6 +202,34 @@ const STATEMENTS: Array<{ label: string; sql: string }> = [
       SET created_at = submitted_at
       WHERE created_at >= now() - interval '1 minute'`,
   },
+
+  // --- Digest ---
+  // La table est son propre curseur (period_start = period_end précédent), donc
+  // rien à ajouter dans app_settings hormis les deux réglages.
+  {
+    label: "digests",
+    sql: `
+      CREATE TABLE IF NOT EXISTS digests (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        period_start timestamp NOT NULL,
+        period_end timestamp NOT NULL,
+        generated_at timestamp NOT NULL DEFAULT now(),
+        trigger_source varchar(10) NOT NULL,
+        payload jsonb NOT NULL
+      )`,
+  },
+  {
+    label: "digests.period_end (index)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_digests_period_end ON digests (period_end)`,
+  },
+  {
+    label: "app_settings.digest_enabled",
+    sql: `ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS digest_enabled boolean NOT NULL DEFAULT false`,
+  },
+  {
+    label: "app_settings.digest_frequency_days",
+    sql: `ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS digest_frequency_days integer NOT NULL DEFAULT 7`,
+  },
 ];
 
 async function main() {

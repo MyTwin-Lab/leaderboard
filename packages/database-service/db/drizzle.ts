@@ -1,6 +1,6 @@
 import { config } from "../../config/index.js";
 import "dotenv/config";
-import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial, real, index, uniqueIndex, boolean, customType, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, uuid, integer, json, jsonb, date, serial, real, index, uniqueIndex, boolean, customType, primaryKey } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -770,7 +770,36 @@ export const app_settings = pgTable("app_settings", {
   scaleway_connected_at: timestamp("scaleway_connected_at"),
   scaleway_connected_by: uuid("scaleway_connected_by").references(() => users.uuid),
   scaleway_disconnect_requested_at: timestamp("scaleway_disconnect_requested_at"),
+  // Digest — voir docs/input/spec-digest.md. Désactivé par défaut : une feature
+  // d'admin ne s'active pas seule sur les instances existantes.
+  digest_enabled: boolean("digest_enabled").notNull().default(false),
+  digest_frequency_days: integer("digest_frequency_days").notNull().default(7),
 });
+
+// --- DIGESTS ---
+// Snapshot périodique et immuable de l'activité de la plateforme.
+//
+// La table est son propre curseur : period_start vaut toujours le period_end de
+// la row précédente, donc deux digests consécutifs ne peuvent ni laisser de
+// trou ni se recouvrir, et aucun champ "dernière génération" n'est nécessaire
+// dans app_settings.
+//
+// Le payload est dénormalisé (noms, titres, montants tels qu'ils étaient) et
+// n'est jamais régénéré : une contribution supprimée, un cache de reward
+// reconstruit par db-resync-rewards au déploiement ou un compte fusionné ne
+// doivent pas rendre un digest passé faux ou illisible.
+export const digests = pgTable("digests", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  period_start: timestamp("period_start").notNull(),
+  period_end: timestamp("period_end").notNull(),
+  generated_at: timestamp("generated_at").defaultNow().notNull(),
+  // 'cron' | 'manual'. Nommé trigger_source et non trigger : le mot est libre
+  // en Postgres mais ambigu, et evaluation_runs porte déjà un "trigger type".
+  trigger_source: varchar("trigger_source", { length: 10 }).notNull(),
+  payload: jsonb("payload").notNull(),
+}, (table) => ({
+  periodEndIdx: index("idx_digests_period_end").on(table.period_end),
+}));
 
 // --- SYNC MEETINGS ---
 export const sync_meetings = pgTable("sync_meetings", {
@@ -916,5 +945,6 @@ export const db = drizzle(pool, {
     onboardingProgressRelations,
     app_settings,
     compute_requests,
+    digests,
   },
 });

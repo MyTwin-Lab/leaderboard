@@ -27,3 +27,4 @@ export { ReferenceCaseRepository } from "./referenceCase.repo.js";
 export { CaseClaimRepository } from "./caseClaim.repo.js";
 export { ComputeRequestRepository } from "./computeRequest.repo.js";
 export { AccountMergeRepository } from "./accountMerge.repo.js";
+export { DigestRepository } from "./digest.repo.js";

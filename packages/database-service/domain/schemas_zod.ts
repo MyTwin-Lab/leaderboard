@@ -435,3 +435,17 @@ export const appSettingsSchema = z.object({
 });
 
 export type AppSettingsInput = z.infer<typeof appSettingsSchema>;
+
+// --- DIGEST ---
+
+export const digestSchema = z.object({
+  uuid: z.string().uuid(),
+  period_start: z.coerce.date(),
+  period_end: z.coerce.date(),
+  generated_at: z.coerce.date().optional(),
+  trigger_source: z.enum(["cron", "manual"]),
+  // Le payload n'est pas revalidé champ par champ : il est figé à l'écriture et
+  // relu tel quel. Le typer ici ne protégerait rien et interdirait de relire un
+  // digest ancien dont la forme aurait évolué.
+  payload: z.record(z.string(), z.any()),
+});

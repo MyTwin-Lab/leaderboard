@@ -11,6 +11,8 @@ export interface AppSettingsUpdate {
   theme_mode?: string;
   modules_meetings_enabled?: boolean;
   modules_onboarding_enabled?: boolean;
+  digest_enabled?: boolean;
+  digest_frequency_days?: number;
 }
 
 export class AppSettingsRepository {
@@ -33,6 +35,11 @@ export class AppSettingsRepository {
     if (patch.theme_mode !== undefined) set.theme_mode = patch.theme_mode;
     if (patch.modules_meetings_enabled !== undefined) set.modules_meetings_enabled = patch.modules_meetings_enabled;
     if (patch.modules_onboarding_enabled !== undefined) set.modules_onboarding_enabled = patch.modules_onboarding_enabled;
+    // Un champ oublié dans cette liste passe la validation puis ne s'écrit
+    // jamais — c'est exactement le bug qu'a connu `completion` sur les
+    // challenges. Toute nouvelle colonne de AppSettingsUpdate se copie ici.
+    if (patch.digest_enabled !== undefined) set.digest_enabled = patch.digest_enabled;
+    if (patch.digest_frequency_days !== undefined) set.digest_frequency_days = patch.digest_frequency_days;
 
     const [upserted] = await db
       .insert(app_settings)

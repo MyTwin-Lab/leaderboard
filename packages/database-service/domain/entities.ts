@@ -523,6 +523,81 @@ export interface AppSettings {
   scaleway_connected_by?: string | null;
   scaleway_is_connected: boolean; // derived: !!scaleway_secret_key_enc && !scaleway_disconnect_requested_at
   scaleway_disconnect_requested_at?: Date | null;
+  digest_enabled: boolean;
+  digest_frequency_days: number;
+}
+
+// --- DIGEST ---
+
+export type DigestTriggerSource = "cron" | "manual";
+
+/** Une ligne de `cp_distributed`, agrégée par (user, challenge). */
+export interface DigestCpRow {
+  user_id: string;
+  full_name: string;
+  challenge_id: string;
+  challenge_title: string;
+  total_cp: number;
+  /** Détail par rule_key — garde la nature de l'attribution sans lister le ledger. */
+  by_rule: Record<string, number>;
+}
+
+/**
+ * Le contenu figé d'un digest.
+ *
+ * Dénormalisé volontairement : un digest est un enregistrement historique, il
+ * doit rester lisible même si la contribution est supprimée, le contributeur
+ * renommé ou le cache de reward reconstruit.
+ *
+ * Les quatre premières sections sont des sections d'apparition — elles ne
+ * voient un objet qu'une fois. `cp_distributed` lit le ledger et capte donc
+ * aussi ce qu'une ré-évaluation rapporte à une contribution créée avant la
+ * fenêtre, invisible autrement. Voir docs/input/spec-digest.md §4.
+ */
+export interface DigestPayload {
+  version: 1;
+  new_contributions: Array<{
+    contribution_id: string;
+    title: string;
+    type: string;
+    challenge_id: string;
+    challenge_title: string;
+    /** Tous les membres d'un groupe, porteur en tête — pas seulement lui. */
+    contributors: Array<{ user_id: string; full_name: string }>;
+    /** Reward global de la contribution, pas une part individuelle. */
+    reward_cp: number;
+  }>;
+  new_challenges: Array<{
+    challenge_id: string;
+    title: string;
+    type: string;
+    project_title: string;
+    reward_pool: number;
+  }>;
+  completed_challenges: Array<{
+    challenge_id: string;
+    title: string;
+    type: string;
+    closed_at: string;
+    reward_pool: number;
+    cp_awarded: number;
+  }>;
+  new_contributors: Array<{
+    user_id: string;
+    full_name: string;
+    role: string;
+    joined_at: string;
+  }>;
+  cp_distributed: DigestCpRow[];
+}
+
+export interface Digest {
+  uuid: string;
+  period_start: Date;
+  period_end: Date;
+  generated_at: Date;
+  trigger_source: DigestTriggerSource;
+  payload: DigestPayload;
 }
 
 // --- ONBOARDING PROGRESS WITH USER ---

@@ -34,6 +34,7 @@ import {
   validation_reference_cases,
   validation_case_claims,
   compute_requests,
+  digests,
 } from "./drizzle.js";
 import { parseMlRewardRules } from "../domain/mlRewardRules.js";
 import { parseCodeRewardRules } from "../domain/codeRewardRules.js";
@@ -80,6 +81,9 @@ import type {
   RewardEntry,
   RewardEntryMeta,
   RewardRuleKey,
+  Digest,
+  DigestPayload,
+  DigestTriggerSource,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -99,6 +103,7 @@ type DbEvaluationRunContribution = InferSelectModel<typeof evaluation_run_contri
 type DbEvaluationGrid = InferSelectModel<typeof evaluation_grids>;
 type DbEvaluationGridCategory = InferSelectModel<typeof evaluation_grid_categories>;
 type DbEvaluationGridSubcriterion = InferSelectModel<typeof evaluation_grid_subcriteria>;
+type DbDigest = InferSelectModel<typeof digests>;
 
 /* ============================================================
  *  MAPPERS DB → DOMAIN
@@ -897,5 +902,20 @@ export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>):
     scaleway_connected_by: row.scaleway_connected_by ?? null,
     scaleway_is_connected: !!row.scaleway_secret_key_enc && !row.scaleway_disconnect_requested_at,
     scaleway_disconnect_requested_at: row.scaleway_disconnect_requested_at ?? null,
+    digest_enabled: row.digest_enabled ?? false,
+    digest_frequency_days: row.digest_frequency_days ?? 7,
+  };
+}
+
+export function toDomainDigest(row: DbDigest): Digest {
+  return {
+    uuid: row.uuid,
+    period_start: new Date(row.period_start),
+    period_end: new Date(row.period_end),
+    generated_at: new Date(row.generated_at),
+    trigger_source: row.trigger_source as DigestTriggerSource,
+    // Le payload est stocké tel qu'il a été écrit et n'est jamais migré : un
+    // digest ancien garde la forme qu'il avait, d'où `version` à l'intérieur.
+    payload: row.payload as DigestPayload,
   };
 }
