@@ -10,6 +10,7 @@ MyTwin Leaderboard is an internal platform for **MyTwin Lab** that tracks contri
 4. **Shows the leaderboard** — the UI renders rankings, challenge progress, and individual contributor profiles.
 5. **Manages sync meetings** — meetings are created directly from the app in Google Workspace, then AI analyzes the recorded content to extract summaries, decisions, and contribution signals.
 6. **Onboards new contributors** — a guided mission flow helps new contributors take their first steps (pick a task, evaluate it, validate it).
+7. **Records what happened** — a periodic digest freezes each period's activity (new contributions, challenges, contributors, and the CP actually distributed) into an immutable snapshot admins can browse.
 
 ## Core concepts
 
@@ -26,6 +27,7 @@ MyTwin Leaderboard is an internal platform for **MyTwin Lab** that tracks contri
 | **Brief** | A challenge's Markdown introduction (`brief.md`), shown before the workspace to a signed-in contributor who hasn't joined yet. |
 | **Reference case** | A ground-truth input/expected-output pair on a validation challenge, authored by a `medical_pro` and used to test a submitted API. |
 | **Compute request** | A contributor's request for a temporary GPU instance on an ML challenge, approved by a manager. |
+| **Digest** | An immutable snapshot of one period's platform activity, generated on a schedule and never rewritten — see [`digest.md`](./digest.md). |
 
 ## Tech stack
 

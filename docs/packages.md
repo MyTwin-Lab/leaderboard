@@ -119,6 +119,7 @@ Key services:
 - **`evaluation-grid.service.ts`** / **`database-grid-provider.ts`** — evaluation grids stored in the DB
 - **`sync-meeting/`** — full sync meeting lifecycle (creation → polling → ingestion → analysis)
 - **`slack/`** — daily Slack signal ingestion: `slack-signals.service.ts` (per-challenge cursor, author resolution, LLM detection, ledger writes) and `cron-slack-signals.ts` (loops over configured challenges) — see [`slack-signals.md`](./slack-signals.md)
+- **`digest/`** — periodic activity snapshots: `digest-schedule.ts` (the cursor and the UTC day-boundary comparison) and `digest-payload.ts` (the five sections, group resolution, ledger aggregation) are pure and hold everything worth testing; `digest.service.ts` windows the reads and inserts, `cron-digest.ts` decides whether one is due — see [`digest.md`](./digest.md)
 - **`run-logger.ts`** — shared evaluation-run logging
 
 > `challenge/challenge-context.service.ts` and `challenge/sync-evaluation.service.ts` are still in the codebase but are **no longer used** — they belonged to the old challenge-level identify/merge/evaluate pipeline (the `/api/challenges/:id/context` and `/sync` routes are their remaining surface). `webhook.service.ts` also remains but is orphaned: the `POST /api/webhooks/github` route that used to call it has been removed, so nothing in the app invokes it anymore.

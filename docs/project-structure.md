@@ -35,7 +35,8 @@ leaderboard/
 │       │   │       ├── sync-meetings/
 │       │   │       ├── github-oauth/  kaggle/  slack/  openai/  scaleway/
 │       │   │       ├── cron/               # check-meetings, slack-signals,
-│       │   │       │                       # compute-provisioning, compute-expiration
+│       │   │       │                       # compute-provisioning, compute-expiration,
+│       │   │       │                       # digest
 │       │   │       ├── docs/               # Scalar API reference (dev only)
 │       │   │       └── openapi.json/       # OpenAPI spec (dev only)
 │       │   ├── components/
@@ -102,6 +103,8 @@ leaderboard/
 │   │   │                              # validation + reference cases, SSRF guard,
 │   │   │                              # endpoint proxy, artifactUrl, lineage
 │   │   ├── compute/                   # GPU compute requests + its two crons
+│   │   ├── digest/                    # activity snapshots: schedule, payload,
+│   │   │                              # service + cron
 │   │   ├── google-workspace/          # auth, calendar, meet
 │   │   ├── slack/                     # signal ingestion + cron
 │   │   ├── sync-meeting/              # meeting lifecycle (create → poll → ingest → analyze)
@@ -155,6 +158,7 @@ leaderboard/
 | Google integrations | `packages/services/google-workspace/` |
 | Meeting analysis | `packages/sync-meeting-agent/` |
 | Slack signals | `packages/services/slack/` + `packages/slack-signal-agent/` |
+| Activity digest | `packages/services/digest/` (see [`digest.md`](./digest.md)) |
 | Theme / integrations / module toggles | `packages/database-service/repositories/appSettings.repo.ts` (see [`admin-settings.md`](./admin-settings.md)) |
 | Env config & encrypted credentials | `packages/config/` |
 | Root npm scripts | `package.json` (root) |
