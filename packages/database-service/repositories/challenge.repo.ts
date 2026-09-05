@@ -36,8 +36,8 @@ export class ChallengeRepository {
     return rows.map(toDomainContribution);
   }
 
-  async create(entity: Omit<Challenge, "uuid">): Promise<Challenge> {
-    const validated = challengeSchema.omit({ uuid: true }).parse(entity);
+  async create(entity: Omit<Challenge, "uuid" | "created_at">): Promise<Challenge> {
+    const validated = challengeSchema.omit({ uuid: true, created_at: true }).parse(entity);
     const dbData = toDbChallenge(validated);
     const [inserted] = await db.insert(challenges).values(dbData).returning();
     return toDomainChallenge(inserted);

@@ -67,6 +67,15 @@ export const challenges = pgTable("challenges", {
   // 'provided_repo' = repo GitHub du challenge, branche perso par contributeur
   // 'own_repo'      = chaque contributeur fournit l'URL de son propre repo
   workspace_mode: varchar("workspace_mode", { length: 20 }).default("provided_repo"),
+  // Date de création réelle du challenge. `start_date` est une date métier,
+  // optionnelle et éditable — elle ne peut pas servir de date de création.
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  // Date de bascule vers 'completed'. Posée par ChallengeRepository.update(),
+  // seul point de passage des deux chemins de fermeture (/close et le PUT du
+  // drawer). Réécrite si le challenge est rouvert puis refermé : l'événement
+  // qui intéresse le digest est la dernière fermeture, pas la première.
+  // 'archived' ne la pose pas — archiver retire des listings, ça ne termine pas.
+  closed_at: timestamp("closed_at"),
 }, (table) => ({
   projectIdIdx: index("idx_challenges_project_id").on(table.project_id),
   statusIdx: index("idx_challenges_status").on(table.status),
@@ -155,6 +164,10 @@ export const contributions = pgTable("contributions", {
   // pending | running | done | failed | skipped_reuse
   evaluation_status: varchar("evaluation_status", { length: 20 }),
   submitted_at: timestamp("submitted_at").defaultNow().notNull(),
+  // Date de création, distincte de submitted_at qui vaut "dernière soumission"
+  // (code-rewards.service.ts la réécrit à chaque ré-évaluation) et qui sert
+  // par ailleurs à l'antériorité de réutilisation dans lineage.ts.
+  created_at: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   challengeIdIdx: index("idx_contributions_challenge_id").on(table.challenge_id),
   userIdIdx: index("idx_contributions_user_id").on(table.user_id),

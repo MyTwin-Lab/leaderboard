@@ -55,8 +55,8 @@ export class ContributionRepository {
     };
   }
 
-  async create(entity: Omit<Contribution, "uuid">): Promise<Contribution> {
-    const validated = contributionSchema.omit({ uuid: true }).parse(entity);
+  async create(entity: Omit<Contribution, "uuid" | "created_at">): Promise<Contribution> {
+    const validated = contributionSchema.omit({ uuid: true, created_at: true }).parse(entity);
     const dbData = toDbContribution(validated);
     const [inserted] = await db.insert(contributions).values(dbData).returning();
     return toDomainContribution(inserted);

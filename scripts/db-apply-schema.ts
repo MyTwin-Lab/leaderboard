@@ -162,6 +162,46 @@ const STATEMENTS: Array<{ label: string; sql: string }> = [
     label: "contribution_members.user_id (index)",
     sql: `CREATE INDEX IF NOT EXISTS idx_contribution_members_user_id ON contribution_members (user_id)`,
   },
+
+  // --- Datation pour le digest (voir docs/input/spec-digest.md §2) ---
+  //
+  // Les backfills ne sont pas cosmétiques : sans eux, le DEFAULT now() daterait
+  // toutes les rows existantes du jour du déploiement et le premier digest les
+  // listerait toutes comme nouvelles.
+  //
+  // Leur idempotence tient au garde `created_at >= now() - interval '1 minute'`,
+  // qui ne touche que les rows que l'ADD COLUMN vient d'estampiller dans ce run.
+  // Au déploiement suivant la colonne existe déjà, aucune row n'est fraîchement
+  // estampillée, et l'UPDATE ne matche rien.
+  {
+    label: "challenges.created_at",
+    sql: `ALTER TABLE challenges ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now()`,
+  },
+  {
+    label: "challenges.created_at (backfill)",
+    sql: `
+      UPDATE challenges
+      SET created_at = COALESCE(start_date::timestamp, timestamp '2020-01-01')
+      WHERE created_at >= now() - interval '1 minute'`,
+  },
+  // Pas de backfill pour closed_at : aucune date de fermeture n'existe dans
+  // l'historique. Les challenges déjà 'completed' n'apparaîtront dans aucun
+  // digest, ce qui est assumé.
+  {
+    label: "challenges.closed_at",
+    sql: `ALTER TABLE challenges ADD COLUMN IF NOT EXISTS closed_at timestamp`,
+  },
+  {
+    label: "contributions.created_at",
+    sql: `ALTER TABLE contributions ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now()`,
+  },
+  {
+    label: "contributions.created_at (backfill)",
+    sql: `
+      UPDATE contributions
+      SET created_at = submitted_at
+      WHERE created_at >= now() - interval '1 minute'`,
+  },
 ];
 
 async function main() {

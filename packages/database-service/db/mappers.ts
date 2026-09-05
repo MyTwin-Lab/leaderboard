@@ -144,6 +144,8 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     cp_per_validation: row.cp_per_validation ?? null,
     required_validations: row.required_validations ?? null,
     compute_enabled: row.compute_enabled ?? false,
+    created_at: new Date(row.created_at),
+    closed_at: row.closed_at ? new Date(row.closed_at) : null,
   };
 }
 
@@ -210,6 +212,7 @@ export function toDomainContribution(row: DbContribution): Contribution {
     live_endpoint_url: row.live_endpoint_url ?? undefined,
     evaluation_status: (row.evaluation_status as ContributionEvaluationStatus) ?? undefined,
     submitted_at: new Date(row.submitted_at),
+    created_at: new Date(row.created_at),
   };
 }
 
@@ -248,7 +251,7 @@ export function toDbRepo(entity: Omit<Repo, "uuid">): typeof repos.$inferInsert 
   };
 }
 
-export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenges.$inferInsert {
+export function toDbChallenge(entity: Omit<Challenge, "uuid" | "created_at">): typeof challenges.$inferInsert {
   return {
     // index est auto-généré par PostgreSQL (serial)
     title: entity.title,
@@ -281,7 +284,7 @@ export function toDbUser(entity: Omit<User, "uuid" | "created_at">): typeof user
   };
 }
 
-export function toDbContribution(entity: Omit<Contribution, "uuid">): typeof contributions.$inferInsert {
+export function toDbContribution(entity: Omit<Contribution, "uuid" | "created_at">): typeof contributions.$inferInsert {
   return {
     title: entity.title,
     type: entity.type,

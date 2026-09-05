@@ -64,6 +64,8 @@ export const challengeSchema = z.object({
   cp_per_validation: z.number().int().nonnegative().nullish(),
   required_validations: z.number().int().positive().nullish(),
   compute_enabled: z.boolean().default(false),
+  created_at: z.coerce.date(),
+  closed_at: z.coerce.date().nullish(),
 });
 
 export const challengeSignalSchema = z.object({
@@ -105,6 +107,7 @@ export const contributionSchema = z.object({
     .enum(['pending', 'running', 'done', 'failed', 'skipped_reuse'])
     .optional(),
   submitted_at: z.coerce.date(),
+  created_at: z.coerce.date(),
 });
 
 export const rewardRuleKeySchema = z.enum([

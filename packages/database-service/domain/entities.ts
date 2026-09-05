@@ -70,6 +70,8 @@ export interface Challenge {
   cp_per_validation?: number | null;   // Validation uniquement — CP fixe par validation
   required_validations?: number | null; // Validation uniquement — nb de verdicts requis avant résolution (impair)
   compute_enabled?: boolean; // ML uniquement — active la demande de puissance de calcul Scaleway sur ce challenge
+  created_at: Date;
+  closed_at?: Date | null; // Posée à la bascule vers 'completed' (jamais 'archived')
 }
 
 /** Signal de contribution détectable dans un canal de discussion (Slack). */
@@ -126,7 +128,10 @@ export interface Contribution {
   artifact_url?: string;
   live_endpoint_url?: string; // api_packaging uniquement — endpoint déployé
   evaluation_status?: ContributionEvaluationStatus;
+  /** Dernière soumission — réécrite à chaque ré-évaluation. Sert aussi à
+   *  l'antériorité de réutilisation (lineage.ts). Pas une date de création. */
   submitted_at: Date;
+  created_at: Date;
 }
 
 // --- REWARD ENTRIES (ledger ML) ---
