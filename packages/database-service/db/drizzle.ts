@@ -898,6 +898,22 @@ export const onboardingProgressRelations = relations(onboarding_progress, ({ one
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL!,
+  // Toutes les colonnes de dates sont des `timestamp` sans fuseau, et elles
+  // sont alimentées par deux chemins : `defaultNow()` exécute now() côté
+  // serveur, tandis qu'une valeur passée par Drizzle est sérialisée en ISO,
+  // donc en UTC. Sur un serveur en Europe/Paris, la même seconde s'écrit
+  // 14:12 par le premier chemin et 12:12 par le second — et rien ne rattrape
+  // l'écart, puisque Postgres compare alors deux nombres nus.
+  //
+  // Personne ne s'en apercevait tant qu'aucun code ne comparait les deux
+  // familles entre elles. Le digest le fait (created_at rempli par le serveur
+  // contre des bornes de fenêtre venues de JS) et rejetait tout ce qui datait
+  // des deux dernières heures.
+  //
+  // Forcer la session en UTC aligne now() sur ce qu'écrit Drizzle. Les lignes
+  // déjà écrites en heure locale gardent leur avance : c'est de l'historique,
+  // et le reconvertir demanderait de savoir colonne par colonne qui l'a écrite.
+  options: "-c timezone=UTC",
 });
 
 export const db = drizzle(pool, {
