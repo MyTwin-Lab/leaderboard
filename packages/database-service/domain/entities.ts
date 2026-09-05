@@ -40,6 +40,13 @@ export interface ChallengeTeam {
   workspace_ref?: string;
   workspace_url?: string;
   workspace_status?: WorkspaceStatus;
+  /**
+   * Groupe de travail sur ce challenge. `undefined` = participation solo,
+   * comportement inchangé. Les rows d'un même challenge qui le partagent
+   * travaillent sur le workspace du créateur du groupe — celui dont la row
+   * porte le `workspace_ref`. Voir services/challenge/group.ts.
+   */
+  group_id?: string;
 }
 
 export type ChallengeWorkspaceMode = 'provided_repo' | 'own_repo';
@@ -156,6 +163,20 @@ export interface RewardEntry {
   source_user_id?: string;
   meta?: RewardEntryMeta;
   created_at: Date;
+}
+
+/**
+ * Part de CP d'un membre de groupe sur une contribution.
+ *
+ * Aucune row n'existe pour une contribution solo : l'absence de membres veut
+ * dire "tout le reward revient à `contributions.user_id`". `share_cp` est
+ * cumulatif — chaque run de scoring ajoute son delta — de sorte que
+ * Σ share_cp = contributions.reward à tout instant.
+ */
+export interface ContributionMember {
+  contribution_id: string; // FK -> contributions.uuid
+  user_id: string;         // FK -> users.uuid
+  share_cp: number;
 }
 
 // --- VALIDATION CHALLENGES ---

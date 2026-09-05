@@ -1,6 +1,6 @@
 import { config } from "../../config/index.js";
 import "dotenv/config";
-import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial, real, index, uniqueIndex, boolean, customType } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial, real, index, uniqueIndex, boolean, customType, primaryKey } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -103,10 +103,16 @@ export const challenge_teams = pgTable("challenge_teams", {
   workspace_ref: varchar("workspace_ref", { length: 200 }),          // ex: refs/heads/contrib/015-alice
   workspace_url: text("workspace_url"),
   workspace_status: varchar("workspace_status", { length: 20 }),     // pending | ready | failed
+  // NULL = participation solo. Deux rows du même challenge partageant un
+  // group_id forment un groupe : elles se partagent le workspace porté par
+  // celle du créateur. Voir services/challenge/group.ts.
+  group_id: uuid("group_id"),
 }, (table) => ({
   challengeIdIdx: index("idx_challenge_teams_challenge_id").on(table.challenge_id),
   userIdIdx: index("idx_challenge_teams_user_id").on(table.user_id),
   compositeIdx: index("idx_challenge_teams_composite").on(table.challenge_id, table.user_id),
+  groupIdx: index("idx_challenge_teams_group").on(table.challenge_id, table.group_id),
+  uniqueMembership: uniqueIndex("idx_challenge_teams_unique").on(table.challenge_id, table.user_id),
 }));
 
 // --- USERS ---
@@ -175,6 +181,24 @@ export const reward_entries = pgTable("reward_entries", {
   challengeIdIdx: index("idx_reward_entries_challenge_id").on(table.challenge_id),
   userIdIdx: index("idx_reward_entries_user_id").on(table.user_id),
   contributionIdIdx: index("idx_reward_entries_contribution_id").on(table.contribution_id),
+}));
+
+// --- CONTRIBUTION_MEMBERS ---
+// Parts de CP des membres d'un groupe sur une contribution.
+//
+// Aucune row pour une contribution solo : l'absence de membres signifie "tout
+// le reward revient à contributions.user_id". `share_cp` est cumulatif — le
+// scoring des challenges code est itératif, chaque run ajoute son delta à la
+// part existante. L'invariant Σ share_cp = contributions.reward tient donc en
+// permanence, et c'est lui que lit le leaderboard.
+export const contribution_members = pgTable("contribution_members", {
+  contribution_id: uuid("contribution_id").notNull().references(() => contributions.uuid, { onDelete: "cascade" }),
+  user_id: uuid("user_id").notNull().references(() => users.uuid, { onDelete: "cascade" }),
+  share_cp: integer("share_cp").default(0).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.contribution_id, table.user_id], name: "contribution_members_pk" }),
+  // La PK ne couvre pas le sens user → contributions, que lit le leaderboard.
+  userIdIdx: index("idx_contribution_members_user_id").on(table.user_id),
 }));
 
 // --- VALIDATION_TARGETS ---
@@ -624,6 +648,17 @@ export const challengeTeamsRelations = relations(challenge_teams, ({ one }) => (
   }),
 }));
 
+export const contributionMembersRelations = relations(contribution_members, ({ one }) => ({
+  contribution: one(contributions, {
+    fields: [contribution_members.contribution_id],
+    references: [contributions.uuid],
+  }),
+  user: one(users, {
+    fields: [contribution_members.user_id],
+    references: [users.uuid],
+  }),
+}));
+
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
   challenge: one(challenges, {
     fields: [tasks.challenge_id],
@@ -832,6 +867,7 @@ export const db = drizzle(pool, {
     challenge_teams,
     users,
     contributions,
+    contribution_members,
     tasks,
     refresh_tokens,
     evaluation_runs,
@@ -855,6 +891,7 @@ export const db = drizzle(pool, {
     challengeTeamsRelations,
     usersRelations,
     contributionsRelations,
+    contributionMembersRelations,
     tasksRelations,
     refreshTokensRelations,
     evaluationGridsRelations,

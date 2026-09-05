@@ -12,6 +12,7 @@ import {
   challenge_teams,
   users,
   contributions,
+  contribution_members,
   refresh_tokens,
   tasks,
   evaluation_runs,
@@ -53,6 +54,7 @@ import type {
   ComputeRequest,
   User,
   Contribution,
+  ContributionMember,
   RefreshToken,
   Task,
   WorkspaceStatus,
@@ -88,6 +90,7 @@ type DbChallengeRepo = InferSelectModel<typeof challenge_repos>;
 type DbChallengeTeam = InferSelectModel<typeof challenge_teams>;
 type DbUser = InferSelectModel<typeof users>;
 type DbContribution = InferSelectModel<typeof contributions>;
+type DbContributionMember = InferSelectModel<typeof contribution_members>;
 type DbRewardEntry = InferSelectModel<typeof reward_entries>;
 type DbRefreshToken = InferSelectModel<typeof refresh_tokens>;
 type DbTask = InferSelectModel<typeof tasks>;
@@ -165,6 +168,15 @@ export function toDomainChallengeTeam(row: DbChallengeTeam): ChallengeTeam {
     workspace_ref: row.workspace_ref ?? undefined,
     workspace_url: row.workspace_url ?? undefined,
     workspace_status: (row.workspace_status as WorkspaceStatus) ?? undefined,
+    group_id: row.group_id ?? undefined,
+  };
+}
+
+export function toDomainContributionMember(row: DbContributionMember): ContributionMember {
+  return {
+    contribution_id: row.contribution_id,
+    user_id: row.user_id,
+    share_cp: row.share_cp,
   };
 }
 

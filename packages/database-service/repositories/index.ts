@@ -5,6 +5,7 @@ export { ChallengeRepoRepository } from "./challengeRepos.repo";
 export { ChallengeTeamRepository } from "./challengeTeam.repo";
 export { UserRepository } from "./user.repo";
 export { ContributionRepository } from "./contribution.repo";
+export { ContributionMemberRepository } from "./contributionMember.repo";
 export { RewardEntryRepository } from "./rewardEntry.repo";
 export type { RewardEntryDraft } from "./rewardEntry.repo";
 export { RefreshTokenRepository } from "./refresh-token.repo";

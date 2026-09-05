@@ -34,6 +34,15 @@ export const challengeTeamSchema = z.object({
   workspace_ref: z.string().max(200).optional(),
   workspace_url: z.string().optional(),
   workspace_status: z.enum(['pending', 'ready', 'failed']).optional(),
+  group_id: z.string().uuid().optional(),
+});
+
+export const contributionMemberSchema = z.object({
+  contribution_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  // Négatif toléré : une correction de ledger peut produire un delta négatif à
+  // répartir, et la part cumulée doit pouvoir redescendre.
+  share_cp: z.number().int(),
 });
 
 export const challengeSchema = z.object({

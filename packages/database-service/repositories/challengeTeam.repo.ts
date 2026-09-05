@@ -1,6 +1,6 @@
 import { db } from "../db/drizzle";
 import { challenge_teams, users } from "../db/drizzle";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { toDomainChallengeTeam, toDomainUser } from "../db/mappers";
 import type { ChallengeTeam, User } from "../domain/entities";
 import { challengeTeamSchema } from "../domain/schemas_zod";
@@ -36,6 +36,36 @@ export class ChallengeTeamRepository {
     return results.filter(r => r.user !== null).map(r => toDomainUser(r.user!));
   }
 
+  /**
+   * Membres d'un groupe sur un challenge.
+   *
+   * Le `group_id` étant nullable, ce filtre ne renvoie jamais les solos : un
+   * `groupId` absent ferait matcher toutes les rows NULL entre elles.
+   */
+  async findByGroup(challengeId: string, groupId: string): Promise<ChallengeTeam[]> {
+    const rows = await db.select().from(challenge_teams)
+      .where(and(eq(challenge_teams.challenge_id, challengeId), eq(challenge_teams.group_id, groupId)));
+    return rows.map(toDomainChallengeTeam);
+  }
+
+  /** Taille actuelle d'un groupe — contrôle du plafond au moment du join. */
+  async countByGroup(challengeId: string, groupId: string): Promise<number> {
+    const [row] = await db
+      .select({ total: sql<number>`COUNT(*)::int` })
+      .from(challenge_teams)
+      .where(and(eq(challenge_teams.challenge_id, challengeId), eq(challenge_teams.group_id, groupId)));
+    return row?.total ?? 0;
+  }
+
+  /** Attache une participation à un groupe, ou l'en détache avec `null`. */
+  async updateGroup(challengeId: string, userId: string, groupId: string | null): Promise<ChallengeTeam | null> {
+    const [updated] = await db.update(challenge_teams)
+      .set({ group_id: groupId })
+      .where(and(eq(challenge_teams.challenge_id, challengeId), eq(challenge_teams.user_id, userId)))
+      .returning();
+    return updated ? toDomainChallengeTeam(updated) : null;
+  }
+
   async create(entity: ChallengeTeam): Promise<ChallengeTeam> {
     const validated = challengeTeamSchema.parse(entity);
     const [inserted] = await db.insert(challenge_teams).values({
@@ -45,6 +75,7 @@ export class ChallengeTeamRepository {
       workspace_ref: validated.workspace_ref ?? null,
       workspace_url: validated.workspace_url ?? null,
       workspace_status: validated.workspace_status ?? null,
+      group_id: validated.group_id ?? null,
     }).returning();
     return toDomainChallengeTeam(inserted);
   }
