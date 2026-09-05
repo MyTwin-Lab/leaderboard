@@ -71,7 +71,7 @@ export function ParticipantsProgress({
         <div key={key} className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3">
           <div className="flex shrink-0 -space-x-2">
             {members.map(m => (
-              <div key={m.id} className="rounded-full ring-2 ring-[#0b0f0e]">
+              <div key={m.id} className="rounded-full ring-2" style={{ ["--tw-ring-color" as string]: "var(--background)" }}>
                 <InitialsAvatar name={m.fullName} size={28} avatarUrl={m.avatarUrl} />
               </div>
             ))}

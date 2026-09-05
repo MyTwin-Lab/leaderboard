@@ -38,7 +38,7 @@ export function GroupInviteModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="animate-pop-in relative w-full max-w-lg rounded-[20px] border border-white/10 bg-[#0d1211] p-6 shadow-2xl">
+      <div className="animate-pop-in relative w-full max-w-lg rounded-[20px] border border-white/10 bg-background p-6 shadow-2xl">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brandCP/12">
             <Users className="h-[18px] w-[18px] text-brandCP" />
