@@ -23,6 +23,7 @@ import { isValidThemeKey, DEFAULT_THEME_KEY } from "@/lib/themes";
 import { ModulesSettings } from "@/components/contributor/ModulesSettings";
 import { OnboardingProgressTable } from "@/components/contributor/OnboardingProgressTable";
 import { EvaluationGridsTab } from "@/components/contributor/evaluation-grids/EvaluationGridsTab";
+import { DigestTab } from "@/components/contributor/DigestTab";
 
 const appSettingsRepo = new AppSettingsRepository();
 const onboardingProgressRepo = new OnboardingProgressRepository();
@@ -154,6 +155,17 @@ export default async function ContributorSelfPage({
           <ModulesSettings
             meetingsEnabled={settings.modules_meetings_enabled}
             onboardingEnabled={settings.modules_onboarding_enabled}
+          />
+        </div>
+      ),
+    });
+    tabs.push({
+      label: "Digest",
+      panel: (
+        <div className="mx-auto max-w-lg py-2 lg:max-w-4xl">
+          <DigestTab
+            enabled={settings.digest_enabled}
+            frequencyDays={settings.digest_frequency_days}
           />
         </div>
       ),
