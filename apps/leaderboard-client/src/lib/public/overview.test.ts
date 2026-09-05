@@ -76,7 +76,7 @@ describe('toPublicOverview', () => {
     expect(result.tasks).toEqual([
       { uuid: 't1', user_id: 'u1', status: 'done', parent_task_id: null },
     ]);
-    expect(result.participants).toEqual([{ user_id: 'u1' }]);
+    expect(result.participants).toEqual([{ user_id: 'u1', group_owner_id: null }]);
     expect(result.contributions).toEqual([
       { uuid: 'k1', user_id: 'u1', type: 'project', reward: 120, submitted_at: '2026-01-15', evaluation_status: 'done' },
     ]);

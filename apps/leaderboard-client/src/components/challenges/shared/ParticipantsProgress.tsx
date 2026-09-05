@@ -25,21 +25,38 @@ export function ParticipantsProgress({
 }: {
   team: TeamMember[];
   tasks: Array<{ uuid: string; user_id?: string | null; status: string; parent_task_id?: string }>;
-  participants: Array<{ user_id: string; workspace_status?: string | null }>;
+  participants: Array<{ user_id: string; workspace_status?: string | null; group_owner_id?: string | null }>;
   contributions: Array<{ user_id: string; type?: string; reward: number; evaluation_status?: string }>;
   /** Manage view only. The public payload never carries the field, and this
    *  keeps the component correct even if that ever changed. */
   showWorkspaceStatus?: boolean;
 }) {
-  const rows = team.map(member => {
+  // Une ligne par board, pas par personne : les membres d'un groupe partagent
+  // un board, une branche et une contribution. Les lister séparément
+  // afficherait le travail du porteur une fois et des lignes vides pour les
+  // autres. `group_owner_id` désigne le board ; il vaut null pour un solo.
+  const boardOwnerOf = (userId: string) =>
+    participants.find(p => p.user_id === userId)?.group_owner_id ?? userId;
+
+  const boards = new Map<string, TeamMember[]>();
+  for (const member of team) {
+    const key = boardOwnerOf(member.id);
+    const existing = boards.get(key);
+    if (existing) existing.push(member);
+    else boards.set(key, [member]);
+  }
+
+  const rows = [...boards].map(([ownerId, members]) => {
     // Sub-tasks are excluded: a board's progress is measured on its top-level
     // items, the same ones the contributor sees as their checklist.
-    const mine = tasks.filter(t => t.user_id === member.id && !t.parent_task_id);
+    const mine = tasks.filter(t => t.user_id === ownerId && !t.parent_task_id);
     const done = mine.filter(t => t.status === 'done').length;
-    const participation = participants.find(p => p.user_id === member.id);
-    const project = contributions.find(c => c.user_id === member.id && c.type === 'project');
+    const participation = participants.find(p => p.user_id === ownerId);
+    const project = contributions.find(c => c.user_id === ownerId && c.type === 'project');
     return {
-      member,
+      key: ownerId,
+      // Le porteur en tête : c'est sa branche et son board qu'on décrit.
+      members: [...members].sort((a, b) => (a.id === ownerId ? -1 : b.id === ownerId ? 1 : 0)),
       total: mine.length,
       done,
       percent: completionPercent(done, mine.length),
@@ -50,12 +67,20 @@ export function ParticipantsProgress({
 
   return (
     <div className="space-y-1.5">
-      {rows.map(({ member, total, done, percent, participation, project }) => (
-        <div key={member.id} className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-          <InitialsAvatar name={member.fullName} size={28} avatarUrl={member.avatarUrl} />
+      {rows.map(({ key, members, total, done, percent, participation, project }) => (
+        <div key={key} className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+          <div className="flex shrink-0 -space-x-2">
+            {members.map(m => (
+              <div key={m.id} className="rounded-full ring-2 ring-[#0b0f0e]">
+                <InitialsAvatar name={m.fullName} size={28} avatarUrl={m.avatarUrl} />
+              </div>
+            ))}
+          </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">{member.fullName}</p>
+            <p className="truncate text-sm font-medium text-white">
+              {members.map(m => m.fullName).join(' · ')}
+            </p>
             <p className="text-xs text-white/30">
               {total === 0 ? 'No tasks yet' : `${done}/${total} tasks done`}
               {showWorkspaceStatus && participation?.workspace_status

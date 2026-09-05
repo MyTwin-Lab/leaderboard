@@ -48,12 +48,13 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * DAY_MS);
 
-  const [projects, challenges, contributions, users, challengeTeams] = await Promise.all([
+  const [projects, challenges, contributions, users, challengeTeams, contributionMembers] = await Promise.all([
     repositories.project.findAll(),
     repositories.challenge.findAll(),
     repositories.contribution.findAll(),
     repositories.user.findAll(),
     repositories.challengeTeam.findAll(),
+    repositories.contributionMember.findAll(),
   ]);
 
   const projectsMap = new Map(projects.map((p) => [p.uuid, p]));
@@ -64,22 +65,34 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
     contributions,
     challenges,
     users,
+    contributionMembers,
     projectId: null,
     timePeriod: "all",
   });
   const ranked = rankEntries(aggregated);
   const contributorsRanked = ranked.filter((e) => e.totalCP > 0).length;
 
+  // Une contribution de groupe compte, et date, pour chacun de ses membres —
+  // pas seulement pour celui qui l'a soumise.
+  const creditedUsers = new Map<string, string[]>();
+  for (const m of contributionMembers) {
+    const list = creditedUsers.get(m.contribution_id);
+    if (list) list.push(m.user_id);
+    else creditedUsers.set(m.contribution_id, [m.user_id]);
+  }
+
   const contributionsCountByUser = new Map<string, number>();
   const earliestContributionByUser = new Map<string, Date>();
   for (const c of contributions) {
-    // Discussion (Slack signal) contributions aren't a "contribution" in the
-    // way a submission is — same exclusion fetchContributorProfile applies.
-    if (c.type !== "discussion") {
-      contributionsCountByUser.set(c.user_id, (contributionsCountByUser.get(c.user_id) ?? 0) + 1);
+    for (const userId of creditedUsers.get(c.uuid) ?? [c.user_id]) {
+      // Discussion (Slack signal) contributions aren't a "contribution" in the
+      // way a submission is — same exclusion fetchContributorProfile applies.
+      if (c.type !== "discussion") {
+        contributionsCountByUser.set(userId, (contributionsCountByUser.get(userId) ?? 0) + 1);
+      }
+      const earliest = earliestContributionByUser.get(userId);
+      if (!earliest || c.submitted_at < earliest) earliestContributionByUser.set(userId, c.submitted_at);
     }
-    const earliest = earliestContributionByUser.get(c.user_id);
-    if (!earliest || c.submitted_at < earliest) earliestContributionByUser.set(c.user_id, c.submitted_at);
   }
   // "Newly ranked" this week = contributors whose very first contribution
   // landed in the last 7 days.

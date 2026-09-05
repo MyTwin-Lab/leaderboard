@@ -20,7 +20,7 @@ export interface PublicOverview {
   };
   team: Array<{ uuid: string; full_name: string; avatar_url: string | null; github_username: string | null }>;
   tasks: Array<{ uuid: string; user_id: string | null; status: string; parent_task_id: string | null }>;
-  participants: Array<{ user_id: string }>;
+  participants: Array<{ user_id: string; group_owner_id: string | null }>;
   contributions: Array<{
     uuid: string; user_id: string; type: string; reward: number;
     submitted_at: string; evaluation_status: string | null;
@@ -55,7 +55,12 @@ export function toPublicOverview(data: any): PublicOverview {
       status: t.status,
       parent_task_id: t.parent_task_id ?? null,
     })),
-    participants: (data?.participants ?? []).map((p: any) => ({ user_id: p.user_id })),
+    // `group_owner_id` seulement : il dit qui travaille avec qui, à partir
+    // d'un user_id déjà publié. `group_id`, le jeton d'invitation, ne sort pas.
+    participants: (data?.participants ?? []).map((p: any) => ({
+      user_id: p.user_id,
+      group_owner_id: p.group_owner_id ?? null,
+    })),
     contributions: (data?.contributions ?? []).map((k: any) => ({
       uuid: k.uuid,
       user_id: k.user_id,
