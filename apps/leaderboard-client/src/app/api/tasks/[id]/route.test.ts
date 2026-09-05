@@ -6,6 +6,7 @@ const {
   mockFindById, mockUpdate, mockDelete,
   mockChallengeFindById,
   mockProjectFindById,
+  mockTeamFindByChallenge,
 } = vi.hoisted(() => ({
   mockJwtVerify: vi.fn(),
   mockFindById: vi.fn(),
@@ -13,6 +14,7 @@ const {
   mockDelete: vi.fn(),
   mockChallengeFindById: vi.fn(),
   mockProjectFindById: vi.fn(),
+  mockTeamFindByChallenge: vi.fn(),
 }));
 
 vi.mock('jose', () => ({ jwtVerify: mockJwtVerify }));
@@ -25,6 +27,10 @@ vi.mock('../../../../../../../packages/database-service/repositories', () => ({
   },
   ChallengeRepository: class {
     findById = mockChallengeFindById;
+  },
+  ChallengeTeamRepository: class {
+    // Lue par resolveWorkspaceOwner : vide = personne en groupe.
+    findByChallenge = mockTeamFindByChallenge;
   },
 }));
 
@@ -76,6 +82,7 @@ beforeEach(() => {
   mockChallengeFindById.mockResolvedValue({ uuid: 'challenge-1', project_id: 'project-1' });
   mockProjectFindById.mockResolvedValue({ uuid: 'project-1', manager_id: 'manager-1' });
   mockJwtVerify.mockResolvedValue({ payload: { userId: 'alice', role: 'contributor' } });
+  mockTeamFindByChallenge.mockResolvedValue([]); // personne en groupe
 });
 
 describe('GET /api/tasks/[id]', () => {
@@ -94,7 +101,7 @@ describe('PATCH /api/tasks/[id]', () => {
     const res = await patchTask({ status: 'done' }, 'valid-token');
 
     expect(res.status).toBe(200);
-    expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { status: 'done' });
+    expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { status: 'done' }, { expectedStatus: undefined });
   });
 
   it('returns 403 when another user tries to update the task', async () => {
@@ -116,14 +123,14 @@ describe('PATCH /api/tasks/[id]', () => {
     mockJwtVerify.mockResolvedValue({ payload: { userId: 'admin-1', role: 'admin' } });
     const resAdmin = await patchTask({ status: 'done' }, 'valid-token');
     expect(resAdmin.status).toBe(200);
-    expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { status: 'done' });
+    expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { status: 'done' }, { expectedStatus: undefined });
   });
 
   it('lets the owner detach a sub-task by sending parent_task_id: null', async () => {
     const res = await patchTask({ parent_task_id: null }, 'valid-token');
 
     expect(res.status).toBe(200);
-    expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { parent_task_id: null });
+    expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { parent_task_id: null }, { expectedStatus: undefined });
   });
 
   it('returns 400 when parent_task_id points at a task from another challenge', async () => {
@@ -173,5 +180,39 @@ describe('DELETE /api/tasks/[id]', () => {
     const resOther = await deleteTask('valid-token');
     expect(resOther.status).toBe(403);
     expect(mockDelete).not.toHaveBeenCalled();
+  });
+});
+
+describe('PATCH /api/tasks/[id] — concurrent moves', () => {
+  it('passes the expected status through when the client sends from_status', async () => {
+    await patchTask({ status: 'done', from_status: 'in_progress' }, 'valid-token');
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      TASK_ID, { status: 'done' }, { expectedStatus: 'in_progress' }
+    );
+  });
+
+  it('stays unconditional when from_status is omitted', async () => {
+    // Rétrocompatibilité : un client qui ne l'envoie pas écrit comme avant.
+    await patchTask({ status: 'done' }, 'valid-token');
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      TASK_ID, { status: 'done' }, { expectedStatus: undefined }
+    );
+  });
+
+  it('returns 409 with the real state when someone else moved the card', async () => {
+    // Sans ça, le déplacement de l'autre membre serait écrasé en silence.
+    mockUpdate.mockResolvedValue(null);
+    mockFindById.mockResolvedValue({
+      uuid: TASK_ID, title: 'Do the thing', user_id: 'alice',
+      challenge_id: 'challenge-1', status: 'done',
+    });
+
+    const res = await patchTask({ status: 'in_progress', from_status: 'todo' }, 'valid-token');
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body.task.status).toBe('done');
   });
 });
