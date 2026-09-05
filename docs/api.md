@@ -240,7 +240,7 @@ See [`admin-settings.md`](./admin-settings.md) for what each of these controls.
 | `DELETE` | `/api/scaleway/connection` | Request disconnection — see [`compute-power.md`](./compute-power.md). | Admin |
 | `GET` | `/api/admin/digests` | Digest history, newest first (paginated; counts, not payloads). | Admin |
 | `GET` | `/api/admin/digests/:id` | One digest's full payload. | Admin |
-| `POST` | `/api/admin/digests/generate` | Generate a digest now, over `[last period_end, now]`. Works even when the schedule is off. | Admin |
+| `POST` | `/api/admin/digests/generate` | Generate a digest now. Optional `{ period_start }` forces the lower bound (ISO or `YYYY-MM-DD`, read as midnight UTC, must be past); without it, the last `period_end` is used. Works even when the schedule is off. | Admin |
 | `PATCH` | `/api/admin/digest-settings` | Update `digest_enabled` / `digest_frequency_days`. | Admin |
 
 ---

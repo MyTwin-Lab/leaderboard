@@ -67,14 +67,38 @@ export class DigestService {
     } as DigestServiceDeps;
   }
 
-  async generate(trigger: DigestTriggerSource, now = new Date()): Promise<Digest> {
+  async generate(
+    trigger: DigestTriggerSource,
+    opts: {
+      now?: Date;
+      /**
+       * Borne basse imposée, au lieu du curseur.
+       *
+       * Réservée à la génération manuelle : elle rompt volontairement
+       * l'invariant `period_start = period_end précédent`, donc le digest
+       * produit peut recouvrir une période déjà couverte. C'est le prix du
+       * rattrapage — sans elle, un digest vide qui a consommé le curseur rend
+       * la période précédente définitivement inaccessible.
+       *
+       * Le curseur lui-même n'est pas abîmé : `period_end` vaut toujours
+       * `now`, donc le prochain digest automatique repart bien d'ici.
+       */
+      periodStart?: Date;
+    } = {},
+  ): Promise<Digest> {
+    const now = opts.now ?? new Date();
     const settings = await this.deps.appSettingsRepo.get();
     const last = await this.deps.digestRepo.findLatest();
-    const { start, end } = digestWindow(
+    const { start: cursorStart, end } = digestWindow(
       last?.period_end ?? null,
       now,
       settings.digest_frequency_days,
     );
+
+    const start = opts.periodStart ?? cursorStart;
+    if (start.getTime() >= end.getTime()) {
+      throw new Error("The digest period must start before it ends");
+    }
 
     // Les cinq lectures fenêtrées sont indépendantes.
     const [contributions, challengesCreated, challengesClosed, contributors, rewardEntries] =

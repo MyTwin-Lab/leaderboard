@@ -187,6 +187,7 @@ export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequ
   const [digests, setDigests] = useState<DigestSummary[] | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [startDate, setStartDate] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const loadDigests = useCallback(async () => {
@@ -239,7 +240,14 @@ export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequ
     setGenerating(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/digests/generate", { method: "POST" });
+      const res = await fetch("/api/admin/digests/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Vide = depuis la fin du dernier digest. Une date choisie impose la
+        // borne basse, ce qui permet de rattraper une période qu'un digest
+        // déjà généré aurait consommée.
+        body: JSON.stringify(startDate ? { period_start: startDate } : {}),
+      });
       if (!res.ok) throw new Error((await res.json()).error ?? "Failed to generate");
       await loadDigests();
     } catch (e) {
@@ -291,15 +299,44 @@ export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequ
       </div>
 
       <div>
-        <div className="mb-3 flex items-center justify-between gap-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30">
             History
           </h2>
-          <Button size="sm" onClick={generateNow} disabled={generating}>
-            <RefreshCw className={`h-3.5 w-3.5 ${generating ? "animate-spin" : ""}`} />
-            {generating ? "Generating…" : "Generate now"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-white/35" htmlFor="digest-start">
+              From
+            </label>
+            <input
+              id="digest-start"
+              type="date"
+              value={startDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-white focus:border-brandCP/40 focus:outline-none [color-scheme:dark]"
+            />
+            {startDate && (
+              <button
+                type="button"
+                onClick={() => setStartDate("")}
+                title="Back to the end of the last digest"
+                className="text-xs text-white/35 hover:text-white/70"
+              >
+                clear
+              </button>
+            )}
+            <Button size="sm" onClick={generateNow} disabled={generating}>
+              <RefreshCw className={`h-3.5 w-3.5 ${generating ? "animate-spin" : ""}`} />
+              {generating ? "Generating…" : "Generate now"}
+            </Button>
+          </div>
         </div>
+
+        <p className="mb-3 text-xs text-white/25">
+          {startDate
+            ? `The digest will cover ${formatDate(`${startDate}T00:00:00.000Z`)} → now. Picking a start can overlap a period an earlier digest already covered.`
+            : "Leave the date empty to start where the last digest ended."}
+        </p>
 
         {digests === null && <p className="text-xs text-white/25">Loading…</p>}
 

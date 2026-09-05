@@ -93,9 +93,15 @@ The window bounds themselves stay exact timestamps: `period_start` equals the pr
 
 ### Manual generation
 
-The **Generate now** button calls the same generation path, skipping only the frequency check. It generates over `[last period_end, now]` like any other run, so the cursor invariant holds: the next automatic digest starts where the manual one ended. A manual digest with a very short period is valid and may have mostly empty sections.
+The **Generate now** button calls the same generation path, skipping only the frequency check. By default it generates over `[last period_end, now]` like any other run, so the cursor invariant holds: the next automatic digest starts where the manual one ended. A manual digest with a very short period is valid and may have mostly empty sections.
 
 It works even when `digest_enabled` is off — the toggle governs the cron, not the button.
+
+**Choosing the start.** The tab also exposes a date field next to the button. Left empty, the cursor is used. Set, it forces `period_start` and **deliberately breaks the `period_start = previous period_end` invariant** — the resulting digest can overlap a period an earlier digest already covered.
+
+That escape hatch exists because the invariant has a sharp edge: a digest generated over an empty or mistaken window still consumes the cursor, which would otherwise make the period before it unreachable forever. `period_end` is always `now`, so the cursor itself stays sound and the next automatic digest still starts from here.
+
+A plain `YYYY-MM-DD` is read as **midnight UTC**, not midnight in the reader's time zone — otherwise the bound would drift from one browser to the next for a field that carries no time. A start that is not strictly before the end is refused (`400`).
 
 ---
 
@@ -116,7 +122,7 @@ Two fields on the `app_settings` singleton, edited from the Digest tab:
 |-------|---------|
 | `digests` | One row per generated digest: `uuid`, `period_start`, `period_end`, `generated_at`, `trigger_source` (`cron` / `manual`), `payload` (jsonb, the five sections) |
 
-`period_start` always equals the previous digest's `period_end`.
+`period_start` equals the previous digest's `period_end`, unless a manual generation forced another start (see [Choosing the start](#manual-generation)).
 
 Three datation columns were added elsewhere for the digest to be computable at all — `challenges.created_at`, `challenges.closed_at` and `contributions.created_at`. See [`database.md`](./database.md). `closed_at` is stamped by `ChallengeRepository.update()`, the single point both closing paths go through; it is re-stamped if a reopened challenge closes again, and cleared if a completed challenge reopens.
 
@@ -128,7 +134,7 @@ Three datation columns were added elsewhere for the digest to be computable at a
 |--------|------|-------------|------|
 | `GET` | `/api/admin/digests` | List digests, newest first. Paginated (`?limit=`, `?offset=`), ships counts rather than payloads. | Admin |
 | `GET` | `/api/admin/digests/:id` | Read one digest's full payload. | Admin |
-| `POST` | `/api/admin/digests/generate` | Manual generation over `[last period_end, now]`. | Admin |
+| `POST` | `/api/admin/digests/generate` | Manual generation. Optional body `{ period_start }` (ISO or `YYYY-MM-DD`, read as midnight UTC, must be in the past) forces the lower bound; without it the cursor is used. | Admin |
 | `PATCH` | `/api/admin/digest-settings` | Update `digest_enabled` / `digest_frequency_days`. | Admin |
 | `GET` | `/api/cron/digest` | Daily check + generation when due. | `Bearer $CRON_SECRET` |
 
@@ -154,6 +160,7 @@ A **Digest** tab on the admin profile page (`/contributors/me`), alongside Appea
 
 ## Limitations (v1)
 
+- **Dates predating the UTC fix are two hours off.** Columns are `timestamp` without a time zone, and were filled from two references until the connection was pinned to UTC (`packages/database-service/db/drizzle.ts`): `defaultNow()` wrote server-local time, Drizzle wrote UTC. Rows written before that keep their local-time lead, so a digest covering that stretch of history places them wrong. Anything written since is consistent.
 - **No concurrency guard.** Two simultaneous generations (two admins, or a manual click while the cron runs) would read the same cursor and produce two overlapping digests. The disabled button is client state only. A unique index on `period_start` would close it — deliberately not built.
 - **No catch-up window.** Disabled for three months then re-enabled, the next digest covers three months in a single payload. That is consistent with the "no gaps" invariant and accepted as is.
 - **No retention.** Digests accumulate, one row per period. Purging is a later decision.

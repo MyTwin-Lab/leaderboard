@@ -38,7 +38,7 @@ export async function runDigestCron(now = new Date()): Promise<DigestCronResult>
     return { generated: false, reason: "not_due" };
   }
 
-  const digest = await new DigestService().generate("cron", now);
+  const digest = await new DigestService().generate("cron", { now });
   console.log(
     `[Cron] Digest ${digest.uuid} generated over ` +
     `[${digest.period_start.toISOString()}, ${digest.period_end.toISOString()}]`,

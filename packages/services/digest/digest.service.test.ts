@@ -83,7 +83,7 @@ describe("DigestService.generate", () => {
   it("starts the window at the previous digest's period_end", async () => {
     // L'invariant qui interdit trou et recouvrement entre deux digests.
     const { deps, created } = makeDeps({ latest: digestAt("2026-08-29T06:00:03Z") });
-    await new DigestService(deps).generate("cron", new Date("2026-09-05T06:00:00Z"));
+    await new DigestService(deps).generate("cron", { now: new Date("2026-09-05T06:00:00Z") });
 
     expect(created[0].period_start.toISOString()).toBe("2026-08-29T06:00:03.000Z");
     expect(created[0].period_end.toISOString()).toBe("2026-09-05T06:00:00.000Z");
@@ -91,14 +91,14 @@ describe("DigestService.generate", () => {
 
   it("uses the frequency as a lookback when no digest exists yet", async () => {
     const { deps, created } = makeDeps({ latest: null, frequencyDays: 7 });
-    await new DigestService(deps).generate("cron", new Date("2026-09-05T06:00:00Z"));
+    await new DigestService(deps).generate("cron", { now: new Date("2026-09-05T06:00:00Z") });
 
     expect(created[0].period_start.toISOString()).toBe("2026-08-29T06:00:00.000Z");
   });
 
   it("records the trigger it was called with", async () => {
     const { deps, created } = makeDeps();
-    await new DigestService(deps).generate("manual", new Date("2026-09-05T06:00:00Z"));
+    await new DigestService(deps).generate("manual", { now: new Date("2026-09-05T06:00:00Z") });
 
     expect(created[0].trigger_source).toBe("manual");
   });
@@ -106,7 +106,7 @@ describe("DigestService.generate", () => {
   it("windows every read on the same bounds", async () => {
     const { deps } = makeDeps({ latest: digestAt("2026-08-29T06:00:00Z") });
     const now = new Date("2026-09-05T06:00:00Z");
-    await new DigestService(deps).generate("cron", now);
+    await new DigestService(deps).generate("cron", { now });
 
     const start = new Date("2026-08-29T06:00:00Z");
     for (const call of [
@@ -127,7 +127,7 @@ describe("DigestService.generate", () => {
       { uuid: "c-2", user_id: BOB, challenge_id: CH } as Contribution,
     ];
     const { deps, memberLookups } = makeDeps({ contributions });
-    await new DigestService(deps).generate("cron", new Date("2026-09-05T06:00:00Z"));
+    await new DigestService(deps).generate("cron", { now: new Date("2026-09-05T06:00:00Z") });
 
     expect(memberLookups).toEqual([["c-1", "c-2"]]);
   });
@@ -140,16 +140,50 @@ describe("DigestService.generate", () => {
       closed_at: new Date("2026-09-03T00:00:00Z"),
     } as Challenge;
     const { deps, created } = makeDeps({ challengesClosed: [closed] });
-    await new DigestService(deps).generate("cron", new Date("2026-09-05T06:00:00Z"));
+    await new DigestService(deps).generate("cron", { now: new Date("2026-09-05T06:00:00Z") });
 
     expect(deps.rewardEntryRepo.sumByChallenge).toHaveBeenCalledWith(CH);
     expect(created[0].payload.completed_challenges[0].cp_awarded).toBe(840);
   });
 
+  it("honours an explicit period start", async () => {
+    // Le bouton « Generate now » laisse choisir la borne basse : c'est ce qui
+    // permet de rattraper une période alors qu'un digest vide a déjà consommé
+    // le curseur.
+    const { deps, created } = makeDeps({ latest: digestAt("2026-09-05T06:00:00Z") });
+    await new DigestService(deps).generate("manual", {
+      now: new Date("2026-09-05T12:00:00Z"),
+      periodStart: new Date("2026-09-01T00:00:00Z"),
+    });
+
+    expect(created[0].period_start.toISOString()).toBe("2026-09-01T00:00:00.000Z");
+    expect(created[0].period_end.toISOString()).toBe("2026-09-05T12:00:00.000Z");
+  });
+
+  it("windows the reads on the explicit start too", async () => {
+    const { deps } = makeDeps({ latest: digestAt("2026-09-05T06:00:00Z") });
+    const now = new Date("2026-09-05T12:00:00Z");
+    const start = new Date("2026-09-01T00:00:00Z");
+    await new DigestService(deps).generate("manual", { now, periodStart: start });
+
+    expect(deps.contributionRepo.findCreatedBetween).toHaveBeenCalledWith(start, now);
+  });
+
+  it("refuses a start that is not before the end", async () => {
+    // Une fenêtre vide ou inversée ne produirait rien d'exploitable.
+    const { deps } = makeDeps();
+    await expect(
+      new DigestService(deps).generate("manual", {
+        now: new Date("2026-09-05T12:00:00Z"),
+        periodStart: new Date("2026-09-05T12:00:00Z"),
+      }),
+    ).rejects.toThrow();
+  });
+
   it("generates a valid, mostly empty digest over a short window", async () => {
     // Un "Generate now" juste après un digest automatique est légitime.
     const { deps, created } = makeDeps({ latest: digestAt("2026-09-05T06:00:00Z") });
-    await new DigestService(deps).generate("manual", new Date("2026-09-05T06:05:00Z"));
+    await new DigestService(deps).generate("manual", { now: new Date("2026-09-05T06:05:00Z") });
 
     expect(created[0].payload).toMatchObject({
       version: 1,
@@ -169,7 +203,7 @@ describe("DigestService.generate", () => {
       contributors: [alice],
       contributions: [{ uuid: "c-1", user_id: ALICE, challenge_id: CH } as Contribution],
     });
-    await new DigestService(deps).generate("cron", new Date("2026-09-05T06:00:00Z"));
+    await new DigestService(deps).generate("cron", { now: new Date("2026-09-05T06:00:00Z") });
 
     expect(deps.userRepo.findById).not.toHaveBeenCalledWith(ALICE);
   });
