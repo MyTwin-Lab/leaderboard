@@ -59,6 +59,15 @@ export interface MlAwardInput {
   /** CP encore disponibles sur le challenge. Les points sont clampés dessus. */
   remainingPool: number;
   lineage?: MlLineage;
+  /**
+   * Bonus collectif quand la soumission est celle d'un groupe (1 en solo).
+   *
+   * Il multiplie les points bruts, mais **pas l'assiette des prélèvements de
+   * réutilisation** : le bonus récompense la collaboration à l'intérieur du
+   * groupe, il n'a pas à gonfler ce que touche un tiers dont l'artefact a été
+   * réutilisé. Voir `basePoints` sur GrossAward.
+   */
+  groupMultiplier?: number;
 }
 
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
@@ -82,7 +91,21 @@ const MODEL_RULE_KEYS: ReadonlySet<RewardRuleKey> = new Set<RewardRuleKey>([
 
 interface GrossAward {
   rule_key: RewardRuleKey;
+  /** Points dus, bonus de groupe compris. C'est ce qui est versé et clampé. */
   points: number;
+  /**
+   * Les mêmes points sans le bonus de groupe — l'assiette des prélèvements de
+   * réutilisation.
+   *
+   * Un tiers dont le dataset est réutilisé touche une part de la valeur
+   * produite à partir de son artefact. Le bonus de groupe ne change pas cette
+   * valeur : il récompense le fait d'avoir travaillé à plusieurs, ce à quoi ce
+   * tiers est étranger. Le lui reverser ferait fuiter hors du groupe un bonus
+   * qui lui est interne.
+   *
+   * Égal à `points` en solo, donc les prélèvements y sont inchangés.
+   */
+  basePoints: number;
   meta: RewardEntryMeta;
 }
 
@@ -117,52 +140,59 @@ function takesTheLead(input: MlAwardInput, value: number, normalized: number): b
  */
 function computeGrossAwards(input: MlAwardInput): GrossAward[] {
   const { rule, rules } = input;
+  const multiplier = input.groupMultiplier ?? 1;
+
+  /** Applique le bonus de groupe en gardant l'assiette d'origine à côté. */
+  const award = (rule_key: RewardRuleKey, basePoints: number, meta: RewardEntryMeta): GrossAward => ({
+    rule_key,
+    basePoints,
+    points: Math.round(basePoints * multiplier),
+    meta,
+  });
 
   switch (rule) {
     case 'dataset': {
       const score = clamp01(input.agentScore ?? 0);
-      return [{
-        rule_key: 'dataset',
-        points: Math.round(rules.dataset.cap * score),
-        meta: { agentScore: score },
-      }];
+      return [award('dataset', Math.round(rules.dataset.cap * score), { agentScore: score })];
     }
 
     case 'model_metric': {
       const value = input.metricValue ?? 0;
       const normalized = normalizeMetric(value, rules.model.metric.baseline);
-      const awards: GrossAward[] = [{
-        rule_key: 'model_metric',
-        points: Math.round(rules.model.cap * rules.model.kaggleShare * normalized),
-        meta: { metricValue: value, normalizedMetric: normalized },
-      }];
+      const awards: GrossAward[] = [
+        award(
+          'model_metric',
+          Math.round(rules.model.cap * rules.model.kaggleShare * normalized),
+          { metricValue: value, normalizedMetric: normalized }
+        ),
+      ];
 
+      // Le bonus de tête est bonifié comme le reste : sinon un membre d'un
+      // groupe de trois n'en toucherait qu'un tiers, là où il garde 60 % des
+      // autres lignes — deux traitements pour un même award.
       if (rules.model.beatBestBonus > 0 && takesTheLead(input, value, normalized)) {
-        awards.push({
-          rule_key: 'beat_best',
-          points: rules.model.beatBestBonus,
-          meta: { metricValue: value, previousBest: input.bestOtherMetricValue ?? null },
-        });
+        awards.push(
+          award('beat_best', rules.model.beatBestBonus, {
+            metricValue: value,
+            previousBest: input.bestOtherMetricValue ?? null,
+          })
+        );
       }
       return awards;
     }
 
     case 'model_code': {
       const score = clamp01(input.agentScore ?? 0);
-      return [{
-        rule_key: 'model_code',
-        points: Math.round(rules.model.cap * (1 - rules.model.kaggleShare) * score),
-        meta: { agentScore: score },
-      }];
+      return [award(
+        'model_code',
+        Math.round(rules.model.cap * (1 - rules.model.kaggleShare) * score),
+        { agentScore: score }
+      )];
     }
 
     case 'api_packaging': {
       const score = clamp01(input.agentScore ?? 0);
-      return [{
-        rule_key: 'api_packaging',
-        points: Math.round(rules.apiPackaging.cap * score),
-        meta: { agentScore: score },
-      }];
+      return [award('api_packaging', Math.round(rules.apiPackaging.cap * score), { agentScore: score })];
     }
   }
 }
@@ -227,14 +257,18 @@ function computeReuseSplits(
   );
   if (active.length === 0) return [];
 
+  // Assiette = les points hors bonus de groupe : ce que l'artefact réutilisé a
+  // effectivement contribué à produire. Identique à `points` en solo.
   let deductions = active.map((c) => ({
     ...c,
-    amount: Math.round(award.points * c.share),
+    amount: Math.round(award.basePoints * c.share),
   }));
 
   // Plancher de garde : les prélèvements cumulés ne peuvent pas descendre le
   // réutilisateur sous minKeepShare de ses points bruts. Inatteignable avec
   // deux règles à 20%, mais l'éditeur de règles laisse passer 60% + 60%.
+  // Calculé sur les points réellement versés (bonus compris) : c'est bien ce
+  // que le contributeur garde qui est protégé.
   const maxDeductible = award.points - Math.round(award.points * rules.reuse.minKeepShare);
   const totalDeduction = deductions.reduce((sum, d) => sum + d.amount, 0);
   if (totalDeduction > maxDeductible) {
@@ -287,9 +321,14 @@ export function computeMlAward(input: MlAwardInput): RewardEntryDraft[] {
     if (remaining <= 0) break;
 
     const granted = Math.min(award.points, remaining);
+    // Le pool ampute l'assiette de réutilisation dans la même proportion : un
+    // award rogné de moitié ne doit pas reverser à l'auteur amont une part
+    // calculée sur des points jamais versés.
+    const grantedRatio = award.points === 0 ? 0 : granted / award.points;
     const clamped: GrossAward = {
       ...award,
       points: granted,
+      basePoints: Math.round(award.basePoints * grantedRatio),
       meta: granted < award.points
         ? { ...award.meta, rawPoints: award.points, clampedTo: granted }
         : award.meta,

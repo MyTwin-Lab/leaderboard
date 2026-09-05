@@ -5,9 +5,13 @@ import type { EvaluateContext, SnapshotInfo } from "../../evaluator/types.js";
 import {
   ChallengeRepository,
   ChallengeRepoRepository,
+  ChallengeTeamRepository,
+  ContributionMemberRepository,
   ContributionRepository,
   RewardEntryRepository,
 } from "../../database-service/repositories/index.js";
+import { splitShares } from "../../evaluator/share.js";
+import { getGroupContext, type GroupContext } from "./group.js";
 import type {
   Challenge,
   ChallengeRepoRole,
@@ -56,6 +60,9 @@ export interface MlRewardsDeps {
   challengeRepoRepo: Pick<ChallengeRepoRepository, 'findByChallengeAndRepo' | 'findByChallengeAndRole'>;
   contributionRepo: Pick<ContributionRepository, 'findByChallenge' | 'update'>;
   rewardRepo: Pick<RewardEntryRepository, 'sumByChallenge' | 'bestMetricValue' | 'createManyAndSyncRewards'>;
+  contributionMemberRepo: Pick<ContributionMemberRepository, 'addShares'>;
+  /** Lue par getGroupContext pour résoudre le porteur du workspace. */
+  challengeTeamRepo: Pick<ChallengeTeamRepository, 'findByChallenge'>;
   readMetric: (url: string, rules: MlRewardRules) => Promise<number>;
   runAgent: (input: {
     role: ChallengeRepoRole;
@@ -92,6 +99,8 @@ export class MlRewardsService {
       challengeRepoRepo: new ChallengeRepoRepository(),
       contributionRepo: new ContributionRepository(),
       rewardRepo: new RewardEntryRepository(),
+      contributionMemberRepo: new ContributionMemberRepository(),
+      challengeTeamRepo: new ChallengeTeamRepository(),
       readMetric: (url, rules) => this.readKaggleMetric(url, rules),
       runAgent: (input) => this.runAgentDefault(input),
       ...deps,
@@ -127,19 +136,24 @@ export class MlRewardsService {
     const challengeRepo = await this.deps.challengeRepoRepo.findByChallengeAndRepo(challengeId, repoId);
     if (!challengeRepo?.role) return;
 
+    // Un groupe partage sa vue de progression : la soumission d'un membre
+    // alimente la contribution du porteur, pas une contribution par membre.
+    const group = await this.loadGroup(challengeId, userId);
+    const { ownerId } = group;
+
     const config = ROLE_RULE[challengeRepo.role];
-    const contribution = await this.findContribution(challengeId, userId, config.contributionType);
+    const contribution = await this.findContribution(challengeId, ownerId, config.contributionType);
     if (!contribution) {
-      console.warn(`[MlRewardsService] No ${config.contributionType} contribution for user ${userId}`);
+      console.warn(`[MlRewardsService] No ${config.contributionType} contribution for user ${ownerId}`);
       return;
     }
 
-    const lineage = await this.resolveLineage(challenge, userId);
+    const lineage = await this.resolveLineage(challenge, ownerId);
 
     // Réutiliser le dataset d'un autre ne rapporte rien à l'étape 1 : rien n'a
     // été produit. Inutile de payer un appel agent pour re-noter le même
     // artefact — le résultat serait identique à celui de l'auteur.
-    if (challengeRepo.role === 'dataset' && lineage.datasetAuthorId && lineage.datasetAuthorId !== userId) {
+    if (challengeRepo.role === 'dataset' && lineage.datasetAuthorId && lineage.datasetAuthorId !== ownerId) {
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation_status: 'skipped_reuse' });
       console.log(`[MlRewardsService] Dataset reused from ${lineage.datasetAuthorId} — no agent, no points`);
       return;
@@ -162,24 +176,26 @@ export class MlRewardsService {
 
       const [remainingPool, bestOtherMetricValue, myBestMetricValue] = await Promise.all([
         this.remainingPool(challenge),
-        this.deps.rewardRepo.bestMetricValue(challengeId, { excludeUserId: userId }),
-        this.deps.rewardRepo.bestMetricValue(challengeId, { onlyUserId: userId }),
+        this.deps.rewardRepo.bestMetricValue(challengeId, { excludeUserId: ownerId }),
+        this.deps.rewardRepo.bestMetricValue(challengeId, { onlyUserId: ownerId }),
       ]);
 
       const drafts = computeMlAward({
         rule: config.rule,
         rules,
         challengeId,
-        userId,
+        userId: ownerId,
         contributionId: contribution.uuid,
         remainingPool,
         bestOtherMetricValue,
         myBestMetricValue,
         lineage,
+        groupMultiplier: group.multiplier,
         ...measured,
       });
 
       await this.deps.rewardRepo.createManyAndSyncRewards(drafts);
+      await this.recordGroupShares(group, contribution.uuid, drafts);
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation_status: 'done' });
 
       const newRemaining = await this.remainingPool(challenge);
@@ -188,12 +204,49 @@ export class MlRewardsService {
         : 0;
       await this.deps.challengeRepo.update(challenge.uuid, { completion });
 
-      const net = drafts.filter(d => d.user_id === userId).reduce((s, d) => s + d.points, 0);
-      console.log(`[MlRewardsService] ${config.rule}: ${net} CP net to ${userId} (${drafts.length} ledger rows)`);
+      const net = drafts.filter(d => d.user_id === ownerId).reduce((s, d) => s + d.points, 0);
+      const who = group.groupId ? `group ${group.groupId} (${group.memberIds.length})` : ownerId;
+      console.log(`[MlRewardsService] ${config.rule}: ${net} CP net to ${who} (${drafts.length} ledger rows)`);
     } catch (error) {
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation_status: 'failed' });
       throw error;
     }
+  }
+
+  /**
+   * Le groupe de travail de l'appelant sur ce challenge.
+   *
+   * Passe par le repo injecté plutôt que d'appeler `getGroupContext` avec ses
+   * dépendances par défaut : celles-ci ouvriraient une connexion, ce que les
+   * tests de ce service n'ont pas à subir.
+   */
+  private loadGroup(challengeId: string, userId: string): Promise<GroupContext> {
+    return getGroupContext(challengeId, userId, { challengeTeamRepo: this.deps.challengeTeamRepo });
+  }
+
+  /**
+   * Répartit entre les membres le delta de CP revenant au groupe.
+   *
+   * Seules les lignes du porteur comptent : `computeMlAward` en produit aussi
+   * pour des tiers (crédits de réutilisation, avec `source_user_id`), et ces
+   * points-là appartiennent à l'auteur amont, pas au groupe.
+   */
+  private async recordGroupShares(
+    group: GroupContext,
+    contributionId: string,
+    drafts: Array<{ user_id: string; points: number }>
+  ): Promise<void> {
+    if (group.memberIds.length <= 1) return;
+
+    const delta = drafts
+      .filter(d => d.user_id === group.ownerId)
+      .reduce((sum, d) => sum + d.points, 0);
+    if (delta === 0) return;
+
+    const shares = splitShares(delta, group.memberIds, group.ownerId);
+    await this.deps.contributionMemberRepo.addShares(
+      [...shares].map(([user_id, share_cp]) => ({ contribution_id: contributionId, user_id, share_cp }))
+    );
   }
 
   /**
