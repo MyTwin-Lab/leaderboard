@@ -5,6 +5,28 @@ import { toDomainChallenge, toDomainRepo, toDomainContribution, toDbChallenge } 
 import type { Challenge, Repo, Contribution } from "../domain/entities";
 import { challengeSchema } from "../domain/schemas_zod";
 
+/**
+ * Décide si un update doit toucher `closed_at`.
+ *
+ * Extrait de `update()` pour être testable sans base. Trois règles :
+ * - arrivée à 'completed' → on date, y compris pour une refermeture (le digest
+ *   veut la dernière fermeture, pas la première) ;
+ * - départ de 'completed' → on efface, sinon un challenge rouvert traînerait
+ *   une date de fermeture périmée que le prochain digest lirait comme vraie ;
+ * - 'archived' → rien à poser. Archiver retire des listings, ça ne termine pas.
+ *
+ * Voir docs/input/spec-digest.md §2.
+ */
+export function closedAtPatch(
+  before: string | undefined,
+  next: string | undefined,
+): { closed_at?: Date | null } {
+  if (next === undefined) return {};
+  if (next === "completed") return before === "completed" ? {} : { closed_at: new Date() };
+  if (before === "completed") return { closed_at: null };
+  return {};
+}
+
 export class ChallengeRepository {
   async findAll(): Promise<Challenge[]> {
     const rows = await db.select().from(challenges);
@@ -65,6 +87,19 @@ export class ChallengeRepository {
     // TaskRepository.completeTask was removed with task_assignees) — how it's
     // computed post-personal-boards is decided in a later task.
     if (validated.completion !== undefined) dbData.completion = validated.completion;
+
+    // closed_at n'est jamais fourni par un appelant : il se déduit de la
+    // transition de statut. Les deux chemins de fermeture (POST /close et le
+    // PUT du drawer, où status est un z.string() libre) passent ici, donc
+    // c'est le seul point à couvrir. Le SELECT ne coûte que sur les updates
+    // qui portent un statut, ce qui est rare.
+    if (validated.status !== undefined) {
+      const [before] = await db
+        .select({ status: challenges.status })
+        .from(challenges)
+        .where(eq(challenges.uuid, uuid));
+      Object.assign(dbData, closedAtPatch(before?.status, validated.status));
+    }
 
     const [updated] = await db.update(challenges)
       .set(dbData)
