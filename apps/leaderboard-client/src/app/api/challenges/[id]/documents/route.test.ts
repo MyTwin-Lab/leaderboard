@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockGetSessionUser, mockIsManagerOfChallenge, mockFindByChallengeId, mockCreate } = vi.hoisted(() => ({
+const {
+  mockGetSessionUser, mockIsManagerOfChallenge, mockFindByChallengeId, mockCreate,
+  mockFindByChallengeAndFilename, mockUpdateContent,
+} = vi.hoisted(() => ({
   mockGetSessionUser: vi.fn(),
   mockIsManagerOfChallenge: vi.fn(),
   mockFindByChallengeId: vi.fn(),
   mockCreate: vi.fn(),
+  mockFindByChallengeAndFilename: vi.fn(),
+  mockUpdateContent: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
@@ -15,6 +20,8 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   ChallengeDocumentRepository: class {
     findByChallengeId = mockFindByChallengeId;
     create = mockCreate;
+    findByChallengeAndFilename = mockFindByChallengeAndFilename;
+    updateContent = mockUpdateContent;
   },
 }));
 
@@ -39,6 +46,7 @@ function postDoc(body: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
+  mockFindByChallengeAndFilename.mockResolvedValue(null);
 });
 
 describe('GET /api/challenges/[id]/documents', () => {
@@ -141,5 +149,40 @@ describe('POST /api/challenges/[id]/documents', () => {
     const res = await postDoc({ filename: 'notes.md', content: '# hi' });
 
     expect(res.status).toBe(500);
+  });
+
+  // ── brief.md: un seul par challenge ──
+
+  it('creates brief.md when the challenge has none yet', async () => {
+    mockCreate.mockResolvedValue({ uuid: 'doc-1', filename: 'brief.md' });
+
+    const res = await postDoc({ filename: 'brief.md', content: '## Context' });
+
+    expect(res.status).toBe(201);
+    expect(mockCreate).toHaveBeenCalled();
+    expect(mockUpdateContent).not.toHaveBeenCalled();
+  });
+
+  it('replaces the existing brief.md instead of stacking a second one', async () => {
+    mockFindByChallengeAndFilename.mockResolvedValue({ uuid: 'doc-1', filename: 'brief.md', content: 'old' });
+    mockUpdateContent.mockResolvedValue({ uuid: 'doc-1', filename: 'brief.md', content: 'new' });
+
+    const res = await postDoc({ filename: 'brief.md', content: 'new' });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ uuid: 'doc-1', content: 'new' });
+    expect(mockUpdateContent).toHaveBeenCalledWith('doc-1', 'new', 'admin-1');
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('leaves other filenames free to repeat', async () => {
+    mockFindByChallengeAndFilename.mockResolvedValue({ uuid: 'doc-1', filename: 'notes.md' });
+    mockCreate.mockResolvedValue({ uuid: 'doc-2', filename: 'notes.md' });
+
+    const res = await postDoc({ filename: 'notes.md', content: '# hi' });
+
+    expect(res.status).toBe(201);
+    expect(mockCreate).toHaveBeenCalled();
+    expect(mockUpdateContent).not.toHaveBeenCalled();
   });
 });

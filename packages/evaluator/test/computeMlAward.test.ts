@@ -422,3 +422,80 @@ describe("simulateMaxDistribution", () => {
     expect(simulateMaxDistribution(RULES, 0)).toBe(0);
   });
 });
+
+describe("computeMlAward — group bonus", () => {
+  it("leaves a solo submission untouched", () => {
+    // Neutralité stricte du défaut : les participations existantes ne doivent
+    // rien voir passer, réutilisation comprise.
+    const withLineage = { rule: "model_code" as const, agentScore: 1, lineage: { datasetAuthorId: "alice", datasetContributionId: "c-alice" } };
+    expect(computeMlAward(base({ ...withLineage, groupMultiplier: 1 })))
+      .toEqual(computeMlAward(base(withLineage)));
+  });
+
+  it("pays a pair 140% of the solo award", () => {
+    const [entry] = computeMlAward(base({ rule: "dataset", agentScore: 0.8, groupMultiplier: 1.4 }));
+    expect(entry.points).toBe(336); // 300 × 0.8 × 1.4
+  });
+
+  it("bonuses the take-the-lead award like the rest", () => {
+    // Sinon un membre d'un trio garderait 60 % des lignes ordinaires mais
+    // seulement 33 % du bonus de tête — deux traitements pour un même award.
+    const drafts = computeMlAward(base({
+      rule: "model_metric", metricValue: 0.9, bestOtherMetricValue: 0.5, groupMultiplier: 1.8,
+    }));
+    expect(drafts.find(d => d.rule_key === "beat_best")!.points).toBe(90); // 50 × 1.8
+  });
+
+  it("does not leak the group bonus to a third party whose artefact was reused", () => {
+    // Le prélèvement se calcule hors bonus : l'auteur amont touche une part de
+    // la valeur produite depuis son dataset, pas une prime pour un groupe
+    // auquel il est étranger.
+    const solo = computeMlAward(base({
+      rule: "model_code", agentScore: 1,
+      lineage: { datasetAuthorId: "alice", datasetContributionId: "c-alice" },
+    }));
+    const grouped = computeMlAward(base({
+      rule: "model_code", agentScore: 1, groupMultiplier: 1.8,
+      lineage: { datasetAuthorId: "alice", datasetContributionId: "c-alice" },
+    }));
+
+    const creditTo = (drafts: typeof solo) =>
+      drafts.find(d => d.user_id === "alice" && d.points > 0)!.points;
+
+    expect(creditTo(grouped)).toBe(creditTo(solo));
+  });
+
+  it("keeps the ledger balanced once the group bonus applies", () => {
+    // Les prélèvements redistribuent sans créer : la somme des lignes doit
+    // valoir exactement l'award versé au groupe, sinon le calcul du reliquat
+    // du pool dérive.
+    const drafts = computeMlAward(base({
+      rule: "model_code", agentScore: 1, groupMultiplier: 1.8,
+      lineage: { datasetAuthorId: "alice", datasetContributionId: "c-alice" },
+    }));
+    const awarded = drafts.find(d => d.rule_key === "model_code")!.points;
+    expect(drafts.reduce((s, d) => s + d.points, 0)).toBe(awarded);
+  });
+
+  it("shrinks the reuse basis when the pool clamps the award", () => {
+    // Un award rogné par le pool ne doit pas reverser à l'auteur amont une
+    // part calculée sur des points jamais versés.
+    const drafts = computeMlAward(base({
+      rule: "model_code", agentScore: 1, groupMultiplier: 1.8, remainingPool: 100,
+      lineage: { datasetAuthorId: "alice", datasetContributionId: "c-alice" },
+    }));
+    const granted = drafts.find(d => d.rule_key === "model_code")!.points;
+    const credit = drafts.find(d => d.user_id === "alice" && d.points > 0)!.points;
+    expect(granted).toBe(100);
+    expect(credit).toBeLessThanOrEqual(Math.round(100 * RULES.reuse.datasetShare));
+    expect(drafts.reduce((s, d) => s + d.points, 0)).toBe(granted);
+  });
+
+  it("costs the pool less than the same contributors submitting solo", () => {
+    const one = computeMlAward(base({ rule: "dataset", agentScore: 1 }))
+      .reduce((s, d) => s + d.points, 0);
+    const trio = computeMlAward(base({ rule: "dataset", agentScore: 1, groupMultiplier: 1.8 }))
+      .reduce((s, d) => s + d.points, 0);
+    expect(trio).toBeLessThan(one * 3);
+  });
+});

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
   CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck, Cpu, Package,
-  ListTodo, Trash2,
+  ListTodo, Trash2, FileText, Eye,
 } from 'lucide-react';
 import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
@@ -16,6 +16,9 @@ import { ChallengeSlackSignalsEditor } from '@/components/admin/ChallengeSlackSi
 import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
 import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
 import { flushTemplateTasks } from './templateTasksFlush';
+import { flushBrief } from './briefFlush';
+import { Markdown } from '@/components/ui/Markdown';
+import { BRIEF_TEMPLATE, findBrief } from '@/lib/challengeBrief';
 import {
   DEFAULT_ML_REWARD_RULES,
   parseMlRewardRules,
@@ -116,6 +119,16 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [pendingTaskTitle, setPendingTaskTitle] = useState('');
   const nextPendingTaskId = useRef(0);
 
+  // Brief — le document Markdown affiché à un contributeur connecté qui n'a
+  // pas encore rejoint le challenge. Bufferisé comme les template tasks en
+  // création ; en édition il est chargé depuis les documents du challenge.
+  // `existingBriefId` sert au cas "brief vidé" : il faut alors supprimer le
+  // document, sinon la page continuerait d'afficher l'ancien texte.
+  const [brief, setBrief] = useState('');
+  const [existingBriefId, setExistingBriefId] = useState<string | null>(null);
+  const [showBrief, setShowBrief] = useState(false);
+  const [briefPreview, setBriefPreview] = useState(false);
+
   // Set only when the challenge saved but one or more template tasks failed
   // to flush — the submit button turns into an explicit "Continue" the admin
   // must click, so the failure banner isn't wiped by an auto-navigate.
@@ -157,6 +170,25 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setCpPerValidation(challenge.cp_per_validation ?? 5);
       setComputeEnabled(challenge.compute_enabled ?? false);
     }
+  }, [open, challenge]);
+
+  // Le brief vit dans les documents du challenge, pas dans sa ligne : en
+  // édition il faut aller le chercher. Silencieux en cas d'échec — le tiroir
+  // reste utilisable pour tout le reste, le brief s'affiche simplement vide.
+  useEffect(() => {
+    if (!open || !challenge) return;
+    let cancelled = false;
+    fetch(`/api/challenges/${challenge.uuid}/documents`)
+      .then(r => r.ok ? r.json() : [])
+      .then((docs: { uuid: string; filename: string; content: string }[]) => {
+        if (cancelled) return;
+        const found = findBrief(Array.isArray(docs) ? docs : []);
+        setBrief(found?.content ?? '');
+        setExistingBriefId(found?.uuid ?? null);
+        setShowBrief(!!found);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, [open, challenge]);
 
   // Only needed to populate the source-challenge picker when creating a new
@@ -202,6 +234,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     setPendingTasks([]);
     setPendingTaskTitle('');
     setPendingChallengeId(null);
+    setBrief('');
+    setExistingBriefId(null);
+    setShowBrief(false);
+    setBriefPreview(false);
   };
 
   const addPendingTask = () => {
@@ -287,22 +323,38 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         const data = await res.json();
         const newChallengeId = data.uuid ?? data.id;
 
+        const targetId: string | null = newChallengeId ?? challenge?.uuid ?? null;
+
         // Create mode + code challenge: flush the buffered template tasks now
         // that the challenge exists. Sequential, and non-fatal — the challenge
         // itself already saved, so a task failure shouldn't block the flow.
         let failedTasks = 0;
-        if (!isEdit && type === 'code' && newChallengeId && pendingTasks.length > 0) {
-          failedTasks = (await flushTemplateTasks(newChallengeId, pendingTasks)).failed;
+        if (!isEdit && type === 'code' && targetId && pendingTasks.length > 0) {
+          failedTasks = (await flushTemplateTasks(targetId, pendingTasks)).failed;
+        }
+
+        // Le brief est un document : même contrainte que les template tasks
+        // en création (pas d'uuid avant), même traitement de l'échec.
+        let briefFailed = false;
+        if (targetId && (brief.trim() || existingBriefId)) {
+          briefFailed = !(await flushBrief(targetId, brief, existingBriefId)).ok;
         }
 
         setSuccess(true);
+
+        const problems: string[] = [];
         if (failedTasks > 0) {
+          problems.push(`${failedTasks} template task${failedTasks > 1 ? 's' : ''} failed to save`);
+        }
+        if (briefFailed) problems.push('the brief failed to save');
+
+        if (problems.length > 0) {
           // The challenge saved fine, but silently auto-navigating away (the
           // normal success path) would carry the admin off before they ever
           // see this. Hold here — no resetForm/onCreated/onClose — until they
           // click Continue in the footer.
-          setError(`Challenge created, but ${failedTasks} template task${failedTasks > 1 ? 's' : ''} failed to save — add ${failedTasks > 1 ? 'them' : 'it'} from the edit drawer.`);
-          setPendingChallengeId(newChallengeId ?? challenge!.uuid);
+          setError(`Challenge ${isEdit ? 'updated' : 'created'}, but ${problems.join(' and ')} — fix ${problems.length > 1 ? 'them' : 'it'} from the edit drawer.`);
+          setPendingChallengeId(targetId);
         } else {
           setTimeout(() => {
             if (!isEdit) resetForm();
@@ -652,6 +704,70 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
               style={{ color: 'var(--foreground)' }}
             />
           </Field>
+
+          {/* ── Brief — Markdown, enregistré comme document `brief.md` ──
+              Affiché à un contributeur connecté qui n'a pas encore rejoint le
+              challenge, à la place des KPI et de l'espace de travail. En
+              création il est bufferisé ici puis flushé, comme les tasks. ── */}
+          <div className="space-y-2">
+            <button
+              onClick={() => setShowBrief(v => !v)}
+              className="flex items-center gap-1.5 text-xs transition-colors"
+              style={{ color: fgAt(0.35) }}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              {showBrief ? 'Hide brief' : brief.trim() ? 'Edit brief' : 'Add brief (optional)'}
+              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${showBrief ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showBrief && (
+              <div className="space-y-2 animate-fade-up">
+                <p className="text-xs" style={{ color: fgAt(0.3) }}>
+                  Context, objectives and expected result, in Markdown. Shown before the workspace
+                  to contributors who have not joined yet, and kept in the challenge documents as
+                  <code className="mx-1 rounded bg-white/10 px-1 py-0.5 font-mono text-[11px]">brief.md</code>
+                  afterwards.
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setBriefPreview(v => !v)}
+                    disabled={!brief.trim()}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] transition-colors hover:border-white/20 disabled:opacity-40"
+                    style={{ color: fgAt(0.45) }}
+                  >
+                    {briefPreview ? <Pencil className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    {briefPreview ? 'Write' : 'Preview'}
+                  </button>
+                  {!brief.trim() && (
+                    <button
+                      onClick={() => setBrief(BRIEF_TEMPLATE)}
+                      className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] transition-colors hover:border-brandCP/30 hover:text-brandCP/70"
+                      style={{ color: fgAt(0.45) }}
+                    >
+                      <Plus className="h-3 w-3" />
+                      Start from the template
+                    </button>
+                  )}
+                </div>
+
+                {briefPreview ? (
+                  <div className="max-h-96 overflow-y-auto rounded-xl border border-white/[0.07] bg-white/[0.02] px-5 py-4">
+                    <Markdown source={brief} variant="prose" />
+                  </div>
+                ) : (
+                  <textarea
+                    value={brief}
+                    onChange={e => setBrief(e.target.value)}
+                    placeholder={'## Context\n\n…'}
+                    rows={14}
+                    className="w-full resize-y rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 font-mono text-xs leading-relaxed focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
+                    style={{ color: 'var(--foreground)' }}
+                  />
+                )}
+              </div>
+            )}
+          </div>
 
           {/* ── Tasks (code, edit) — independent CRUD via the tasks API ── */}
           {type === 'code' && isEdit && (

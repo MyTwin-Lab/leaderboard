@@ -7,6 +7,7 @@ import type {
   Challenge,
   ChallengeRepo,
   ChallengeRepoRole,
+  ChallengeTeam,
   Contribution,
   RewardEntry,
 } from '../../../../packages/database-service/domain/entities';
@@ -131,6 +132,9 @@ class FakeDb {
     return this.entries.reduce((s, e) => s + e.points, 0);
   }
 
+  /** challenge_teams — vide tant qu'un test ne met personne en groupe. */
+  participants: ChallengeTeam[] = [];
+
   deps(overrides: Partial<MlRewardsDeps> = {}): Partial<MlRewardsDeps> {
     const db = this;
     return {
@@ -141,6 +145,12 @@ class FakeDb {
           Object.assign(c, patch);
           return c;
         },
+      },
+      // Personne en groupe par défaut : getGroupContext rend alors chaque
+      // contributeur porteur de son propre workspace, comme avant les groupes.
+      challengeTeamRepo: {
+        findByChallenge: async (challengeId: string) =>
+          db.participants.filter(p => p.challenge_id === challengeId),
       },
       challengeRepoRepo: {
         findByChallengeAndRepo: async (challengeId: string, repoId: string) =>

@@ -1,5 +1,6 @@
 import type {
   Contribution,
+  ContributionMember,
   Challenge,
   User,
   Project,
@@ -17,12 +18,18 @@ export function aggregateUsersByContribution({
   contributions,
   challenges,
   users,
+  contributionMembers,
   projectId,
   timePeriod,
 }: {
   contributions: Contribution[];
   challenges: Challenge[];
   users: User[];
+  /**
+   * Parts de CP des contributions de groupe. Une contribution absente d'ici
+   * est une contribution solo : tout son reward va à `user_id`, comme avant.
+   */
+  contributionMembers?: ContributionMember[];
   projectId?: string | null;
   timePeriod?: "all" | "month" | "week";
 }): AggregatedUser[] {
@@ -32,6 +39,13 @@ export function aggregateUsersByContribution({
   const userById = new Map<string, User>(users.map((user) => [user.uuid, user]));
   const totals = new Map<string, number>();
   const counts = new Map<string, number>();
+
+  const membersByContribution = new Map<string, ContributionMember[]>();
+  for (const member of contributionMembers ?? []) {
+    const list = membersByContribution.get(member.contribution_id);
+    if (list) list.push(member);
+    else membersByContribution.set(member.contribution_id, [member]);
+  }
 
   // Calculate the date threshold based on time period
   let dateThreshold: Date | null = null;
@@ -57,12 +71,23 @@ export function aggregateUsersByContribution({
       continue;
     }
 
-    const reward = contribution.reward ?? 0;
-    totals.set(contribution.user_id, (totals.get(contribution.user_id) ?? 0) + reward);
-    // Discussion (Slack signal) contributions aren't a "contribution" in the
-    // way a submission is — same exclusion fetchHomeOverview()/fetchContributorProfile() apply.
-    if (contribution.type !== "discussion") {
-      counts.set(contribution.user_id, (counts.get(contribution.user_id) ?? 0) + 1);
+    // Une contribution de groupe se répartit entre ses membres : c'est
+    // `share_cp` qui fait foi, jamais `contributions.reward` (le total groupe).
+    // Elle compte pour une contribution chez chacun d'eux — sans ça un
+    // co-membre afficherait 0 contribution tout en ayant des CP.
+    const members = membersByContribution.get(contribution.uuid);
+    const credited: Array<{ userId: string; cp: number }> = members?.length
+      ? members.map((m) => ({ userId: m.user_id, cp: m.share_cp }))
+      : [{ userId: contribution.user_id, cp: contribution.reward ?? 0 }];
+
+    for (const { userId, cp } of credited) {
+      if (!userById.has(userId)) continue;
+      totals.set(userId, (totals.get(userId) ?? 0) + cp);
+      // Discussion (Slack signal) contributions aren't a "contribution" in the
+      // way a submission is — same exclusion fetchHomeOverview()/fetchContributorProfile() apply.
+      if (contribution.type !== "discussion") {
+        counts.set(userId, (counts.get(userId) ?? 0) + 1);
+      }
     }
   }
 

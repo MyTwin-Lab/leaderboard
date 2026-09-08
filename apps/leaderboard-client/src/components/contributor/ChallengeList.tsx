@@ -132,6 +132,7 @@ function ChallengeRow({
                 reward={c.reward}
                 index={i}
                 hasEvaluation={c.hasEvaluation}
+                coMembers={c.coMembers}
               />
             ))
           )}

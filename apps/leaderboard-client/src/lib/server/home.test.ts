@@ -59,6 +59,7 @@ describe("fetchHomeOverview", () => {
       { challenge_id: "c1", user_id: "u1" },
       { challenge_id: "c1", user_id: "u2" },
     ] as any);
+    vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([] as any);
 
     const overview = await fetchHomeOverview();
 
@@ -116,6 +117,7 @@ describe("fetchHomeOverview", () => {
       { uuid: "old", challenge_id: "c1", user_id: "u1", submitted_at: EIGHT_DAYS_AGO, reward: 1, title: "T", type: "code" },
     ] as any);
     vi.spyOn(repositories.challengeTeam, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([] as any);
 
     const overview = await fetchHomeOverview();
 
@@ -146,6 +148,7 @@ describe("fetchHomeOverview", () => {
       { uuid: "a3", challenge_id: "c1", user_id: "u1", submitted_at: TWO_DAYS_AGO, reward: 1, title: "T", type: "code" },
     ] as any);
     vi.spyOn(repositories.challengeTeam, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([] as any);
 
     const overview = await fetchHomeOverview();
 

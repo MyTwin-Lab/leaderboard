@@ -29,6 +29,7 @@ import { MeetingsSection } from '@/components/challenges/MeetingsSection';
 import { HeroStatCard } from '@/components/challenges/HeroStatCard';
 import { HeroStatCarousel } from '@/components/challenges/HeroStatCarousel';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
+import { TeamAvatars } from '@/components/ui/TeamAvatars';
 import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
 import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
 import { fmt, sectionHeader } from '@/components/challenges/shared/format';
@@ -191,8 +192,10 @@ function Skeleton() {
 
 // ─── Overview Tab ────────────────────────────────────────────────────────────
 
-function TabOverview({ challenge, team, contributions }: {
+function TabOverview({ challenge, team, contributions, contributionMembers = [] }: {
   challenge: Challenge; team: TeamMember[]; contributions: Contribution[];
+  /** (contribution, user) des contributions de groupe — jointes à `team` ici. */
+  contributionMembers?: Array<{ contribution_id: string; user_id: string }>;
 }) {
   const isML = challenge.type === 'ml';
 
@@ -235,7 +238,14 @@ function TabOverview({ challenge, team, contributions }: {
           </div>
         ) : (
           <div className="space-y-1">
-            {contributions.slice(0, 8).map((c, i) => (
+            {contributions.slice(0, 8).map((c, i) => {
+              // Une seule ligne par contribution, quel que soit le nombre
+              // d'auteurs : le reward affiché est le total du groupe.
+              const authors = contributionMembers
+                .filter(m => m.contribution_id === c.uuid)
+                .map(m => team.find(t => t.id === m.user_id))
+                .filter((m): m is TeamMember => !!m);
+              return (
               <div key={c.uuid}
                 className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 animate-fade-up"
                 style={{ animationDelay: `${i * 30}ms` }}
@@ -245,12 +255,18 @@ function TabOverview({ challenge, team, contributions }: {
                   <p className="truncate text-sm font-medium text-white">{c.title}</p>
                   <p className="text-xs text-white/30">{fmt(c.submitted_at, { month: 'short', day: 'numeric' })}</p>
                 </div>
+                {authors.length > 0 && (
+                  <span className="shrink-0" title={authors.map(a => a.fullName).join(', ')}>
+                    <TeamAvatars members={authors} size={22} maxDisplay={3} />
+                  </span>
+                )}
                 <Badge label={c.type} variant="muted" />
                 {isML
                   ? <ContributionRewardBreakdown contributionId={c.uuid} title={c.title} reward={c.reward} index={i} />
                   : <span className="text-sm font-semibold text-brandCP">{c.reward} CP</span>}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -418,6 +434,8 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
       repos: any[];
       contributions: Contribution[];
       participants: Participant[];
+      /** (contribution, user) des contributions de groupe. */
+      contribution_members: Array<{ contribution_id: string; user_id: string }>;
     }>,
     enabled: !!challengeId,
   });
@@ -486,6 +504,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   const tasks: Task[] = overviewQuery.data?.tasks ?? [];
   const participants: Participant[] = overviewQuery.data?.participants ?? [];
   const contributions = overviewQuery.data?.contributions ?? [];
+  const contributionMembers = overviewQuery.data?.contribution_members ?? [];
   const meetings = overviewQuery.data?.meetings ?? [];
   const mlData = mlWorkspaceQuery.data ?? null;
   const repoActivity = repoActivityQuery.data ?? null;
@@ -533,7 +552,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   const tabs = isML ? [
     {
       label: 'Overview',
-      panel: <TabOverview challenge={challenge} team={team} contributions={contributions} />,
+      panel: <TabOverview challenge={challenge} team={team} contributions={contributions} contributionMembers={contributionMembers} />,
     },
     {
       label: 'Submissions',
@@ -554,7 +573,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   ] : isValidation ? [
     {
       label: 'Overview',
-      panel: <TabOverview challenge={challenge} team={team} contributions={contributions} />,
+      panel: <TabOverview challenge={challenge} team={team} contributions={contributions} contributionMembers={contributionMembers} />,
     },
     {
       label: 'Targets',
@@ -573,7 +592,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
   ] : [
     {
       label: 'Overview',
-      panel: <TabOverview challenge={challenge} team={team} contributions={contributions} />,
+      panel: <TabOverview challenge={challenge} team={team} contributions={contributions} contributionMembers={contributionMembers} />,
     },
     {
       label: 'Participants',

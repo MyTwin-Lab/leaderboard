@@ -6,7 +6,6 @@ import { ChallengeList } from "@/components/contributor/ChallengeList";
 import { ContributionHeatmap } from "@/components/contributor/ContributionHeatmap";
 import { ContributionDashboard } from "@/components/contributor/ContributionDashboard";
 import { ContributorTabs } from "@/components/contributor/ContributorTabs";
-import { MyTasks } from "@/components/contributor/MyTasks";
 import { ThemeSettings } from "@/components/contributor/ThemeSettings";
 import { fetchContributorProfile, fetchContributorSession } from "@/lib/contributor";
 import { LogoutButton } from "@/components/contributor/LogoutButton";
@@ -24,6 +23,7 @@ import { isValidThemeKey, DEFAULT_THEME_KEY } from "@/lib/themes";
 import { ModulesSettings } from "@/components/contributor/ModulesSettings";
 import { OnboardingProgressTable } from "@/components/contributor/OnboardingProgressTable";
 import { EvaluationGridsTab } from "@/components/contributor/evaluation-grids/EvaluationGridsTab";
+import { DigestTab } from "@/components/contributor/DigestTab";
 
 const appSettingsRepo = new AppSettingsRepository();
 const onboardingProgressRepo = new OnboardingProgressRepository();
@@ -62,10 +62,6 @@ export default async function ContributorSelfPage({
           <ContributionDashboard challenges={profile.challenges} />
         </div>
       ),
-    },
-    {
-      label: "My Tasks",
-      panel: <MyTasks />,
     },
     {
       label: "Contributions",
@@ -159,6 +155,17 @@ export default async function ContributorSelfPage({
           <ModulesSettings
             meetingsEnabled={settings.modules_meetings_enabled}
             onboardingEnabled={settings.modules_onboarding_enabled}
+          />
+        </div>
+      ),
+    });
+    tabs.push({
+      label: "Digest",
+      panel: (
+        <div className="mx-auto max-w-lg py-2 lg:max-w-4xl">
+          <DigestTab
+            enabled={settings.digest_enabled}
+            frequencyDays={settings.digest_frequency_days}
           />
         </div>
       ),

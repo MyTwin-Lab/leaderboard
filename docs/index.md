@@ -25,13 +25,16 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | File | Description |
 |------|-------------|
 | [`challenges-and-tasks.md`](./challenges-and-tasks.md) | How challenges and tasks work — the core workflow |
+| [`challenge-groups.md`](./challenge-groups.md) | Two or three contributors sharing one workspace, one contribution, and a split reward |
 | [`evaluation.md`](./evaluation.md) | AI evaluation pipeline, scoring grids, rewards |
 | [`ml-rewards.md`](./ml-rewards.md) | Reward rules for ML challenges — live scoring, reuse, and the point ledger |
-| [`validation-challenges.md`](./validation-challenges.md) | Manually testing a submitted ML API live — drop a file, see the output, earn CP |
+| [`validation-challenges.md`](./validation-challenges.md) | Qualified reviewers testing a submitted ML API against ground-truth reference cases |
+| [`compute-power.md`](./compute-power.md) | Temporary Scaleway GPU instances for ML challenge contributors |
 | [`sync-meetings.md`](./sync-meetings.md) | Creating meetings in Google Workspace + AI analysis |
 | [`slack-signals.md`](./slack-signals.md) | Slack contribution signals — AI-detected rewards from channel discussions |
 | [`onboarding.md`](./onboarding.md) | New contributor onboarding missions |
 | [`admin-settings.md`](./admin-settings.md) | Instance-wide theme, GitHub/Kaggle/Slack connections, and module toggles |
+| [`digest.md`](./digest.md) | Periodic, frozen snapshots of platform activity, browsable by admins |
 
 ## Dev & ops
 

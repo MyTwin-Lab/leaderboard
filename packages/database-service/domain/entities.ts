@@ -40,6 +40,13 @@ export interface ChallengeTeam {
   workspace_ref?: string;
   workspace_url?: string;
   workspace_status?: WorkspaceStatus;
+  /**
+   * Groupe de travail sur ce challenge. `undefined` = participation solo,
+   * comportement inchangé. Les rows d'un même challenge qui le partagent
+   * travaillent sur le workspace du créateur du groupe — celui dont la row
+   * porte le `workspace_ref`. Voir services/challenge/group.ts.
+   */
+  group_id?: string;
 }
 
 export type ChallengeWorkspaceMode = 'provided_repo' | 'own_repo';
@@ -63,6 +70,8 @@ export interface Challenge {
   cp_per_validation?: number | null;   // Validation uniquement — CP fixe par validation
   required_validations?: number | null; // Validation uniquement — nb de verdicts requis avant résolution (impair)
   compute_enabled?: boolean; // ML uniquement — active la demande de puissance de calcul Scaleway sur ce challenge
+  created_at: Date;
+  closed_at?: Date | null; // Posée à la bascule vers 'completed' (jamais 'archived')
 }
 
 /** Signal de contribution détectable dans un canal de discussion (Slack). */
@@ -119,7 +128,10 @@ export interface Contribution {
   artifact_url?: string;
   live_endpoint_url?: string; // api_packaging uniquement — endpoint déployé
   evaluation_status?: ContributionEvaluationStatus;
+  /** Dernière soumission — réécrite à chaque ré-évaluation. Sert aussi à
+   *  l'antériorité de réutilisation (lineage.ts). Pas une date de création. */
   submitted_at: Date;
+  created_at: Date;
 }
 
 // --- REWARD ENTRIES (ledger ML) ---
@@ -156,6 +168,20 @@ export interface RewardEntry {
   source_user_id?: string;
   meta?: RewardEntryMeta;
   created_at: Date;
+}
+
+/**
+ * Part de CP d'un membre de groupe sur une contribution.
+ *
+ * Aucune row n'existe pour une contribution solo : l'absence de membres veut
+ * dire "tout le reward revient à `contributions.user_id`". `share_cp` est
+ * cumulatif — chaque run de scoring ajoute son delta — de sorte que
+ * Σ share_cp = contributions.reward à tout instant.
+ */
+export interface ContributionMember {
+  contribution_id: string; // FK -> contributions.uuid
+  user_id: string;         // FK -> users.uuid
+  share_cp: number;
 }
 
 // --- VALIDATION CHALLENGES ---
@@ -497,6 +523,81 @@ export interface AppSettings {
   scaleway_connected_by?: string | null;
   scaleway_is_connected: boolean; // derived: !!scaleway_secret_key_enc && !scaleway_disconnect_requested_at
   scaleway_disconnect_requested_at?: Date | null;
+  digest_enabled: boolean;
+  digest_frequency_days: number;
+}
+
+// --- DIGEST ---
+
+export type DigestTriggerSource = "cron" | "manual";
+
+/** Une ligne de `cp_distributed`, agrégée par (user, challenge). */
+export interface DigestCpRow {
+  user_id: string;
+  full_name: string;
+  challenge_id: string;
+  challenge_title: string;
+  total_cp: number;
+  /** Détail par rule_key — garde la nature de l'attribution sans lister le ledger. */
+  by_rule: Record<string, number>;
+}
+
+/**
+ * Le contenu figé d'un digest.
+ *
+ * Dénormalisé volontairement : un digest est un enregistrement historique, il
+ * doit rester lisible même si la contribution est supprimée, le contributeur
+ * renommé ou le cache de reward reconstruit.
+ *
+ * Les quatre premières sections sont des sections d'apparition — elles ne
+ * voient un objet qu'une fois. `cp_distributed` lit le ledger et capte donc
+ * aussi ce qu'une ré-évaluation rapporte à une contribution créée avant la
+ * fenêtre, invisible autrement. Voir docs/input/spec-digest.md §4.
+ */
+export interface DigestPayload {
+  version: 1;
+  new_contributions: Array<{
+    contribution_id: string;
+    title: string;
+    type: string;
+    challenge_id: string;
+    challenge_title: string;
+    /** Tous les membres d'un groupe, porteur en tête — pas seulement lui. */
+    contributors: Array<{ user_id: string; full_name: string }>;
+    /** Reward global de la contribution, pas une part individuelle. */
+    reward_cp: number;
+  }>;
+  new_challenges: Array<{
+    challenge_id: string;
+    title: string;
+    type: string;
+    project_title: string;
+    reward_pool: number;
+  }>;
+  completed_challenges: Array<{
+    challenge_id: string;
+    title: string;
+    type: string;
+    closed_at: string;
+    reward_pool: number;
+    cp_awarded: number;
+  }>;
+  new_contributors: Array<{
+    user_id: string;
+    full_name: string;
+    role: string;
+    joined_at: string;
+  }>;
+  cp_distributed: DigestCpRow[];
+}
+
+export interface Digest {
+  uuid: string;
+  period_start: Date;
+  period_end: Date;
+  generated_at: Date;
+  trigger_source: DigestTriggerSource;
+  payload: DigestPayload;
 }
 
 // --- ONBOARDING PROGRESS WITH USER ---

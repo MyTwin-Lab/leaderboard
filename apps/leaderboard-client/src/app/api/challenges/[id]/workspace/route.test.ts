@@ -6,11 +6,13 @@ const {
   mockChallengeFindById,
   mockFindByChallengeAndUser,
   mockUpdateWorkspace,
+  mockTeamFindByChallenge,
 } = vi.hoisted(() => ({
   mockJwtVerify: vi.fn(),
   mockChallengeFindById: vi.fn(),
   mockFindByChallengeAndUser: vi.fn(),
   mockUpdateWorkspace: vi.fn(),
+  mockTeamFindByChallenge: vi.fn(),
 }));
 
 vi.mock('jose', () => ({ jwtVerify: mockJwtVerify }));
@@ -22,6 +24,8 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   ChallengeTeamRepository: class {
     findByChallengeAndUser = mockFindByChallengeAndUser;
     updateWorkspace = mockUpdateWorkspace;
+    // Lue par resolveWorkspaceOwner : vide = personne en groupe.
+    findByChallenge = mockTeamFindByChallenge;
   },
 }));
 
@@ -48,6 +52,7 @@ beforeEach(() => {
   mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', workspace_mode: 'own_repo' });
   mockFindByChallengeAndUser.mockResolvedValue({ uuid: 'membership-1', challenge_id: CHALLENGE_ID, user_id: USER_ID });
   mockUpdateWorkspace.mockResolvedValue({ uuid: 'membership-1', workspace_url: 'https://github.com/acme/repo' });
+  mockTeamFindByChallenge.mockResolvedValue([]);
 });
 
 describe('PATCH /api/challenges/[id]/workspace', () => {

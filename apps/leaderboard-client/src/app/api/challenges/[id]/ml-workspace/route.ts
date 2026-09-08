@@ -10,6 +10,7 @@ import {
 import type { ChallengeRepoRole } from '../../../../../../../../packages/database-service/domain/entities';
 import { parseMlRewardRules } from '../../../../../../../../packages/database-service/domain/mlRewardRules';
 import { normalizeArtifactUrl } from '../../../../../../../../packages/services/challenge/artifactUrl';
+import { resolveWorkspaceOwner } from '../../../../../../../../packages/services/challenge/group';
 import { jwtVerify } from 'jose';
 
 /** Roles closed once the challenge's metric block threshold is reached. */
@@ -78,8 +79,16 @@ export async function GET(
       submitterUsers.map(u => [u.uuid, { fullName: u.full_name, avatarUrl: u.avatar_url ?? undefined }])
     );
 
+    // Le workspace lu par le front est celui du groupe : les URLs vivent sous
+    // le porteur, pas sous chaque membre. `currentUserId` reste l'identité de
+    // l'appelant, `workspaceOwnerId` la clé de lecture de workspace_meta.
+    const workspaceOwnerId = session
+      ? await resolveWorkspaceOwner(challengeId, session.userId, { challengeTeamRepo })
+      : null;
+
     return NextResponse.json({
       currentUserId: session?.userId ?? null,
+      workspaceOwnerId,
       repos: repos.map(r => ({
         repo_id: r.repo_id,
         repo_type: r.repo_type,
@@ -165,19 +174,24 @@ export async function PATCH(
       await challengeTeamRepo.create({ challenge_id: challengeId, user_id: session.userId });
     }
 
+    // Un groupe partage sa vue de progression : dataset choisi, URL Kaggle,
+    // code GitHub et endpoint vivent sous le porteur, pas sous chaque membre.
+    // Résolu après le join implicite ci-dessus, qui peut créer la row.
+    const ownerId = await resolveWorkspaceOwner(challengeId, session.userId, { challengeTeamRepo });
+
     let current = existing;
 
     if (hasWorkspaceUrl) {
       const existingMeta = (current.workspace_meta as Record<string, unknown>) ?? {};
       const existingUserUrls = (existingMeta.userUrls as Record<string, string>) ?? {};
-      const previousOwnUrl = existingUserUrls[session.userId];
+      const previousOwnUrl = existingUserUrls[ownerId];
 
       // null = remove the user's URL (reset step)
       const updatedUserUrls = { ...existingUserUrls };
       if (workspace_url === null) {
-        delete updatedUserUrls[session.userId];
+        delete updatedUserUrls[ownerId];
       } else {
-        updatedUserUrls[session.userId] = workspace_url.trim();
+        updatedUserUrls[ownerId] = workspace_url.trim();
       }
 
       const updatedMeta: Record<string, unknown> = { ...existingMeta, userUrls: updatedUserUrls };
@@ -188,15 +202,15 @@ export async function PATCH(
       // touching any community picks already checked.
       if (existing.role === 'dataset') {
         const existingDatasetUrls = (existingMeta.datasetUrls as Record<string, string[]>) ?? {};
-        const mySet = new Set(existingDatasetUrls[session.userId] ?? []);
+        const mySet = new Set(existingDatasetUrls[ownerId] ?? []);
         if (previousOwnUrl) mySet.delete(previousOwnUrl);
         if (workspace_url !== null) mySet.add(workspace_url.trim());
 
         const updatedDatasetUrls = { ...existingDatasetUrls };
         if (mySet.size > 0) {
-          updatedDatasetUrls[session.userId] = [...mySet];
+          updatedDatasetUrls[ownerId] = [...mySet];
         } else {
-          delete updatedDatasetUrls[session.userId];
+          delete updatedDatasetUrls[ownerId];
         }
         // Skip adding an empty key when the multi-select feature was never
         // touched for this repo — keeps workspace_meta unchanged for the
@@ -220,9 +234,9 @@ export async function PATCH(
 
       const updatedDatasetUrls = { ...existingDatasetUrls };
       if (dataset_urls === null || dataset_urls.length === 0) {
-        delete updatedDatasetUrls[session.userId];
+        delete updatedDatasetUrls[ownerId];
       } else {
-        updatedDatasetUrls[session.userId] = [...new Set<string>(dataset_urls.map((u: string) => u.trim()))];
+        updatedDatasetUrls[ownerId] = [...new Set<string>(dataset_urls.map((u: string) => u.trim()))];
       }
 
       const updatedMeta = { ...existingMeta, datasetUrls: updatedDatasetUrls };
@@ -239,7 +253,7 @@ export async function PATCH(
         const url = workspace_url.trim();
         const challengeContribs = await contributionRepo.findByChallenge(challengeId);
         const contribution = challengeContribs.find(
-          c => c.user_id === session.userId && c.type === cfg.contributionType
+          c => c.user_id === ownerId && c.type === cfg.contributionType
         );
 
         // The step's description gathers every repo of that step, so a model
@@ -251,7 +265,7 @@ export async function PATCH(
         const description = stepRepos
           .map(r => {
             const urls = (r.workspace_meta as { userUrls?: Record<string, string> } | null)?.userUrls ?? {};
-            const u = r.repo_id === repo_id ? url : urls[session.userId];
+            const u = r.repo_id === repo_id ? url : urls[ownerId];
             return u ? `${r.role}: ${u}` : null;
           })
           .filter(Boolean)
@@ -273,7 +287,7 @@ export async function PATCH(
             type: cfg.contributionType,
             description,
             reward: 0,
-            user_id: session.userId,
+            user_id: ownerId,
             challenge_id: challengeId,
             submitted_at: new Date(),
             evaluation_status: 'pending',
@@ -289,7 +303,7 @@ export async function PATCH(
         );
         new MlRewardsService().scheduleAward({
           challengeId,
-          userId: session.userId,
+          userId: session.userId, // le service re-résout le porteur lui-même
           repoId: repo_id,
           url,
         });

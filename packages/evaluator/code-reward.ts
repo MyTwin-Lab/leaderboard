@@ -23,16 +23,30 @@ export interface CodeAwardInput {
   alreadyAwarded: { code_fixed: number; code_quality: number };
   /** CP encore disponibles sur le challenge. Les deltas sont clampés dessus. */
   remainingPool: number;
+  /**
+   * Bonus collectif quand la livraison est celle d'un groupe (1 en solo).
+   *
+   * Il multiplie le brut, donc avant le delta et avant le clamp : c'est le
+   * montant total dû au groupe qui grandit, et la division en parts se fait
+   * plus tard, sur les points réellement attribués.
+   */
+  groupMultiplier?: number;
 }
 
 export function computeCodeAward(input: CodeAwardInput): RewardEntryDraft[] {
   const score = Math.min(10, Math.max(0, input.score));
+  const multiplier = input.groupMultiplier ?? 1;
   let pool = Math.max(0, input.remainingPool);
   const drafts: RewardEntryDraft[] = [];
 
+  // Le brut est multiplié, le déjà-versé ne l'est pas : il est lu tel quel au
+  // ledger. Un membre qui rejoint entre deux runs fait donc monter le brut et
+  // rouvre un delta positif — le groupe touche le complément au run suivant.
+  // C'est voulu, et c'est le pendant naturel d'un ledger append-only : rien
+  // n'est repris, seul l'écart restant est versé.
   const gross: Array<{ rule_key: RewardRuleKey; raw: number; already: number }> = [
-    { rule_key: "code_fixed", raw: input.rules.delivery.fixed, already: input.alreadyAwarded.code_fixed },
-    { rule_key: "code_quality", raw: Math.round((input.rules.delivery.cap * score) / 10), already: input.alreadyAwarded.code_quality },
+    { rule_key: "code_fixed", raw: Math.round(input.rules.delivery.fixed * multiplier), already: input.alreadyAwarded.code_fixed },
+    { rule_key: "code_quality", raw: Math.round((input.rules.delivery.cap * score * multiplier) / 10), already: input.alreadyAwarded.code_quality },
   ];
 
   for (const g of gross) {

@@ -5,17 +5,20 @@ import {
   TaskRepository,
   ChallengeRepoRepository,
   ContributionRepository,
+  ContributionMemberRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import { SyncMeetingService } from '../../../../../../../../packages/services/sync-meeting/sync-meeting.service.js';
 import { verifyRequestToken } from '@/lib/auth';
 import { isPubliclyVisible } from '@/lib/public/challengeVisibility';
 import { toPublicOverview } from '@/lib/public/overview';
+import { groupContextFrom, pickGroupOwner } from '../../../../../../../../packages/services/challenge/group';
 
 const challengeRepo = new ChallengeRepository();
 const challengeTeamRepo = new ChallengeTeamRepository();
 const taskRepo = new TaskRepository();
 const challengeRepoRepo = new ChallengeRepoRepository();
 const contributionRepo = new ContributionRepository();
+const contributionMemberRepo = new ContributionMemberRepository();
 
 // GET /api/challenges/[id]/overview
 //
@@ -64,7 +67,43 @@ export async function GET(
       challengeTeamRepo.findByChallenge(id),
     ]);
 
-    const payload = { challenge, team, tasks, meetings, repos, contributions, participants };
+    // Le board, la branche et la contribution sur lesquels travaille le
+    // visiteur : les siens en solo, ceux du porteur s'il est en groupe. Dérivé
+    // de `participants`, déjà chargé — aucune requête supplémentaire.
+    const myWorkspaceOwnerId = session
+      ? groupContextFrom(participants, session.userId).ownerId
+      : null;
+
+    // Qui travaille avec qui n'est pas un secret ; le jeton pour les rejoindre
+    // en est un. On publie donc `group_owner_id` — un `user_id` déjà visible
+    // dans `team`, qui identifie le groupe sans permettre d'y entrer — et on
+    // masque `group_id`, qui est le lien d'invitation lui-même.
+    const ownerByGroup = new Map<string, string>();
+    for (const p of participants) {
+      if (p.group_id && !ownerByGroup.has(p.group_id)) {
+        ownerByGroup.set(p.group_id, pickGroupOwner(participants.filter(m => m.group_id === p.group_id)));
+      }
+    }
+    const safeParticipants = participants.map(p => ({
+      ...p,
+      group_id: p.user_id === session?.userId ? p.group_id : undefined,
+      group_owner_id: p.group_id ? ownerByGroup.get(p.group_id) ?? null : null,
+    }));
+
+    // Qui a produit chaque contribution de groupe. Seulement les identifiants :
+    // les noms et avatars sont déjà dans `team`, le client fait la jointure.
+    // `share_cp` n'y est pas — la répartition ne regarde pas la page.
+    const contributionMembers = session
+      ? (await contributionMemberRepo.findByContributions(contributions.map(c => c.uuid)))
+          .map(m => ({ contribution_id: m.contribution_id, user_id: m.user_id }))
+      : [];
+
+    const payload = {
+      challenge, team, tasks, meetings, repos, contributions,
+      participants: safeParticipants,
+      my_workspace_owner_id: myWorkspaceOwnerId,
+      contribution_members: contributionMembers,
+    };
     return NextResponse.json(session ? payload : toPublicOverview(payload));
   } catch (error) {
     console.error('Error fetching challenge overview:', error);

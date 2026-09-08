@@ -39,11 +39,14 @@ function makeDeps(opts: {
   score10?: number;
   agentFails?: boolean;
   challengeRepos?: Array<ChallengeRepo & { repo_type: string; repo_external_id?: string; repo_title: string }>;
+  /** Composition de challenge_teams — c'est elle qui décide solo vs groupe. */
+  participants?: ChallengeTeam[];
 } = {}) {
   const contributions: Contribution[] = [...(opts.contributions ?? [])];
   const created: Contribution[] = [];
   const updates: Array<{ uuid: string; patch: Record<string, unknown> }> = [];
   const written: unknown[][] = [];
+  const shares: unknown[][] = [];
   const challengeUpdates: Array<Record<string, unknown>> = [];
 
   const deps = {
@@ -52,8 +55,15 @@ function makeDeps(opts: {
       update: vi.fn(async (_id: string, patch: Record<string, unknown>) => { challengeUpdates.push(patch); return makeChallenge(); }),
     },
     challengeTeamRepo: {
-      findByChallengeAndUser: vi.fn(async () =>
-        opts.participation === null ? null : makeParticipation(opts.participation)),
+      findByChallengeAndUser: vi.fn(async (_ch: string, userId: string) => {
+        if (opts.participants) return opts.participants.find(p => p.user_id === userId) ?? null;
+        return opts.participation === null ? null : makeParticipation(opts.participation);
+      }),
+      // Lue par getGroupContext. Sans `participants`, un unique solo : c'est
+      // le cas de tous les tests écrits avant les groupes.
+      findByChallenge: vi.fn(async () =>
+        opts.participants ??
+        (opts.participation === null ? [] : [makeParticipation(opts.participation)])),
     },
     challengeRepoRepo: {
       findByChallengeWithRepo: vi.fn(async () => opts.challengeRepos ?? []),
@@ -79,12 +89,15 @@ function makeDeps(opts: {
         written.flat().reduce((s: number, d) => s + (d as { points: number }).points, 0)),
       createManyAndSyncRewards: vi.fn(async (drafts: unknown[]) => { written.push(drafts); return drafts as RewardEntry[]; }),
     },
+    contributionMemberRepo: {
+      addShares: vi.fn(async (rows: unknown[]) => { shares.push(rows); }),
+    },
     runAgent: vi.fn(async () => {
       if (opts.agentFails) throw new Error("agent down");
       return { score10: opts.score10 ?? 8, evaluation: { globalScore: 7.2, scores: [] } };
     }),
   };
-  return { deps, written, updates, created, challengeUpdates };
+  return { deps, written, shares, updates, created, challengeUpdates };
 }
 
 describe("canEvaluate", () => {
@@ -255,5 +268,113 @@ describe("resolveWorkspaceTarget", () => {
   it("returns null when nothing usable", () => {
     const p = makeParticipation({ workspace_provider: "external", workspace_url: "https://gitlab.com/x/y", workspace_ref: undefined });
     expect(resolveWorkspaceTarget(p, undefined)).toBeNull();
+  });
+});
+
+describe("group delivery", () => {
+  const BOB = "bob", CAROL = "carol", GROUP = "grp-1";
+
+  /** Alice porte le workspace, les autres n'ont qu'une appartenance. */
+  const trio = (): ChallengeTeam[] => [
+    makeParticipation({ user_id: ALICE, group_id: GROUP }),
+    { challenge_id: CH, user_id: BOB, group_id: GROUP },
+    { challenge_id: CH, user_id: CAROL, group_id: GROUP },
+  ];
+  const pair = (): ChallengeTeam[] => trio().slice(0, 2);
+
+  const totalWritten = (written: unknown[][]) =>
+    written.flat().reduce((s: number, d) => s + (d as { points: number }).points, 0);
+
+  it("lets a member without a workspace launch the evaluation", async () => {
+    // Bob n'a ni branche ni board : c'est celui du porteur qui est évalué.
+    const { deps } = makeDeps({ participants: pair() });
+    expect(await new CodeRewardsService(deps).canEvaluate(CH, BOB)).toEqual({ ok: true });
+  });
+
+  it("still refuses someone who is not on the challenge at all", async () => {
+    const { deps } = makeDeps({ participants: pair() });
+    expect(await new CodeRewardsService(deps).canEvaluate(CH, "dan"))
+      .toEqual({ ok: false, reason: "not_participant" });
+  });
+
+  it("credits the ledger to the holder, whoever launched it", async () => {
+    const { deps, written, created } = makeDeps({ participants: pair() });
+    await new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: BOB });
+
+    expect(created[0].user_id).toBe(ALICE);
+    expect(written.flat().every(d => (d as { user_id: string }).user_id === ALICE)).toBe(true);
+  });
+
+  it("pays a pair 140% and splits it in half", async () => {
+    const { deps, written, shares } = makeDeps({ participants: pair(), challenge: { contribution_points_reward: 2000 } });
+    await new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: ALICE });
+
+    // 50 + 120 en solo → 70 + 168 à deux.
+    expect(totalWritten(written)).toBe(238);
+    const rows = shares.flat() as Array<{ user_id: string; share_cp: number }>;
+    expect(rows.reduce((s, r) => s + r.share_cp, 0)).toBe(238);
+    expect(rows.map(r => r.user_id).sort()).toEqual([ALICE, BOB]);
+  });
+
+  it("keeps the shares summing to the awarded total for a trio", async () => {
+    const { deps, written, shares } = makeDeps({ participants: trio(), challenge: { contribution_points_reward: 2000 } });
+    await new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: CAROL });
+
+    const rows = shares.flat() as Array<{ user_id: string; share_cp: number }>;
+    expect(rows).toHaveLength(3);
+    expect(rows.reduce((s, r) => s + r.share_cp, 0)).toBe(totalWritten(written));
+  });
+
+  it("costs the pool less than the same three contributors solo", async () => {
+    const solo = makeDeps({ challenge: { contribution_points_reward: 2000 } });
+    await new CodeRewardsService(solo.deps).evaluate({ challengeId: CH, userId: ALICE });
+    const group = makeDeps({ participants: trio(), challenge: { contribution_points_reward: 2000 } });
+    await new CodeRewardsService(group.deps).evaluate({ challengeId: CH, userId: ALICE });
+
+    expect(totalWritten(group.written)).toBeLessThan(totalWritten(solo.written) * 3);
+  });
+
+  it("only splits the delta when a member joins after a first run", async () => {
+    // Le premier run a déjà versé 50 + 120 en solo ; à deux le brut monte à
+    // 70 + 168, donc seul l'écart de 68 se répartit.
+    const { deps, shares } = makeDeps({
+      participants: pair(),
+      existingEntries: [
+        { rule_key: "code_fixed", points: 50 },
+        { rule_key: "code_quality", points: 120 },
+      ],
+    });
+    await new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: ALICE });
+
+    const rows = shares.flat() as Array<{ share_cp: number }>;
+    expect(rows.reduce((s, r) => s + r.share_cp, 0)).toBe(68);
+  });
+
+  it("writes no share row for a solo contributor", async () => {
+    // L'absence de rows est ce qui laisse le comportement historique intact.
+    const { deps, shares } = makeDeps();
+    await new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: ALICE });
+    expect(shares).toHaveLength(0);
+  });
+
+  it("writes no share row for a group nobody has joined yet", async () => {
+    const alone = [makeParticipation({ user_id: ALICE, group_id: GROUP })];
+    const { deps, shares, written } = makeDeps({ participants: alone });
+    await new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: ALICE });
+
+    expect(shares).toHaveLength(0);
+    expect(totalWritten(written)).toBe(170); // 50 + 120, comme un solo
+  });
+
+  it("writes no share row when the run pays nothing", async () => {
+    const { deps, shares } = makeDeps({
+      participants: pair(),
+      existingEntries: [
+        { rule_key: "code_fixed", points: 70 },
+        { rule_key: "code_quality", points: 168 },
+      ],
+    });
+    await new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: ALICE });
+    expect(shares).toHaveLength(0);
   });
 });

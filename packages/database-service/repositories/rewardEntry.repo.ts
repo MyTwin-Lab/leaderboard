@@ -1,6 +1,6 @@
 import { db } from "../db/drizzle";
 import { reward_entries } from "../db/drizzle";
-import { eq, and, ne, sql, notInArray } from "drizzle-orm";
+import { eq, and, ne, sql, notInArray, gte, lt } from "drizzle-orm";
 import { toDomainRewardEntry } from "../db/mappers";
 import type { RewardEntry } from "../domain/entities";
 import { rewardEntrySchema } from "../domain/schemas_zod";
@@ -19,6 +19,19 @@ export class RewardEntryRepository {
       .select()
       .from(reward_entries)
       .where(eq(reward_entries.challenge_id, challengeId));
+    return rows.map(toDomainRewardEntry);
+  }
+
+
+  /**
+   * Fenêtre [start, end) — bornes half-open, pour qu'une row tombant
+   * exactement sur une borne appartienne à exactement un digest.
+   */
+  async findCreatedBetween(start: Date, end: Date): Promise<RewardEntry[]> {
+    const rows = await db
+      .select()
+      .from(reward_entries)
+      .where(and(gte(reward_entries.created_at, start), lt(reward_entries.created_at, end)));
     return rows.map(toDomainRewardEntry);
   }
 

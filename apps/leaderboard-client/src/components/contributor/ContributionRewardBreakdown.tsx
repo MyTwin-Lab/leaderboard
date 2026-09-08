@@ -4,6 +4,8 @@ import { useState } from "react";
 import { formatCP } from "@/lib/formatters";
 import { ChevronRight, Loader2 } from "lucide-react";
 import { EvaluationModal } from "./EvaluationModal";
+import { TeamAvatars } from "@/components/ui/TeamAvatars";
+import type { TeamMember } from "@/lib/types";
 
 interface RewardEntry {
   ruleKey: string;
@@ -32,12 +34,15 @@ export function ContributionRewardBreakdown({
   reward,
   index,
   hasEvaluation,
+  coMembers,
 }: {
   contributionId: string;
   title: string;
   reward: number;
   index: number;
   hasEvaluation?: boolean;
+  /** Co-équipiers sur une contribution de groupe — `reward` est alors une part. */
+  coMembers?: TeamMember[];
 }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<RewardsResponse | null>(null);
@@ -82,6 +87,13 @@ export function ContributionRewardBreakdown({
       >
         <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brandCP/40" />
         <p className="min-w-0 flex-1 truncate text-sm text-white/70">{title}</p>
+        {/* Contribution de groupe : les co-équipiers, et un CP qui est une part
+            du total et non le tout. */}
+        {coMembers && coMembers.length > 0 && (
+          <span className="shrink-0" title={`With ${coMembers.map(m => m.fullName).join(', ')}`}>
+            <TeamAvatars members={coMembers} size={20} maxDisplay={3} />
+          </span>
+        )}
         <span
           className={`shrink-0 text-xs font-medium ${reward > 0 ? "text-brandCP" : "text-white/30"}`}
         >

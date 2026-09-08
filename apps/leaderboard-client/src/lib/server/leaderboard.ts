@@ -15,11 +15,12 @@ export async function fetchLeaderboard(
   projectId?: string,
   timePeriod?: "all" | "month" | "week"
 ): Promise<LeaderboardResponse> {
-  const [projects, contributions, challenges, users] = await Promise.all([
+  const [projects, contributions, challenges, users, contributionMembers] = await Promise.all([
     repositories.project.findAll(),
     repositories.contribution.findAll(),
     repositories.challenge.findAll(),
     repositories.user.findAll(),
+    repositories.contributionMember.findAll(),
   ]);
 
   let selectedProjectId: string | null = null;
@@ -35,6 +36,7 @@ export async function fetchLeaderboard(
     contributions,
     challenges,
     users,
+    contributionMembers,
     projectId: selectedProjectId,
     timePeriod: timePeriod ?? "all",
   });
@@ -53,13 +55,40 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     return null;
   }
 
-  const [contributions, challenges, projects, allContributions, allUsers] = await Promise.all([
-    repositories.contribution.findByUser(userId),
-    repositories.challenge.findAll(),
-    repositories.project.findAll(),
-    repositories.contribution.findAll(),
-    repositories.user.findAll(),
-  ]);
+  const [ownContributions, challenges, projects, allContributions, allUsers, myShares, allMembers] =
+    await Promise.all([
+      repositories.contribution.findByUser(userId),
+      repositories.challenge.findAll(),
+      repositories.project.findAll(),
+      repositories.contribution.findAll(),
+      repositories.user.findAll(),
+      repositories.contributionMember.findByUser(userId),
+      repositories.contributionMember.findAll(),
+    ]);
+
+  // `findByUser` ne voit que ce qu'on a soumis : sur une contribution de
+  // groupe, `contributions.user_id` est le porteur. Un co-membre ne verrait
+  // donc rien de son propre travail sans ce complément.
+  const shareByContribution = new Map(myShares.map((m) => [m.contribution_id, m.share_cp]));
+
+  // Co-équipiers de chaque contribution de groupe, pour les pastilles. Soi-même
+  // est retiré : la fiche dit "j'ai fait ça avec X et Y", pas "avec moi".
+  const userById = new Map(allUsers.map((u) => [u.uuid, u]));
+  const coMembersByContribution = new Map<string, ContributorProfile["challenges"][number]["contributions"][number]["coMembers"]>();
+  for (const member of allMembers) {
+    if (member.user_id === userId) continue;
+    if (!shareByContribution.has(member.contribution_id)) continue;
+    const user = userById.get(member.user_id);
+    if (!user) continue;
+    const list = coMembersByContribution.get(member.contribution_id) ?? [];
+    list.push({ id: user.uuid, fullName: user.full_name, avatarUrl: user.avatar_url ?? undefined });
+    coMembersByContribution.set(member.contribution_id, list);
+  }
+  const ownIds = new Set(ownContributions.map((c) => c.uuid));
+  const contributions = [
+    ...ownContributions,
+    ...allContributions.filter((c) => shareByContribution.has(c.uuid) && !ownIds.has(c.uuid)),
+  ];
 
   const challengeById = new Map(challenges.map((challenge) => [challenge.uuid, challenge]));
   const projectById = new Map(projects.map((project) => [project.uuid, project]));
@@ -74,7 +103,9 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     if (!challenge) continue;
 
     const project = projectById.get(challenge.project_id ?? "");
-    const reward = contribution.reward ?? 0;
+    // Sur une contribution de groupe, `reward` est le total du groupe : la
+    // fiche d'un contributeur montre sa part, pas celle de tout le monde.
+    const reward = shareByContribution.get(contribution.uuid) ?? contribution.reward ?? 0;
 
     let entry = aggregatedMap.get(challenge.uuid);
     if (!entry) {
@@ -103,6 +134,7 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
         // Only the author can see the AI evaluation detail — everyone can see
         // the contribution itself, so this hint is scoped to the viewer.
         hasEvaluation: contribution.evaluation != null && viewerId === userId,
+        coMembers: coMembersByContribution.get(contribution.uuid),
       });
     }
 
@@ -157,6 +189,7 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     contributions: allContributions,
     challenges,
     users: allUsers,
+    contributionMembers: allMembers,
     projectId: null,
     timePeriod: "all",
   });

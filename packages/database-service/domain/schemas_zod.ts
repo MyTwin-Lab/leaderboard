@@ -34,6 +34,15 @@ export const challengeTeamSchema = z.object({
   workspace_ref: z.string().max(200).optional(),
   workspace_url: z.string().optional(),
   workspace_status: z.enum(['pending', 'ready', 'failed']).optional(),
+  group_id: z.string().uuid().optional(),
+});
+
+export const contributionMemberSchema = z.object({
+  contribution_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  // Négatif toléré : une correction de ledger peut produire un delta négatif à
+  // répartir, et la part cumulée doit pouvoir redescendre.
+  share_cp: z.number().int(),
 });
 
 export const challengeSchema = z.object({
@@ -55,6 +64,8 @@ export const challengeSchema = z.object({
   cp_per_validation: z.number().int().nonnegative().nullish(),
   required_validations: z.number().int().positive().nullish(),
   compute_enabled: z.boolean().default(false),
+  created_at: z.coerce.date(),
+  closed_at: z.coerce.date().nullish(),
 });
 
 export const challengeSignalSchema = z.object({
@@ -96,6 +107,7 @@ export const contributionSchema = z.object({
     .enum(['pending', 'running', 'done', 'failed', 'skipped_reuse'])
     .optional(),
   submitted_at: z.coerce.date(),
+  created_at: z.coerce.date(),
 });
 
 export const rewardRuleKeySchema = z.enum([
@@ -423,3 +435,17 @@ export const appSettingsSchema = z.object({
 });
 
 export type AppSettingsInput = z.infer<typeof appSettingsSchema>;
+
+// --- DIGEST ---
+
+export const digestSchema = z.object({
+  uuid: z.string().uuid(),
+  period_start: z.coerce.date(),
+  period_end: z.coerce.date(),
+  generated_at: z.coerce.date().optional(),
+  trigger_source: z.enum(["cron", "manual"]),
+  // Le payload n'est pas revalidé champ par champ : il est figé à l'écriture et
+  // relu tel quel. Le typer ici ne protégerait rien et interdirait de relire un
+  // digest ancien dont la forme aurait évolué.
+  payload: z.record(z.string(), z.any()),
+});

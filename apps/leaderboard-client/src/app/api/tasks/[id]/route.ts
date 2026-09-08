@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TaskRepository, ChallengeRepository } from '../../../../../../../packages/database-service/repositories';
+import { TaskRepository, ChallengeRepository, ChallengeTeamRepository } from '../../../../../../../packages/database-service/repositories';
 import { repositories } from '@/lib/db';
+import { resolveWorkspaceOwner } from '../../../../../../../packages/services/challenge/group';
 import { jwtVerify } from 'jose';
 import { z } from 'zod';
 
 const taskRepo = new TaskRepository();
 const challengeRepo = new ChallengeRepository();
+const challengeTeamRepo = new ChallengeTeamRepository();
 
 async function getSession(request: NextRequest) {
   const token = request.cookies.get('access_token')?.value;
@@ -30,6 +32,12 @@ const updateTaskSchema = z.object({
   description: z.string().optional(),
   status: z.enum(['todo', 'in_progress', 'done']).optional(),
   parent_task_id: z.string().uuid().nullable().optional(),
+  /**
+   * Statut depuis lequel le client croit déplacer la carte. Facultatif : sans
+   * lui l'écriture reste inconditionnelle, comme avant. Avec lui, un board de
+   * groupe ne peut plus perdre silencieusement le déplacement d'un membre.
+   */
+  from_status: z.enum(['todo', 'in_progress', 'done']).optional(),
 });
 
 async function canTouchTask(request: NextRequest, taskId: string):
@@ -40,7 +48,12 @@ async function canTouchTask(request: NextRequest, taskId: string):
   if (!task) return { ok: false, status: 404, error: 'Task not found' };
 
   if (task.user_id) {
-    if (task.user_id !== session.userId && session.role !== 'admin') {
+    // La tâche appartient au board, et le board appartient au groupe : on
+    // compare au porteur, pas à l'appelant. Pour un solo les deux coïncident,
+    // et quelqu'un d'étranger au challenge reste son propre porteur — donc
+    // toujours refusé.
+    const boardOwnerId = await resolveWorkspaceOwner(task.challenge_id, session.userId, { challengeTeamRepo });
+    if (task.user_id !== boardOwnerId && session.role !== 'admin') {
       return { ok: false, status: 403, error: 'Not your task' };
     }
     return { ok: true };
@@ -93,7 +106,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const validated = updateTaskSchema.parse(body);
+    const { from_status: fromStatus, ...validated } = updateTaskSchema.parse(body);
 
     if (validated.parent_task_id) {
       const [current, parent] = await Promise.all([
@@ -105,7 +118,17 @@ export async function PATCH(
       }
     }
 
-    const task = await taskRepo.update(id, validated);
+    const task = await taskRepo.update(id, validated, { expectedStatus: fromStatus });
+    if (!task) {
+      // Quelqu'un a bougé la carte entre le chargement de l'écran et ce clic.
+      // On renvoie l'état réel pour que le client annule son déplacement
+      // optimiste et dise ce qui s'est passé, plutôt que d'écraser en silence.
+      const current = await taskRepo.findById(id);
+      return NextResponse.json(
+        { error: 'This task was moved by someone else', task: current },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(task);
   } catch (error) {
     if (error instanceof z.ZodError) {

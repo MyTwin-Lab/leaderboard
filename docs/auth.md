@@ -61,29 +61,44 @@ The proxy at `apps/leaderboard-client/src/proxy.ts` (Next.js middleware, runs at
 
 | Path | Who can access |
 |------|----------------|
-| `/admin/**` | `admin` role only |
-| `/contributors/me` | `admin` or `contributor` |
-| `/challenges/**` | `admin` or `contributor` |
+| `/admin/**` | `admin` only |
+| `/contributors/me` | `admin`, `contributor`, `viewer`, `medical_pro` |
+| `/challenges/**` | `admin`, `contributor`, `viewer`, `medical_pro` |
 | `/api/google-auth/**` | Public (OAuth flow) |
-| `/api/auth/refresh` | Cookie (any authenticated user) |
-| `/api/auth/logout` | Cookie (any authenticated user) |
+| `/api/auth/refresh`, `/api/auth/logout` | Cookie (any authenticated user) |
 | `GET /api/**` (most) | Public or authenticated depending on route |
-| `POST/PUT/DELETE /api/**` | Generally requires `admin` role, with a few named exceptions (self-assigning a task, joining a challenge, submitting ML work, editing your own profile, and the project-manager actions below) |
+| `POST/PUT/PATCH/DELETE /api/**` | Requires `admin`, **unless** the path matches one of the exceptions below |
 
-Since the proxy runs at the Edge, it cannot query the database — it only checks the JWT (role, user ID). Anything that depends on database state (e.g. "is this user the manager of this project?") is checked inside the route handler itself, not the proxy.
+The write exceptions, as encoded in `proxy.ts`:
+
+| Exception | Covers |
+|-----------|--------|
+| Task self-service | `POST /api/tasks`, `PATCH`/`DELETE /api/tasks/:id` — your own board |
+| ML contributor | any path containing `/ml-workspace` |
+| Join | any path ending in `/join` |
+| Challenge self-service | paths ending in `/project-evaluation` or `/workspace` |
+| Own profile | `PATCH /api/contributors/me` |
+| Manager-accessible | `PUT`/`PATCH /api/challenges/:id`, `POST /api/challenges`, `POST`/`PUT /api/repos*`, any path containing `/documents` |
+| `medical_pro` validation | for that role only: paths containing `/validation-verdicts`, `/validation-targets`, `/validation-case-claims`, `/validation-reference-cases` |
+
+Each exception only gets the request *past the proxy* — the route handler still runs its own check (ownership, project-manager status, role). The proxy is a coarse filter, not the authorization.
+
+Since the proxy runs at the Edge, it cannot query the database — it only checks the JWT (role, user ID). Anything that depends on database state ("is this user the manager of this project?") is checked inside the route handler. The one exception is account validity: the proxy calls `GET /api/auth/check-session` to confirm the JWT's `userId` still exists, which covers merged and deleted accounts.
 
 ---
 
 ## Roles
 
-Roles are stored in `users.role` and set when the user is created. There are only two:
+Roles are stored in `users.role` (free-text in the schema) and changed by an admin from `/admin/users`. Four values are used:
 
 | Role | Description |
 |------|-------------|
 | `admin` | Full access — manage challenges, tasks, contributions, users, evaluation grids, trigger evaluations, app-wide settings (theme, integrations, module toggles) |
-| `contributor` | View leaderboard and profile, participate in onboarding, work on tasks |
+| `contributor` | The default. Joins challenges, works a personal board, submits ML artifacts, requests GPU compute, participates in onboarding |
+| `viewer` | Read-only participant: can reach the same pages as a contributor, but the proxy's write rule leaves them with no mutating route of their own |
+| `medical_pro` | Qualified reviewer on validation challenges — the only role that can author reference cases, claim and test them, and cast verdicts. Not a superset of `contributor`; it is a qualification, not a permission level. See [`validation-challenges.md`](./validation-challenges.md#the-medical_pro-role) |
 
-New users registered via Google OAuth get the `contributor` role by default. Admins must be promoted manually in the database.
+New users registered via Google OAuth get `contributor`. Any other role has to be set explicitly by an admin.
 
 ### Project managers (not a role)
 
@@ -91,10 +106,14 @@ A contributor can additionally be set as the **manager** of one or more projects
 
 Being the manager of a project's parent grants extra access to that project's challenges, without admin access anywhere else:
 
-- Edit challenge details and status
-- Create sync meetings
-- Add/remove challenge documents
+- Edit challenge details and status, and create challenges on their project
+- Edit the task template of a code challenge
+- Add/remove challenge documents, including the brief
 - Create or update repos linked to their project
+- Create sync meetings
+- Configure discussion signals and the watched Slack channel
+- Approve, reject or retry GPU compute requests
+- Expose validation targets and read every reference case, run and reward on a validation challenge
 
 Managers cannot open `/admin/**`, create or delete challenges, or manage users. They access their challenges through a dedicated `/challenges/[id]/manage` view (separate from the public `/challenges/[id]` page contributors see). See [`challenges-and-tasks.md`](./challenges-and-tasks.md) for how this fits into the challenge workflow.
 
@@ -130,4 +149,6 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/api/google-auth/callback
 | `apps/leaderboard-client/src/app/api/auth/refresh/route.ts` | Token refresh handler |
 | `apps/leaderboard-client/src/app/api/auth/logout/route.ts` | Logout handler |
 | `packages/services/google-workspace/google-auth.service.ts` | Google OAuth client (getAuthUrl, getTokensFromCode, getUserInfo) |
+| `apps/leaderboard-client/src/app/api/auth/check-session/route.ts` | Account-still-exists check called by the proxy |
+| `apps/leaderboard-client/src/lib/server/publicPages.ts` | Which pages/routes bypass the proxy entirely |
 | `packages/database-service/repositories/refresh-token.repo.ts` | Refresh token DB operations |

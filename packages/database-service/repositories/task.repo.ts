@@ -51,15 +51,37 @@ export class TaskRepository {
     return toDomainTask(inserted);
   }
 
-  async update(uuid: string, entity: Partial<Omit<Task, "uuid" | "created_at">>): Promise<Task> {
+  /**
+   * Met à jour une tâche, éventuellement sous condition de son statut actuel.
+   *
+   * `expectedStatus` transforme l'écriture aveugle en écriture conditionnelle :
+   * la clause `AND status = ?` fait échouer l'UPDATE si quelqu'un a bougé la
+   * carte entre-temps, et la méthode renvoie `null`. C'est ce qui empêche, sur
+   * un board de groupe, qu'un membre au vieil écran écrase le déplacement d'un
+   * autre sans que personne ne le voie.
+   *
+   * Le statut sert de garde plutôt qu'un numéro de version : `tasks` n'a pas de
+   * colonne `updated_at`, et c'est de toute façon le statut qui est la donnée
+   * disputée.
+   */
+  async update(
+    uuid: string,
+    entity: Partial<Omit<Task, "uuid" | "created_at">>,
+    opts?: { expectedStatus?: Task["status"] }
+  ): Promise<Task | null> {
     const validated = taskSchema.omit({ uuid: true, created_at: true }).partial().parse(entity);
     const dbData: Record<string, unknown> = {};
     if (validated.title) dbData.title = validated.title;
     if (validated.description !== undefined) dbData.description = validated.description || null;
     if (validated.status) dbData.status = validated.status;
     if (validated.parent_task_id !== undefined) dbData.parent_task_id = validated.parent_task_id || null;
-    const [updated] = await db.update(tasks).set(dbData).where(eq(tasks.uuid, uuid)).returning();
-    return toDomainTask(updated);
+
+    const where = opts?.expectedStatus
+      ? and(eq(tasks.uuid, uuid), eq(tasks.status, opts.expectedStatus))
+      : eq(tasks.uuid, uuid);
+
+    const [updated] = await db.update(tasks).set(dbData).where(where).returning();
+    return updated ? toDomainTask(updated) : null;
   }
 
   async delete(uuid: string): Promise<void> {

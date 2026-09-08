@@ -6,6 +6,7 @@ const {
   mockFindPersonalTasks, mockFindTemplateTasks, mockFindByChallenge, mockCreate, mockFindById,
   mockChallengeFindById,
   mockFindByChallengeAndUser,
+  mockTeamFindByChallenge,
   mockProjectFindById,
 } = vi.hoisted(() => ({
   mockJwtVerify: vi.fn(),
@@ -16,6 +17,7 @@ const {
   mockFindById: vi.fn(),
   mockChallengeFindById: vi.fn(),
   mockFindByChallengeAndUser: vi.fn(),
+  mockTeamFindByChallenge: vi.fn(),
   mockProjectFindById: vi.fn(),
 }));
 
@@ -34,6 +36,8 @@ vi.mock('../../../../../../packages/database-service/repositories', () => ({
   },
   ChallengeTeamRepository: class {
     findByChallengeAndUser = mockFindByChallengeAndUser;
+    // Lue par resolveWorkspaceOwner : vide = personne en groupe.
+    findByChallenge = mockTeamFindByChallenge;
   },
 }));
 
@@ -84,6 +88,7 @@ beforeEach(() => {
   mockFindByChallengeAndUser.mockResolvedValue({ uuid: 'membership-1' });
   mockProjectFindById.mockResolvedValue({ uuid: 'project-1', manager_id: 'manager-1' });
   mockJwtVerify.mockResolvedValue({ payload: { userId: 'alice', role: 'contributor' } });
+  mockTeamFindByChallenge.mockResolvedValue([]); // personne en groupe
 });
 
 describe('GET /api/tasks', () => {

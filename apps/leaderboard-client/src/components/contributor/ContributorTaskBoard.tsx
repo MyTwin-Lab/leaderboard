@@ -64,14 +64,25 @@ export function ContributorTaskBoard({
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
-  const runStatusChange = async (taskId: string, status: ColKey) => {
+  const runStatusChange = async (taskId: string, status: ColKey, fromStatus: ColKey) => {
     setPending(p => ({ ...p, [taskId]: status }));
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        // `from_status` rend l'écriture conditionnelle : sur un board de
+        // groupe, deux membres peuvent déplacer la même carte en même temps.
+        body: JSON.stringify({ status, from_status: fromStatus }),
       });
+      if (res.status === 409) {
+        // La carte a bougé depuis le chargement de l'écran. On recharge pour
+        // afficher l'état réel plutôt que d'écraser le travail d'un autre.
+        const d = await res.json().catch(() => ({}));
+        const label = COLUMNS.find(c => c.key === d.task?.status)?.label ?? 'another column';
+        alert(`Someone just moved this task to ${label}.`);
+        await onReload();
+        return;
+      }
       if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.error || 'Failed to move task'); return; }
       await onReload();
     } catch { alert('Network error'); }
@@ -118,7 +129,7 @@ export function ContributorTaskBoard({
     const task = parents.find(t => t.uuid === String(active.id));
     if (!task) return;
     const to = String(over.id) as ColKey;
-    if (task.status !== to) runStatusChange(task.uuid, to);
+    if (task.status !== to) runStatusChange(task.uuid, to, task.status);
   };
 
   const activeTask = activeId ? parents.find(t => t.uuid === activeId) ?? null : null;

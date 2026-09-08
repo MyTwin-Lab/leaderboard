@@ -70,11 +70,13 @@ Grids define the scoring criteria. A code project evaluation always uses the `co
 
 | Grid | Used for | Criteria |
 |------|----------|------|
-| `code` | Code challenge project evaluation | Technical quality, architecture, security, maintainability, documentation, impact |
-| `model` | ML `model` submissions | Model architecture, training quality, performance metrics, reproducibility |
+| `code` | Code challenge project evaluation, and the ML `model code` and `API packaging` submissions | Technical quality, architecture, security, maintainability, documentation, impact |
 | `dataset` | ML `dataset` submissions | Data quality, coverage, labeling accuracy, documentation |
+| `model` | **Currently unused** — a Kaggle model is scored from its reported metric, not by an agent (see [`ml-rewards.md`](./ml-rewards.md)) | Model architecture, training quality, performance metrics, reproducibility |
 
-Grids can also be defined and stored in the database via the admin panel (`/admin/evaluation-grids`), and are loaded at runtime by `DatabaseGridProvider`.
+Grids can also be defined and stored in the database via the admin panel (`/admin/evaluation-grids`), and are loaded at runtime by `DatabaseGridProvider`. `POST /api/evaluation-grids/:id/test-run` scores a sample against a grid so it can be sanity-checked before being put to work.
+
+Every run is recorded in `evaluation_runs` / `evaluation_run_contributions`, browsable and retriable from `/admin/evaluation-runs`.
 
 ### Scoring scale
 
@@ -92,6 +94,8 @@ The `globalScore` is the weighted sum across all criteria (weights sum to ~1, so
 ---
 
 ## Reward distribution
+
+When the contributor belongs to a group, the award is multiplied by `1 + 0.4 × (n − 1)` before the clamp and then split into equal shares — see [`challenge-groups.md`](./challenge-groups.md).
 
 Rewards are paid live, per run, from the challenge's `reward_rules` (`{ fixed, cap }`) rather than split at close time across all contributors. Pure calculation logic lives in `packages/evaluator/code-reward.ts` (`computeCodeAward()`): fixed part on the first successful run, `cap × score/10` scaled by the agent score, paid as the positive delta over what was already awarded for that `rule_key`, clamped to the pool remaining. See [`challenges-and-tasks.md`](./challenges-and-tasks.md#rewards) for the full breakdown.
 

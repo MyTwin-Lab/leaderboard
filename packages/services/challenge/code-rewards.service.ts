@@ -6,10 +6,13 @@ import {
   ChallengeRepository,
   ChallengeRepoRepository,
   ChallengeTeamRepository,
+  ContributionMemberRepository,
   ContributionRepository,
   RewardEntryRepository,
   TaskRepository,
 } from "../../database-service/repositories/index.js";
+import { splitShares } from "../../evaluator/share.js";
+import { getGroupContext, type GroupContext } from "./group.js";
 import type { Challenge, ChallengeTeam, Contribution } from "../../database-service/domain/entities.js";
 import { parseCodeRewardRules } from "../../database-service/domain/codeRewardRules.js";
 import { ConnectorRegistry } from "../../connectors/registry.js";
@@ -71,11 +74,13 @@ export function resolveWorkspaceTarget(
 
 export interface CodeRewardsDeps {
   challengeRepo: Pick<ChallengeRepository, "findById" | "update">;
-  challengeTeamRepo: Pick<ChallengeTeamRepository, "findByChallengeAndUser">;
+  /** `findByChallenge` sert la résolution du groupe (voir group.ts). */
+  challengeTeamRepo: Pick<ChallengeTeamRepository, "findByChallengeAndUser" | "findByChallenge">;
   challengeRepoRepo: Pick<ChallengeRepoRepository, "findByChallengeWithRepo">;
   taskRepo: Pick<TaskRepository, "findPersonalTasks">;
   contributionRepo: Pick<ContributionRepository, "findByChallenge" | "create" | "update">;
   rewardRepo: Pick<RewardEntryRepository, "findByUserAndChallenge" | "sumByChallenge" | "createManyAndSyncRewards">;
+  contributionMemberRepo: Pick<ContributionMemberRepository, "addShares">;
   /** Isole l'accès réseau (GitHub + OpenAI) — remplacé par un fake en test. */
   runAgent: (input: {
     slug: string;
@@ -111,9 +116,22 @@ export class CodeRewardsService {
       taskRepo: new TaskRepository(),
       contributionRepo: new ContributionRepository(),
       rewardRepo: new RewardEntryRepository(),
+      contributionMemberRepo: new ContributionMemberRepository(),
       runAgent: (input) => this.runAgentDefault(input),
       ...deps,
     };
+  }
+
+  /**
+   * Le groupe de travail de l'appelant sur ce challenge.
+   *
+   * Tout ce qui suit (board, branche, contribution, ledger) est ancré sur
+   * `ownerId` et non sur l'appelant : un groupe partage un workspace, donc une
+   * seule livraison et un seul jeu de lignes de ledger. En solo `ownerId` vaut
+   * l'appelant, et le flux est identique à ce qu'il a toujours été.
+   */
+  private loadGroup(challengeId: string, userId: string): Promise<GroupContext> {
+    return getGroupContext(challengeId, userId, { challengeTeamRepo: this.deps.challengeTeamRepo });
   }
 
   /** Préconditions du bouton "Lancer l'évaluation" — partagées entre la route et l'UI (raison affichable). */
@@ -125,7 +143,15 @@ export class CodeRewardsService {
     }
     if (!parseCodeRewardRules(challenge.reward_rules)) return { ok: false, reason: "no_rules" };
 
-    const participation = await this.deps.challengeTeamRepo.findByChallengeAndUser(challengeId, userId);
+    // La participation de l'appelant décide s'il a le droit de lancer ;
+    // celle du porteur porte le workspace à évaluer. Les deux coïncident en solo.
+    const callerParticipation = await this.deps.challengeTeamRepo.findByChallengeAndUser(challengeId, userId);
+    if (!callerParticipation) return { ok: false, reason: "not_participant" };
+
+    const { ownerId } = await this.loadGroup(challengeId, userId);
+    const participation = ownerId === userId
+      ? callerParticipation
+      : await this.deps.challengeTeamRepo.findByChallengeAndUser(challengeId, ownerId);
     if (!participation) return { ok: false, reason: "not_participant" };
 
     const workspaceReady =
@@ -134,11 +160,11 @@ export class CodeRewardsService {
         : participation.workspace_status === "ready";
     if (!workspaceReady) return { ok: false, reason: "workspace_not_ready" };
 
-    const tasks = await this.deps.taskRepo.findPersonalTasks(challengeId, userId);
+    const tasks = await this.deps.taskRepo.findPersonalTasks(challengeId, ownerId);
     if (tasks.length === 0) return { ok: false, reason: "no_tasks" };
     if (tasks.some(t => t.status !== "done")) return { ok: false, reason: "tasks_not_done" };
 
-    const contribution = await this.findContribution(challengeId, userId);
+    const contribution = await this.findContribution(challengeId, ownerId);
     if (contribution?.evaluation_status === "running") return { ok: false, reason: "already_running" };
 
     return { ok: true };
@@ -162,11 +188,16 @@ export class CodeRewardsService {
       return;
     }
 
-    const participation = await this.deps.challengeTeamRepo.findByChallengeAndUser(challengeId, userId);
+    // Un membre de groupe déclenche l'évaluation du workspace du porteur : un
+    // groupe a un board, une branche et une contribution, pas un par membre.
+    const group = await this.loadGroup(challengeId, userId);
+    const { ownerId } = group;
+
+    const participation = await this.deps.challengeTeamRepo.findByChallengeAndUser(challengeId, ownerId);
     if (!participation) return;
     const target = await this.resolveTarget(challenge, participation);
     if (!target) {
-      console.warn(`[CodeRewardsService] No resolvable workspace for ${userId} on ${challengeId}`);
+      console.warn(`[CodeRewardsService] No resolvable workspace for ${ownerId} on ${challengeId}`);
       return;
     }
 
@@ -174,9 +205,9 @@ export class CodeRewardsService {
     // juste avant l'upsert (et non seulement dans canEvaluate) pour fermer la
     // fenêtre où deux appels concurrents du même utilisateur passeraient tous
     // les deux la précondition avant que l'un des deux ne pose "running".
-    let contribution = await this.findContribution(challengeId, userId);
+    let contribution = await this.findContribution(challengeId, ownerId);
     if (contribution?.evaluation_status === "running") {
-      console.log(`[CodeRewardsService] Evaluation already running for ${userId} on ${challengeId} — skipping`);
+      console.log(`[CodeRewardsService] Evaluation already running for ${ownerId} on ${challengeId} — skipping`);
       return;
     }
     if (contribution) {
@@ -191,7 +222,7 @@ export class CodeRewardsService {
         type: PROJECT_CONTRIBUTION_TYPE,
         description: `Global delivery for "${challenge.title}"`,
         reward: 0,
-        user_id: userId,
+        user_id: ownerId,
         challenge_id: challengeId,
         artifact_url: participation.workspace_url,
         evaluation_status: "running",
@@ -210,7 +241,7 @@ export class CodeRewardsService {
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation });
 
       const [existingEntries, distributed] = await Promise.all([
-        this.deps.rewardRepo.findByUserAndChallenge(userId, challengeId),
+        this.deps.rewardRepo.findByUserAndChallenge(ownerId, challengeId),
         this.deps.rewardRepo.sumByChallenge(challengeId, { excludeRuleKeys: ["slack_signal"] }),
       ]);
       const sumFor = (key: string) =>
@@ -219,15 +250,17 @@ export class CodeRewardsService {
       const drafts = computeCodeAward({
         rules,
         challengeId,
-        userId,
+        userId: ownerId,
         contributionId: contribution.uuid,
         score: score10,
         alreadyAwarded: { code_fixed: sumFor("code_fixed"), code_quality: sumFor("code_quality") },
         remainingPool: Math.max(0, challenge.contribution_points_reward - distributed),
+        groupMultiplier: group.multiplier,
       });
 
       if (drafts.length > 0) {
         await this.deps.rewardRepo.createManyAndSyncRewards(drafts);
+        await this.recordGroupShares(group, contribution.uuid, drafts);
       }
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation_status: "done" });
 
@@ -239,11 +272,39 @@ export class CodeRewardsService {
       await this.deps.challengeRepo.update(challenge.uuid, { completion });
 
       const net = drafts.reduce((s, d) => s + d.points, 0);
-      console.log(`[CodeRewardsService] ${net} CP to ${userId} (score ${score10}/10, ${drafts.length} ledger rows)`);
+      const who = group.groupId ? `group ${group.groupId} (${group.memberIds.length})` : ownerId;
+      console.log(`[CodeRewardsService] ${net} CP to ${who} (score ${score10}/10, ${drafts.length} ledger rows)`);
     } catch (error) {
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation_status: "failed" });
       throw error;
     }
+  }
+
+  /**
+   * Répartit le delta de CP de ce run entre les membres du groupe.
+   *
+   * On répartit le **delta**, pas le total de la contribution : le ledger est
+   * append-only et `share_cp` s'additionne (voir ContributionMemberRepository).
+   * Un membre arrivé après un premier run n'a donc de part que sur ce qui a
+   * suivi son arrivée, sans qu'on ait à figer quoi que ce soit.
+   *
+   * Rien n'est écrit pour un solo : l'absence de rows signifie "tout revient à
+   * `contributions.user_id`", ce qui laisse le comportement historique intact.
+   */
+  private async recordGroupShares(
+    group: GroupContext,
+    contributionId: string,
+    drafts: Array<{ points: number }>
+  ): Promise<void> {
+    if (group.memberIds.length <= 1) return;
+
+    const delta = drafts.reduce((sum, d) => sum + d.points, 0);
+    if (delta === 0) return; // pas de rows à 0 : elles ne diraient rien
+
+    const shares = splitShares(delta, group.memberIds, group.ownerId);
+    await this.deps.contributionMemberRepo.addShares(
+      [...shares].map(([user_id, share_cp]) => ({ contribution_id: contributionId, user_id, share_cp }))
+    );
   }
 
   private async findContribution(challengeId: string, userId: string): Promise<Contribution | undefined> {

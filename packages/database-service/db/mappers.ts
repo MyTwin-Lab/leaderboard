@@ -12,6 +12,7 @@ import {
   challenge_teams,
   users,
   contributions,
+  contribution_members,
   refresh_tokens,
   tasks,
   evaluation_runs,
@@ -33,6 +34,7 @@ import {
   validation_reference_cases,
   validation_case_claims,
   compute_requests,
+  digests,
 } from "./drizzle.js";
 import { parseMlRewardRules } from "../domain/mlRewardRules.js";
 import { parseCodeRewardRules } from "../domain/codeRewardRules.js";
@@ -53,6 +55,7 @@ import type {
   ComputeRequest,
   User,
   Contribution,
+  ContributionMember,
   RefreshToken,
   Task,
   WorkspaceStatus,
@@ -78,6 +81,9 @@ import type {
   RewardEntry,
   RewardEntryMeta,
   RewardRuleKey,
+  Digest,
+  DigestPayload,
+  DigestTriggerSource,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -88,6 +94,7 @@ type DbChallengeRepo = InferSelectModel<typeof challenge_repos>;
 type DbChallengeTeam = InferSelectModel<typeof challenge_teams>;
 type DbUser = InferSelectModel<typeof users>;
 type DbContribution = InferSelectModel<typeof contributions>;
+type DbContributionMember = InferSelectModel<typeof contribution_members>;
 type DbRewardEntry = InferSelectModel<typeof reward_entries>;
 type DbRefreshToken = InferSelectModel<typeof refresh_tokens>;
 type DbTask = InferSelectModel<typeof tasks>;
@@ -96,6 +103,7 @@ type DbEvaluationRunContribution = InferSelectModel<typeof evaluation_run_contri
 type DbEvaluationGrid = InferSelectModel<typeof evaluation_grids>;
 type DbEvaluationGridCategory = InferSelectModel<typeof evaluation_grid_categories>;
 type DbEvaluationGridSubcriterion = InferSelectModel<typeof evaluation_grid_subcriteria>;
+type DbDigest = InferSelectModel<typeof digests>;
 
 /* ============================================================
  *  MAPPERS DB → DOMAIN
@@ -141,6 +149,8 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     cp_per_validation: row.cp_per_validation ?? null,
     required_validations: row.required_validations ?? null,
     compute_enabled: row.compute_enabled ?? false,
+    created_at: new Date(row.created_at),
+    closed_at: row.closed_at ? new Date(row.closed_at) : null,
   };
 }
 
@@ -165,6 +175,15 @@ export function toDomainChallengeTeam(row: DbChallengeTeam): ChallengeTeam {
     workspace_ref: row.workspace_ref ?? undefined,
     workspace_url: row.workspace_url ?? undefined,
     workspace_status: (row.workspace_status as WorkspaceStatus) ?? undefined,
+    group_id: row.group_id ?? undefined,
+  };
+}
+
+export function toDomainContributionMember(row: DbContributionMember): ContributionMember {
+  return {
+    contribution_id: row.contribution_id,
+    user_id: row.user_id,
+    share_cp: row.share_cp,
   };
 }
 
@@ -198,6 +217,7 @@ export function toDomainContribution(row: DbContribution): Contribution {
     live_endpoint_url: row.live_endpoint_url ?? undefined,
     evaluation_status: (row.evaluation_status as ContributionEvaluationStatus) ?? undefined,
     submitted_at: new Date(row.submitted_at),
+    created_at: new Date(row.created_at),
   };
 }
 
@@ -236,7 +256,7 @@ export function toDbRepo(entity: Omit<Repo, "uuid">): typeof repos.$inferInsert 
   };
 }
 
-export function toDbChallenge(entity: Omit<Challenge, "uuid">): typeof challenges.$inferInsert {
+export function toDbChallenge(entity: Omit<Challenge, "uuid" | "created_at">): typeof challenges.$inferInsert {
   return {
     // index est auto-généré par PostgreSQL (serial)
     title: entity.title,
@@ -269,7 +289,7 @@ export function toDbUser(entity: Omit<User, "uuid" | "created_at">): typeof user
   };
 }
 
-export function toDbContribution(entity: Omit<Contribution, "uuid">): typeof contributions.$inferInsert {
+export function toDbContribution(entity: Omit<Contribution, "uuid" | "created_at">): typeof contributions.$inferInsert {
   return {
     title: entity.title,
     type: entity.type,
@@ -882,5 +902,20 @@ export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>):
     scaleway_connected_by: row.scaleway_connected_by ?? null,
     scaleway_is_connected: !!row.scaleway_secret_key_enc && !row.scaleway_disconnect_requested_at,
     scaleway_disconnect_requested_at: row.scaleway_disconnect_requested_at ?? null,
+    digest_enabled: row.digest_enabled ?? false,
+    digest_frequency_days: row.digest_frequency_days ?? 7,
+  };
+}
+
+export function toDomainDigest(row: DbDigest): Digest {
+  return {
+    uuid: row.uuid,
+    period_start: new Date(row.period_start),
+    period_end: new Date(row.period_end),
+    generated_at: new Date(row.generated_at),
+    trigger_source: row.trigger_source as DigestTriggerSource,
+    // Le payload est stocké tel qu'il a été écrit et n'est jamais migré : un
+    // digest ancien garde la forme qu'il avait, d'où `version` à l'intérieur.
+    payload: row.payload as DigestPayload,
   };
 }

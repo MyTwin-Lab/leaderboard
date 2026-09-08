@@ -1,6 +1,6 @@
 import { config } from "../../config/index.js";
 import "dotenv/config";
-import { pgTable, text, varchar, timestamp, uuid, integer, json, date, serial, real, index, uniqueIndex, boolean, customType } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, uuid, integer, json, jsonb, date, serial, real, index, uniqueIndex, boolean, customType, primaryKey } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -67,6 +67,15 @@ export const challenges = pgTable("challenges", {
   // 'provided_repo' = repo GitHub du challenge, branche perso par contributeur
   // 'own_repo'      = chaque contributeur fournit l'URL de son propre repo
   workspace_mode: varchar("workspace_mode", { length: 20 }).default("provided_repo"),
+  // Date de création réelle du challenge. `start_date` est une date métier,
+  // optionnelle et éditable — elle ne peut pas servir de date de création.
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  // Date de bascule vers 'completed'. Posée par ChallengeRepository.update(),
+  // seul point de passage des deux chemins de fermeture (/close et le PUT du
+  // drawer). Réécrite si le challenge est rouvert puis refermé : l'événement
+  // qui intéresse le digest est la dernière fermeture, pas la première.
+  // 'archived' ne la pose pas — archiver retire des listings, ça ne termine pas.
+  closed_at: timestamp("closed_at"),
 }, (table) => ({
   projectIdIdx: index("idx_challenges_project_id").on(table.project_id),
   statusIdx: index("idx_challenges_status").on(table.status),
@@ -103,10 +112,16 @@ export const challenge_teams = pgTable("challenge_teams", {
   workspace_ref: varchar("workspace_ref", { length: 200 }),          // ex: refs/heads/contrib/015-alice
   workspace_url: text("workspace_url"),
   workspace_status: varchar("workspace_status", { length: 20 }),     // pending | ready | failed
+  // NULL = participation solo. Deux rows du même challenge partageant un
+  // group_id forment un groupe : elles se partagent le workspace porté par
+  // celle du créateur. Voir services/challenge/group.ts.
+  group_id: uuid("group_id"),
 }, (table) => ({
   challengeIdIdx: index("idx_challenge_teams_challenge_id").on(table.challenge_id),
   userIdIdx: index("idx_challenge_teams_user_id").on(table.user_id),
   compositeIdx: index("idx_challenge_teams_composite").on(table.challenge_id, table.user_id),
+  groupIdx: index("idx_challenge_teams_group").on(table.challenge_id, table.group_id),
+  uniqueMembership: uniqueIndex("idx_challenge_teams_unique").on(table.challenge_id, table.user_id),
 }));
 
 // --- USERS ---
@@ -149,6 +164,10 @@ export const contributions = pgTable("contributions", {
   // pending | running | done | failed | skipped_reuse
   evaluation_status: varchar("evaluation_status", { length: 20 }),
   submitted_at: timestamp("submitted_at").defaultNow().notNull(),
+  // Date de création, distincte de submitted_at qui vaut "dernière soumission"
+  // (code-rewards.service.ts la réécrit à chaque ré-évaluation) et qui sert
+  // par ailleurs à l'antériorité de réutilisation dans lineage.ts.
+  created_at: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   challengeIdIdx: index("idx_contributions_challenge_id").on(table.challenge_id),
   userIdIdx: index("idx_contributions_user_id").on(table.user_id),
@@ -175,6 +194,24 @@ export const reward_entries = pgTable("reward_entries", {
   challengeIdIdx: index("idx_reward_entries_challenge_id").on(table.challenge_id),
   userIdIdx: index("idx_reward_entries_user_id").on(table.user_id),
   contributionIdIdx: index("idx_reward_entries_contribution_id").on(table.contribution_id),
+}));
+
+// --- CONTRIBUTION_MEMBERS ---
+// Parts de CP des membres d'un groupe sur une contribution.
+//
+// Aucune row pour une contribution solo : l'absence de membres signifie "tout
+// le reward revient à contributions.user_id". `share_cp` est cumulatif — le
+// scoring des challenges code est itératif, chaque run ajoute son delta à la
+// part existante. L'invariant Σ share_cp = contributions.reward tient donc en
+// permanence, et c'est lui que lit le leaderboard.
+export const contribution_members = pgTable("contribution_members", {
+  contribution_id: uuid("contribution_id").notNull().references(() => contributions.uuid, { onDelete: "cascade" }),
+  user_id: uuid("user_id").notNull().references(() => users.uuid, { onDelete: "cascade" }),
+  share_cp: integer("share_cp").default(0).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.contribution_id, table.user_id], name: "contribution_members_pk" }),
+  // La PK ne couvre pas le sens user → contributions, que lit le leaderboard.
+  userIdIdx: index("idx_contribution_members_user_id").on(table.user_id),
 }));
 
 // --- VALIDATION_TARGETS ---
@@ -624,6 +661,17 @@ export const challengeTeamsRelations = relations(challenge_teams, ({ one }) => (
   }),
 }));
 
+export const contributionMembersRelations = relations(contribution_members, ({ one }) => ({
+  contribution: one(contributions, {
+    fields: [contribution_members.contribution_id],
+    references: [contributions.uuid],
+  }),
+  user: one(users, {
+    fields: [contribution_members.user_id],
+    references: [users.uuid],
+  }),
+}));
+
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
   challenge: one(challenges, {
     fields: [tasks.challenge_id],
@@ -722,7 +770,36 @@ export const app_settings = pgTable("app_settings", {
   scaleway_connected_at: timestamp("scaleway_connected_at"),
   scaleway_connected_by: uuid("scaleway_connected_by").references(() => users.uuid),
   scaleway_disconnect_requested_at: timestamp("scaleway_disconnect_requested_at"),
+  // Digest — voir docs/input/spec-digest.md. Désactivé par défaut : une feature
+  // d'admin ne s'active pas seule sur les instances existantes.
+  digest_enabled: boolean("digest_enabled").notNull().default(false),
+  digest_frequency_days: integer("digest_frequency_days").notNull().default(7),
 });
+
+// --- DIGESTS ---
+// Snapshot périodique et immuable de l'activité de la plateforme.
+//
+// La table est son propre curseur : period_start vaut toujours le period_end de
+// la row précédente, donc deux digests consécutifs ne peuvent ni laisser de
+// trou ni se recouvrir, et aucun champ "dernière génération" n'est nécessaire
+// dans app_settings.
+//
+// Le payload est dénormalisé (noms, titres, montants tels qu'ils étaient) et
+// n'est jamais régénéré : une contribution supprimée, un cache de reward
+// reconstruit par db-resync-rewards au déploiement ou un compte fusionné ne
+// doivent pas rendre un digest passé faux ou illisible.
+export const digests = pgTable("digests", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  period_start: timestamp("period_start").notNull(),
+  period_end: timestamp("period_end").notNull(),
+  generated_at: timestamp("generated_at").defaultNow().notNull(),
+  // 'cron' | 'manual'. Nommé trigger_source et non trigger : le mot est libre
+  // en Postgres mais ambigu, et evaluation_runs porte déjà un "trigger type".
+  trigger_source: varchar("trigger_source", { length: 10 }).notNull(),
+  payload: jsonb("payload").notNull(),
+}, (table) => ({
+  periodEndIdx: index("idx_digests_period_end").on(table.period_end),
+}));
 
 // --- SYNC MEETINGS ---
 export const sync_meetings = pgTable("sync_meetings", {
@@ -821,6 +898,22 @@ export const onboardingProgressRelations = relations(onboarding_progress, ({ one
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL!,
+  // Toutes les colonnes de dates sont des `timestamp` sans fuseau, et elles
+  // sont alimentées par deux chemins : `defaultNow()` exécute now() côté
+  // serveur, tandis qu'une valeur passée par Drizzle est sérialisée en ISO,
+  // donc en UTC. Sur un serveur en Europe/Paris, la même seconde s'écrit
+  // 14:12 par le premier chemin et 12:12 par le second — et rien ne rattrape
+  // l'écart, puisque Postgres compare alors deux nombres nus.
+  //
+  // Personne ne s'en apercevait tant qu'aucun code ne comparait les deux
+  // familles entre elles. Le digest le fait (created_at rempli par le serveur
+  // contre des bornes de fenêtre venues de JS) et rejetait tout ce qui datait
+  // des deux dernières heures.
+  //
+  // Forcer la session en UTC aligne now() sur ce qu'écrit Drizzle. Les lignes
+  // déjà écrites en heure locale gardent leur avance : c'est de l'historique,
+  // et le reconvertir demanderait de savoir colonne par colonne qui l'a écrite.
+  options: "-c timezone=UTC",
 });
 
 export const db = drizzle(pool, {
@@ -832,6 +925,7 @@ export const db = drizzle(pool, {
     challenge_teams,
     users,
     contributions,
+    contribution_members,
     tasks,
     refresh_tokens,
     evaluation_runs,
@@ -855,6 +949,7 @@ export const db = drizzle(pool, {
     challengeTeamsRelations,
     usersRelations,
     contributionsRelations,
+    contributionMembersRelations,
     tasksRelations,
     refreshTokensRelations,
     evaluationGridsRelations,
@@ -866,5 +961,6 @@ export const db = drizzle(pool, {
     onboardingProgressRelations,
     app_settings,
     compute_requests,
+    digests,
   },
 });

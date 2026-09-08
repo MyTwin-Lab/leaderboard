@@ -10,6 +10,7 @@ MyTwin Leaderboard is an internal platform for **MyTwin Lab** that tracks contri
 4. **Shows the leaderboard** — the UI renders rankings, challenge progress, and individual contributor profiles.
 5. **Manages sync meetings** — meetings are created directly from the app in Google Workspace, then AI analyzes the recorded content to extract summaries, decisions, and contribution signals.
 6. **Onboards new contributors** — a guided mission flow helps new contributors take their first steps (pick a task, evaluate it, validate it).
+7. **Records what happened** — a periodic digest freezes each period's activity (new contributions, challenges, contributors, and the CP actually distributed) into an immutable snapshot admins can browse.
 
 ## Core concepts
 
@@ -23,6 +24,10 @@ MyTwin Leaderboard is an internal platform for **MyTwin Lab** that tracks contri
 | **CP (Contribution Points)** | Reward currency distributed to contributors. Code challenges split a fixed pool proportionally at close; ML challenges award absolute points live per submission (see [`ml-rewards.md`](./ml-rewards.md)). |
 | **Sync Meeting** | A team meeting created from the app in Google Workspace, later analyzed by AI. |
 | **Onboarding** | A 5-quest sequence for new contributors to get started with the platform. |
+| **Brief** | A challenge's Markdown introduction (`brief.md`), shown before the workspace to a signed-in contributor who hasn't joined yet. |
+| **Reference case** | A ground-truth input/expected-output pair on a validation challenge, authored by a `medical_pro` and used to test a submitted API. |
+| **Compute request** | A contributor's request for a temporary GPU instance on an ML challenge, approved by a manager. |
+| **Digest** | An immutable snapshot of one period's platform activity, generated on a schedule and never rewritten — see [`digest.md`](./digest.md). |
 
 ## Tech stack
 
@@ -35,6 +40,8 @@ MyTwin Leaderboard is an internal platform for **MyTwin Lab** that tracks contri
 | **AI / Evaluation** | OpenAI API (Agents) |
 | **Google integrations** | Google Workspace (Calendar, Meet), Google Drive (OAuth2) |
 | **GitHub integration** | Octokit (commits, repos, branch provisioning, activity feed) — via a static token or an admin-connected OAuth account |
+| **Slack integration** | Slack Web API (channel history, user lookup) — for discussion contribution signals |
+| **GPU compute** | Scaleway Instances API — temporary JupyterLab GPU instances for ML challenges |
 | **Kaggle integration** | Kaggle API (dataset metadata, model version metrics) — for ML challenges |
 | **Observability** | OpenTelemetry → Grafana Cloud |
 | **Testing** | Vitest, Testing Library |
