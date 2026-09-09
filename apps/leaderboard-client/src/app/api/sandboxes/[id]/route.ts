@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   SandboxRepository,
   SandboxRewardRepository,
+  AppSettingsRepository,
   SandboxStarRepository,
   UserRepository,
 } from "../../../../../../../packages/database-service/repositories";
@@ -18,6 +19,7 @@ export const dynamic = "force-dynamic";
 const sandboxRepo = new SandboxRepository();
 const starRepo = new SandboxStarRepository();
 const rewardRepo = new SandboxRewardRepository();
+const appSettingsRepo = new AppSettingsRepository();
 const userRepo = new UserRepository();
 const sandboxService = new SandboxService();
 
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const identity = starIdentity(viewer);
-    const [author, starCount, paidMap, myStar, rewards] = await Promise.all([
+    const [author, starCount, paidMap, myStar, rewards, settings] = await Promise.all([
       userRepo.findById(sandbox.user_id),
       starRepo.countActive(id),
       rewardRepo.paidTierThresholdsBySandboxIds([id]),
@@ -58,6 +60,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       // Le ledger n'est chargé que pour qui a le droit de le lire — la vue
       // publique le laisserait tomber, mais autant ne pas payer la requête.
       canSeeScore(sandbox, viewer) ? rewardRepo.findBySandbox(id) : Promise.resolve(undefined),
+      // Les paliers et le bonus voyagent avec le détail : sans eux la page
+      // devrait charger le listing complet pour afficher deux réglages.
+      appSettingsRepo.get(),
     ]);
 
     return NextResponse.json({
@@ -70,6 +75,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         paidTierThresholds: paidMap.get(id) ?? [],
         rewards,
       }),
+      tiers: settings?.sandbox_star_tiers ?? [],
+      promotion_bonus_cp: settings?.sandbox_promotion_bonus_cp ?? 0,
     });
   } catch (error) {
     console.error("[sandbox] detail failed", error);

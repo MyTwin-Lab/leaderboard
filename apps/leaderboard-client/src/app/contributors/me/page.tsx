@@ -25,6 +25,7 @@ import { ModulesSettings } from "@/components/contributor/ModulesSettings";
 import { OnboardingProgressTable } from "@/components/contributor/OnboardingProgressTable";
 import { EvaluationGridsTab } from "@/components/contributor/evaluation-grids/EvaluationGridsTab";
 import { DigestTab } from "@/components/contributor/DigestTab";
+import { SandboxSettings } from "@/components/contributor/SandboxSettings";
 
 const appSettingsRepo = new AppSettingsRepository();
 const onboardingProgressRepo = new OnboardingProgressRepository();
@@ -172,6 +173,17 @@ export default async function ContributorSelfPage({
           <DigestTab
             enabled={settings.digest_enabled}
             frequencyDays={settings.digest_frequency_days}
+          />
+        </div>
+      ),
+    });
+    tabs.push({
+      label: "Sandbox",
+      panel: (
+        <div className="mx-auto max-w-lg py-2 lg:max-w-4xl">
+          <SandboxSettings
+            tiers={settings.sandbox_star_tiers ?? []}
+            promotionBonusCp={settings.sandbox_promotion_bonus_cp ?? 0}
           />
         </div>
       ),

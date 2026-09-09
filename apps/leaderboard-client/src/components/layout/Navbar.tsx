@@ -78,7 +78,7 @@ export const Navbar = ({ session }: NavbarProps) => {
   }, [mobileMenuOpen]);
 
   const navLinks = [
-    { name: "About", path: "/about" },
+    { name: "Sandbox", path: "/sandbox" },
     { name: "Leaderboard", path: "/leaderboard" },
     { name: "Challenges", path: "/challenges" },
   ];
