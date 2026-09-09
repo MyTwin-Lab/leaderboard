@@ -109,6 +109,16 @@ A related admin-only view, the **Onboarding** tab, lists every contributor's onb
 
 ---
 
+## Sandbox
+
+Two settings drive the whole sandbox economy, both **inert by default** — the feature pays nothing until an admin configures it.
+
+**Star tiers** — an ordered list of `{ stars, cp }` milestones, as many as wanted, with strictly increasing thresholds. Crossing one credits the sandbox author once, out of any pool. Lowering a threshold below a sandbox++s stars grouped by origin, hashed-IP prefix and day, with the ability to delete stars or a paid reward. Deleting a reward lowers the leaderboard total immediately, there being no cache. Note that if the count is still above a threshold after a cleanup, the milestone will be paid again on the next star.
+
+See [`sandbox.md`](./sandbox.md).
+
+---
+
 ## Key files
 
 | File | Purpose |

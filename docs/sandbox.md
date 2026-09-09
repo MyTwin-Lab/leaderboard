@@ -100,6 +100,8 @@ The admin defines an ordered list of milestones, as many as they want, plus a pr
 
 **One caveat for the UI.** `tierProgress` computes "all milestones reached · N CP paid" from the configured tiers, not from the ledger. If an admin has deleted a reward row after an abuse cleanup, that total is optimistic — the panel should sum the thresholds actually paid rather than trust the hint.
 
+---
+
 ## Stars, identities and abuse controls
 
 **Anyone can star, signed in or not.** This is what will later allow liking a sandbox straight from a newsletter email. Anonymous stars count and pay milestones exactly like account ones. The author cannot star their own sandbox.
@@ -148,3 +150,12 @@ What it costs: someone signed out on their own browser sees "not starred" on a s
 Since milestones are never reverted automatically, a fraudulent wave has to be undoable by hand: admin routes list a sandbox's stars grouped by origin, hashed IP and day, delete them by id, by hashed IP or by time window, and delete a reward row — which lowers the leaderboard total immediately, there being no cache.
 
 One thing to know: if the counter is still above a threshold after cleanup, the milestone will be **paid again on the next star**. The unique index prevents duplicates, not re-creation — and at that point the milestone is legitimate.
+---
+
+## API and visibility
+
+The listing and the detail pages are **public**. Creating, editing, evaluating, archiving and promoting all require an account — see the role table in [`auth.md`](./auth.md) and the routes in [`api.md`](./api.md).
+
+`/api/sandboxes/**` sits deliberately **outside the proxy matcher**, like `/api/admin/*`: its writes are open to anonymous visitors, which no proxy exception can express, so each handler authenticates itself. One consequence: no silent token refresh runs there, and an expired session would read as anonymous. The sandbox pages fetch `/api/contributors/me`, which *is* in the matcher, and that is what refreshes the session.
+
+`lib/public/sandbox.ts` is the single place where a field is added or withheld. The evaluation score goes to the author and admins only; an author is reduced to the three fields a card shows, never their email or GitHub handle; and no `ip_hash` or `anon_id` ever leaves the admin audit route, which itself only exposes a 12-character prefix of the hash.

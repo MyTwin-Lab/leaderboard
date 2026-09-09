@@ -64,6 +64,7 @@ The proxy at `apps/leaderboard-client/src/proxy.ts` (Next.js middleware, runs at
 | `/admin/**` | `admin` only |
 | `/contributors/me` | `admin`, `contributor`, `viewer`, `medical_pro` |
 | `/challenges/**` | `admin`, `contributor`, `viewer`, `medical_pro` |
+| `/sandbox/**` | Public — anyone can browse proposals and star them, signed in or not |
 | `/api/google-auth/**` | Public (OAuth flow) |
 | `/api/auth/refresh`, `/api/auth/logout` | Cookie (any authenticated user) |
 | `GET /api/**` (most) | Public or authenticated depending on route |
@@ -80,6 +81,10 @@ The write exceptions, as encoded in `proxy.ts`:
 | Own profile | `PATCH /api/contributors/me` |
 | Manager-accessible | `PUT`/`PATCH /api/challenges/:id`, `POST /api/challenges`, `POST`/`PUT /api/repos*`, any path containing `/documents` |
 | `medical_pro` validation | for that role only: paths containing `/validation-verdicts`, `/validation-targets`, `/validation-case-claims`, `/validation-reference-cases` |
+
+`/api/sandboxes/**` is deliberately **outside the matcher** — like `/api/admin/*` — because its writes are open to anonymous visitors, which no proxy exception can express. Every handler authenticates itself. One consequence to know: no silent token refresh runs on these routes, so an expired session reads as anonymous on a `GET`. The sandbox pages fetch `/api/contributors/me`, which *is* in the matcher, and that is what refreshes the session.
+
+The sign-in callback also attaches the stars a visitor left anonymously to their account, under a `try/catch` — a failed attachment never breaks a sign-in. See [`sandbox.md`](./sandbox.md).
 
 Each exception only gets the request *past the proxy* — the route handler still runs its own check (ownership, project-manager status, role). The proxy is a coarse filter, not the authorization.
 
