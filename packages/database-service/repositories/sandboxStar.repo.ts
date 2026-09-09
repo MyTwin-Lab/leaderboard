@@ -6,40 +6,18 @@ import type { SandboxStar } from "../domain/entities";
 /**
  * Décision de rattachement d'une identité anonyme à un compte.
  *
- * Rendue injectable plutôt qu'écrite en dur dans la transaction : le palier 2
- * apporte `planAnonAttach` (`packages/services/sandbox/starAttach.ts`), fonction
- * pure et testable isolément, et le branchera ici sans toucher à la
- * transaction. `defaultAnonAttachPlan` ci-dessous en est l'implémentation
- * provisoire, à supprimer à ce moment-là.
+ * Paramètre plutôt que règle écrite en dur dans la transaction : la décision
+ * est une fonction pure, testable isolément, et elle vit dans la couche
+ * service — `planAnonAttach` (`packages/services/sandbox/starAttach.ts`), que
+ * `SandboxService.attachAnonStars` passe ici. Le repository ne fournit aucun
+ * défaut : il ne peut pas importer la couche service sans inverser les
+ * dépendances, et un défaut maison serait une seconde règle à maintenir.
  */
 export type AnonAttachPlanner = (
   anonRows: SandboxStar[],
   accountRows: SandboxStar[],
   ownedSandboxIds: string[]
 ) => { toDelete: string[]; toAttach: string[] };
-
-/**
- * PROVISOIRE — remplacé par `planAnonAttach` au palier 2.
- *
- * Deux cas de suppression, et un seul de migration :
- *   - le compte a déjà staré ce sandbox → la ligne anonyme est superflue ;
- *   - le sandbox appartient au compte → on ne star pas le sien.
- * Les lignes soft-removed sont migrées comme les autres : la trace d'audit
- * suit la personne, et une re-star ultérieure réactivera cette ligne au lieu
- * d'en créer une seconde.
- */
-const defaultAnonAttachPlan: AnonAttachPlanner = (anonRows, accountRows, ownedSandboxIds) => {
-  const alreadyStarred = new Set(accountRows.map((row) => row.sandbox_id));
-  const owned = new Set(ownedSandboxIds);
-  const toDelete: string[] = [];
-  const toAttach: string[] = [];
-
-  for (const row of anonRows) {
-    if (alreadyStarred.has(row.sandbox_id) || owned.has(row.sandbox_id)) toDelete.push(row.uuid);
-    else toAttach.push(row.uuid);
-  }
-  return { toDelete, toAttach };
-};
 
 /**
  * SandboxStarRepository
@@ -83,7 +61,13 @@ export class SandboxStarRepository {
         // Le prédicat de l'index partiel, obligatoire pour que Postgres puisse
         // l'inférer comme arbitre du conflit.
         targetWhere: sql`user_id IS NOT NULL`,
-        set: { removed_at: null, ip_hash: entry.ip_hash ?? null },
+        // COALESCE et non écrasement : une re-star sans haché (purge RGPD déjà
+        // passée, en-tête absent) ne doit pas effacer le haché d'audit de la
+        // ligne. Seule la purge des 30 jours a vocation à le remettre à NULL.
+        set: {
+          removed_at: null,
+          ip_hash: sql`COALESCE(excluded.ip_hash, ${sandbox_stars.ip_hash})`,
+        },
       })
       .returning();
     return toDomainSandboxStar(row);
@@ -106,7 +90,13 @@ export class SandboxStarRepository {
       .onConflictDoUpdate({
         target: [sandbox_stars.sandbox_id, sandbox_stars.anon_id],
         targetWhere: sql`user_id IS NULL`,
-        set: { removed_at: null, ip_hash: entry.ip_hash ?? null },
+        // COALESCE et non écrasement : une re-star sans haché (purge RGPD déjà
+        // passée, en-tête absent) ne doit pas effacer le haché d'audit de la
+        // ligne. Seule la purge des 30 jours a vocation à le remettre à NULL.
+        set: {
+          removed_at: null,
+          ip_hash: sql`COALESCE(excluded.ip_hash, ${sandbox_stars.ip_hash})`,
+        },
       })
       .returning();
     return toDomainSandboxStar(row);
@@ -185,15 +175,29 @@ export class SandboxStarRepository {
   }
 
   /**
-   * Volume de stars créées derrière une IP depuis `since`. Compte les lignes
-   * retirées elles aussi : sans ça, unstarer suffirait à remettre le compteur
-   * de débit à zéro.
+   * Volume de stars créées **anonymement** derrière une IP depuis `since`.
+   *
+   * Compte les lignes retirées elles aussi : sans ça, unstarer suffirait à
+   * remettre le compteur de débit à zéro.
+   *
+   * Ne compte en revanche que `origin = 'anonymous'`, alors que le haché est
+   * stocké pour toutes les stars (audit). Le plafond ne s'applique qu'aux
+   * anonymes ; l'appliquer à un compteur qui inclut les stars de comptes
+   * laisserait un contributeur connecté très actif consommer le quota des
+   * visiteurs anonymes de son campus. `origin` est figé à la création, donc
+   * une star anonyme rattachée depuis continue de compter comme telle.
    */
   async countCreatedByIpSince(ipHash: string, since: Date): Promise<number> {
     const [row] = await db
       .select({ value: count() })
       .from(sandbox_stars)
-      .where(and(eq(sandbox_stars.ip_hash, ipHash), gte(sandbox_stars.created_at, since)));
+      .where(
+        and(
+          eq(sandbox_stars.ip_hash, ipHash),
+          eq(sandbox_stars.origin, "anonymous"),
+          gte(sandbox_stars.created_at, since)
+        )
+      );
     return row?.value ?? 0;
   }
 
@@ -214,7 +218,7 @@ export class SandboxStarRepository {
   async attachAnonToUser(
     anonId: string,
     userId: string,
-    plan: AnonAttachPlanner = defaultAnonAttachPlan
+    plan: AnonAttachPlanner
   ): Promise<{ deleted: number; attached: number }> {
     return db.transaction(async (tx) => {
       const anonRows = (
