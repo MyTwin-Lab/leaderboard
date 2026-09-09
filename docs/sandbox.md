@@ -79,6 +79,27 @@ Two columns on the singleton `app_settings` row, both inert by default so the fe
 
 ---
 
+## Star tiers economy
+
+Stars are not decoration — they are the platform's demand signal, and crossing a milestone credits the author.
+
+The admin defines an ordered list of milestones, as many as they want, plus a promotion bonus:
+
+```json
+{ "tiers": [ { "stars": 5, "cp": 50 }, { "stars": 15, "cp": 100 }, { "stars": 50, "cp": 300 } ],
+  "promotion_bonus_cp": 200 }
+```
+
+**Tiers, not a per-star rate.** Paying per star would make farming linear and worthwhile; a milestone crossed once is worth a fixed amount and nothing more.
+
+**Paid once, never taken back.** Each crossed threshold writes one `sandbox_rewards` row, out of any pool. Unstarring reverses nothing: the count goes down, paid milestones stay paid. This is what makes star/unstar cycles pointless.
+
+**Concurrency.** Two stars crossing the same threshold at the same moment both see the count as sufficient. What resolves them is not a lock but the partial unique index: each call reads the count after its own insert, then `insertTierIfAbsent` returns `null` when the row already exists. Exactly one payment per `(sandbox, threshold)`, whatever the interleaving.
+
+**Reconfiguration.** Lowering a threshold below a sandbox's current count does not pay it retroactively — it is paid on the next star. Deliberate: saving a settings form should never trigger a wave of payments.
+
+**One caveat for the UI.** `tierProgress` computes "all milestones reached · N CP paid" from the configured tiers, not from the ledger. If an admin has deleted a reward row after an abuse cleanup, that total is optimistic — the panel should sum the thresholds actually paid rather than trust the hint.
+
 ## Stars, identities and abuse controls
 
 **Anyone can star, signed in or not.** This is what will later allow liking a sandbox straight from a newsletter email. Anonymous stars count and pay milestones exactly like account ones. The author cannot star their own sandbox.
