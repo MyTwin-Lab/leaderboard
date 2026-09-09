@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { fetchJson } from "@/lib/fetchJson";
 import type { SandboxView } from "@/lib/public/sandbox";
 import type { SandboxStarTier } from "../../../../../../packages/database-service/domain/entities";
+import { CreateChallengeDrawer } from "@/components/admin/CreateChallengeDrawer";
 import { CreateSandboxModal } from "@/components/sandbox/CreateSandboxModal";
 import { SandboxDetail } from "@/components/sandbox/SandboxDetail";
 import type { StarState } from "@/components/sandbox/StarButton";
@@ -52,10 +53,12 @@ function Skeleton() {
  */
 export default function SandboxDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const sandboxId = params.id as string;
 
   const [editOpen, setEditOpen] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -86,6 +89,16 @@ export default function SandboxDetailPage() {
 
   const me = meQuery.data?.user ?? null;
   const sandbox = sandboxQuery.data?.sandbox ?? null;
+  const isAdmin = me?.role === "admin";
+
+  // Le tiroir de promotion a besoin de la liste des projets : un sandbox n'en a
+  // pas, c'est l'admin qui rattache le challenge. Chargée pour lui seul.
+  const projectsQuery = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => fetchJson("/api/projects") as Promise<{ uuid: string; title: string }[]>,
+    enabled: isAdmin,
+    staleTime: 5 * 60_000,
+  });
 
   const applyStarState = (state: StarState) => {
     queryClient.setQueryData<SandboxDetailResponse>(["sandbox", sandboxId], (current) =>
@@ -164,8 +177,9 @@ export default function SandboxDetailPage() {
         tiers={sandboxQuery.data?.tiers ?? []}
         promotionBonusCp={sandboxQuery.data?.promotion_bonus_cp ?? 0}
         currentUserId={me?.id ?? null}
-        isAdmin={me?.role === "admin"}
+        isAdmin={isAdmin}
         onEdit={() => setEditOpen(true)}
+        onPromote={() => setPromoteOpen(true)}
         onArchive={archive}
         archiving={archiving}
         onStarState={applyStarState}
@@ -181,6 +195,32 @@ export default function SandboxDetailPage() {
         sandbox={sandbox}
         onSaved={onSaved}
       />
+
+      {/* Même raison : le tiroir est `fixed`, il doit vivre hors du sous-arbre
+          animé. Monté inconditionnellement — il glisse depuis `open`, donc
+          conditionner le montage le rendrait déjà en place, sans animation. */}
+      {isAdmin && (
+        <CreateChallengeDrawer
+          open={promoteOpen}
+          onClose={() => setPromoteOpen(false)}
+          projects={(projectsQuery.data ?? []).map((p) => ({ id: p.uuid, name: p.title }))}
+          promotion={{
+            uuid: sandbox.uuid,
+            title: sandbox.title,
+            type: sandbox.type,
+            context: sandbox.context,
+            goals: sandbox.goals,
+            why: sandbox.why,
+          }}
+          onCreated={(challengeId) => {
+            // La proposition est désormais `promoted` : laisser son détail et
+            // le listing en cache afficherait encore « Open » et le bouton.
+            void queryClient.invalidateQueries({ queryKey: ["sandbox", sandboxId] });
+            void queryClient.invalidateQueries({ queryKey: ["sandboxes"] });
+            router.push(`/challenges/${challengeId}`);
+          }}
+        />
+      )}
     </div>
   );
 }

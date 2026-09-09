@@ -1,6 +1,6 @@
 import { OpenAIAgentEvaluator } from "../../evaluator/evaluator.js";
 import { EvaluationGridRegistry } from "../../evaluator/grids/index.js";
-import { computeMlAward, type MlAwardRule, type MlLineage } from "../../evaluator/ml-reward.js";
+import { computeMlAward, type MlLineage } from "../../evaluator/ml-reward.js";
 import type { EvaluateContext, SnapshotInfo } from "../../evaluator/types.js";
 import {
   ChallengeRepository,
@@ -24,21 +24,11 @@ import { SnapshotService } from "./snapshot.service.js";
 import { DatabaseGridProvider } from "../database-grid-provider.js";
 import { extractArtifactRef, normalizeArtifactUrl } from "./artifactUrl.js";
 import { resolveLineage } from "./lineage.js";
+import { ML_ROLE_RULE } from "./mlRoles.js";
 
-/** Rôle → règle de reward et grille d'évaluation. */
-const ROLE_RULE: Record<ChallengeRepoRole, {
-  rule: MlAwardRule;
-  contributionType: string;
-  /** Slug de grille, ou null quand la règle ne passe pas par l'agent. */
-  grid: string | null;
-}> = {
-  dataset:    { rule: 'dataset',       contributionType: 'dataset',       grid: 'dataset' },
-  // Le modèle Kaggle n'est pas noté par un agent : sa moitié de reward est
-  // pilotée par la métrique lue dans la model card.
-  model:      { rule: 'model_metric',  contributionType: 'model',         grid: null      },
-  model_code: { rule: 'model_code',    contributionType: 'model',         grid: 'code'    },
-  api:        { rule: 'api_packaging', contributionType: 'api_packaging', grid: 'code'    },
-};
+// La table des rôles vit dans `mlRoles.ts` : la promotion d'un sandbox la lit
+// sans avoir à charger l'évaluateur et les connecteurs importés ici.
+export { ML_ROLE_RULE } from "./mlRoles.js";
 
 export interface MlSubmissionEvent {
   challengeId: string;
@@ -141,7 +131,7 @@ export class MlRewardsService {
     const group = await this.loadGroup(challengeId, userId);
     const { ownerId } = group;
 
-    const config = ROLE_RULE[challengeRepo.role];
+    const config = ML_ROLE_RULE[challengeRepo.role];
     const contribution = await this.findContribution(challengeId, ownerId, config.contributionType);
     if (!contribution) {
       console.warn(`[MlRewardsService] No ${config.contributionType} contribution for user ${ownerId}`);

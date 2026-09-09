@@ -9,6 +9,7 @@ import {
 } from '../../../../../../../../packages/database-service/repositories';
 import type { ChallengeRepoRole } from '../../../../../../../../packages/database-service/domain/entities';
 import { parseMlRewardRules } from '../../../../../../../../packages/database-service/domain/mlRewardRules';
+import { ML_ROLE_RULE } from '../../../../../../../../packages/services/challenge/mlRoles';
 import { normalizeArtifactUrl } from '../../../../../../../../packages/services/challenge/artifactUrl';
 import { resolveWorkspaceOwner } from '../../../../../../../../packages/services/challenge/group';
 import { jwtVerify } from 'jose';
@@ -17,23 +18,17 @@ import { jwtVerify } from 'jose';
 const BLOCKABLE_ROLES: ChallengeRepoRole[] = ['dataset', 'model', 'model_code'];
 
 /**
- * Rôle du repo → contribution qu'il alimente.
+ * Rôle du repo → contribution qu'il alimente : `ML_ROLE_RULE`, la table
+ * partagée du flux ML.
  *
  * L'étape modèle a deux repos (Kaggle + GitHub) mais une seule contribution :
  * les deux notes s'additionnent sur la même ligne, jusqu'à `model.cap`.
- * `isArtifact` désigne l'URL qui identifie l'étape — c'est elle qui sert à
- * détecter la réutilisation, donc le code du modèle n'en est pas une.
+ *
+ * La table vit dans `packages/services/challenge/mlRoles.ts` parce que la
+ * promotion d'un sandbox reprend le travail de l'auteur en écrivant les mêmes
+ * contributions : une contribution reprise doit être indistinguable d'une
+ * contribution soumise ici.
  */
-const ROLE_CONFIG: Record<ChallengeRepoRole, {
-  contributionType: string;
-  title: string;
-  isArtifact: boolean;
-}> = {
-  dataset:    { contributionType: 'dataset',       title: 'Dataset Submission',       isArtifact: true  },
-  model:      { contributionType: 'model',         title: 'Model Submission',         isArtifact: true  },
-  model_code: { contributionType: 'model',         title: 'Model Submission',         isArtifact: false },
-  api:        { contributionType: 'api_packaging', title: 'API Packaging Submission', isArtifact: true  },
-};
 
 const challengeRepoRepo = new ChallengeRepoRepository();
 const contributionRepo = new ContributionRepository();
@@ -248,7 +243,7 @@ export async function PATCH(
 
     // Create or update the contribution backing this step
     if (hasWorkspaceUrl && workspace_url !== null && existing.role) {
-      const cfg = ROLE_CONFIG[existing.role];
+      const cfg = ML_ROLE_RULE[existing.role];
       if (cfg) {
         const url = workspace_url.trim();
         const challengeContribs = await contributionRepo.findByChallenge(challengeId);
@@ -260,7 +255,7 @@ export async function PATCH(
         // shows both its Kaggle and GitHub links on one contribution.
         const allRepos = await challengeRepoRepo.findByChallengeWithRepo(challengeId);
         const stepRepos = allRepos.filter(
-          r => r.role && ROLE_CONFIG[r.role]?.contributionType === cfg.contributionType
+          r => r.role && ML_ROLE_RULE[r.role]?.contributionType === cfg.contributionType
         );
         const description = stepRepos
           .map(r => {

@@ -41,3 +41,25 @@ export type {
   SandboxEvaluationEvent,
   CannotEvaluateSandboxReason,
 } from "./sandbox-evaluation.service.js";
+
+// Promotion — le passage d'une proposition à un challenge officiel.
+export { SandboxPromotionService } from "./sandbox-promotion.service.js";
+export type {
+  SandboxPromotionDeps,
+  PromoteCommand,
+  PromoteResult,
+} from "./sandbox-promotion.service.js";
+export {
+  buildPromotedChallengeDraft,
+  buildPromotedDescription,
+  buildAuthorParticipation,
+  buildAuthorContributions,
+  seedMlWorkspaceMeta,
+} from "./promotion.js";
+export type {
+  PromotionInput,
+  PromotedChallengeDraft,
+  PromotedContributionDraft,
+  AuthorParticipation,
+  MlWorkspaceMetaSeed,
+} from "./promotion.js";

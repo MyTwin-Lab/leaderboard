@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Archive, ArrowLeft, Boxes, Database, GitBranch, Pencil } from "lucide-react";
+import { Archive, ArrowLeft, Boxes, Database, GitBranch, Pencil, Rocket } from "lucide-react";
 import { Markdown } from "@/components/ui/Markdown";
 import type { SandboxView } from "@/lib/public/sandbox";
 import type { SandboxStarTier } from "../../../../../packages/database-service/domain/entities";
@@ -20,6 +20,8 @@ interface SandboxDetailProps {
   isAdmin: boolean;
   onEdit: () => void;
   onArchive: () => void;
+  /** Ouvre le tiroir de promotion. Absent = aucun bouton (lecteur non admin). */
+  onPromote?: () => void;
   archiving?: boolean;
   onStarState?: (state: StarState) => void;
 }
@@ -71,6 +73,7 @@ export function SandboxDetail({
   isAdmin,
   onEdit,
   onArchive,
+  onPromote,
   archiving = false,
   onStarState,
 }: SandboxDetailProps) {
@@ -147,6 +150,20 @@ export function SandboxDetail({
               >
                 <Pencil className="h-3.5 w-3.5" />
                 Edit
+              </button>
+            )}
+
+            {/* Promouvoir : l'admin seul (§1.6), et seulement sur une
+                proposition encore ouverte — la promotion est définitive, un
+                sandbox promu ou archivé n'y revient pas. */}
+            {isAdmin && onPromote && sandbox.status === "open" && (
+              <button
+                type="button"
+                onClick={onPromote}
+                className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-[13px] font-semibold text-black transition-colors hover:bg-white/90"
+              >
+                <Rocket className="h-3.5 w-3.5" />
+                Promote to challenge
               </button>
             )}
 
