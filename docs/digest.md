@@ -24,6 +24,8 @@ Admins browse the history from a **Digest** tab on `/contributors/me`, set the f
 
 ## Content
 
+> **Payload version 2** adds a `new_sandboxes` section — the sandboxes created in the period, with their author and star count. Sandbox CP deliberately stay out of `cp_distributed`, which aggregates per `(user, challenge)` from `reward_entries`; a sandbox has no challenge to aggregate under. Digests generated before this change keep their v1 payload and render without the section. See [`sandbox.md`](./sandbox.md).
+
 Each digest covers `[period_start, period_end]` and contains five sections.
 
 | Section | Source | Content |

@@ -152,6 +152,38 @@ Since milestones are never reverted automatically, a fraudulent wave has to be u
 One thing to know: if the counter is still above a threshold after cleanup, the milestone will be **paid again on the next star**. The unique index prevents duplicates, not re-creation — and at that point the milestone is legitimate.
 ---
 
+## Reading CP back
+
+Sandbox CP count in the ranking, and they get there through **one injection point**: `aggregateUsersByContribution()` in `lib/leaderboard.ts` takes the sandbox ledger as an optional argument and adds it to the totals **without touching the contribution counts** — the treatment already given to `discussion` CP, since a crossed milestone rewards a proposal rather than adding a contribution.
+
+| Path | What it reads |
+|---|---|
+| `fetchLeaderboard` | the whole ledger, injected into the aggregation |
+| `fetchContributorProfile` | the same for the global rank, plus this user's rows for `totalCP` and the Sandbox block |
+| `fetchHomeOverview` | the same, and the "CP distributed" stat — without it the podium would show more CP than the global figure |
+
+Two rules worth knowing:
+
+- **A project filter drops them wholesale.** A sandbox has no project, so none can belong to the one being looked at; including them would inflate a contributor's total with CP earned outside the requested scope.
+- **A time filter applies to `created_at`** on the reward row, like any other ledger entry.
+
+`contributionShare` is per challenge and is left untouched — a sandbox has no pool to take a share of.
+
+There is no cached total anywhere, so the numbers are always live and deleting a reward row is the clawback.
+
+---
+
+## In the digest
+
+Two distinct decisions, easy to confuse:
+
+- **Sandbox CP stay out of `cp_distributed`**, which aggregates per `(user, challenge)` from `reward_entries`. A sandbox has no challenge to aggregate under.
+- **New sandboxes get their own section**, listing those created in the period with their author and star count. The payload moved to **version 2** for it.
+
+Already-generated digests are immutable, so the tab renders the section only when the key is present rather than claiming an empty period on a v1 payload. The star count in that section is a snapshot taken at generation time — the one figure in the payload that is not windowed.
+
+---
+
 ## API and visibility
 
 The listing and the detail pages are **public**. Creating, editing, evaluating, archiving and promoting all require an account — see the role table in [`auth.md`](./auth.md) and the routes in [`api.md`](./api.md).
