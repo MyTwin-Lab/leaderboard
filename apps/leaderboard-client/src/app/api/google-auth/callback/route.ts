@@ -8,6 +8,8 @@ import {
   storeRefreshToken,
 } from '@/lib/auth';
 import { getBaseUrl } from '@/lib/url';
+import { readAnonId } from '@/lib/server/anonVisitor';
+import { SandboxService } from '../../../../../../../packages/services/sandbox/index.js';
 
 const userRepo = new UserRepository();
 const onboardingRepo = new OnboardingProgressRepository();
@@ -77,6 +79,21 @@ export async function GET(request: NextRequest) {
     const accessToken = await generateAccessToken(jwtPayload);
     const refreshToken = await generateRefreshToken(jwtPayload);
     await storeRefreshToken(user.uuid, refreshToken);
+
+    // Rattachement des stars anonymes (docs/sandbox.md §1.5). Ici et pas
+    // ailleurs : le user.uuid est connu, la requête entrante porte encore le
+    // cookie `sb_anon`, et les trois chemins ci-dessus (connexion, liaison par
+    // email, inscription) convergent sur ce point.
+    //
+    // Sous try/catch, volontairement : un échec de rattachement ne doit jamais
+    // casser une connexion. La transaction laisse tout ou rien, et la connexion
+    // suivante rejoue sans effet — le cookie anonyme n'est pas invalidé.
+    try {
+      const anonId = await readAnonId(request);
+      if (anonId) await new SandboxService().attachAnonStars(anonId, user.uuid);
+    } catch (error) {
+      console.warn('[sandbox] anonymous star attach failed', error);
+    }
 
     // Redirect with cookies — strict path validation to prevent open redirect
     const safePath = (from && /^\/[a-zA-Z0-9\-_\/]*$/.test(from)) ? from : '/';
