@@ -35,6 +35,9 @@ import {
   validation_case_claims,
   compute_requests,
   digests,
+  sandboxes,
+  sandbox_stars,
+  sandbox_rewards,
 } from "./drizzle.js";
 import { parseMlRewardRules } from "../domain/mlRewardRules.js";
 import { parseCodeRewardRules } from "../domain/codeRewardRules.js";
@@ -84,6 +87,15 @@ import type {
   Digest,
   DigestPayload,
   DigestTriggerSource,
+  Sandbox,
+  SandboxType,
+  SandboxStatus,
+  SandboxEvaluationStatus,
+  SandboxStar,
+  SandboxStarOrigin,
+  SandboxReward,
+  SandboxRewardRuleKey,
+  SandboxStarTier,
 } from "../domain/entities.js";
 
 // --- Types inférés depuis Drizzle ---
@@ -104,6 +116,9 @@ type DbEvaluationGrid = InferSelectModel<typeof evaluation_grids>;
 type DbEvaluationGridCategory = InferSelectModel<typeof evaluation_grid_categories>;
 type DbEvaluationGridSubcriterion = InferSelectModel<typeof evaluation_grid_subcriteria>;
 type DbDigest = InferSelectModel<typeof digests>;
+type DbSandbox = InferSelectModel<typeof sandboxes>;
+type DbSandboxStar = InferSelectModel<typeof sandbox_stars>;
+type DbSandboxReward = InferSelectModel<typeof sandbox_rewards>;
 
 /* ============================================================
  *  MAPPERS DB → DOMAIN
@@ -904,6 +919,10 @@ export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>):
     scaleway_disconnect_requested_at: row.scaleway_disconnect_requested_at ?? null,
     digest_enabled: row.digest_enabled ?? false,
     digest_frequency_days: row.digest_frequency_days ?? 7,
+    // Défauts inertes : une instance dont les colonnes viennent d'être ajoutées
+    // ne paie ni palier ni bonus tant que l'admin n'a rien saisi.
+    sandbox_star_tiers: (row.sandbox_star_tiers as SandboxStarTier[] | null) ?? [],
+    sandbox_promotion_bonus_cp: row.sandbox_promotion_bonus_cp ?? 0,
   };
 }
 
@@ -917,5 +936,58 @@ export function toDomainDigest(row: DbDigest): Digest {
     // Le payload est stocké tel qu'il a été écrit et n'est jamais migré : un
     // digest ancien garde la forme qu'il avait, d'où `version` à l'intérieur.
     payload: row.payload as DigestPayload,
+  };
+}
+
+// --- SANDBOX ---
+
+export function toDomainSandbox(row: DbSandbox): Sandbox {
+  return {
+    uuid: row.uuid,
+    user_id: row.user_id,
+    type: row.type as SandboxType,
+    title: row.title,
+    context: row.context ?? null,
+    // `?? []` malgré le NOT NULL DEFAULT : une row écrite avant la migration
+    // par un chemin qui ignorait la colonne remonterait null.
+    goals: row.goals ?? [],
+    why: row.why ?? null,
+    repo_url: row.repo_url,
+    model_url: row.model_url ?? null,
+    dataset_urls: row.dataset_urls ?? [],
+    status: row.status as SandboxStatus,
+    promoted_challenge_id: row.promoted_challenge_id ?? null,
+    promoted_at: row.promoted_at ?? null,
+    evaluation: row.evaluation ?? undefined,
+    evaluation_status: (row.evaluation_status as SandboxEvaluationStatus | null) ?? null,
+    evaluated_at: row.evaluated_at ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+export function toDomainSandboxStar(row: DbSandboxStar): SandboxStar {
+  return {
+    uuid: row.uuid,
+    sandbox_id: row.sandbox_id,
+    user_id: row.user_id ?? null,
+    anon_id: row.anon_id ?? null,
+    origin: row.origin as SandboxStarOrigin,
+    ip_hash: row.ip_hash ?? null,
+    created_at: row.created_at,
+    removed_at: row.removed_at ?? null,
+    attached_at: row.attached_at ?? null,
+  };
+}
+
+export function toDomainSandboxReward(row: DbSandboxReward): SandboxReward {
+  return {
+    uuid: row.uuid,
+    sandbox_id: row.sandbox_id,
+    user_id: row.user_id,
+    rule_key: row.rule_key as SandboxRewardRuleKey,
+    tier_stars: row.tier_stars ?? null,
+    points: row.points,
+    created_at: row.created_at,
   };
 }

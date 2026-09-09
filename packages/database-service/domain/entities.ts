@@ -525,6 +525,79 @@ export interface AppSettings {
   scaleway_disconnect_requested_at?: Date | null;
   digest_enabled: boolean;
   digest_frequency_days: number;
+  /** Vide = l'économie des stars ne paie rien. Voir SandboxStarTier. */
+  sandbox_star_tiers: SandboxStarTier[];
+  sandbox_promotion_bonus_cp: number;
+}
+
+// --- SANDBOX ---
+// Proposition ouverte déposée par un contributeur. Voir docs/sandbox.md.
+
+/** 'validation' est exclu : un challenge de validation dérive d'un challenge ML existant. */
+export type SandboxType = 'code' | 'ml';
+
+export type SandboxStatus = 'open' | 'promoted' | 'archived';
+
+/** Pas de 'skipped_reuse' ici : une évaluation formative n'a rien à réutiliser. */
+export type SandboxEvaluationStatus = 'pending' | 'running' | 'done' | 'failed';
+
+export interface Sandbox {
+  uuid: string;
+  user_id: string;
+  /** Figé à la création : il a déjà déterminé les champs saisis et la grille. */
+  type: SandboxType;
+  title: string;
+  context: string | null;
+  goals: string[];
+  why: string | null;
+  repo_url: string;
+  /** ML uniquement, et optionnel : un sandbox ML peut démarrer sans artefact. */
+  model_url: string | null;
+  dataset_urls: string[];
+  status: SandboxStatus;
+  promoted_challenge_id: string | null;
+  promoted_at: Date | null;
+  evaluation?: any; // même forme que contributions.evaluation – à typer plus tard
+  evaluation_status: SandboxEvaluationStatus | null;
+  evaluated_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+/** Figé à la création : une star anonyme rattachée garde `anonymous`. */
+export type SandboxStarOrigin = 'account' | 'anonymous';
+
+export interface SandboxStar {
+  uuid: string;
+  sandbox_id: string;
+  user_id: string | null;
+  anon_id: string | null;
+  origin: SandboxStarOrigin;
+  ip_hash: string | null;
+  created_at: Date;
+  /** Non nul = unstar. La ligne reste, le compteur ne la voit plus. */
+  removed_at: Date | null;
+  attached_at: Date | null;
+}
+
+export type SandboxRewardRuleKey = 'star_tier' | 'promotion';
+
+export interface SandboxReward {
+  uuid: string;
+  sandbox_id: string;
+  /** Auteur au moment du paiement, dénormalisé pour que le leaderboard lise sans jointure. */
+  user_id: string;
+  rule_key: SandboxRewardRuleKey;
+  /** Le seuil franchi ; null pour une promotion. */
+  tier_stars: number | null;
+  points: number;
+  created_at: Date;
+}
+
+/** Un palier de l'économie des stars, tel que l'admin le configure. */
+export interface SandboxStarTier {
+  stars: number;
+  cp: number;
 }
 
 // --- DIGEST ---

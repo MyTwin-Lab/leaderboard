@@ -11,6 +11,9 @@ import {
   ChallengeDocumentRepository,
   ChallengeSignalRepository,
   RewardEntryRepository,
+  SandboxRepository,
+  SandboxStarRepository,
+  SandboxRewardRepository,
 } from "../../../../packages/database-service/repositories/index";
 
 export const repositories = {
@@ -24,6 +27,9 @@ export const repositories = {
   challengeDocument: new ChallengeDocumentRepository(),
   challengeSignal: new ChallengeSignalRepository(),
   rewardEntry: new RewardEntryRepository(),
+  sandbox: new SandboxRepository(),
+  sandboxStar: new SandboxStarRepository(),
+  sandboxReward: new SandboxRewardRepository(),
 };
 
 export type Repositories = typeof repositories;

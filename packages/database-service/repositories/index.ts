@@ -28,3 +28,6 @@ export { CaseClaimRepository } from "./caseClaim.repo.js";
 export { ComputeRequestRepository } from "./computeRequest.repo.js";
 export { AccountMergeRepository } from "./accountMerge.repo.js";
 export { DigestRepository } from "./digest.repo.js";
+export { SandboxRepository } from "./sandbox.repo.js";
+export { SandboxStarRepository } from "./sandboxStar.repo.js";
+export { SandboxRewardRepository } from "./sandboxReward.repo.js";

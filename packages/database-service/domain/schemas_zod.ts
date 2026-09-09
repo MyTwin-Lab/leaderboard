@@ -449,3 +449,145 @@ export const digestSchema = z.object({
   // digest ancien dont la forme aurait évolué.
   payload: z.record(z.string(), z.any()),
 });
+
+// --- SANDBOX ---
+
+/**
+ * Une URL http(s) exploitable. Volontairement plus strict que `z.string().url()`,
+ * qui accepte `mailto:` ou `ftp:` — un repo ou un dataset se visite dans un
+ * navigateur.
+ */
+const httpUrl = z
+  .string()
+  .trim()
+  .url()
+  .refine((value) => /^https?:\/\//i.test(value), { message: "URL http(s) attendue" });
+
+export const sandboxStarTierSchema = z.object({
+  stars: z.number().int().positive(),
+  cp: z.number().int().nonnegative(),
+});
+
+/**
+ * La liste des paliers de l'économie des stars.
+ *
+ * Seuils strictement croissants : sans cette contrainte, deux paliers au même
+ * seuil se paieraient ensemble et la progression affichée dans l'UI n'aurait
+ * pas de « palier suivant » déterminé.
+ */
+export const sandboxStarTiersSchema = z
+  .array(sandboxStarTierSchema)
+  .max(20)
+  .refine(
+    (tiers) => tiers.every((tier, i) => i === 0 || tier.stars > tiers[i - 1].stars),
+    { message: "Les paliers doivent être ordonnés par seuil strictement croissant" }
+  );
+
+/**
+ * Création d'un sandbox. Le type pilote les champs requis :
+ *   - `code` : un repo suffit ;
+ *   - `ml`   : un repo et au moins un dataset ; le modèle reste optionnel,
+ *              un sandbox ML pouvant démarrer avant d'avoir un artefact.
+ */
+export const sandboxCreateSchema = z
+  .object({
+    type: z.enum(["code", "ml"]),
+    title: z.string().trim().min(3).max(255),
+    context: z.string().trim().max(20000).optional(),
+    goals: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
+    why: z.string().trim().max(20000).optional(),
+    repo_url: httpUrl,
+    model_url: httpUrl.optional(),
+    dataset_urls: z.array(httpUrl).max(10).default([]),
+  })
+  .refine((input) => input.type !== "ml" || input.dataset_urls.length > 0, {
+    message: "Un sandbox ML demande au moins une URL de dataset",
+    path: ["dataset_urls"],
+  })
+  .refine((input) => input.type !== "code" || (!input.model_url && input.dataset_urls.length === 0), {
+    message: "Modèle et datasets n'existent que sur un sandbox ML",
+    path: ["type"],
+  });
+
+/**
+ * Édition par l'auteur. Le `type` n'y figure pas : il est figé à la création,
+ * parce qu'il a déjà déterminé la grille d'évaluation et les champs saisis.
+ */
+export const sandboxUpdateSchema = z.object({
+  title: z.string().trim().min(3).max(255).optional(),
+  context: z.string().trim().max(20000).nullable().optional(),
+  goals: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
+  why: z.string().trim().max(20000).nullable().optional(),
+  repo_url: httpUrl.optional(),
+  model_url: httpUrl.nullable().optional(),
+  dataset_urls: z.array(httpUrl).max(10).optional(),
+});
+
+export type SandboxCreateInput = z.infer<typeof sandboxCreateSchema>;
+export type SandboxUpdateInput = z.infer<typeof sandboxUpdateSchema>;
+
+/**
+ * Réglages de l'économie sandbox, patch partiel façon `digest-settings`.
+ *
+ * Les deux champs sont indépendants : l'admin peut régler le bonus de promotion
+ * sans toucher aux paliers, et inversement.
+ */
+export const sandboxSettingsPatchSchema = z.object({
+  sandbox_star_tiers: sandboxStarTiersSchema.optional(),
+  // Plafonné : une faute de frappe sur ce champ crédite l'auteur d'un coup, et
+  // aucune reprise automatique n'existe pour la rattraper.
+  sandbox_promotion_bonus_cp: z.number().int().nonnegative().max(100000).optional(),
+});
+
+export type SandboxSettingsPatch = z.infer<typeof sandboxSettingsPatchSchema>;
+
+/**
+ * La row telle qu'elle sort de la base. Distinct de `sandboxCreateSchema`, qui
+ * valide une saisie utilisateur : ici on relit ce qu'on a soi-même écrit, donc
+ * les invariants de type (`ml` sans dataset) n'ont pas à être rejoués — les
+ * rejouer ferait échouer la lecture d'une row antérieure à un durcissement.
+ */
+export const sandboxSchema = z.object({
+  uuid: z.string().uuid(),
+  user_id: z.string().uuid(),
+  type: z.enum(["code", "ml"]),
+  title: z.string().min(1).max(255),
+  context: z.string().nullable(),
+  goals: z.array(z.string()),
+  why: z.string().nullable(),
+  repo_url: z.string(),
+  model_url: z.string().nullable(),
+  dataset_urls: z.array(z.string()),
+  status: z.enum(["open", "promoted", "archived"]),
+  promoted_challenge_id: z.string().uuid().nullable(),
+  promoted_at: z.coerce.date().nullable(),
+  // Non validé, comme `contributions.evaluation` : la forme appartient au
+  // pipeline d'évaluation et évolue avec lui.
+  evaluation: z.any().optional(),
+  evaluation_status: z.enum(["pending", "running", "done", "failed"]).nullable(),
+  evaluated_at: z.coerce.date().nullable(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+});
+
+export const sandboxStarSchema = z.object({
+  uuid: z.string().uuid(),
+  sandbox_id: z.string().uuid(),
+  user_id: z.string().uuid().nullable(),
+  anon_id: z.string().max(64).nullable(),
+  origin: z.enum(["account", "anonymous"]),
+  ip_hash: z.string().max(64).nullable(),
+  created_at: z.coerce.date(),
+  removed_at: z.coerce.date().nullable(),
+  attached_at: z.coerce.date().nullable(),
+});
+
+export const sandboxRewardSchema = z.object({
+  uuid: z.string().uuid(),
+  sandbox_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  rule_key: z.enum(["star_tier", "promotion"]),
+  tier_stars: z.number().int().positive().nullable(),
+  points: z.number().int(),
+  created_at: z.coerce.date(),
+});

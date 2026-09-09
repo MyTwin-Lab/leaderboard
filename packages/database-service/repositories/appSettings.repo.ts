@@ -1,7 +1,7 @@
 import { db, app_settings } from "../db/drizzle";
 import { eq } from "drizzle-orm";
 import { toDomainAppSettings } from "../db/mappers";
-import type { AppSettings } from "../domain/entities";
+import type { AppSettings, SandboxStarTier } from "../domain/entities";
 import { ComputeRequestRepository } from "./computeRequest.repo";
 
 export interface AppSettingsUpdate {
@@ -13,6 +13,8 @@ export interface AppSettingsUpdate {
   modules_onboarding_enabled?: boolean;
   digest_enabled?: boolean;
   digest_frequency_days?: number;
+  sandbox_star_tiers?: SandboxStarTier[];
+  sandbox_promotion_bonus_cp?: number;
 }
 
 export class AppSettingsRepository {
@@ -40,6 +42,8 @@ export class AppSettingsRepository {
     // challenges. Toute nouvelle colonne de AppSettingsUpdate se copie ici.
     if (patch.digest_enabled !== undefined) set.digest_enabled = patch.digest_enabled;
     if (patch.digest_frequency_days !== undefined) set.digest_frequency_days = patch.digest_frequency_days;
+    if (patch.sandbox_star_tiers !== undefined) set.sandbox_star_tiers = patch.sandbox_star_tiers;
+    if (patch.sandbox_promotion_bonus_cp !== undefined) set.sandbox_promotion_bonus_cp = patch.sandbox_promotion_bonus_cp;
 
     const [upserted] = await db
       .insert(app_settings)
