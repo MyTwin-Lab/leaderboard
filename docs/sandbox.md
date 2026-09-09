@@ -184,6 +184,27 @@ Already-generated digests are immutable, so the tab renders the section only whe
 
 ---
 
+## UI
+
+**Navigation.** Sandbox replaces About in the main navigation. The `/about` route is kept and is now reached from the home hero, through the same "see all" link style the rest of the home page uses — its arrow lives in `components/home/ArrowIcon.tsx` rather than being repeated in each component.
+
+**Listing** (`/sandbox`) — search over title, author and context; sort by stars or recency; `Open` / `Promoted` / `Mine` pills with counts; header stats. A promoted card's call to action links to the challenge it became, not back to the sandbox. An archived sandbox appears only under `Mine`, and only for its author.
+
+**Detail** (`/sandbox/:id`) — the three sections of the proposal, the repo and model links, the star toggle, the milestone panel, and for the author the formative evaluation panel. Editing and archiving live here too.
+
+**Creation** — type first, then the fields that type needs. The "Start from a dev kit / SOON" row is a deliberate placeholder: no logic behind it, it marks where the dev-kit selector will slot in.
+
+Two things the components must respect:
+
+- **Milestones are read from `paid_tier_thresholds`**, and the "CP paid" total is summed from those thresholds — never from the progress hint, which sums the configured tiers and reads optimistically after an abuse cleanup.
+- **Both pages fetch `/api/contributors/me` first**, and query the sandbox routes only once that resolves. Those routes sit outside the proxy matcher, so nothing else renews an expiring session; without this, a signed-in reader with a stale token would silently read as anonymous.
+
+**Theme.** The design mock is light-themed and the app is token-driven, so colours are translated rather than copied — see the mapping table in [`input/plan-sandbox.md`](./input/plan-sandbox.md). The pages follow light and dark like everything else.
+
+**Admin tab.** A "Sandbox" tab on `/contributors/me` holds the tier rows, the promotion bonus, and the star audit — see [`admin-settings.md`](./admin-settings.md).
+
+---
+
 ## API and visibility
 
 The listing and the detail pages are **public**. Creating, editing, evaluating, archiving and promoting all require an account — see the role table in [`auth.md`](./auth.md) and the routes in [`api.md`](./api.md).
