@@ -113,7 +113,11 @@ A related admin-only view, the **Onboarding** tab, lists every contributor's onb
 
 Two settings drive the whole sandbox economy, both **inert by default** — the feature pays nothing until an admin configures it.
 
-**Star tiers** — an ordered list of `{ stars, cp }` milestones, as many as wanted, with strictly increasing thresholds. Crossing one credits the sandbox author once, out of any pool. Lowering a threshold below a sandbox++s stars grouped by origin, hashed-IP prefix and day, with the ability to delete stars or a paid reward. Deleting a reward lowers the leaderboard total immediately, there being no cache. Note that if the count is still above a threshold after a cleanup, the milestone will be paid again on the next star.
+**Star tiers** — an ordered list of `{ stars, cp }` milestones, as many as wanted, with strictly increasing thresholds. Crossing one credits the sandbox author once, out of any pool. Lowering a threshold below a sandbox's current star count does not pay it retroactively: it is paid on the next star, so saving this form never triggers a wave of payments.
+
+**Promotion bonus** — the CP credited to the author when their sandbox becomes an official challenge.
+
+The same tab carries the **star audit**: a sandbox's stars grouped by origin, hashed-IP prefix and day, with the ability to delete stars, or a paid reward. Deleting a reward lowers the leaderboard total immediately — there is no cached total. One thing to know: if the count is still above a threshold after a cleanup, the milestone is paid again on the next star, the unique index preventing duplicates rather than re-creation.
 
 See [`sandbox.md`](./sandbox.md).
 
