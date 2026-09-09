@@ -11,6 +11,8 @@ interface DigestCounts {
   new_challenges: number;
   completed_challenges: number;
   new_contributors: number;
+  /** Toujours servi par la route, à 0 pour un payload v1 qui n'a pas la section. */
+  new_sandboxes: number;
   cp_distributed: number;
 }
 
@@ -43,6 +45,11 @@ interface DigestPayload {
   }>;
   new_contributors: Array<{
     user_id: string; full_name: string; role: string; joined_at: string;
+  }>;
+  /** Absente des payloads v1 : un digest figé avant cette section reste lisible. */
+  new_sandboxes?: Array<{
+    sandbox_id: string; title: string; type: string;
+    author: { user_id: string; full_name: string }; star_count: number;
   }>;
   cp_distributed: Array<{
     user_id: string; full_name: string; challenge_title: string;
@@ -167,6 +174,26 @@ function DigestDetail({ id }: { id: string }) {
           />
         ))}
       </Section>
+
+      {/* Rendue seulement si le payload la porte : sur un digest v1 la clé est
+          absente, et afficher « rien sur la période » mentirait — la section
+          n'existait pas quand il a été généré. */}
+      {payload.new_sandboxes && (
+        <Section title="New sandboxes" empty={payload.new_sandboxes.length === 0}>
+          {payload.new_sandboxes.map((sb) => (
+            <Row
+              key={sb.sandbox_id}
+              left={
+                <>
+                  <span className="text-white/80">{sb.title}</span>
+                  <span className="text-white/35"> — {sb.author.full_name}</span>
+                </>
+              }
+              right={`${sb.type} · ${sb.star_count} ★`}
+            />
+          ))}
+        </Section>
+      )}
 
       <Section title="New contributors" empty={payload.new_contributors.length === 0}>
         {payload.new_contributors.map((u) => (

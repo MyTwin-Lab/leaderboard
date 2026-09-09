@@ -4,6 +4,7 @@ import type {
   ContributionMember,
   DigestPayload,
   RewardEntry,
+  Sandbox,
   User,
 } from "../../database-service/domain/entities.js";
 
@@ -25,12 +26,16 @@ export interface DigestSource {
   contributors: User[];
   /** Lignes de ledger écrites dans la fenêtre. */
   rewardEntries: RewardEntry[];
+  /** Sandboxes déposés dans la fenêtre. */
+  sandboxes: Sandbox[];
   /** Lookups de dénormalisation. */
   usersById: Map<string, User>;
   challengesById: Map<string, Challenge>;
   projectTitlesById: Map<string, string>;
   /** Total distribué sur toute la vie d'un challenge fermé (pas sur la fenêtre). */
   cpAwardedByChallenge: Map<string, number>;
+  /** Stars actives par sandbox, lues à la génération. */
+  starCountsBySandbox: Map<string, number>;
 }
 
 const UNKNOWN_USER = "Unknown";
@@ -43,8 +48,8 @@ function nameOf(usersById: Map<string, User>, userId: string): string {
 /**
  * Assemble le contenu figé d'un digest.
  *
- * Les quatre premières sections sont des sections d'apparition : elles ne
- * voient un objet qu'une fois. `cp_distributed` lit le ledger et capte donc ce
+ * Toutes les sections sauf `cp_distributed` sont des sections d'apparition :
+ * elles ne voient un objet qu'une fois. `cp_distributed` lit le ledger et capte donc ce
  * qu'une ré-évaluation rapporte à une contribution créée avant la fenêtre —
  * invisible autrement, alors que c'est le mode de travail normal d'un challenge
  * `code`. Voir docs/input/spec-digest.md §4.
@@ -52,8 +57,8 @@ function nameOf(usersById: Map<string, User>, userId: string): string {
 export function buildDigestPayload(source: DigestSource): DigestPayload {
   const {
     contributions, contributionMembers, challengesCreated, challengesClosed,
-    contributors, rewardEntries, usersById, challengesById, projectTitlesById,
-    cpAwardedByChallenge,
+    contributors, rewardEntries, sandboxes, usersById, challengesById, projectTitlesById,
+    cpAwardedByChallenge, starCountsBySandbox,
   } = source;
 
   // Membres regroupés par contribution. Une contribution sans entrée ici est
@@ -110,6 +115,18 @@ export function buildDigestPayload(source: DigestSource): DigestPayload {
     joined_at: (u.created_at ?? new Date(0)).toISOString(),
   }));
 
+  // Section d'apparition, comme new_challenges : un sandbox n'y figure que la
+  // fois où il est déposé. Le compteur de stars, lui, est une photo prise à la
+  // génération — c'est le seul chiffre du digest qui ne soit pas fenêtré, et
+  // c'est ce qui donne la mesure de l'accueil reçu.
+  const new_sandboxes = sandboxes.map((sb) => ({
+    sandbox_id: sb.uuid,
+    title: sb.title,
+    type: sb.type,
+    author: { user_id: sb.user_id, full_name: nameOf(usersById, sb.user_id) },
+    star_count: starCountsBySandbox.get(sb.uuid) ?? 0,
+  }));
+
   // Agrégat du ledger par (user, challenge). Le ledger brut serait illisible
   // sur plusieurs semaines ; `by_rule` garde la nature de l'attribution sans
   // lister chaque row. Les prélèvements de réutilisation sont des points
@@ -135,11 +152,14 @@ export function buildDigestPayload(source: DigestSource): DigestPayload {
     .sort((a, b) => b.total_cp - a.total_cp);
 
   return {
-    version: 1,
+    // 2 : ajout de `new_sandboxes`. Les digests déjà en base restent en 1 et
+    // sont rendus sans cette section.
+    version: 2,
     new_contributions,
     new_challenges,
     completed_challenges,
     new_contributors,
+    new_sandboxes,
     cp_distributed,
   };
 }

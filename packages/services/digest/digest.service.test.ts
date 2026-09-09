@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { DigestService, type DigestServiceDeps } from "./digest.service.js";
 import type {
-  Challenge, Contribution, Digest, RewardEntry, User,
+  Challenge, Contribution, Digest, RewardEntry, Sandbox, User,
 } from "../../database-service/domain/entities.js";
 
 const CH = "ch-1", ALICE = "alice", BOB = "bob";
@@ -14,6 +14,7 @@ function makeDeps(opts: {
   challengesClosed?: Challenge[];
   contributors?: User[];
   rewardEntries?: RewardEntry[];
+  sandboxes?: Sandbox[];
 } = {}) {
   const created: Array<Parameters<DigestServiceDeps["digestRepo"]["create"]>[0]> = [];
   const memberLookups: string[][] = [];
@@ -62,6 +63,12 @@ function makeDeps(opts: {
       findById: vi.fn(async (uuid: string) => ({
         uuid, title: "MyTwin Core", description: "", created_at: new Date(),
       } as any)),
+    },
+    sandboxRepo: {
+      findCreatedBetween: vi.fn(async () => opts.sandboxes ?? []),
+    },
+    sandboxStarRepo: {
+      countActiveBySandboxIds: vi.fn(async () => new Map<string, number>()),
     },
   };
 
@@ -186,9 +193,9 @@ describe("DigestService.generate", () => {
     await new DigestService(deps).generate("manual", { now: new Date("2026-09-05T06:05:00Z") });
 
     expect(created[0].payload).toMatchObject({
-      version: 1,
+      version: 2,
       new_contributions: [], new_challenges: [], completed_challenges: [],
-      new_contributors: [], cp_distributed: [],
+      new_contributors: [], new_sandboxes: [], cp_distributed: [],
     });
   });
 

@@ -628,7 +628,12 @@ export interface DigestCpRow {
  * fenêtre, invisible autrement. Voir docs/input/spec-digest.md §4.
  */
 export interface DigestPayload {
-  version: 1;
+  /**
+   * Un digest déjà généré est immuable : le type décrit donc aussi les
+   * anciennes versions, et le rendu doit tolérer l'absence des sections
+   * apparues après. 1 = sections initiales ; 2 = ajout de `new_sandboxes`.
+   */
+  version: number;
   new_contributions: Array<{
     contribution_id: string;
     title: string;
@@ -660,6 +665,24 @@ export interface DigestPayload {
     full_name: string;
     role: string;
     joined_at: string;
+  }>;
+  /**
+   * Sandboxes déposés sur la période (version ≥ 2).
+   *
+   * Optionnel parce qu'un digest v1 n'en a pas et reste lisible tel quel.
+   *
+   * Leurs CP n'apparaissent nulle part ici : `cp_distributed` agrège
+   * `reward_entries` par (user, challenge), et un sandbox n'a ni challenge ni
+   * contribution. C'est délibéré — cette section raconte l'arrivée de
+   * propositions, pas une distribution de points.
+   */
+  new_sandboxes?: Array<{
+    sandbox_id: string;
+    title: string;
+    type: string;
+    author: { user_id: string; full_name: string };
+    /** Stars actives au moment de la génération, pas sur la seule fenêtre. */
+    star_count: number;
   }>;
   cp_distributed: DigestCpRow[];
 }

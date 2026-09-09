@@ -6,6 +6,7 @@ import { ChallengeList } from "@/components/contributor/ChallengeList";
 import { ContributionHeatmap } from "@/components/contributor/ContributionHeatmap";
 import { ContributionDashboard } from "@/components/contributor/ContributionDashboard";
 import { ContributorTabs } from "@/components/contributor/ContributorTabs";
+import { SandboxRewardsList } from "@/components/contributor/SandboxRewardsList";
 import { ThemeSettings } from "@/components/contributor/ThemeSettings";
 import { fetchContributorProfile, fetchContributorSession } from "@/lib/contributor";
 import { LogoutButton } from "@/components/contributor/LogoutButton";
@@ -65,7 +66,12 @@ export default async function ContributorSelfPage({
     },
     {
       label: "Contributions",
-      panel: <ChallengeList challenges={profile.challenges} />,
+      panel: (
+        <>
+          <ChallengeList challenges={profile.challenges} />
+          <SandboxRewardsList sandboxes={profile.sandboxes} />
+        </>
+      ),
     },
     {
       label: "Profile",

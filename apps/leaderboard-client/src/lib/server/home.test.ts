@@ -60,6 +60,7 @@ describe("fetchHomeOverview", () => {
       { challenge_id: "c1", user_id: "u2" },
     ] as any);
     vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(repositories.sandboxReward, "findAll").mockResolvedValue([] as any);
 
     const overview = await fetchHomeOverview();
 
@@ -118,6 +119,7 @@ describe("fetchHomeOverview", () => {
     ] as any);
     vi.spyOn(repositories.challengeTeam, "findAll").mockResolvedValue([] as any);
     vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(repositories.sandboxReward, "findAll").mockResolvedValue([] as any);
 
     const overview = await fetchHomeOverview();
 
@@ -149,9 +151,47 @@ describe("fetchHomeOverview", () => {
     ] as any);
     vi.spyOn(repositories.challengeTeam, "findAll").mockResolvedValue([] as any);
     vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(repositories.sandboxReward, "findAll").mockResolvedValue([] as any);
 
     const overview = await fetchHomeOverview();
 
     expect(overview.trendingChallenges.map((c) => c.id)).toEqual(["c1"]);
+  });
+
+  it("counts sandbox CP in the CP distributed stat, and in its 7-day delta", async () => {
+    // Le podium inclut déjà ces CP : sans eux ici, la statistique globale
+    // annoncerait moins de CP que le premier du classement n'en affiche.
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+
+    vi.spyOn(repositories.project, "findAll").mockResolvedValue([
+      { uuid: "p1", title: "P", description: null, created_at: new Date() },
+    ] as any);
+    vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([
+      { uuid: "c1", title: "C1", status: "active", type: "code", index: 1, contribution_points_reward: 100, completion: 0, project_id: "p1", start_date: new Date(), end_date: new Date() },
+    ] as any);
+    vi.spyOn(repositories.user, "findAll").mockResolvedValue([
+      { uuid: "u1", full_name: "Alice", bio: null, avatar_url: null, github_username: "alice" },
+    ] as any);
+    vi.spyOn(repositories.contribution, "findAll").mockResolvedValue([
+      { uuid: "ct1", challenge_id: "c1", user_id: "u1", submitted_at: TWO_DAYS_AGO, reward: 100, title: "T1", type: "code" },
+    ] as any);
+    vi.spyOn(repositories.challengeTeam, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(repositories.sandboxReward, "findAll").mockResolvedValue([
+      { uuid: "sr1", sandbox_id: "sb1", user_id: "u1", rule_key: "star_tier", tier_stars: 5, points: 50, created_at: TWO_DAYS_AGO },
+      // Hors fenêtre : compte dans le total, pas dans le delta 7 jours.
+      { uuid: "sr2", sandbox_id: "sb1", user_id: "u1", rule_key: "star_tier", tier_stars: 15, points: 200, created_at: EIGHT_DAYS_AGO },
+    ] as any);
+
+    const overview = await fetchHomeOverview();
+
+    const cpStat = overview.stats.find((s) => s.label === "CP distributed");
+    expect(cpStat?.value).toBe((100 + 50 + 200).toLocaleString("fr-FR"));
+    expect(cpStat?.delta).toBe(`+${(100 + 50).toLocaleString("fr-FR")} / 7d`);
+
+    // Et le podium compte les mêmes CP, sans compter une contribution de plus.
+    expect(overview.podium[0].cp).toBe(350);
+    expect(overview.podium[0].contributionsCount).toBe(1);
   });
 });

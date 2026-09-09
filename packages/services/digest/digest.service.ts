@@ -6,11 +6,13 @@ import {
   DigestRepository,
   ProjectRepository,
   RewardEntryRepository,
+  SandboxRepository,
+  SandboxStarRepository,
   UserRepository,
 } from "../../database-service/repositories/index.js";
 import type {
   Challenge, Contribution, ContributionMember, Digest, DigestTriggerSource,
-  Project, RewardEntry, User,
+  Project, RewardEntry, Sandbox, User,
 } from "../../database-service/domain/entities.js";
 import { buildDigestPayload } from "./digest-payload.js";
 import { digestWindow } from "./digest-schedule.js";
@@ -38,6 +40,8 @@ export interface DigestServiceDeps {
     sumByChallenge(challengeId: string): Promise<number>;
   };
   projectRepo: { findById(uuid: string): Promise<Project | null> };
+  sandboxRepo: { findCreatedBetween(start: Date, end: Date): Promise<Sandbox[]> };
+  sandboxStarRepo: { countActiveBySandboxIds(ids: string[]): Promise<Map<string, number>> };
 }
 
 /**
@@ -63,6 +67,8 @@ export class DigestService {
       userRepo: new UserRepository(),
       rewardEntryRepo: new RewardEntryRepository(),
       projectRepo: new ProjectRepository(),
+      sandboxRepo: new SandboxRepository(),
+      sandboxStarRepo: new SandboxStarRepository(),
       ...deps,
     } as DigestServiceDeps;
   }
@@ -100,15 +106,21 @@ export class DigestService {
       throw new Error("The digest period must start before it ends");
     }
 
-    // Les cinq lectures fenêtrées sont indépendantes.
-    const [contributions, challengesCreated, challengesClosed, contributors, rewardEntries] =
+    // Les six lectures fenêtrées sont indépendantes.
+    const [contributions, challengesCreated, challengesClosed, contributors, rewardEntries, sandboxes] =
       await Promise.all([
         this.deps.contributionRepo.findCreatedBetween(start, end),
         this.deps.challengeRepo.findCreatedBetween(start, end),
         this.deps.challengeRepo.findClosedBetween(start, end),
         this.deps.userRepo.findCreatedBetween(start, end),
         this.deps.rewardEntryRepo.findCreatedBetween(start, end),
+        this.deps.sandboxRepo.findCreatedBetween(start, end),
       ]);
+
+    // Photo des stars à la génération : le digest est figé, il ne peut pas
+    // recalculer ce compteur après coup.
+    const starCountsBySandbox = await this.deps.sandboxStarRepo
+      .countActiveBySandboxIds(sandboxes.map((sb) => sb.uuid));
 
     // Les parts de groupe ne se chargent que pour les contributions de la
     // fenêtre : findByContributions existe pour éviter exactement ce N+1.
@@ -122,6 +134,7 @@ export class DigestService {
       ...contributions.map((c) => c.user_id),
       ...contributionMembers.map((m) => m.user_id),
       ...rewardEntries.map((e) => e.user_id),
+      ...sandboxes.map((sb) => sb.user_id),
     ]);
     const challengeIds = new Set<string>([
       ...contributions.map((c) => c.challenge_id),
@@ -170,10 +183,12 @@ export class DigestService {
       challengesClosed,
       contributors,
       rewardEntries,
+      sandboxes,
       usersById,
       challengesById,
       projectTitlesById,
       cpAwardedByChallenge,
+      starCountsBySandbox,
     });
 
     return this.deps.digestRepo.create({

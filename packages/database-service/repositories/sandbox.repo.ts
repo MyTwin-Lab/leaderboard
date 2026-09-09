@@ -1,5 +1,5 @@
 import { db, sandboxes } from "../db/drizzle";
-import { and, desc, eq, isNull, ne } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt, ne } from "drizzle-orm";
 import { toDomainSandbox } from "../db/mappers";
 import type { Sandbox, SandboxEvaluationStatus, SandboxType } from "../domain/entities";
 
@@ -56,6 +56,22 @@ export class SandboxRepository {
   async findById(uuid: string): Promise<Sandbox | null> {
     const [row] = await db.select().from(sandboxes).where(eq(sandboxes.uuid, uuid));
     return row ? toDomainSandbox(row) : null;
+  }
+
+  /**
+   * Sandboxes créés dans la fenêtre — c'est ce que lit le digest.
+   *
+   * Les archivés sont inclus : le digest raconte ce qui s'est passé sur la
+   * période, et un sandbox déposé puis archivé a bien été déposé. Le rendu
+   * d'un digest est figé, il ne doit pas dépendre d'un statut qui bouge après.
+   */
+  async findCreatedBetween(start: Date, end: Date): Promise<Sandbox[]> {
+    const rows = await db
+      .select()
+      .from(sandboxes)
+      .where(and(gte(sandboxes.created_at, start), lt(sandboxes.created_at, end)))
+      .orderBy(desc(sandboxes.created_at));
+    return rows.map(toDomainSandbox);
   }
 
   /** Y compris les archivés : l'auteur voit toujours les siens. */

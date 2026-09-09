@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildDigestPayload, type DigestSource } from "./digest-payload.js";
 import type {
-  Challenge, Contribution, ContributionMember, RewardEntry, User,
+  Challenge, Contribution, ContributionMember, RewardEntry, Sandbox, User,
 } from "../../database-service/domain/entities.js";
 
 const CH = "ch-1", ALICE = "alice", BOB = "bob", CAROL = "carol";
@@ -38,6 +38,19 @@ function entry(over: Partial<RewardEntry> = {}): RewardEntry {
   };
 }
 
+function sandbox(over: Partial<Sandbox> = {}): Sandbox {
+  return {
+    uuid: "sb-1", user_id: ALICE, type: "code", title: "Triage assistant",
+    context: null, goals: [], why: null, repo_url: "https://github.com/acme/triage",
+    model_url: null, dataset_urls: [], status: "open",
+    promoted_challenge_id: null, promoted_at: null,
+    evaluation: null, evaluation_status: null, evaluated_at: null,
+    created_at: new Date("2026-09-04T00:00:00Z"),
+    updated_at: new Date("2026-09-04T00:00:00Z"),
+    ...over,
+  };
+}
+
 function source(over: Partial<DigestSource> = {}): DigestSource {
   return {
     contributions: [],
@@ -46,6 +59,7 @@ function source(over: Partial<DigestSource> = {}): DigestSource {
     challengesClosed: [],
     contributors: [],
     rewardEntries: [],
+    sandboxes: [],
     usersById: new Map([
       [ALICE, user(ALICE, "Alice Dupont")],
       [BOB, user(BOB, "Bob Martin")],
@@ -54,6 +68,7 @@ function source(over: Partial<DigestSource> = {}): DigestSource {
     challengesById: new Map([[CH, challenge()]]),
     projectTitlesById: new Map([["p-1", "MyTwin Core"]]),
     cpAwardedByChallenge: new Map(),
+    starCountsBySandbox: new Map(),
     ...over,
   };
 }
@@ -238,14 +253,52 @@ describe("buildDigestPayload — new_contributors and shape", () => {
     expect(payload.new_contributors[0].joined_at).toBe("2026-09-01T00:00:00.000Z");
   });
 
-  it("always returns all five sections, empty rather than absent", () => {
+  it("always returns all sections, empty rather than absent", () => {
     // Un digest manuel sur une période courte est valide et majoritairement
-    // vide : le lecteur doit trouver les cinq clés, pas des undefined.
+    // vide : le lecteur doit trouver les clés, pas des undefined.
     const payload = buildDigestPayload(source());
-    expect(payload.version).toBe(1);
+    expect(payload.version).toBe(2);
     expect(payload).toMatchObject({
       new_contributions: [], new_challenges: [], completed_challenges: [],
-      new_contributors: [], cp_distributed: [],
+      new_contributors: [], new_sandboxes: [], cp_distributed: [],
     });
+  });
+});
+
+describe("buildDigestPayload — new_sandboxes", () => {
+  it("lists the sandboxes opened in the window with their author and star count", () => {
+    const payload = buildDigestPayload(source({
+      sandboxes: [sandbox(), sandbox({ uuid: "sb-2", user_id: BOB, type: "ml", title: "Lung dataset" })],
+      starCountsBySandbox: new Map([["sb-1", 7]]),
+    }));
+    expect(payload.new_sandboxes).toEqual([
+      {
+        sandbox_id: "sb-1", title: "Triage assistant", type: "code",
+        author: { user_id: ALICE, full_name: "Alice Dupont" }, star_count: 7,
+      },
+      {
+        // Aucune star : le compteur est absent de la map, pas à zéro en base.
+        sandbox_id: "sb-2", title: "Lung dataset", type: "ml",
+        author: { user_id: BOB, full_name: "Bob Martin" }, star_count: 0,
+      },
+    ]);
+  });
+
+  it("leaves the section empty when no sandbox was opened", () => {
+    expect(buildDigestPayload(source()).new_sandboxes).toEqual([]);
+  });
+
+  it("keeps sandbox CP out of cp_distributed", () => {
+    // Les CP du sandbox vivent dans `sandbox_rewards`, que le digest ne lit
+    // pas : `cp_distributed` agrège `reward_entries` par (user, challenge), et
+    // un sandbox n'a ni challenge ni contribution.
+    const payload = buildDigestPayload(source({
+      sandboxes: [sandbox()],
+      starCountsBySandbox: new Map([["sb-1", 15]]),
+      rewardEntries: [entry({ points: 120 })],
+    }));
+    expect(payload.cp_distributed).toHaveLength(1);
+    expect(payload.cp_distributed[0].total_cp).toBe(120);
+    expect(payload.cp_distributed[0].challenge_id).toBe(CH);
   });
 });

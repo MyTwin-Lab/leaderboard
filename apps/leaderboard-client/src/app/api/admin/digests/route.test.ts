@@ -83,6 +83,9 @@ describe('GET /api/admin/digests', () => {
       new_challenges: 0,
       completed_challenges: 0,
       new_contributors: 0,
+      // Le payload de ce test est un v1, sans la section sandbox : elle
+      // compte 0 plutôt que de manquer, pour que la ligne reste lisible.
+      new_sandboxes: 0,
       cp_distributed: 0,
     });
   });

@@ -4,6 +4,7 @@ import type {
   Challenge,
   Contribution,
   ContributionMember,
+  SandboxReward,
   User,
 } from '../../../../packages/database-service/domain/entities';
 
@@ -152,5 +153,96 @@ describe('rankEntries with group shares', () => {
     const ranked = rankEntries(rows);
     expect(ranked[0].userId).toBe(CAROL.uuid);
     expect(ranked[0].totalCP).toBe(300);
+  });
+});
+
+const sandboxReward = (over: Partial<SandboxReward> = {}): SandboxReward => ({
+  uuid: 'sr-1', sandbox_id: 'sb-1', user_id: ALICE.uuid, rule_key: 'star_tier',
+  tier_stars: 5, points: 50, created_at: new Date('2026-01-01'), ...over,
+});
+
+describe('aggregateUsersByContribution — sandbox rewards', () => {
+  it('adds sandbox CP to the total without counting a contribution', () => {
+    // Même traitement qu'une contribution `discussion` : des CP, pas une
+    // contribution de plus.
+    const rows = aggregateUsersByContribution({
+      contributions: [contribution({ reward: 300 })],
+      challenges: [challenge()],
+      users: [ALICE, BOB],
+      sandboxRewards: [sandboxReward({ points: 50 })],
+    });
+    expect(totalOf(rows, ALICE)).toBe(350);
+    expect(countOf(rows, ALICE)).toBe(1);
+    expect(totalOf(rows, BOB)).toBe(0);
+  });
+
+  it('sums every ledger row of the same author', () => {
+    const rows = aggregateUsersByContribution({
+      contributions: [],
+      challenges: [challenge()],
+      users: [ALICE],
+      sandboxRewards: [
+        sandboxReward({ uuid: 'sr-1', tier_stars: 5, points: 50 }),
+        sandboxReward({ uuid: 'sr-2', tier_stars: 15, points: 100 }),
+        sandboxReward({ uuid: 'sr-3', sandbox_id: 'sb-2', rule_key: 'promotion', tier_stars: null, points: 200 }),
+      ],
+    });
+    expect(totalOf(rows, ALICE)).toBe(350);
+    expect(countOf(rows, ALICE)).toBe(0);
+  });
+
+  it('excludes sandbox CP under a project filter', () => {
+    // Un sandbox n'a pas de projet : aucun ne peut appartenir à celui qu'on
+    // regarde, donc les compter gonflerait un total hors périmètre.
+    const rows = aggregateUsersByContribution({
+      contributions: [contribution({ reward: 300 })],
+      challenges: [challenge({ project_id: 'p-1' })],
+      users: [ALICE],
+      sandboxRewards: [sandboxReward({ points: 50 })],
+      projectId: 'p-1',
+    });
+    expect(totalOf(rows, ALICE)).toBe(300);
+  });
+
+  it('filters sandbox CP on created_at for a weekly period', () => {
+    const now = new Date();
+    const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const tenDaysAgo = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+    const rows = aggregateUsersByContribution({
+      contributions: [],
+      challenges: [challenge()],
+      users: [ALICE],
+      sandboxRewards: [
+        sandboxReward({ uuid: 'sr-recent', points: 50, created_at: twoDaysAgo }),
+        sandboxReward({ uuid: 'sr-old', points: 999, created_at: tenDaysAgo }),
+      ],
+      timePeriod: 'week',
+    });
+    expect(totalOf(rows, ALICE)).toBe(50);
+  });
+
+  it('ranks a contributor who only ever earned sandbox CP', () => {
+    // Sans contribution, un auteur de sandbox doit quand même apparaître au
+    // classement — c'est tout l'intérêt de payer les paliers.
+    const rows = aggregateUsersByContribution({
+      contributions: [contribution({ user_id: BOB.uuid, reward: 100 })],
+      challenges: [challenge()],
+      users: [ALICE, BOB],
+      sandboxRewards: [sandboxReward({ user_id: ALICE.uuid, points: 300 })],
+    });
+    const ranked = rankEntries(rows);
+    expect(ranked[0].userId).toBe(ALICE.uuid);
+    expect(ranked[0].totalCP).toBe(300);
+    expect(ranked[0].contributionsCount).toBe(0);
+  });
+
+  it('ignores a reward whose user is not in the data set', () => {
+    const rows = aggregateUsersByContribution({
+      contributions: [],
+      challenges: [challenge()],
+      users: [ALICE],
+      sandboxRewards: [sandboxReward({ user_id: 'ghost', points: 999 })],
+    });
+    expect(rows.every((r) => r.totalCP === 0)).toBe(true);
   });
 });
