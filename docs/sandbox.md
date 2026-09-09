@@ -205,6 +205,26 @@ Two things the components must respect:
 
 ---
 
+## Formative evaluation
+
+The author can have their repository scored at any time. The run uses the same pipeline as a code challenge, produces a score out of 10 — and **pays nothing**. It exists to help the author improve, and gives an admin a quality read when considering promotion.
+
+**Both types use the `code` grid.** Not the `model` one, despite what the original spec said. An ML challenge already scores code that way: in the ML role table, `model_code` maps to `grid: 'code'`, while the `model` role has **no grid at all** — it is scored on a Kaggle metric. The `model` grid (performance, innovation, reproducibility) never evaluates code, and a sandbox has only code to snapshot.
+
+What separates an ML sandbox is therefore **not the grid but the context** handed to the agent: the dataset URLs and, when present, the model URL are injected into the evaluated subject's description. A sandbox with no model artifact produces no `Model artifact` line and the run proceeds — the repository is what gets snapshotted either way.
+
+The context also carries the author's **goals**. They are what the repository is judged against: without them the agent scores a repo in the abstract, when the whole proposal is the gap between what the author set out to build and what is actually there.
+
+**Shared core.** `packages/services/challenge/repo-evaluation.ts` holds the snapshot → grid → score path, extracted unchanged from `CodeRewardsService`, which now calls it. One consequence worth knowing: a custom grid published in the database under the `code` slug serves challenges and sandboxes alike, since both go through the same `DatabaseGridProvider`.
+
+The two pure helpers (`toScore10`, `parseGithubRepoUrl`) live in `repo-score.ts`, apart from the evaluation module: a client component needs `toScore10` to render a score, and importing the evaluation module would pull `octokit` and `openai` into the browser bundle.
+
+**One run at a time.** The `pending → running` transition is a compare-and-set on the row, so two clicks cannot start two runs. Status flows `pending → running → done | failed`, and the UI polls while it is in flight.
+
+Nothing is ever written to `reward_entries`, `sandbox_rewards` or `contributions` by this path.
+
+---
+
 ## API and visibility
 
 The listing and the detail pages are **public**. Creating, editing, evaluating, archiving and promoting all require an account — see the role table in [`auth.md`](./auth.md) and the routes in [`api.md`](./api.md).
