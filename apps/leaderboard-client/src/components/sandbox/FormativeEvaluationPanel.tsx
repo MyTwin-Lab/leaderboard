@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BarChart2, Loader2, Play, RefreshCw } from "lucide-react";
+import { BarChart2, Loader2, Rocket } from "lucide-react";
 import type { SandboxView } from "@/lib/public/sandbox";
 import {
   EvaluationScorePanel,
@@ -115,14 +115,15 @@ export function FormativeEvaluationPanel({ sandbox }: { sandbox: SandboxView }) 
         type="button"
         onClick={run}
         disabled={busy}
-        className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50"
+        // L'accent du theme, pas un bouton plein : lancer une evaluation est
+        // une action offerte a l'auteur, pas l'action principale de la page.
+        // C'est le bouton teal de la maquette, traduit en token.
+        className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-brandCP/15 px-4.5 py-2.5 text-[13px] font-semibold text-brandCP transition-colors hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:bg-white/[0.05] disabled:text-white/35"
       >
         {busy ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : hasScore || status === "failed" ? (
-          <RefreshCw className="h-3.5 w-3.5" />
         ) : (
-          <Play className="h-3.5 w-3.5" />
+          <Rocket className="h-3.5 w-3.5" />
         )}
         {label}
       </button>

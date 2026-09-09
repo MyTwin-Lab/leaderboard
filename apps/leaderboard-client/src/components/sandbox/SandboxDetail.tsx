@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Archive, ArrowLeft, Boxes, Database, GitBranch, Pencil, Rocket } from "lucide-react";
+import { Archive, ArrowLeft, ArrowUp, Boxes, Database, GitBranch, Pencil } from "lucide-react";
 import { Markdown } from "@/components/ui/Markdown";
 import type { SandboxView } from "@/lib/public/sandbox";
 import type { SandboxStarTier } from "../../../../../packages/database-service/domain/entities";
@@ -160,9 +160,12 @@ export function SandboxDetail({
               <button
                 type="button"
                 onClick={onPromote}
-                className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-[13px] font-semibold text-black transition-colors hover:bg-white/90"
+                // Le CTA sombre de la maquette : `foreground`/`background`
+                // permutent avec le theme, la ou un `bg-white` opaque
+                // resterait blanc sur fond clair.
+                className="inline-flex items-center gap-2 rounded-full bg-foreground px-4.5 py-2.5 text-[13px] font-semibold text-background transition-opacity hover:opacity-90"
               >
-                <Rocket className="h-3.5 w-3.5" />
+                <ArrowUp className="h-3.5 w-3.5" />
                 Promote to challenge
               </button>
             )}
