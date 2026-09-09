@@ -1,4 +1,5 @@
 import { ProjectChallengesExplorer } from "@/components/public/ProjectChallengesExplorer";
+import { SandboxCTA } from "@/components/sandbox/SandboxCTA";
 import { fetchProjectsWithChallenges } from "@/lib/server/publicPages";
 import { getSessionUser } from "@/lib/auth";
 import { repositories } from "@/lib/db";
@@ -24,6 +25,8 @@ export default async function PublicChallengesPage() {
         isAdmin={isAdmin}
         managedProjectIds={managedProjectIds}
       />
+
+      <SandboxCTA />
     </div>
   );
 }

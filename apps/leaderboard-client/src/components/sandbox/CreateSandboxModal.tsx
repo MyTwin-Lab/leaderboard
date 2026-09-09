@@ -385,7 +385,9 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
             disabled={!valid || submitting}
             className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-semibold transition-all duration-200 ${
               valid && !submitting
-                ? "cursor-pointer bg-white text-black hover:bg-white/90"
+                // Même inversion que le tri du listing : un `bg-white` opaque
+                // resterait blanc sur blanc en thème clair.
+                ? "cursor-pointer bg-foreground text-background hover:opacity-90"
                 : "cursor-not-allowed bg-white/[0.06] text-white/35"
             }`}
           >

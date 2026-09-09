@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { fetchJson } from "@/lib/fetchJson";
 import { formatCP } from "@/lib/formatters";
+import { TabPills } from "@/components/ui/TabPills";
 import type { SandboxView } from "@/lib/public/sandbox";
 import type { SandboxStarTier } from "../../../../../packages/database-service/domain/entities";
 import { CreateSandboxModal } from "./CreateSandboxModal";
@@ -210,22 +211,16 @@ export function SandboxExplorer() {
               />
             </div>
 
-            <div className="flex shrink-0 gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
-              {SORTS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setSort(key)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-200 ${
-                    sort === key
-                      ? "bg-white text-black"
-                      : "text-white/45 hover:bg-white/[0.06] hover:text-white/70"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {/* Le même sélecteur que les onglets du profil : le fond glisse
+                d'un tri à l'autre au lieu de sauter, et ses couleurs sortent
+                des tokens de thème — un `bg-white` opaque resterait blanc sur
+                fond clair, `globals.css` ne rattrapant que les translucides. */}
+            <TabPills
+              tabs={SORTS.map(({ label }) => ({ label }))}
+              active={SORTS.findIndex(({ key }) => key === sort)}
+              onChange={(index) => setSort(SORTS[index].key)}
+              className="shrink-0"
+            />
 
             {canCreate && (
               <button
@@ -316,7 +311,14 @@ export function SandboxExplorer() {
             )}
           </div>
         ) : (
-          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+          // `key` sur le tri et le filtre, comme le panneau des onglets du
+          // profil : React remonte la grille, donc les cartes rejouent leur
+          // apparition au lieu de se réordonner sans transition. La recherche
+          // n'y est pas — la liste se réduirait à chaque frappe.
+          <div
+            key={`${sort}-${status}`}
+            className="animate-fade-up grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3"
+          >
             {visible.map((sandbox, index) => (
               <SandboxCard
                 key={sandbox.uuid}
