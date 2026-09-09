@@ -163,9 +163,13 @@ export function SandboxDetail({
                 // Le CTA sombre de la maquette : `foreground`/`background`
                 // permutent avec le theme, la ou un `bg-white` opaque
                 // resterait blanc sur fond clair.
-                className="inline-flex items-center gap-2 rounded-full bg-foreground px-4.5 py-2.5 text-[13px] font-semibold text-background transition-opacity hover:opacity-90"
+                className="inline-flex items-center gap-2 rounded-full bg-foreground px-4.5 py-2.5 text-[13px] font-semibold text-background transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90"
               >
-                <ArrowUp className="h-3.5 w-3.5" />
+                {/* Couleur en style inline : `globals.css` force la teinte de
+                    tous les SVG en theme clair, et l'icone se retrouvait noire
+                    sur le fond noir du bouton. Un inline bat cette regle, qui
+                    n'est pas en !important. */}
+                <ArrowUp className="h-3.5 w-3.5" style={{ color: "var(--background)" }} />
                 Promote to challenge
               </button>
             )}

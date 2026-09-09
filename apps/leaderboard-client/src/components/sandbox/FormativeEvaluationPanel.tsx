@@ -118,7 +118,10 @@ export function FormativeEvaluationPanel({ sandbox }: { sandbox: SandboxView }) 
         // L'accent du theme, pas un bouton plein : lancer une evaluation est
         // une action offerte a l'auteur, pas l'action principale de la page.
         // C'est le bouton teal de la maquette, traduit en token.
-        className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-brandCP/15 px-4.5 py-2.5 text-[13px] font-semibold text-brandCP transition-colors hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:bg-white/[0.05] disabled:text-white/35"
+        // `w-fit` en plus de `self-start` : dans une colonne flex, un enfant
+        // s'etire par defaut, et le bouton se retrouvait pleine largeur avec
+        // son libelle au milieu.
+        className="inline-flex w-fit items-center gap-2 self-start rounded-full bg-brandCP/15 px-4.5 py-2.5 text-[13px] font-semibold text-brandCP transition-all duration-200 hover:-translate-y-0.5 hover:bg-brandCP/25 hover:shadow-[0_0_16px_rgba(10,247,193,0.15)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-white/[0.05] disabled:text-white/35 disabled:shadow-none"
       >
         {busy ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
