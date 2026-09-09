@@ -29,3 +29,15 @@ export type { HeaderSource } from "./starPolicy.js";
 
 export { planAnonAttach } from "./starAttach.js";
 export type { AnonAttachPlan } from "./starAttach.js";
+
+// Évaluation formative — grille `code` pour les deux types (§1.3), zéro CP.
+export {
+  SandboxEvaluationService,
+  SANDBOX_EVALUATION_GRID,
+  buildEvaluationContext,
+} from "./sandbox-evaluation.service.js";
+export type {
+  SandboxEvaluationDeps,
+  SandboxEvaluationEvent,
+  CannotEvaluateSandboxReason,
+} from "./sandbox-evaluation.service.js";

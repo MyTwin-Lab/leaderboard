@@ -5,6 +5,8 @@ import { Archive, ArrowLeft, Boxes, Database, GitBranch, Pencil } from "lucide-r
 import { Markdown } from "@/components/ui/Markdown";
 import type { SandboxView } from "@/lib/public/sandbox";
 import type { SandboxStarTier } from "../../../../../packages/database-service/domain/entities";
+import { AdminReadPanel } from "./AdminReadPanel";
+import { FormativeEvaluationPanel } from "./FormativeEvaluationPanel";
 import { PromotedBanner } from "./PromotedBanner";
 import { SandboxTypeBadge } from "./SandboxTypeBadge";
 import { StarButton, type StarState } from "./StarButton";
@@ -226,6 +228,15 @@ export function SandboxDetail({
             starCount={sandbox.star_count}
             paidThresholds={sandbox.paid_tier_thresholds}
           />
+
+          {/* L'évaluation formative : l'auteur la lance et la lit, un admin ne
+              fait que la lire (§1.6). Pour tout autre lecteur, l'API n'a même
+              pas servi `evaluation` — il n'y a rien à masquer ici. */}
+          {isAuthor ? (
+            <FormativeEvaluationPanel sandbox={sandbox} />
+          ) : (
+            isAdmin && <AdminReadPanel sandbox={sandbox} />
+          )}
         </div>
       </div>
     </div>

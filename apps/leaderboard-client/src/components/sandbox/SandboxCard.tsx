@@ -5,6 +5,7 @@ import { CheckCircle2, GitBranch } from "lucide-react";
 import type { SandboxView } from "@/lib/public/sandbox";
 import { SandboxTypeBadge } from "./SandboxTypeBadge";
 import { StarButton, type StarState } from "./StarButton";
+import { toScore10 } from "../../../../../packages/services/challenge/repo-score";
 
 interface SandboxCardProps {
   sandbox: SandboxView;
@@ -22,11 +23,9 @@ function repoLabel(url: string): string {
 /**
  * Le score formatif sur 10, ou `null`.
  *
- * L'évaluateur rend un score sur 9 (voir `packages/evaluator`) ; l'affichage
- * sur 10 est la conversion que le pipeline de scoring applique déjà aux
- * contributions. La fonction partagée arrivera avec l'évaluation formative
- * (palier 6, `repo-evaluation.ts`) — ici, seule la lecture d'un score déjà
- * stocké est en jeu.
+ * La conversion /9 → /10 est celle du pipeline de scoring (`toScore10`), pas
+ * une seconde implémentation : le score affiché sur une carte est exactement
+ * celui que l'évaluation a produit.
  *
  * L'API a déjà filtré : `evaluation` n'est servi qu'à l'auteur et aux admins.
  * Ce composant n'a donc aucune règle de visibilité à appliquer.
@@ -35,7 +34,7 @@ function score10(sandbox: SandboxView): string | null {
   if (sandbox.evaluation_status !== "done") return null;
   const global = (sandbox.evaluation as { globalScore?: number } | null)?.globalScore;
   if (typeof global !== "number" || Number.isNaN(global)) return null;
-  return Math.max(0, Math.min(10, (global / 9) * 10)).toFixed(1);
+  return toScore10(global).toFixed(1);
 }
 
 const dateFmt = new Intl.DateTimeFormat("en-US", {

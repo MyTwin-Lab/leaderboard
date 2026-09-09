@@ -3,13 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { BarChart2, X } from "lucide-react";
-
-interface EvaluationScore {
-  criterion: string;
-  score: number;
-  weight: number;
-  comment?: string;
-}
+import { EvaluationScorePanel, type EvaluationScore } from "./EvaluationScorePanel";
 
 interface ContributionEvaluation {
   title: string;
@@ -84,50 +78,20 @@ export function EvaluationModal({
           <div className="space-y-4">
             <p className="truncate text-sm font-medium text-white">{data.title}</p>
 
-            <div className="flex items-center gap-4 rounded-xl border border-brandCP/15 bg-brandCP/[0.04] px-4 py-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brandCP/15">
-                <span className="text-2xl font-bold text-brandCP">
-                  {Math.round(data.evaluation?.globalScore ?? 0)}
-                </span>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">Global Score</p>
-                <p className="mt-0.5 text-xs text-white/40">
-                  {data.evaluation?.scores?.length ?? 0} criteria · {data.reward.toLocaleString()} CP earned
+            {/* Le bloc « Global Score », la liste des critères et la date de
+                l'évaluation viennent du composant partagé avec le sandbox. Le
+                fragment qu'il rend laisse `space-y-4` s'appliquer à ses blocs
+                comme s'ils étaient écrits ici. */}
+            <EvaluationScorePanel
+              globalScore={data.evaluation?.globalScore}
+              scores={data.evaluation?.scores}
+              subtitle={`${data.evaluation?.scores?.length ?? 0} criteria · ${data.reward.toLocaleString()} CP earned`}
+              footer={
+                <p className="text-[11px] text-white/25">
+                  Evaluated {new Date(data.submitted_at).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })}
                 </p>
-              </div>
-            </div>
-
-            {data.evaluation?.scores && data.evaluation.scores.length > 0 && (
-              <div className="space-y-2">
-                {data.evaluation.scores.map((s, i) => (
-                  <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-white">{s.criterion}</p>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className="text-[10px] text-white/25">×{s.weight}</span>
-                        <span className="rounded-full bg-brandCP/15 px-2.5 py-0.5 text-xs font-bold text-brandCP">
-                          {s.score}/10
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-white/8">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-brandCP/60 to-brandCP"
-                        style={{ width: `${s.score * 10}%` }}
-                      />
-                    </div>
-                    {s.comment && (
-                      <p className="mt-2.5 text-xs italic leading-relaxed text-white/40">{s.comment}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <p className="text-[11px] text-white/25">
-              Evaluated {new Date(data.submitted_at).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })}
-            </p>
+              }
+            />
           </div>
         )}
       </div>

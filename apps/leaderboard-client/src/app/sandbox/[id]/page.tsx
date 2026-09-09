@@ -73,6 +73,15 @@ export default function SandboxDetailPage() {
     // Après le refresh de session, sinon le détail se lirait avec le jeton
     // expiré que `meQuery` est en train de renouveler.
     enabled: !!sandboxId && !meQuery.isPending,
+    // L'évaluation formative est fire-and-forget : son statut vit sur le
+    // sandbox. Tant qu'un run est en vol, on relit toutes les 3 s — c'est ce
+    // qui fait passer `FormativeEvaluationPanel` d'« Evaluating… » au score.
+    // Piloté ici, sur la seule requête qui porte le sandbox, plutôt que dans le
+    // panneau : deux `useQuery` sur la même clé se disputeraient les options.
+    refetchInterval: (query) => {
+      const status = query.state.data?.sandbox.evaluation_status;
+      return status === "pending" || status === "running" ? 3000 : false;
+    },
   });
 
   const me = meQuery.data?.user ?? null;
