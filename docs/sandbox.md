@@ -225,6 +225,50 @@ Nothing is ever written to `reward_entries`, `sandbox_rewards` or `contributions
 
 ---
 
+## Promotion
+
+An admin turns a convincing proposal into an official challenge. The **type is inherited**, never chosen — a `code` sandbox becomes a code challenge, an `ml` one an ML challenge. Everything else (project, pool, reward rules, dates, compute, brief) is the admin's call, filled in through the usual challenge drawer, pre-filled from the sandbox.
+
+### One transaction, guarded on the way in
+
+```
+UPDATE sandboxes … WHERE uuid = $id AND status = 'open' RETURNING   ← row lock, the concurrency guard
+INSERT challenges
+INSERT repos + challenge_repos   (workspace_meta pre-filled)
+INSERT challenge_teams           (the author, with their repo)
+UPDATE sandboxes SET promoted_challenge_id = …
+INSERT sandbox_rewards { rule_key: 'promotion' }
+```
+
+The guarded update comes **first**: a second concurrent promotion finds no row, throws, and rolls back. The unique `promotion` index on `sandbox_rewards` is the belt to that pair of braces.
+
+The challenge id is set in a **later** statement rather than in the first one, because `promoted_challenge_id`'s foreign key is not deferrable — pointing at a challenge that does not exist yet would fail at statement end.
+
+The promotion row is written **even when the bonus is zero**: it is the trace of the promotion, and the unique index rests on it.
+
+### The author's work is carried over
+
+The author does not re-submit what they already provided. On a challenge, handing in a dataset, a model or code **is** a credited contribution, so the promotion creates those contributions and runs the normal scoring, which credits the author out of the new pool.
+
+| Sandbox | What happens |
+|---|---|
+| `ml` | contributions created for the `dataset` and `model_code` roles, then scored through the normal ML path |
+| `ml`, model role | **not** scored — it has no grid, it is scored on a Kaggle metric the sandbox does not hold. Credited when the author publishes one from the challenge |
+| `code` | the repo is attached as `own_repo`; the challenge's own evaluation cycle creates the contribution on the first run |
+
+Two details that matter:
+
+- **The two awards run in sequence, not in parallel.** Each reads what is left of the pool before writing its ledger rows; two concurrent reads would see the same remainder and could together overshoot it. Promotion is the only place that triggers two at once.
+- **The carry-over runs after the commit and is not fatal**, like template tasks and the brief. A failure leaves the promotion done and the contributions pending; nothing replays them automatically.
+
+The contribution titles and the artifact flag live in `ML_ROLE_RULE` (`packages/services/challenge/mlRoles.ts`), shared with the workspace route: two paths write these contributions now, and a carried-over one has to be indistinguishable from a submitted one.
+
+### After promotion
+
+The sandbox is marked `promoted` and linked to the challenge; its card in the listing points there. Other contributors join through the normal challenge flow. The proposal itself is never deleted — deleting the challenge sets the link back to NULL rather than erasing what produced it.
+
+---
+
 ## API and visibility
 
 The listing and the detail pages are **public**. Creating, editing, evaluating, archiving and promoting all require an account — see the role table in [`auth.md`](./auth.md) and the routes in [`api.md`](./api.md).

@@ -27,6 +27,8 @@ A challenge has a `type`: `code` (the default), `ml`, or `validation`.
 draft → active → completed → archived
 ```
 
+A challenge can also be **born from a sandbox**: an admin promotes a contributor proposal, the challenge inherits its type, and the author is auto-joined with their repo as `own_repo` — their work carried over as credited contributions rather than re-submitted. See [`sandbox.md`](./sandbox.md).
+
 | Status | Description |
 |--------|-------------|
 | `draft` | Created but not started. Team can be set up, repos linked. Not visible to anonymous visitors. |
