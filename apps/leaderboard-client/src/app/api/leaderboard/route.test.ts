@@ -1,22 +1,42 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { repositories } from "@/lib/db";
 import { GET } from "./route";
 
+// `leaderboardQuerySchema` valide `projectId` comme un UUID. Les identifiants
+// « p1 » / « p2 » d'origine échouaient donc à la validation avant même
+// d'atteindre la route, qui répondait 500 au lieu du 400 ou du 200 attendu.
+const P1 = "11111111-1111-4111-8111-111111111111";
+const P2 = "22222222-2222-4222-8222-222222222222";
+/** Bien formé, mais absent de la liste des projets : c'est le cas 400. */
+const MISSING = "33333333-3333-4333-8333-333333333333";
+
 describe("GET /api/leaderboard", () => {
+  // `fetchLeaderboard` a gagné deux lectures après l'écriture de ces tests :
+  // les parts de groupe (`contributionMember`) et le ledger sandbox. Sans
+  // doublure, l'appel atteint un vrai client Postgres et la route répond 500.
+  //
+  // Neutralisées ici plutôt que dans chaque cas : ça dit ce qu'on veut dire —
+  // ni groupe ni sandbox ne participent à ces fixtures — et un troisième
+  // ledger ajouté demain ne cassera pas les trois tests d'un coup.
+  beforeEach(() => {
+    vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([]);
+    vi.spyOn(repositories.sandboxReward, "findAll").mockResolvedValue([]);
+  });
+
   afterEach(() => {
     vi.resetAllMocks();
   });
 
   it("returns leaderboard entries and project filters", async () => {
     vi.spyOn(repositories.project, "findAll").mockResolvedValue([
-      { uuid: "p1", title: "Project A", description: null, created_at: new Date() },
-      { uuid: "p2", title: "Project B", description: null, created_at: new Date() },
+      { uuid: P1, title: "Project A", description: null, created_at: new Date() },
+      { uuid: P2, title: "Project B", description: null, created_at: new Date() },
     ] as any);
 
     vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([
-      { uuid: "c1", project_id: "p1", contribution_points_reward: 100 } as any,
-      { uuid: "c2", project_id: "p2", contribution_points_reward: 200 } as any,
+      { uuid: "c1", project_id: P1, contribution_points_reward: 100 } as any,
+      { uuid: "c2", project_id: P2, contribution_points_reward: 200 } as any,
     ]);
 
     vi.spyOn(repositories.user, "findAll").mockResolvedValue([
@@ -55,21 +75,21 @@ describe("GET /api/leaderboard", () => {
     ]);
 
     expect(json.filters.projects).toEqual([
-      { id: null, name: "All projects" },
-      { id: "p1", name: "Project A" },
-      { id: "p2", name: "Project B" },
+      { id: null, name: "All Projects" },
+      { id: P1, name: "Project A" },
+      { id: P2, name: "Project B" },
     ]);
   });
 
   it("validates projectId existence", async () => {
     vi.spyOn(repositories.project, "findAll").mockResolvedValue([
-      { uuid: "p1", title: "Project A" } as any,
+      { uuid: P1, title: "Project A" } as any,
     ]);
     vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([]);
     vi.spyOn(repositories.user, "findAll").mockResolvedValue([]);
     vi.spyOn(repositories.contribution, "findAll").mockResolvedValue([]);
 
-    const request = new Request("https://example.test/api/leaderboard?projectId=not-found");
+    const request = new Request(`https://example.test/api/leaderboard?projectId=${MISSING}`);
     const response = await GET(request);
 
     expect(response.status).toBe(400);
@@ -79,13 +99,13 @@ describe("GET /api/leaderboard", () => {
 
   it("filters by projectId", async () => {
     vi.spyOn(repositories.project, "findAll").mockResolvedValue([
-      { uuid: "p1", title: "Project A" } as any,
-      { uuid: "p2", title: "Project B" } as any,
+      { uuid: P1, title: "Project A" } as any,
+      { uuid: P2, title: "Project B" } as any,
     ]);
 
     vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([
-      { uuid: "c1", project_id: "p1" } as any,
-      { uuid: "c2", project_id: "p2" } as any,
+      { uuid: "c1", project_id: P1 } as any,
+      { uuid: "c2", project_id: P2 } as any,
     ]);
 
     vi.spyOn(repositories.user, "findAll").mockResolvedValue([
@@ -98,7 +118,7 @@ describe("GET /api/leaderboard", () => {
       { user_id: "u2", challenge_id: "c2", reward: 40 } as any,
     ]);
 
-    const request = new Request("https://example.test/api/leaderboard?projectId=p1");
+    const request = new Request(`https://example.test/api/leaderboard?projectId=${P1}`);
     const response = await GET(request);
 
     expect(response.status).toBe(200);
