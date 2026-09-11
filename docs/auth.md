@@ -65,6 +65,7 @@ The proxy at `apps/leaderboard-client/src/proxy.ts` (Next.js middleware, runs at
 | `/contributors/me` | `admin`, `contributor`, `viewer`, `medical_pro` |
 | `/challenges/**` | `admin`, `contributor`, `viewer`, `medical_pro` |
 | `/sandbox/**` | Public — anyone can browse proposals and star them, signed in or not |
+| `/api/notifications/**` | Cookie (the owner — every route reads only the caller's rows) |
 | `/api/google-auth/**` | Public (OAuth flow) |
 | `/api/auth/refresh`, `/api/auth/logout` | Cookie (any authenticated user) |
 | `GET /api/**` (most) | Public or authenticated depending on route |
@@ -80,7 +81,14 @@ The write exceptions, as encoded in `proxy.ts`:
 | Challenge self-service | paths ending in `/project-evaluation` or `/workspace` |
 | Own profile | `PATCH /api/contributors/me` |
 | Manager-accessible | `PUT`/`PATCH /api/challenges/:id`, `POST /api/challenges`, `POST`/`PUT /api/repos*`, any path containing `/documents` |
+| Group invite | any path ending in `/group/invite` — group membership is checked in the handler |
+| Own notifications | `PATCH` under `/api/notifications` — row ownership lives in the repository's `WHERE` |
 | `medical_pro` validation | for that role only: paths containing `/validation-verdicts`, `/validation-targets`, `/validation-case-claims`, `/validation-reference-cases` |
+
+`/api/notifications/**` is **inside** the matcher, unlike `/api/sandboxes/**`
+below. Its routes are always authenticated, and staying inside buys the silent
+token refresh — a notifications panel read on a profile left open for a while is
+exactly where an expiring session shows up.
 
 `/api/sandboxes/**` is deliberately **outside the matcher** — like `/api/admin/*` — because its writes are open to anonymous visitors, which no proxy exception can express. Every handler authenticates itself. One consequence to know: no silent token refresh runs on these routes, so an expired session reads as anonymous on a `GET`. The sandbox pages fetch `/api/contributors/me`, which *is* in the matcher, and that is what refreshes the session.
 

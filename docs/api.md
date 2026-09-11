@@ -66,6 +66,11 @@ All request bodies are JSON unless noted (a few validation routes take `multipar
 | `POST` | `/api/challenges/:id/sync` | Legacy challenge-level evaluation sync. Superseded by per-contributor project evaluation. | Admin |
 | `POST` | `/api/challenges/:id/join` | Join a challenge — creates the participation, copies the task template, provisions the personal branch. Optional body: `{ mode: 'group' }` creates a group and returns its invite token, `{ group: <uuid> }` joins one (no board copy, no provisioning). | Contributor+ |
 | `GET` | `/api/challenges/:id/group/:token` | Who holds an invited group and whether it can still be joined. Answers only on an exact token, lists nothing. | Contributor+ |
+| `POST` | `/api/challenges/:id/group/invite` | Drop a `group_invite` notification, carrying the group's token, into a contributor's profile. Body `{ userId }`. Idempotent per (recipient, group). **The caller must already be in a group on this challenge** — the server hands out the token here, so without that check any account could broadcast any group's. | Group member |
+| `GET` | `/api/contributors/search?q=&challenge=` | Contributor picker for the join modal. At most 10 rows of `uuid` / `full_name` / `avatar_url` plus a `blocked_reason`, and **never** an email — unlike `GET /api/users`, which returns whole rows. | Contributor+ |
+| `GET` | `/api/notifications` | Your notifications, newest first, capped at 50, plus an unread count. | Self |
+| `PATCH` | `/api/notifications` | Mark all of yours read. | Self |
+| `PATCH` | `/api/notifications/:id` | Mark one of yours read. 404 covers "not found", "not yours" and "already read" alike — a 403 would confirm the row exists. | Self |
 | `PATCH` | `/api/challenges/:id/workspace` | `own_repo` mode: declare or change your public GitHub repo URL. | Contributor (self) |
 | `POST` | `/api/challenges/:id/project-evaluation` | Trigger the evaluation of your own delivery. Fire-and-forget; poll the contribution's `evaluation_status`. | Contributor (self) |
 | `GET` | `/api/challenges/:id/repos` | Repos linked to a challenge. | Public |
