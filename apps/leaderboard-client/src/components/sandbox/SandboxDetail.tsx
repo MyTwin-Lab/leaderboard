@@ -124,7 +124,10 @@ export function SandboxDetail({
             {sandbox.title}
           </h1>
 
-          <div className="flex flex-wrap items-center gap-2">
+          {/* `ml-auto` colle le groupe a droite quand il passe a la ligne sous
+              le titre (mobile) ; en `sm:` le `justify-between` du parent le
+              plaçait deja la. */}
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             <StarButton
               sandboxId={sandbox.uuid}
               starCount={sandbox.star_count}
@@ -190,7 +193,9 @@ export function SandboxDetail({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        {/* Les liens (repo, modele, datasets) ne servent a rien sur un
+            telephone : on les reserve au desktop. */}
+        <div className="hidden flex-wrap gap-2 sm:flex">
           <LinkChip href={sandbox.repo_url} icon={GitBranch} />
           {sandbox.model_url && <LinkChip href={sandbox.model_url} icon={Boxes} />}
           {sandbox.dataset_urls.map((url) => (

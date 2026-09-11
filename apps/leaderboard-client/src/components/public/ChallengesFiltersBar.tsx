@@ -90,12 +90,13 @@ export function ChallengesFiltersBar({
           />
         </div>
 
-        {/* Project filter */}
+        {/* Project filter — desktop seulement : sur telephone la barre se
+            limite a la recherche et aux pills de statut. */}
         <SelectDropdown
           options={projectOptions}
           value={projectId}
           onChange={handleProjectChange}
-          className="sm:w-[180px]"
+          className="hidden sm:block sm:w-[180px]"
         />
 
         {/* Right slot */}

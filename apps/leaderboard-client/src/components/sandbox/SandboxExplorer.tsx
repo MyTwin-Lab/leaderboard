@@ -169,9 +169,8 @@ export function SandboxExplorer() {
               Sandbox
             </h1>
             <p className="max-w-xl text-sm leading-relaxed text-white/60 sm:text-base">
-              Anyone can propose an open challenge in the health domain — no approval needed to
-              exist. The community stars what it wants built, star milestones pay the author, and
-              the best ideas get promoted into official challenges.
+              Anyone can propose an open challenge in the health domain. The community stars what it
+              wants built, and the best ideas get promoted into official challenges.
             </p>
           </div>
 
@@ -219,14 +218,14 @@ export function SandboxExplorer() {
               tabs={SORTS.map(({ label }) => ({ label }))}
               active={SORTS.findIndex(({ key }) => key === sort)}
               onChange={(index) => setSort(SORTS[index].key)}
-              className="shrink-0"
+              className="hidden shrink-0 sm:block"
             />
 
             {canCreate && (
               <button
                 type="button"
                 onClick={() => setCreateOpen(true)}
-                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-brandCP/25 bg-brandCP/10 px-4 py-2.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/20 hover:shadow-[0_0_16px_rgba(10,247,193,0.15)]"
+                className="hidden shrink-0 items-center gap-1.5 rounded-xl border border-brandCP/25 sm:flex bg-brandCP/10 px-4 py-2.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/20 hover:shadow-[0_0_16px_rgba(10,247,193,0.15)]"
               >
                 <Plus className="h-4 w-4" />
                 New sandbox
