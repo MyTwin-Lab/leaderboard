@@ -82,7 +82,7 @@ The write exceptions, as encoded in `proxy.ts`:
 | Own profile | `PATCH /api/contributors/me` |
 | Manager-accessible | `PUT`/`PATCH /api/challenges/:id`, `POST /api/challenges`, `POST`/`PUT /api/repos*`, any path containing `/documents` |
 | Group invite | any path ending in `/group/invite` — group membership is checked in the handler |
-| Own notifications | `PATCH` under `/api/notifications` — row ownership lives in the repository's `WHERE` |
+| Own notifications | `PATCH`/`DELETE` under `/api/notifications` — row ownership lives in the repository's `WHERE` |
 | `medical_pro` validation | for that role only: paths containing `/validation-verdicts`, `/validation-targets`, `/validation-case-claims`, `/validation-reference-cases` |
 
 `/api/notifications/**` is **inside** the matcher, unlike `/api/sandboxes/**`

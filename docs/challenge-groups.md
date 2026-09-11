@@ -223,9 +223,21 @@ the contributor commits, never while they are still browsing.
 ### The invitation is a record, but still not a pending state
 
 There *is* now an invitation record: a `group_invite` notification, delivered to
-the invitee's profile. What there still is **not** is a pending state or an
-acceptance mechanic. The notification carries the link, and **the link remains
-the invitation** — it is a delivery mechanism, not a state machine.
+the invitee's profile, where two round buttons accept or dismiss it.
+
+What there still is **not** is a pending state. No `accepted_at`, no
+`declined_at`, no transition — the notification carries the link, and **the link
+remains the invitation**. The two buttons are shortcuts over the existing flow,
+not a state machine:
+
+- **Accept** calls `POST /join { group: <token> }`, the same route the invite
+  screen uses, with the same four barriers. None of them are reimplemented in
+  the profile; it displays whatever reason the route returns and keeps the row
+  so the reason stays readable. On success it clears the spent notification and
+  lands on the challenge.
+- **Dismiss** deletes the notification and **revokes nothing**. The token stays
+  valid, and a link the inviter shared elsewhere still works. Without a pending
+  state, declining files the invitation away — it does not veto it.
 
 Every barrier therefore stays exactly where it was, in `GET /group/:token` and
 `POST /join`. Nothing reserves a seat, nothing expires, nothing needs to be

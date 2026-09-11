@@ -275,11 +275,12 @@ export async function proxy(request: NextRequest) {
       // Mise à jour du profil par le contributeur lui-même
       const isContributorSelfRoute = pathname === '/api/contributors/me' && method === 'PATCH';
 
-      // Ses propres notifications : marquer une ligne lue, ou toutes. La
-      // propriété est vérifiée dans le repository, où le userId est dans le
-      // WHERE — une garde écrite là ne peut pas être oubliée.
+      // Ses propres notifications : marquer lu (PATCH), ou retirer une ligne
+      // (DELETE, c'est-à-dire refuser une invitation). La propriété est
+      // vérifiée dans le repository, où le userId est dans le WHERE — une garde
+      // écrite là ne peut pas être oubliée.
       const isNotificationSelfRoute =
-        pathname.startsWith('/api/notifications') && method === 'PATCH';
+        pathname.startsWith('/api/notifications') && ['PATCH', 'DELETE'].includes(method);
 
       // Routes accessibles aux managers de projet (auth vérifiée dans le handler)
       const isManagerAccessibleRoute =

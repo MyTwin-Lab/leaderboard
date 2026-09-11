@@ -71,6 +71,7 @@ All request bodies are JSON unless noted (a few validation routes take `multipar
 | `GET` | `/api/notifications` | Your notifications, newest first, capped at 50, plus an unread count. | Self |
 | `PATCH` | `/api/notifications` | Mark all of yours read. | Self |
 | `PATCH` | `/api/notifications/:id` | Mark one of yours read. 404 covers "not found", "not yours" and "already read" alike — a 403 would confirm the row exists. | Self |
+| `DELETE` | `/api/notifications/:id` | Remove one of yours — declining a group invitation, or clearing one a successful join has spent. **Revokes nothing**: the group token stays valid and a link shared elsewhere still works. | Self |
 | `PATCH` | `/api/challenges/:id/workspace` | `own_repo` mode: declare or change your public GitHub repo URL. | Contributor (self) |
 | `POST` | `/api/challenges/:id/project-evaluation` | Trigger the evaluation of your own delivery. Fire-and-forget; poll the contribution's `evaluation_status`. | Contributor (self) |
 | `GET` | `/api/challenges/:id/repos` | Repos linked to a challenge. | Public |

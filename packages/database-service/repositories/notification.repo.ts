@@ -127,6 +127,26 @@ export class NotificationRepository {
     return updated.length > 0;
   }
 
+  /**
+   * Suppression définitive, par son propriétaire.
+   *
+   * C'est ce que fait « refuser » une invitation, et c'est aussi ce qui retire
+   * une notification devenue caduque après un join réussi. À ne pas confondre
+   * avec un veto : le jeton du groupe reste valide et le lien continue de
+   * marcher. Sans état en attente, refuser classe sans suite, ça n'interdit
+   * rien — voir docs/challenge-groups.md.
+   *
+   * `userId` est dans le WHERE pour la même raison que dans `markRead` : une
+   * garde écrite dans la requête ne peut pas être oubliée par un appelant.
+   */
+  async delete(uuid: string, userId: string): Promise<boolean> {
+    const deleted = await db
+      .delete(notifications)
+      .where(and(eq(notifications.uuid, uuid), eq(notifications.user_id, userId)))
+      .returning({ uuid: notifications.uuid });
+    return deleted.length > 0;
+  }
+
   async markAllRead(userId: string): Promise<number> {
     const updated = await db
       .update(notifications)

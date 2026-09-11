@@ -33,3 +33,34 @@ export async function PATCH(
     return NextResponse.json({ error: 'Failed to update notification' }, { status: 500 });
   }
 }
+
+/**
+ * DELETE /api/notifications/[id] — retirer une notification.
+ *
+ * Deux appelants, un seul geste : refuser une invitation de groupe, et retirer
+ * celle qu'un join réussi vient de rendre caduque.
+ *
+ * Refuser **ne révoque rien** : le jeton du groupe reste valide et le lien
+ * partagé par ailleurs continue de fonctionner. Sans état en attente, c'est un
+ * classement sans suite, pas un veto.
+ *
+ * Même 404 indistinct que le PATCH, pour la même raison.
+ */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { id } = await params;
+    const ok = await notificationRepo.delete(id, user.id);
+    if (!ok) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('Error deleting notification:', err);
+    return NextResponse.json({ error: 'Failed to delete notification' }, { status: 500 });
+  }
+}
