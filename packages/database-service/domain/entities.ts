@@ -724,3 +724,30 @@ export interface OnboardingProgress {
   created_at: Date;
   updated_at: Date;
 }
+
+// --- NOTIFICATIONS ---
+// Voir docs/challenge-groups.md. Une notification transporte un lien, jamais
+// un état : il n'y a ni acceptation, ni refus, ni « en attente ».
+
+/** Le seul type aujourd'hui. La colonne reste une chaîne pour le suivant. */
+export type NotificationType = 'group_invite';
+
+/** Ce que porte un `group_invite` — dénormalisé, cf. le commentaire du schéma. */
+export interface GroupInviteNotificationPayload {
+  challengeId: string;
+  challengeTitle: string;
+  groupToken: string;
+  fromUserId: string;
+  fromName: string;
+}
+
+export interface Notification {
+  uuid: string;
+  user_id: string;
+  type: NotificationType;
+  payload: Record<string, unknown>;
+  /** Le jeton du groupe pour un `group_invite`, NULL pour un type sans dédup. */
+  dedupe_key: string | null;
+  read_at: Date | null;
+  created_at: Date;
+}

@@ -965,6 +965,37 @@ export const sandbox_rewards = pgTable("sandbox_rewards", {
     .where(sql`rule_key = 'promotion'`),
 }));
 
+// --- NOTIFICATIONS ---
+// Notifications in-app. Voir docs/challenge-groups.md.
+//
+// Le premier et seul type est `group_invite` : il porte le jeton d'invitation
+// d'un groupe. Il n'y a **pas** d'état en attente et pas d'acceptation — la
+// notification transporte un lien, et le lien reste l'invitation. Toutes les
+// barrières restent là où elles étaient, dans GET /group/:token et POST /join.
+export const notifications = pgTable("notifications", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  // Chaîne et non enum : un second type ne doit pas demander de migration.
+  type: varchar("type", { length: 40 }).notNull(),
+  // Dénormalisé : une notification est la trace de ce qui était vrai à
+  // l'envoi. La re-joindre à un challenge renommé depuis réécrirait l'histoire.
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  // Idempotence : le jeton du groupe pour un `group_invite`, NULL sinon.
+  dedupe_key: varchar("dedupe_key", { length: 200 }),
+  read_at: timestamp("read_at"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userCreatedIdx: index("idx_notifications_user_created").on(table.user_id, table.created_at),
+  unreadIdx: index("idx_notifications_unread")
+    .on(table.user_id)
+    .where(sql`read_at IS NULL`),
+  // Partiel : `dedupe_key` est NULL pour un type sans déduplication, et deux
+  // NULL sont distincts pour Postgres.
+  dedupeIdx: uniqueIndex("idx_notifications_dedupe")
+    .on(table.user_id, table.type, table.dedupe_key)
+    .where(sql`dedupe_key IS NOT NULL`),
+}));
+
 // --- SYNC MEETINGS ---
 export const sync_meetings = pgTable("sync_meetings", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),

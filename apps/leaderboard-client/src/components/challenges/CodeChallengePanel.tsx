@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { Loader2, GitBranch, Rocket, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import { ContributorTaskBoard, type BoardTask } from '@/components/contributor/ContributorTaskBoard';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
-import { useJoinChallenge } from '@/lib/useJoinChallenge';
-import { JoinButton } from '@/components/challenges/JoinButton';
 
 export interface CodeParticipation {
   user_id: string;
@@ -42,7 +40,6 @@ export function CodeChallengePanel({
   const [repoUrl, setRepoUrl] = useState(myParticipation?.workspace_url ?? '');
   const [error, setError] = useState('');
 
-  const { join, joining, error: joinError } = useJoinChallenge(challengeId, onReload);
 
   const saveRepoUrl = async () => {
     setError('');
@@ -66,7 +63,12 @@ export function CodeChallengePanel({
     finally { setLaunching(false); }
   };
 
-  // ── Non-membre : teaser + bouton rejoindre ──
+  // ── Non-membre : teaser seul ──
+  //
+  // Plus de bouton ici. Rejoindre passe par la modale, ouverte depuis le
+  // `Join` de l'en-tête, qui est le seul point d'entrée de la page — ce bouton
+  // lançait un join solo direct, sans sélecteur de coéquipiers et sans
+  // l'avertissement d'irréversibilité.
   if (!isMember) {
     return (
       <div className="space-y-4">
@@ -81,8 +83,6 @@ export function CodeChallengePanel({
             ))}
           </div>
         )}
-        <JoinButton onClick={join} joining={joining} />
-        {joinError && <p className="text-xs text-red-400">{joinError}</p>}
       </div>
     );
   }

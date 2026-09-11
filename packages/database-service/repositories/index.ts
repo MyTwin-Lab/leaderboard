@@ -31,3 +31,5 @@ export { DigestRepository } from "./digest.repo.js";
 export { SandboxRepository } from "./sandbox.repo.js";
 export { SandboxStarRepository } from "./sandboxStar.repo.js";
 export { SandboxRewardRepository } from "./sandboxReward.repo.js";
+export { NotificationRepository, buildGroupInviteDraft, NOTIFICATIONS_PAGE_SIZE } from "./notification.repo.js";
+export type { NotificationDraft } from "./notification.repo.js";

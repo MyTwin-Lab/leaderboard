@@ -38,6 +38,7 @@ import {
   sandboxes,
   sandbox_stars,
   sandbox_rewards,
+  notifications,
 } from "./drizzle.js";
 import { parseMlRewardRules } from "../domain/mlRewardRules.js";
 import { parseCodeRewardRules } from "../domain/codeRewardRules.js";
@@ -95,6 +96,8 @@ import type {
   SandboxStarOrigin,
   SandboxReward,
   SandboxRewardRuleKey,
+  Notification,
+  NotificationType,
   SandboxStarTier,
 } from "../domain/entities.js";
 
@@ -119,6 +122,7 @@ type DbDigest = InferSelectModel<typeof digests>;
 type DbSandbox = InferSelectModel<typeof sandboxes>;
 type DbSandboxStar = InferSelectModel<typeof sandbox_stars>;
 type DbSandboxReward = InferSelectModel<typeof sandbox_rewards>;
+type DbNotification = InferSelectModel<typeof notifications>;
 
 /* ============================================================
  *  MAPPERS DB → DOMAIN
@@ -988,6 +992,22 @@ export function toDomainSandboxReward(row: DbSandboxReward): SandboxReward {
     rule_key: row.rule_key as SandboxRewardRuleKey,
     tier_stars: row.tier_stars ?? null,
     points: row.points,
+    created_at: row.created_at,
+  };
+}
+
+/**
+ * `payload` est rendu tel quel : c'est la trace figée de ce qui était vrai à
+ * l'envoi, et le valider ici reviendrait à réinterpréter l'histoire.
+ */
+export function toDomainNotification(row: DbNotification): Notification {
+  return {
+    uuid: row.uuid,
+    user_id: row.user_id,
+    type: row.type as NotificationType,
+    payload: (row.payload ?? {}) as Record<string, unknown>,
+    dedupe_key: row.dedupe_key ?? null,
+    read_at: row.read_at ?? null,
     created_at: row.created_at,
   };
 }

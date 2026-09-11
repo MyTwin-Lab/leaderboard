@@ -366,6 +366,36 @@ const STATEMENTS: Array<{ label: string; sql: string }> = [
     label: "app_settings.sandbox_promotion_bonus_cp",
     sql: `ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS sandbox_promotion_bonus_cp integer NOT NULL DEFAULT 0`,
   },
+
+  // notifications — voir drizzle/0021_notifications.sql. La DDL vit ici en
+  // double parce que `drizzle-kit push` ne peut pas tourner au déploiement
+  // (prompt interactif sans TTY, cf. l'en-tête de ce fichier).
+  {
+    label: "notifications table",
+    sql: `CREATE TABLE IF NOT EXISTS notifications (
+      uuid uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+      user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+      type varchar(40) NOT NULL,
+      payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+      dedupe_key varchar(200),
+      read_at timestamp,
+      created_at timestamp NOT NULL DEFAULT now()
+    )`,
+  },
+  {
+    label: "idx_notifications_user_created",
+    sql: `CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications (user_id, created_at DESC)`,
+  },
+  {
+    label: "idx_notifications_unread",
+    sql: `CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications (user_id) WHERE read_at IS NULL`,
+  },
+  // Porte l'idempotence de l'invitation : partiel, parce que `dedupe_key` est
+  // NULL pour un type sans déduplication et que deux NULL sont distincts.
+  {
+    label: "idx_notifications_dedupe",
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_dedupe ON notifications (user_id, type, dedupe_key) WHERE dedupe_key IS NOT NULL`,
+  },
 ];
 
 async function main() {

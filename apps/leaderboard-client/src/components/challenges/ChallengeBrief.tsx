@@ -36,12 +36,10 @@ const INVITE_BLOCKERS: Record<string, string> = {
 };
 
 export function ChallengeBrief({
-  content, challengeType, onJoin, onJoinGroup, onAcceptInvite, joining, error, invite,
+  content, challengeType, onAcceptInvite, joining, error, invite,
 }: {
   content: string;
   challengeType: string;
-  onJoin: () => void;
-  onJoinGroup: () => void;
   onAcceptInvite: () => void;
   joining: boolean;
   error?: string;
@@ -77,27 +75,14 @@ export function ChallengeBrief({
             </p>
           </>
         ) : (
-          <>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <JoinButton onClick={onJoin} joining={joining} />
-              <JoinButton
-                onClick={onJoinGroup}
-                joining={joining}
-                variant="secondary"
-                label="Join as a group"
-                icon={<Users className="h-4 w-4" />}
-              />
-            </div>
-            <p className="text-center text-xs text-white/35">
-              {JOIN_CAPTIONS[challengeType] ?? 'Joining adds you to this challenge.'}
-            </p>
-            {/* La bascule solo → groupe est refusée après coup : le board est
-                déjà copié et la branche provisionnée. Le dire ici évite de le
-                découvrir au moment où il est trop tard. */}
-            <p className="text-center text-[11px] text-white/25">
-              You cannot switch between the two afterwards.
-            </p>
-          </>
+          /* Pas de bouton ici : le `Join` de l'en-tête est le seul point
+             d'entrée de la page, et c'est lui qui ouvre la modale. Le brief
+             reste de la lecture, et la légende dit simplement ce que rejoindre
+             implique — l'avertissement d'irréversibilité, lui, vit dans la
+             modale, là où la décision se prend. */
+          <p className="text-center text-xs text-white/35">
+            {JOIN_CAPTIONS[challengeType] ?? 'Joining adds you to this challenge.'}
+          </p>
         )}
         {error && <p className="text-center text-xs text-red-400">{error}</p>}
       </div>

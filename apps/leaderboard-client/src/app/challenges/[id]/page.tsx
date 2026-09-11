@@ -7,7 +7,7 @@ import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import {
   ArrowLeft, CheckCircle2, CalendarDays, BrainCircuit,
   GitBranch, GitPullRequest, Trophy, BarChart2, FlaskConical, Medal, FileText, Info,
-  Database, Cpu, ExternalLink, Users,
+  Database, Cpu, ExternalLink, Users, UserPlus,
 } from 'lucide-react';
 import type { TeamMember } from '@/lib/types';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
@@ -17,6 +17,7 @@ import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseA
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { ChallengeBrief, type GroupInvite } from '@/components/challenges/ChallengeBrief';
 import { GroupInviteModal } from '@/components/challenges/GroupInviteModal';
+import { JoinModal } from '@/components/challenges/JoinModal';
 // groupPolicy et non group : ce dernier instancie un repository, donc un
 // client Postgres, qui n'a rien à faire dans le bundle navigateur.
 import { GROUP_MAX_SIZE } from '../../../../../../packages/services/challenge/groupPolicy';
@@ -33,6 +34,7 @@ import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActiv
 import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
 import { findBrief, shouldShowBrief } from '@/lib/challengeBrief';
+import { showJoinInHeader } from '@/lib/joinGate';
 import { useJoinChallenge } from '@/lib/useJoinChallenge';
 
 const ML_REPO_TYPES = ['kaggle_dataset', 'kaggle_model'];
@@ -128,9 +130,9 @@ export default function ChallengeDetailPage() {
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
   const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [joinModalOpen, setJoinModalOpen] = useState(false);
   // Couvre la fenêtre entre la création du groupe et le rechargement de
   // l'overview, qui est la source de vérité une fois arrivée.
-  const [ownGroupId, setOwnGroupId] = useState<string | null>(null);
 
   // Declared before overviewQuery so its refetchInterval closure (below) can
   // read meQuery.data without a temporal-dead-zone hazard.
@@ -244,10 +246,12 @@ export default function ChallengeDetailPage() {
   const workspaceOwnerId = overviewQuery.data?.my_workspace_owner_id ?? currentUserId;
   const myParticipation = participants.find(p => p.user_id === workspaceOwnerId) ?? null;
   // Seul le group_id du visiteur est publié : chez les autres il est masqué,
-  // puisque c'est le jeton qui permet de rejoindre. `ownGroupId` couvre la
-  // fenêtre entre la création du groupe et le rechargement de l'overview.
-  const myGroupId =
-    ownGroupId ?? participants.find(p => p.user_id === currentUserId)?.group_id ?? null;
+  // puisque c'est le jeton qui permet de rejoindre.
+  //
+  // Plus de cache optimiste : `useJoinChallenge` attend le rechargement de
+  // l'overview avant de rendre la main, donc le jeton est déjà là quand la
+  // modale de join affiche sa confirmation.
+  const myGroupId = participants.find(p => p.user_id === currentUserId)?.group_id ?? null;
   const myGroupSize = myGroupId
     ? participants.filter(p => p.group_owner_id === workspaceOwnerId).length
     : 0;
@@ -278,13 +282,6 @@ export default function ChallengeDetailPage() {
     retry: false,
     staleTime: 30_000,
   });
-
-  const createGroup = async () => {
-    const result = await join({ mode: 'group' });
-    if (!result?.groupId) return;
-    setOwnGroupId(result.groupId);
-    setInviteOpen(true);
-  };
 
   const acceptInvite = async () => {
     if (!inviteToken) return;
@@ -358,6 +355,15 @@ export default function ChallengeDetailPage() {
     brief: briefQuery.data,
   });
 
+  // `Join` prend la place de `Docs` tant que le visiteur n'a pas rejoint. La
+  // condition ignore `isAnonymous` volontairement : la page est publique, et le
+  // bouton renvoie alors vers la connexion plutôt que d'ouvrir la modale.
+  const joinInHeader = showJoinInHeader({
+    isMember,
+    challengeType: challenge.type,
+    challengeStatus: challenge.status,
+  });
+
   const upcomingMeetings = meetings
     .filter(m => ['scheduled', 'in_progress'].includes(m.status))
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
@@ -412,14 +418,40 @@ export default function ChallengeDetailPage() {
             {challenge.title}
           </h1>
           <div className="mt-1 flex shrink-0 items-center gap-2">
-            <button
-              onClick={() => setDocsDrawerOpen(true)}
-              title="Documents"
-              className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-brandCP/30 hover:bg-brandCP/[0.07] hover:text-brandCP/70 hover:shadow-[0_4px_16px_rgba(10,247,193,0.1)] active:translate-y-0"
-            >
-              <FileText className="h-3.5 w-3.5" />
-              Docs
-            </button>
+            {joinInHeader ? (
+              isAnonymous ? (
+                // Aucun chemin ne doit permettre à un non-connecté de lancer
+                // une requête de join : on l'envoie se connecter.
+                <a
+                  href={`/signin?from=/challenges/${challengeId}`}
+                  title="Join this challenge"
+                  style={{ color: '#fff' }}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-brandCP px-4 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(10,247,193,0.2)] active:translate-y-0"
+                >
+                  <UserPlus className="h-3.5 w-3.5" style={{ color: '#fff' }} />
+                  Join
+                </a>
+              ) : (
+                <button
+                  onClick={() => setJoinModalOpen(true)}
+                  title="Join this challenge"
+                  style={{ color: '#fff' }}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-brandCP px-4 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(10,247,193,0.2)] active:translate-y-0"
+                >
+                  <UserPlus className="h-3.5 w-3.5" style={{ color: '#fff' }} />
+                  Join
+                </button>
+              )
+            ) : (
+              <button
+                onClick={() => setDocsDrawerOpen(true)}
+                title="Documents"
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-brandCP/30 hover:bg-brandCP/[0.07] hover:text-brandCP/70 hover:shadow-[0_4px_16px_rgba(10,247,193,0.1)] active:translate-y-0"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Docs
+              </button>
+            )}
             <button
               onClick={() => setRulesDrawerOpen(true)}
               title="Reward rules"
@@ -525,8 +557,6 @@ export default function ChallengeDetailPage() {
         <ChallengeBrief
           content={briefQuery.data!}
           challengeType={challenge.type}
-          onJoin={() => join()}
-          onJoinGroup={createGroup}
           onAcceptInvite={acceptInvite}
           joining={joining}
           error={joinError}
@@ -635,6 +665,14 @@ export default function ChallengeDetailPage() {
     />
     {/* Hors du conteneur animé, comme les drawers : un transform casse le
         positionnement fixed de l'overlay. */}
+    {joinModalOpen && (
+      <JoinModal
+        challengeId={challengeId}
+        challengeType={challenge.type ?? 'code'}
+        onClose={() => setJoinModalOpen(false)}
+        onJoined={reloadBoard}
+      />
+    )}
     {inviteOpen && myGroupId && (
       <GroupInviteModal
         inviteUrl={`${window.location.origin}/challenges/${challengeId}?group=${myGroupId}`}

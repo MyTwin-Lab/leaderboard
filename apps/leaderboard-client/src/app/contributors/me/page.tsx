@@ -25,6 +25,7 @@ import { ModulesSettings } from "@/components/contributor/ModulesSettings";
 import { OnboardingProgressTable } from "@/components/contributor/OnboardingProgressTable";
 import { EvaluationGridsTab } from "@/components/contributor/evaluation-grids/EvaluationGridsTab";
 import { DigestTab } from "@/components/contributor/DigestTab";
+import { NotificationsTab } from "@/components/contributor/NotificationsTab";
 import { SandboxSettings } from "@/components/contributor/SandboxSettings";
 
 const appSettingsRepo = new AppSettingsRepository();
@@ -73,6 +74,13 @@ export default async function ContributorSelfPage({
           <SandboxRewardsList sandboxes={profile.sandboxes} />
         </>
       ),
+    },
+    // Avant les onglets conditionnels au rôle : tout le monde peut recevoir une
+    // invitation de groupe. Atteignable en direct par ?tab=notifications, que
+    // `ContributorTabs` résout déjà sur le libellé.
+    {
+      label: "Notifications",
+      panel: <NotificationsTab />,
     },
     {
       label: "Profile",

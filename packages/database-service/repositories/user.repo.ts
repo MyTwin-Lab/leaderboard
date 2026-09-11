@@ -1,6 +1,6 @@
 import { db } from "../db/drizzle";
 import { users, contributions } from "../db/drizzle";
-import { eq, inArray, and, gte, lt } from "drizzle-orm";
+import { eq, inArray, and, gte, lt, ilike } from "drizzle-orm";
 import { toDomainUser, toDomainContribution, toDbUser } from "../db/mappers";
 import type { User, Contribution } from "../domain/entities";
 import { userSchema } from "../domain/schemas_zod";
@@ -8,6 +8,27 @@ import { userSchema } from "../domain/schemas_zod";
 export class UserRepository {
   async findAll(): Promise<User[]> {
     const rows = await db.select().from(users);
+    return rows.map(toDomainUser);
+  }
+
+  /**
+   * Recherche par nom, pour le sélecteur de coéquipiers du parcours « join ».
+   *
+   * `ilike` et non une recherche plein texte : la table tient dans quelques
+   * centaines de lignes, et un index GIN serait de l'infrastructure pour un
+   * problème qui n'existe pas encore.
+   *
+   * Rend des `User` complets — c'est à la route de n'en publier que ce qu'un
+   * lecteur a le droit de voir. Voir `api/contributors/search`, qui construit
+   * sa réponse champ par champ pour cette raison.
+   */
+  async searchByName(term: string, limit = 10): Promise<User[]> {
+    const rows = await db
+      .select()
+      .from(users)
+      .where(ilike(users.full_name, `%${term}%`))
+      .orderBy(users.full_name)
+      .limit(limit);
     return rows.map(toDomainUser);
   }
 
