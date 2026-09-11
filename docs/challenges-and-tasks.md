@@ -59,13 +59,19 @@ Anonymous visitors only ever see `active` or `completed` challenges of type `cod
 
 ## The brief
 
-Before a contributor joins, the challenge page has nothing useful to show them: the KPI cards count a board they don't have, and the workspace panel has no branch to point at. The **brief** takes that space instead — a Markdown document with the context, the objectives and the expected result, and a single Join button underneath.
+Before a contributor joins, most of the challenge page has nothing useful to show them: the tasks card counts a board they don't have, and the workspace panel has no branch to point at. The **brief** takes that space instead — a Markdown document with the context, the objectives and the expected result.
+
+It is laid out in **two columns**, on the same grid as the sandbox detail page: the reading column on the left, and on the right the KPI cards that still mean something to someone who has not joined.
+
+**Two cards there, not three.** The middle card is the only one that depends on type and membership, and for a non-member on a code challenge it shows `team.length` — exactly what the Team card shows. Side by side in a grid of three the duplication passes unnoticed; stacked in a narrow column it does not. So the brief's column carries *CP awarded* and *Team*, and the three-card behaviour is untouched everywhere else.
+
+There is **no Join button on the brief**. The page has exactly one, in the header, where it replaces `Docs` until you have joined — see [`challenge-groups.md`](./challenge-groups.md) for what it opens.
 
 - It is stored as an ordinary challenge document named **`brief.md`** — no dedicated column, no migration. Once the contributor has joined, it stays readable in the Docs drawer like any other document.
 - It is written from the challenge drawer (admins and project managers), in a collapsible Markdown field with a Write/Preview toggle and a `## Context` / `## Objective` / `## Expected result` skeleton to start from. At creation the challenge has no id yet, so the brief is buffered and flushed afterwards — the same pattern as template tasks.
 - Re-saving replaces the existing `brief.md` rather than stacking a second one (the `POST /documents` route is idempotent for that filename); emptying the field deletes the document.
 - It gates `code` and `ml` challenges only. Validation challenges are excluded on purpose: none of their routes check team membership, so putting the brief in front would impose an enrolment step they never required.
-- An anonymous visitor never sees it — they keep the sign-in invitation, which is the only action available to them. A challenge with no brief keeps the current page, just with the same Join button.
+- An anonymous visitor never sees it — they keep the sign-in invitation. The header `Join` is shown to them too, but it links to the Google sign-in rather than opening the join modal, so no path exists from which an unauthenticated visitor can fire a join request. A challenge with no brief keeps the ordinary page, with the same header `Join`.
 
 **Key files:** `apps/leaderboard-client/src/lib/challengeBrief.ts` (filename convention + `shouldShowBrief`), `components/challenges/ChallengeBrief.tsx`, `components/admin/briefFlush.ts`, `components/ui/Markdown.tsx`.
 
