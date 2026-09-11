@@ -217,13 +217,18 @@ POST /api/challenges/:id/validation-scenario-runs/:runId/complete
   boundary `medical_pro` already draws today.
 - **The scenario freezes at the first walkthrough.**
 
-### No proxy, and therefore no SSRF guard
+### No proxy, and no SSRF guard at call time
 
 The platform never calls the application: the validator's own browser loads it. There
-is no proxy, no timeout, no size cap, and `assertPublicHttpUrl` has nothing to protect
-here — it existed to defend the *server* that was issuing the request. The URL is still
-validated as `http`/`https` on save, so a `javascript:` URL can never be stored and
-later rendered as a link.
+is no proxy, no timeout and no size cap, and nothing needs an SSRF check at call time —
+that guard existed to defend the *server* that was issuing the request.
+
+The guard at **exposure** time stays as it is. `POST /api/challenges/:id/validation-targets`
+already calls `assertPublicHttpUrl` before saving the URL, and that route is shared by
+both modes; keeping it costs nothing and still buys the useful half — the URL is
+`http`/`https` and publicly resolvable, so a `javascript:` URL can never be stored and
+later rendered as a link, and a typo pointing at a private address is caught while the
+admin is still looking at the form.
 
 ## UI
 
@@ -262,16 +267,34 @@ before the work rather than after it.
 - **Left**: the application in a full-height iframe. An "open in a tab" button beside
   it — not as an architectural fallback, simply because a real application is cramped
   in half a window.
-- **Right**: the roadmap. Per step: the title, expandable instructions, three buttons
-  `Passed` / `Failed` / `Blocked`, and an optional comment box. A `medical_pro` also
-  gets a visually distinct **medical opinion** field underneath — not a tab, not a
-  mode: both lenses coexist on the same step.
-- **Saved as you go**: each entry issues its step `PUT`.
-- **Bottom**: the overall feedback (required) and the **Finish** button. Disabled while
-  a step has no result or the overall feedback is empty — and the button states *why*
-  ("2 steps still have no result") instead of sitting greyed out.
-- **After completion**: everything becomes read-only, with a "Walkthrough completed —
-  X CP" banner.
+- **Right**: **one step at a time**, not the whole list. The panel shows only the
+  current step — its title, its instructions, three buttons `Passed` / `Failed` /
+  `Blocked`, and an optional comment box. A `medical_pro` also gets a visually distinct
+  **medical opinion** field underneath — not a tab, not a mode: both lenses coexist on
+  the same step.
+
+  Showing seven expanded steps next to a live application means scrolling in two
+  directions at once; the validator is doing one thing, and the panel shows that one
+  thing.
+- **A compact progress strip** above it: one dot per step, coloured by result
+  (untouched / passed / failed / blocked), with "Step 3 of 7". It replaces what the
+  full list gave for free — knowing where you are and what is left — without putting
+  any step content on screen. Clicking a dot jumps to that step.
+- **Back / Next** under the step. Going back is not a rollback: a draft walkthrough
+  stays editable everywhere, so a validator who realises at step 5 that step 2 was
+  actually broken can return and change it.
+- **Saved as you go**: each entry issues its step `PUT`, so navigating between steps
+  never loses anything and closing the tab loses nothing either.
+- **Resuming a draft** opens on the first step with no result, not on step 1.
+- **The final screen**, reached after the last step: the overall feedback (required)
+  and the **Finish** button. Disabled while a step has no result or the overall
+  feedback is empty — and it states *why* ("2 steps still have no result"), with the
+  offending dots highlighted in the strip so the validator can jump straight to them
+  instead of hunting.
+- **After completion**: read-only, with a "Walkthrough completed — X CP" banner, and
+  **back to the full list** — every step with its result and comments on one screen.
+  One-step-at-a-time serves someone *doing* the walkthrough; someone re-reading their
+  own wants it all at once, and there is no "current step" left to show.
 
 ### The application is displayed in an iframe
 
