@@ -11,7 +11,7 @@ export function SandboxCTA() {
           Nothing here matches what you want to build?
         </span>
         <span className="text-sm leading-relaxed text-white/55">
-          Propose it in the Sandbox — no approval needed, and the community stars what it wants
+          Propose it in the Sandbox - no approval needed, and the community stars what it wants
           built.
         </span>
       </div>

@@ -224,7 +224,7 @@ export function ChallengeSlackSignalsEditor({ challengeId, open }: { challengeId
           {/* Existing signals */}
           {signals.length === 0 ? (
             <p className="rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
-              No signal yet. Define what counts as a contribution in the discussion — each detection rewards the author.
+              No signal yet. Define what counts as a contribution in the discussion - each detection rewards the author.
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -302,7 +302,7 @@ export function ChallengeSlackSignalsEditor({ challengeId, open }: { challengeId
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="Describe when this signal applies — this definition is what the AI uses to detect it…"
+              placeholder="Describe when this signal applies - this definition is what the AI uses to detect it…"
               rows={2}
               className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs leading-relaxed focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
               style={{ color: 'var(--foreground)' }}

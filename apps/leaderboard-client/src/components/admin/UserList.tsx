@@ -98,7 +98,7 @@ export function UserList({ users, onDelete, onRoleUpdated }: UserListProps) {
           <InitialsAvatar name={user.full_name || user.github_username || '?'} size={28} />
           <div>
             <div className="font-medium text-white">
-              {user.full_name || <span className="text-white/40 italic">—</span>}
+              {user.full_name || <span className="text-white/40 italic">-</span>}
             </div>
             <div className="text-xs text-white/40">@{user.github_username}</div>
           </div>
@@ -110,7 +110,7 @@ export function UserList({ users, onDelete, onRoleUpdated }: UserListProps) {
       header: 'Email',
       render: (user: User) => (
         <div className="text-sm text-white/50">
-          {user.email || <span className="text-white/20 italic">—</span>}
+          {user.email || <span className="text-white/20 italic">-</span>}
         </div>
       ),
     },
@@ -121,7 +121,7 @@ export function UserList({ users, onDelete, onRoleUpdated }: UserListProps) {
         <div className="text-xs">
           {user.google_user_id
             ? <span className="text-green-400/70">✓ linked</span>
-            : <span className="text-white/20">—</span>}
+            : <span className="text-white/20">-</span>}
         </div>
       ),
       width: '90px',

@@ -44,7 +44,7 @@ const dateFmt = new Intl.DateTimeFormat("en-US", {
 });
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return dateFmt.format(new Date(iso));
 }
 

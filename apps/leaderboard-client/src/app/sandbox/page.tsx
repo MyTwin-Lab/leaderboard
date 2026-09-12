@@ -3,7 +3,7 @@ import { SandboxExplorer } from "@/components/sandbox/SandboxExplorer";
 export const metadata = {
   title: "Sandbox",
   description:
-    "Community proposals in the health domain — star what you want built, and see the best ones promoted into official challenges.",
+    "Community proposals in the health domain - star what you want built, and see the best ones promoted into official challenges.",
 };
 
 /**

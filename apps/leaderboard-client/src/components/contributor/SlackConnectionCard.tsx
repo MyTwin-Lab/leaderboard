@@ -113,7 +113,7 @@ export function SlackConnectionCard() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[12px]">
                 <span className="text-white/30">Workspace</span>
-                <span className="font-medium text-white/70">{status.team_name ?? '—'}</span>
+                <span className="font-medium text-white/70">{status.team_name ?? '-'}</span>
               </div>
               {connectedAt && (
                 <div className="flex items-center justify-between text-[12px]">

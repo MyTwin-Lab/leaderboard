@@ -28,6 +28,10 @@ import { DigestTab } from "@/components/contributor/DigestTab";
 import { NotificationsTab } from "@/components/contributor/NotificationsTab";
 import { SandboxSettings } from "@/components/contributor/SandboxSettings";
 
+export const metadata = {
+  title: "Profile",
+};
+
 const appSettingsRepo = new AppSettingsRepository();
 const onboardingProgressRepo = new OnboardingProgressRepository();
 const userRepo = new UserRepository();
@@ -105,7 +109,7 @@ export default async function ContributorSelfPage({
                 initialAvatarUrl={profile.avatarUrl}
               />
               <p className="text-sm text-white/50">
-                Click your avatar to replace it — PNG or JPG, square works best.
+                Click your avatar to replace it - PNG or JPG, square works best.
               </p>
             </div>
           </div>

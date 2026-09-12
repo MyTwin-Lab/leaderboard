@@ -400,7 +400,7 @@ export default function ChallengeDetailPage() {
   const middleStat: HeroStat = isML ? {
     key: 'metric',
     label: bestMetricLabel ? `Best ${bestMetricLabel}` : 'Best metric',
-    value: bestMetricValue !== null ? bestMetricValue.toFixed(3) : '—',
+    value: bestMetricValue !== null ? bestMetricValue.toFixed(3) : '-',
     meta: bestMetricValue !== null ? 'from submitted model versions' : 'no metric yet',
     barWidth: bestMetricValue !== null ? `${Math.round(bestMetricValue * 100)}%` : undefined,
   } : isValidation ? {
@@ -451,9 +451,9 @@ export default function ChallengeDetailPage() {
               <span className="text-white/20">·</span>
               <span className="flex items-center gap-1 text-xs text-white/40">
                 <CalendarDays className="h-3 w-3 text-primary-100/50" />
-                {challenge.start_date ? formatDate(challenge.start_date, { month: 'short', day: 'numeric' }) : '—'}
+                {challenge.start_date ? formatDate(challenge.start_date, { month: 'short', day: 'numeric' }) : '-'}
                 {' → '}
-                {challenge.end_date ? formatDate(challenge.end_date, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                {challenge.end_date ? formatDate(challenge.end_date, { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
               </span>
             </>
           )}

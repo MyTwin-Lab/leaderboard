@@ -430,7 +430,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           // normal success path) would carry the admin off before they ever
           // see this. Hold here — no resetForm/onCreated/onClose — until they
           // click Continue in the footer.
-          setError(`Challenge ${isEdit ? 'updated' : 'created'}, but ${problems.join(' and ')} — fix ${problems.length > 1 ? 'them' : 'it'} from the edit drawer.`);
+          setError(`Challenge ${isEdit ? 'updated' : 'created'}, but ${problems.join(' and ')} - fix ${problems.length > 1 ? 'them' : 'it'} from the edit drawer.`);
           setPendingChallengeId(targetId);
         } else {
           setTimeout(() => {
@@ -502,11 +502,11 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                 What promoting does
               </p>
               <ul className="space-y-1 text-[11px] leading-relaxed" style={{ color: fgAt(0.5) }}>
-                <li>• Creates this challenge and closes the sandbox as <strong>Promoted</strong> — for good.</li>
+                <li>• Creates this challenge and closes the sandbox as <strong>Promoted</strong> - for good.</li>
                 <li>• The author joins as a member, with their repository already declared.</li>
                 <li>• The work already submitted becomes contributions and gets scored on this pool.</li>
                 <li>• The promotion bonus is paid to the author, per the Sandbox settings.</li>
-                <li>• The type stays the sandbox&apos;s — it decides the steps and the grid.</li>
+                <li>• The type stays the sandbox&apos;s - it decides the steps and the grid.</li>
               </ul>
             </div>
           )}
@@ -565,7 +565,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           {/* ── Project ── */}
           <Field icon={<ChevronDown className="h-3.5 w-3.5" />} label="Project">
             {isEdit ? (
-              <LockedValue text={projects.find(p => p.id === projectId)?.name ?? '—'} />
+              <LockedValue text={projects.find(p => p.id === projectId)?.name ?? '-'} />
             ) : (
               <SelectDropdown
                 options={projectOptions}
@@ -657,8 +657,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
               {isEdit ? (
                 <LockedValue
                   text={workspaceMode === 'own_repo'
-                    ? 'Own repo — each contributor submits their repo URL'
-                    : 'Shared repo — one personal branch per contributor'}
+                    ? 'Own repo - each contributor submits their repo URL'
+                    : 'Shared repo - one personal branch per contributor'}
                 />
               ) : (
                 <div className="flex gap-2">
@@ -745,7 +745,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                     onChange={setSourceChallengeId}
                   />
                   <p className="text-[11px] mt-1.5" style={{ color: fgAt(0.25) }}>
-                    Only ML challenges without a validation challenge yet will actually save — the API rejects duplicates.
+                    Only ML challenges without a validation challenge yet will actually save - the API rejects duplicates.
                   </p>
                 </>
               )}
@@ -790,7 +790,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                     style={{ color: 'var(--foreground)' }}
                   />
                   <p className="text-[11px]" style={{ color: fgAt(0.25) }}>
-                    Must be odd — majority wins once this many validators have voted.
+                    Must be odd - majority wins once this many validators have voted.
                   </p>
                 </div>
               )}
@@ -966,7 +966,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                 className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
                 style={{ color: 'var(--foreground)' }}
               />
-              <p className="text-[11px]" style={{ color: fgAt(0.25) }}>Optional — can be set later</p>
+              <p className="text-[11px]" style={{ color: fgAt(0.25) }}>Optional - can be set later</p>
             </Field>
           )}
 

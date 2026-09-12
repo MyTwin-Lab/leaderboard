@@ -135,11 +135,11 @@ function BreakdownBody({ data }: { data: RewardsResponse }) {
     return (
       <p className="py-1 text-xs text-white/25">
         {data.evaluationStatus === "skipped_reuse"
-          ? "Reused from another contributor — no points for this step, and no dataset to build."
+          ? "Reused from another contributor - no points for this step, and no dataset to build."
           : data.evaluationStatus === "pending" || data.evaluationStatus === "running"
             ? "Evaluation in progress…"
             : data.evaluationStatus === "failed"
-              ? "Evaluation failed — no points awarded."
+              ? "Evaluation failed - no points awarded."
               : "No points awarded yet."}
       </p>
     );

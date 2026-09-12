@@ -15,11 +15,11 @@ export default function AboutPage() {
       {/* Intro */}
       <section className="space-y-2 text-sm text-white/80 sm:space-y-3 sm:text-base">
         <p>MyTwin Lab is not just a community.</p>
-        <p>It's a movement — a collective uprising of students, engineers, clinicians, researchers, designers, startups, and citizens who refuse to wait for health innovation to happen <em>to</em> them.</p>
+        <p>It's a movement - a collective uprising of students, engineers, clinicians, researchers, designers, startups, and citizens who refuse to wait for health innovation to happen <em>to</em> them.</p>
         <p>We build it <strong className="text-white">ourselves</strong>.</p>
         <p>We build it <strong className="text-white">together</strong>.</p>
         <p>Our mission is bold and simple:</p>
-        <h3 className="text-lg font-semibold text-white sm:text-xl">Create MyTwin — the world's most advanced health digital twin.</h3>
+        <h3 className="text-lg font-semibold text-white sm:text-xl">Create MyTwin - the world's most advanced health digital twin.</h3>
         <p>A digital twin capable of understanding your biology, detecting early signals, analyzing medical imaging, optimizing prevention, guiding longevity…</p>
         <p>A technology that brings precision health to every human on Earth.</p>
         <p>Not in 10 years. Not when institutions decide it's time. But <strong className="text-white">now.</strong></p>
@@ -31,7 +31,7 @@ export default function AboutPage() {
       {/* What is MyTwin */}
       <section className="space-y-2 sm:space-y-3">
         <h2 className="text-xl font-semibold sm:text-2xl">What is MyTwin?</h2>
-        <p className="text-sm text-white/80 sm:text-base">MyTwin is a living, evolving representation of an individual's health — fed by medical data, biomarkers, lifestyle habits, imaging, AI interpretation, and contextual intelligence.</p>
+        <p className="text-sm text-white/80 sm:text-base">MyTwin is a living, evolving representation of an individual's health - fed by medical data, biomarkers, lifestyle habits, imaging, AI interpretation, and contextual intelligence.</p>
         <p className="text-sm text-white/80 sm:text-base">It's a personal health companion powered by science and by the global community that builds it.</p>
         <p className="text-sm text-white/80 sm:text-base">MyTwin helps people understand their bodies, detect risks earlier, and take informed decisions about their health journey.</p>
       </section>
@@ -70,7 +70,7 @@ export default function AboutPage() {
         <p className="text-sm text-white/80 sm:text-base">Because health innovation moves too slowly.</p>
         <p className="text-sm text-white/80 sm:text-base">Because millions of people still lack access to early detection, personalized insights, and continuous prevention.</p>
         <p className="text-sm text-white/80 sm:text-base">Because knowledge is siloed across institutions that struggle to collaborate.</p>
-        <p className="text-sm text-white/80 sm:text-base">Because the world needs breakthroughs — and fast.</p>
+        <p className="text-sm text-white/80 sm:text-base">Because the world needs breakthroughs - and fast.</p>
         <p className="text-sm text-white/80 sm:text-base">And because <strong className="text-white">no single company, university, or hospital can solve this alone</strong>.</p>
         <p className="text-sm text-white/80 sm:text-base">But a united global community can.</p>
         <blockquote className="my-3 rounded-sm border-l-4 border-brandCP py-1 pl-4 text-sm italic text-white/70 sm:my-4 sm:text-base">
@@ -82,11 +82,11 @@ export default function AboutPage() {
 
       {/* The Leaderboard */}
       <section className="space-y-2 sm:space-y-3">
-        <h2 className="text-2xl font-bold sm:text-3xl">The Leaderboard — the beating heart of MyTwin Lab</h2>
+        <h2 className="text-2xl font-bold sm:text-3xl">The Leaderboard - the beating heart of MyTwin Lab</h2>
         <p className="text-sm text-white/80 sm:text-base">At the center of the Lab stands one foundational idea:</p>
         <p className="text-lg font-semibold sm:text-xl">Every contribution counts. Every contributor matters. Impact should never be invisible.</p>
         <p className="text-sm text-white/80 sm:text-base">To make this real, MyTwin Lab runs on a unique mechanism: a <strong className="text-white">specialized AI agent</strong> that tracks, evaluates, and rewards every contribution automatically.</p>
-        <p className="text-sm text-white/80 sm:text-base">This is the <strong className="text-white">Leaderboard</strong> — a living, transparent system that recognizes everyone who pushes MyTwin forward.</p>
+        <p className="text-sm text-white/80 sm:text-base">This is the <strong className="text-white">Leaderboard</strong> - a living, transparent system that recognizes everyone who pushes MyTwin forward.</p>
         <p className="text-sm text-white/80 sm:text-base">Not based on status. Not based on politics. But based on <strong className="text-white">real, measurable, meaningful impact.</strong></p>
       </section>
 
@@ -105,7 +105,7 @@ export default function AboutPage() {
         </ul>
         <p className="mt-3 text-sm text-white/80 sm:mt-4 sm:text-base">No gatekeepers. No bureaucracy. No invisible work.</p>
         <p className="text-sm font-semibold text-white sm:text-base">If you contribute, you exist. If you build, you shine.</p>
-        <p className="text-sm text-white/80 sm:text-base">The Leaderboard turns the entire Lab into a self-organizing, merit-driven innovation engine — where action is amplified and impact becomes visible.</p>
+        <p className="text-sm text-white/80 sm:text-base">The Leaderboard turns the entire Lab into a self-organizing, merit-driven innovation engine - where action is amplified and impact becomes visible.</p>
         <blockquote className="my-3 rounded-sm border-l-4 border-brandCP py-1 pl-4 text-sm italic text-white/70 sm:my-4 sm:text-base">
           The Leaderboard is not a ranking. It is <strong>a map of collective intelligence</strong>.
         </blockquote>
@@ -125,15 +125,15 @@ export default function AboutPage() {
           </div>
           <div>
             <h3 className="text-base font-semibold sm:text-lg">Help others learn &amp; progress</h3>
-            <p className="text-sm text-white/80 sm:text-base">Explaining a concept, reviewing work, unblocking someone, improving clarity, sharing resources. These soft contributions strengthen the community — and the AI rewards them.</p>
+            <p className="text-sm text-white/80 sm:text-base">Explaining a concept, reviewing work, unblocking someone, improving clarity, sharing resources. These soft contributions strengthen the community - and the AI rewards them.</p>
           </div>
           <div>
             <h3 className="text-base font-semibold sm:text-lg">Give feedback as a user or citizen</h3>
-            <p className="text-sm text-white/80 sm:text-base">Test the apps, point out issues, share insights, bring patient perspectives. No technical skill required — just curiosity and honesty.</p>
+            <p className="text-sm text-white/80 sm:text-base">Test the apps, point out issues, share insights, bring patient perspectives. No technical skill required - just curiosity and honesty.</p>
           </div>
           <div>
             <h3 className="text-base font-semibold sm:text-lg">Debate, challenge ideas, share opinions</h3>
-            <p className="text-sm text-white/80 sm:text-base">Good conversations create new directions. Every voice matters — expert or not.</p>
+            <p className="text-sm text-white/80 sm:text-base">Good conversations create new directions. Every voice matters - expert or not.</p>
           </div>
           <div>
             <h3 className="text-base font-semibold sm:text-lg">Build your own project inside the Lab</h3>
@@ -141,7 +141,7 @@ export default function AboutPage() {
           </div>
           <div>
             <h3 className="text-base font-semibold sm:text-lg">Strengthen the ecosystem</h3>
-            <p className="text-sm text-white/80 sm:text-base">Documenting things, improving onboarding, organizing, teaching, summarizing — the quiet work that keeps a community alive.</p>
+            <p className="text-sm text-white/80 sm:text-base">Documenting things, improving onboarding, organizing, teaching, summarizing - the quiet work that keeps a community alive.</p>
           </div>
         </div>
         <p className="mt-3 text-sm font-semibold text-white sm:mt-4 sm:text-base">All of this is contribution. All of this is impact. All of this is recognized.</p>
@@ -199,7 +199,7 @@ export default function AboutPage() {
           </div>
           <div>
             <h3 className="text-sm font-semibold sm:text-base">Action &gt; Status</h3>
-            <p className="text-xs text-white/80 sm:text-sm">We reward builders — not titles.</p>
+            <p className="text-xs text-white/80 sm:text-sm">We reward builders - not titles.</p>
           </div>
           <div>
             <h3 className="text-sm font-semibold sm:text-base">Openness &gt; Ownership</h3>
@@ -225,7 +225,7 @@ export default function AboutPage() {
       {/* Welcome */}
       <section className="space-y-2 sm:space-y-3">
         <h2 className="text-xl font-semibold sm:text-2xl">Welcome to the movement</h2>
-        <p className="text-sm text-white/80 sm:text-base">MyTwin Lab is a new model for health innovation — a decentralized, global ecosystem united by the belief that we can improve human health faster, together.</p>
+        <p className="text-sm text-white/80 sm:text-base">MyTwin Lab is a new model for health innovation - a decentralized, global ecosystem united by the belief that we can improve human health faster, together.</p>
         <p className="text-sm text-white/80 sm:text-base">It is a community, a framework, an experiment, and a call to action.</p>
         <p className="text-sm text-white/80 sm:text-base">You don't need permission to join.</p>
         <p className="text-sm text-white/80 sm:text-base">You don't need a title to contribute.</p>

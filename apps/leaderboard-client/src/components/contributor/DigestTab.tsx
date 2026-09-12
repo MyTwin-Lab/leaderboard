@@ -119,7 +119,7 @@ function DigestDetail({ id }: { id: string }) {
             left={
               <>
                 <span className="text-white/80">{c.title}</span>
-                <span className="text-white/35"> — {c.challenge_title}</span>
+                <span className="text-white/35"> - {c.challenge_title}</span>
                 <span className="block text-xs text-white/35">
                   {c.contributors.map((u) => u.full_name).join(", ")}
                 </span>
@@ -137,7 +137,7 @@ function DigestDetail({ id }: { id: string }) {
             left={
               <>
                 <span className="text-white/80">{r.full_name}</span>
-                <span className="text-white/35"> — {r.challenge_title}</span>
+                <span className="text-white/35"> - {r.challenge_title}</span>
                 <span className="block text-xs text-white/30">
                   {Object.entries(r.by_rule)
                     .map(([rule, pts]) => `${rule} ${pts > 0 ? "+" : ""}${pts}`)
@@ -157,7 +157,7 @@ function DigestDetail({ id }: { id: string }) {
             left={
               <>
                 <span className="text-white/80">{ch.title}</span>
-                <span className="text-white/35"> — {ch.project_title || "no project"}</span>
+                <span className="text-white/35"> - {ch.project_title || "no project"}</span>
               </>
             }
             right={`${ch.type} · ${formatCP(ch.reward_pool)} pool`}
@@ -186,7 +186,7 @@ function DigestDetail({ id }: { id: string }) {
               left={
                 <>
                   <span className="text-white/80">{sb.title}</span>
-                  <span className="text-white/35"> — {sb.author.full_name}</span>
+                  <span className="text-white/35"> - {sb.author.full_name}</span>
                 </>
               }
               right={`${sb.type} · ${sb.star_count} ★`}

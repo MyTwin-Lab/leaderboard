@@ -131,7 +131,7 @@ export function GitHubConnectionCard({ initialError }: Props) {
             ) : (
               <>
                 <p className="text-[12px] leading-relaxed text-white/30">
-                  Connect a GitHub org admin account to enable repository operations — branch creation, commit tracking, and PR management.
+                  Connect a GitHub org admin account to enable repository operations - branch creation, commit tracking, and PR management.
                 </p>
 
                 {/* Connect button */}

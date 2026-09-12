@@ -6,7 +6,7 @@ import { repositories } from "@/lib/db";
 //import { FiltersBar } from "@/components/leaderboard/FiltersBar";
 
 export const metadata = {
-  title: "Challenges publics",
+  title: "Challenges",
   description: "Découvrez les projets en cours et les challenges ouverts du Lab",
 };
 

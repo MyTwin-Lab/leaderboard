@@ -16,7 +16,7 @@ import { JoinButton } from '@/components/challenges/JoinButton';
 
 const JOIN_CAPTIONS: Record<string, string> = {
   code: 'Joining copies the template tasks onto your board and provisions your branch.',
-  ml: 'Joining adds you to this challenge — you can then submit your dataset and model.',
+  ml: 'Joining adds you to this challenge - you can then submit your dataset and model.',
 };
 
 /** Ce qu'on sait du groupe quand le visiteur arrive par un lien d'invitation. */

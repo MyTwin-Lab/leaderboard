@@ -64,11 +64,11 @@ export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, on
       render: (challenge: Challenge) => (
         challenge.start_date || challenge.end_date ? (
           <div className="text-sm">
-            <div className="text-white/60">{challenge.start_date ? new Date(challenge.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '—'}</div>
-            <div className="text-white/35">→ {challenge.end_date ? new Date(challenge.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div>
+            <div className="text-white/60">{challenge.start_date ? new Date(challenge.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '-'}</div>
+            <div className="text-white/35">→ {challenge.end_date ? new Date(challenge.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</div>
           </div>
         ) : (
-          <span className="text-sm text-white/25">—</span>
+          <span className="text-sm text-white/25">-</span>
         )
       ),
       width: '130px',

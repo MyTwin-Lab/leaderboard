@@ -59,7 +59,7 @@ export function StarMilestonesPanel({ tiers, starCount, paidThresholds }: StarMi
 
       {ordered.length === 0 ? (
         <p className="text-xs leading-relaxed text-white/40">
-          No milestone is configured yet — stars are a signal here, and pay nothing.
+          No milestone is configured yet - stars are a signal here, and pay nothing.
         </p>
       ) : (
         <>

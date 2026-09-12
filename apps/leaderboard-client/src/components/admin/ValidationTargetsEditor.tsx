@@ -144,7 +144,7 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
                   <button
                     onClick={() => handleRemove(t.id)}
                     disabled={deletingId === t.id || t.verdictCount > 0}
-                    title={t.verdictCount > 0 ? 'This target already received votes — it cannot be removed' : undefined}
+                    title={t.verdictCount > 0 ? 'This target already received votes - it cannot be removed' : undefined}
                     className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white/25"
                     aria-label="Remove submission"
                   >
@@ -158,7 +158,7 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
           {eligible.length > 0 && (
             <div className="space-y-1.5 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-3">
               <p className="text-[10px] font-medium uppercase tracking-widest" style={{ color: fgAt(0.25) }}>
-                Eligible — pick a submission and enter its endpoint
+                Eligible - pick a submission and enter its endpoint
               </p>
               {eligible.map(e => {
                 const url = urlDrafts[e.contributionId] ?? '';

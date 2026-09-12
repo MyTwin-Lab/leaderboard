@@ -157,7 +157,7 @@ function MlRules({ challenge }: { challenge: ChallengeRules }) {
         <SectionLabel>How points are earned</SectionLabel>
         <div className="space-y-0">
           <FlowBox icon={<span className="text-sm">📊</span>} title="Dataset">
-            Scored by the evaluator — up to <b className="text-white/80">{rules.dataset.cap} CP</b>.
+            Scored by the evaluator - up to <b className="text-white/80">{rules.dataset.cap} CP</b>.
             Reusing someone else&apos;s dataset earns nothing here.
           </FlowBox>
           <FlowArrow />
@@ -178,20 +178,20 @@ function MlRules({ challenge }: { challenge: ChallengeRules }) {
               <FlowArrow />
               <FlowBox icon={<Lock className="h-3.5 w-3.5" />} title="Threshold" tone="warning">
                 Once {rules.model.metric.name.toUpperCase()} reaches <b className="text-white/80">{threshold}%</b>,
-                Dataset and Model submissions close — only API Packaging stays open.
+                Dataset and Model submissions close - only API Packaging stays open.
               </FlowBox>
             </>
           )}
           <FlowArrow />
           <FlowBox icon={<span className="text-sm">📦</span>} title="API Packaging">
-            Scored by the evaluator as code — up to <b className="text-white/80">{rules.apiPackaging.cap} CP</b>.
+            Scored by the evaluator as code - up to <b className="text-white/80">{rules.apiPackaging.cap} CP</b>.
             Always open, even past the threshold above.
           </FlowBox>
         </div>
       </div>
 
       <div>
-        <SectionLabel>Reuse — shared with whoever you build on</SectionLabel>
+        <SectionLabel>Reuse - shared with whoever you build on</SectionLabel>
         <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
           <div className="flex items-center gap-2 text-xs text-white/55">
             <Users className="h-3.5 w-3.5 shrink-0 text-white/30" />
@@ -244,7 +244,7 @@ function ValidationRules({ challenge }: { challenge: ChallengeRules }) {
         </FlowBox>
         <FlowArrow />
         <FlowBox icon={<span className="text-sm">💰</span>} title="Winners get paid">
-          <b className="text-white/80">{cpPerValidation} CP</b> to each validator on the winning side — the minority
+          <b className="text-white/80">{cpPerValidation} CP</b> to each validator on the winning side - the minority
           earns nothing, even for the same work.
         </FlowBox>
       </div>
@@ -286,11 +286,11 @@ function CodeRewardRulesFlow({ rules }: { rules: CodeRewardRules }) {
       <SectionLabel>How points are earned</SectionLabel>
       <div className="space-y-0">
         <FlowBox icon={<CheckCircle2 className="h-3.5 w-3.5" />} title="Fixed part">
-          <b className="text-white/80">{rules.delivery.fixed} CP</b> — earned when your evaluated delivery lands.
+          <b className="text-white/80">{rules.delivery.fixed} CP</b> - earned when your evaluated delivery lands.
         </FlowBox>
         <FlowArrow />
         <FlowBox icon={<Star className="h-3.5 w-3.5" />} title="Quality cap">
-          Up to <b className="text-white/80">{rules.delivery.cap} CP</b> — × your AI score /10, delta on re-runs.
+          Up to <b className="text-white/80">{rules.delivery.cap} CP</b> - × your AI score /10, delta on re-runs.
         </FlowBox>
       </div>
     </div>

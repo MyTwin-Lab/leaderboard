@@ -9,6 +9,10 @@ import { SandboxRewardsList } from "@/components/contributor/SandboxRewardsList"
 import { fetchContributorProfile } from "@/lib/server/leaderboard";
 import { getSessionUser } from "@/lib/auth";
 
+export const metadata = {
+  title: "Contributor",
+};
+
 interface ContributorPageProps {
   params: Promise<{
     userId: string;

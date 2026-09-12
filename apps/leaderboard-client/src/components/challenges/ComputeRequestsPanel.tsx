@@ -18,7 +18,7 @@ interface ComputeRequestItem {
 const STATUS_LABEL: Record<ComputeRequestItem['status'], string> = {
   pending: 'Pending approval',
   rejected: 'Rejected',
-  approved: 'Approved — creating instance',
+  approved: 'Approved - creating instance',
   provisioning: 'Provisioning',
   ready: 'Ready',
   expired: 'Expired',

@@ -176,7 +176,7 @@ export function CodeChallengePanel({
 
       {evalStatus === 'failed' && (
         <p className="flex items-center gap-2 text-xs text-red-400">
-          <XCircle className="h-3.5 w-3.5" /> Evaluation failed — check your repository and try again.
+          <XCircle className="h-3.5 w-3.5" /> Evaluation failed - check your repository and try again.
         </p>
       )}
       {error && <p className="text-xs text-red-400">{error}</p>}

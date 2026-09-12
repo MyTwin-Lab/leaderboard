@@ -95,7 +95,7 @@ export async function POST(
         return NextResponse.json(
           {
             error: unauthenticatedGithub
-              ? `${message} (no GitHub token configured — this only works for public repos and is rate-limited; connect a GitHub account in Integrations or set GITHUB_TOKEN for private repos or a higher rate limit)`
+              ? `${message} (no GitHub token configured - this only works for public repos and is rate-limited; connect a GitHub account in Integrations or set GITHUB_TOKEN for private repos or a higher rate limit)`
               : message,
           },
           { status: 400 }
@@ -110,7 +110,7 @@ export async function POST(
       const credentials = await getKaggleCredentials();
       if (!credentials) {
         return NextResponse.json(
-          { error: 'No Kaggle credentials configured — connect a Kaggle account in Integrations.' },
+          { error: 'No Kaggle credentials configured - connect a Kaggle account in Integrations.' },
           { status: 400 }
         );
       }
@@ -176,7 +176,7 @@ export async function POST(
       determinism: computeDeterminism(runs),
       perCriterion: computePerCriterion(runs),
       warning: unauthenticatedGithub
-        ? 'Ran without a GitHub token (none configured) — only works for public repos and is rate-limited to ~60 requests/hour.'
+        ? 'Ran without a GitHub token (none configured) - only works for public repos and is rate-limited to ~60 requests/hour.'
         : undefined,
     });
   } catch (error) {

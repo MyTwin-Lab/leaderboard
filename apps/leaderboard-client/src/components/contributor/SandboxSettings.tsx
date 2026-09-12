@@ -218,7 +218,7 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
     if (auditBusy) return;
     if (
       !window.confirm(
-        "Delete this ledger row? The contributor's total drops immediately — there is no cached total. If the star count is still above the threshold, the milestone will be paid again on the next star.",
+        "Delete this ledger row? The contributor's total drops immediately - there is no cached total. If the star count is still above the threshold, the milestone will be paid again on the next star.",
       )
     ) {
       return;
@@ -319,7 +319,7 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
 
         <p className="mt-3 text-xs leading-relaxed text-white/25">
           Thresholds must strictly increase. A milestone is paid once per sandbox and is never
-          clawed back — unstarring reverses nothing. Lowering a threshold below a sandbox&apos;s
+          clawed back - unstarring reverses nothing. Lowering a threshold below a sandbox&apos;s
           current count does not pay it retroactively: it is paid on that sandbox&apos;s next star.
         </p>
       </div>
@@ -366,7 +366,7 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
           <option value="">Pick a sandbox…</option>
           {(sandboxes ?? []).map((sandbox) => (
             <option key={sandbox.uuid} value={sandbox.uuid}>
-              {sandbox.title} — {sandbox.author?.full_name ?? "unknown"} ({sandbox.status},{" "}
+              {sandbox.title} - {sandbox.author?.full_name ?? "unknown"} ({sandbox.status},{" "}
               {sandbox.star_count}★)
             </option>
           ))}
@@ -444,7 +444,7 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
                           {star.is_account ? "" : " (anon)"}
                         </td>
                         <td className="px-3 py-2 font-mono text-white/35">
-                          {star.ip_hash_prefix ?? "—"}
+                          {star.ip_hash_prefix ?? "-"}
                         </td>
                         <td className="px-3 py-2">
                           {star.removed_at ? (
@@ -502,7 +502,7 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
                         +{formatCP(reward.points)} CP
                       </span>
                       <span className="text-white/30">
-                        {reward.created_at ? reward.created_at.slice(0, 10) : "—"}
+                        {reward.created_at ? reward.created_at.slice(0, 10) : "-"}
                       </span>
                       <button
                         type="button"

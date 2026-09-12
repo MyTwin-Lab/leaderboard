@@ -153,7 +153,7 @@ export async function PATCH(
         const best = await rewardRepo.bestMetricValue(challengeId);
         if (best != null && best >= threshold) {
           return NextResponse.json(
-            { error: 'Metric threshold reached — dataset and model submissions are closed, only API packaging is accepted' },
+            { error: 'Metric threshold reached - dataset and model submissions are closed, only API packaging is accepted' },
             { status: 403 }
           );
         }

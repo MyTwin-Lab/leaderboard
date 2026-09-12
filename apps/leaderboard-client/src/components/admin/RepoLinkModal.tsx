@@ -113,7 +113,7 @@ export function RepoLinkModal({ repoId, repoTitle, onClose }: RepoLinkModalProps
                         <div className="font-medium text-white">{challenge.title}</div>
                         {(challenge.start_date || challenge.end_date) && (
                           <div className="text-sm text-white/60">
-                            {challenge.start_date ? new Date(challenge.start_date).toLocaleDateString() : '—'} - {challenge.end_date ? new Date(challenge.end_date).toLocaleDateString() : '—'}
+                            {challenge.start_date ? new Date(challenge.start_date).toLocaleDateString() : '-'} - {challenge.end_date ? new Date(challenge.end_date).toLocaleDateString() : '-'}
                           </div>
                         )}
                       </div>

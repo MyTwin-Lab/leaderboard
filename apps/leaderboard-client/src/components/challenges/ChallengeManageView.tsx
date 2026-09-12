@@ -362,7 +362,7 @@ function TabRankings({ contributions, team }: { contributions: Contribution[]; t
       {rankings.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-[14px] border border-white/[0.06] bg-white/[0.02] py-12 text-center">
           <Medal className="h-7 w-7 text-white/15" />
-          <p className="text-xs text-white/25">No contributions yet — rankings will appear here</p>
+          <p className="text-xs text-white/25">No contributions yet - rankings will appear here</p>
         </div>
       ) : rankings.map((entry, i) => (
         <div key={entry.userId}
@@ -689,7 +689,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
                 <span className="text-white/20">·</span>
                 <span className="flex items-center gap-1 text-xs text-white/40">
                   <CalendarDays className="h-3 w-3" />
-                  {challenge.start_date ? fmt(challenge.start_date, { month: 'short', day: 'numeric' }) : '—'} → {challenge.end_date ? fmt(challenge.end_date, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                  {challenge.start_date ? fmt(challenge.start_date, { month: 'short', day: 'numeric' }) : '-'} → {challenge.end_date ? fmt(challenge.end_date, { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
                 </span>
               </>
             )}
@@ -738,7 +738,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
               isML ? {
                 key: 'metric',
                 label: bestMetricLabel ? `Best ${bestMetricLabel}` : 'Best metric',
-                value: bestMetricValue !== null ? bestMetricValue.toFixed(3) : '—',
+                value: bestMetricValue !== null ? bestMetricValue.toFixed(3) : '-',
                 meta: bestMetricValue !== null ? 'from submitted model versions' : 'no metric yet',
                 barWidth: bestMetricValue !== null ? `${Math.round(bestMetricValue * 100)}%` : undefined,
               } : isValidation ? {

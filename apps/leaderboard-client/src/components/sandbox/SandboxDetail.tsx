@@ -33,7 +33,7 @@ const dateFmt = new Intl.DateTimeFormat("en-US", {
 });
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return dateFmt.format(new Date(iso));
 }
 
@@ -246,7 +246,7 @@ export function SandboxDetail({
           {/* Dit une fois, ici : c'est la question que pose tout lecteur qui
               voudrait aider, et la réponse est structurelle, pas un détail. */}
           <p className="border-l-2 border-brandCP/35 pl-3.5 text-sm leading-relaxed text-white/45">
-            Only the author works on a sandbox — the community interacts through stars.
+            Only the author works on a sandbox - the community interacts through stars.
             Collaboration starts once it becomes an official challenge.
           </p>
         </div>

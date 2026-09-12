@@ -17,7 +17,7 @@ interface ComputeRequestData {
 
 const STATUS_LABEL: Record<ComputeRequestData['status'], string> = {
   pending: 'Pending approval',
-  approved: 'Approved — creating instance',
+  approved: 'Approved - creating instance',
   provisioning: 'Setting up your environment…',
   ready: 'Ready',
   rejected: 'Rejected',
@@ -148,7 +148,7 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
     return (
       <div className="flex items-center gap-2.5 rounded-[16px] border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: 'color-mix(in srgb, var(--foreground) 35%, transparent)' }}>
         <Cpu className="h-3.5 w-3.5 shrink-0" />
-        GPU compute power isn&apos;t available yet — the service hasn&apos;t been connected by an administrator.
+        GPU compute power isn&apos;t available yet - the service hasn&apos;t been connected by an administrator.
       </div>
     );
   }
@@ -174,7 +174,7 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
         <div className="space-y-3">
           <p className="text-xs leading-relaxed text-white/50">
             Only one request is possible on this challenge. Once approved by the manager, the instance
-            is available for 24h before automatic shutdown — no exception or extension.
+            is available for 24h before automatic shutdown - no exception or extension.
           </p>
           <div className="flex flex-wrap gap-2">
             <button

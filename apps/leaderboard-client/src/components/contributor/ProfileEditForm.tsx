@@ -32,7 +32,7 @@ export function ProfileEditForm({
   const [avatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
   const savedValues = useRef<FormValues>(initialValues);
 
-  const displayName = [values.firstName, values.lastName].filter(Boolean).join(" ") || "—";
+  const displayName = [values.firstName, values.lastName].filter(Boolean).join(" ") || "-";
 
   const save = async (current: FormValues) => {
     setStatus("saving");

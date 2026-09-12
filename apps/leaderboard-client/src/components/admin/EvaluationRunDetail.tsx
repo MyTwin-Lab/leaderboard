@@ -24,7 +24,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 function formatDate(d?: Date | string) {
-  if (!d) return <span className="text-white/25 italic">—</span>;
+  if (!d) return <span className="text-white/25 italic">-</span>;
   return new Date(d).toLocaleString('fr-FR', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
@@ -32,7 +32,7 @@ function formatDate(d?: Date | string) {
 }
 
 function formatDuration(ms?: number) {
-  if (!ms) return <span className="text-white/25 italic">—</span>;
+  if (!ms) return <span className="text-white/25 italic">-</span>;
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(2)}s`;
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
@@ -89,7 +89,7 @@ export function EvaluationRunDetail({ run, onClose }: EvaluationRunDetailProps) 
           <Row label="Contributions">
             {run.meta?.contributionCount !== undefined
               ? <span className="font-medium text-brandCP">{run.meta.contributionCount}</span>
-              : <span className="text-white/25 italic">—</span>}
+              : <span className="text-white/25 italic">-</span>}
           </Row>
           {run.meta?.evaluatorVersion && (
             <Row label="Evaluator version">

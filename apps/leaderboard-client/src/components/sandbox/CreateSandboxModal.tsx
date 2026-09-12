@@ -66,7 +66,7 @@ function Field({
     <label className="flex flex-col gap-1.5">
       <span className="text-xs font-semibold text-white/70">
         {label}
-        {hint && <span className="font-normal text-white/30"> — {hint}</span>}
+        {hint && <span className="font-normal text-white/30"> - {hint}</span>}
       </span>
       {children}
     </label>
@@ -210,7 +210,7 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
       ? "A title, a repository and a dataset URL are required."
       : "A title and a repository URL are required."
     : isEdit
-      ? "Type stays as it is — it drives the fields and the grid."
+      ? "Type stays as it is - it drives the fields and the grid."
       : "Goes live as open, right away. The type carries over on promotion.";
 
   return createPortal(
@@ -226,7 +226,7 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
             <p className="text-[13px] leading-relaxed text-white/50">
               {isEdit
                 ? "Your proposal, as the community reads it. Stars and paid milestones are untouched."
-                : "Health domain only. It goes live immediately — no approval needed."}
+                : "Health domain only. It goes live immediately - no approval needed."}
             </p>
           </div>
           <button

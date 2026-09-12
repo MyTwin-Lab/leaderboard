@@ -74,7 +74,7 @@ export function validateTiers(rows: TierDraft[]): TierValidation {
     if (previous && stars <= previous.stars) {
       return {
         ok: false,
-        error: `Milestone ${position}: thresholds must strictly increase — ${stars} comes after ${previous.stars}.`,
+        error: `Milestone ${position}: thresholds must strictly increase - ${stars} comes after ${previous.stars}.`,
       };
     }
 

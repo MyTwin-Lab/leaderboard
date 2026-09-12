@@ -134,7 +134,7 @@ export function JoinModal({
             <p className="text-xs leading-relaxed text-white/45">
               {sentCount === selected.length
                 ? `${sentCount} invitation${sentCount > 1 ? 's' : ''} sent.`
-                : `${sentCount} of ${selected.length} invitations sent — share the link with the others.`}
+                : `${sentCount} of ${selected.length} invitations sent - share the link with the others.`}
               {' '}They can also join with this link:
             </p>
             <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
@@ -221,9 +221,9 @@ export function JoinModal({
             <div className="space-y-1 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
               <p className="text-xs leading-relaxed text-white/45">
                 {action.mode === 'group'
-                  ? `You and ${selected.length} other${selected.length > 1 ? 's' : ''} — one board, one branch, one contribution, split between you.`
+                  ? `You and ${selected.length} other${selected.length > 1 ? 's' : ''} - one board, one branch, one contribution, split between you.`
                   : challengeType === 'ml'
-                    ? 'Joining adds you to this challenge — you can then submit your dataset and model.'
+                    ? 'Joining adds you to this challenge - you can then submit your dataset and model.'
                     : 'Joining copies the template tasks onto your board and provisions your branch.'}
               </p>
               {/* La bascule solo → groupe est refusée après coup : le board est

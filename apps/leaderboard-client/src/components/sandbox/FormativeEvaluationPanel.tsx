@@ -78,7 +78,7 @@ export function FormativeEvaluationPanel({ sandbox }: { sandbox: SandboxView }) 
       </div>
 
       <p className="text-xs leading-relaxed text-white/45">
-        A formative read on your repo — it earns no CP. Only you and the admins can see it.
+        A formative read on your repo - it earns no CP. Only you and the admins can see it.
       </p>
 
       {hasScore ? (
@@ -104,7 +104,7 @@ export function FormativeEvaluationPanel({ sandbox }: { sandbox: SandboxView }) 
       ) : (
         <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-6 text-center text-xs text-white/40">
           {inFlight
-            ? "The agent is reading your repo — this takes a minute."
+            ? "The agent is reading your repo - this takes a minute."
             : status === "failed"
               ? "The last run didn’t make it through. Try again."
               : "No evaluation yet."}
