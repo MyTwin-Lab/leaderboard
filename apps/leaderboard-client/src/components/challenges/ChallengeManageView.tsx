@@ -26,8 +26,7 @@ import { CreateMeetingDrawer } from '@/components/admin/CreateMeetingDrawer';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
 import { MeetingsSection } from '@/components/challenges/MeetingsSection';
-import { HeroStatCard } from '@/components/challenges/HeroStatCard';
-import { HeroStatCarousel } from '@/components/challenges/HeroStatCarousel';
+import { HeroStats } from '@/components/challenges/HeroStats';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
 import { TeamAvatars } from '@/components/ui/TeamAvatars';
 import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
@@ -722,54 +721,47 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
             <p className="max-w-2xl text-sm leading-relaxed text-white/50">{challenge.description}</p>
           )}
 
-          {/* Hero stat cards */}
-          <div className="mt-6">
-            <HeroStatCarousel
-              cards={[
-                <HeroStatCard
-                  key="cp-awarded"
-                  label="CP awarded"
-                  value={awardedTotal.toLocaleString()}
-                  unit="CP"
-                  meta={challenge.contribution_points_reward ? `of a ${challenge.contribution_points_reward.toLocaleString()} CP pool` : undefined}
-                  barWidth={challenge.contribution_points_reward
-                    ? `${Math.min(100, Math.round((awardedTotal / challenge.contribution_points_reward) * 100))}%`
-                    : undefined}
-                />,
-                isML ? (
-                  <HeroStatCard
-                    key="metric"
-                    label={bestMetricLabel ? `Best ${bestMetricLabel}` : 'Best metric'}
-                    value={bestMetricValue !== null ? bestMetricValue.toFixed(3) : '—'}
-                    meta={bestMetricValue !== null ? 'from submitted model versions' : 'no metric yet'}
-                    barWidth={bestMetricValue !== null ? `${Math.round(bestMetricValue * 100)}%` : undefined}
-                  />
-                ) : isValidation ? (
-                  <HeroStatCard
-                    key="contributions"
-                    label="Contributions"
-                    value={String(contributions.length)}
-                    meta="submissions & verdicts recorded"
-                  />
-                ) : (
-                  <HeroStatCard
-                    key="tasks"
-                    label="Tasks"
-                    value={`${completion}%`}
-                    meta={`${doneTasks} of ${tasks.length} tasks validated`}
-                    barWidth={`${completion}%`}
-                  />
-                ),
-                <HeroStatCard
-                  key="team"
-                  label="Team"
-                  value={String(team.length)}
-                  unit={team.length === 1 ? 'member' : 'members'}
-                  team={team}
-                />,
-              ]}
-            />
-          </div>
+          {/* KPI du hero — même ligne que côté contributeur */}
+          <HeroStats
+            className="mt-5"
+            stats={[
+              {
+                key: 'cp-awarded',
+                label: 'CP awarded',
+                value: awardedTotal.toLocaleString(),
+                unit: 'CP',
+                meta: challenge.contribution_points_reward ? `of a ${challenge.contribution_points_reward.toLocaleString()} CP pool` : undefined,
+                barWidth: challenge.contribution_points_reward
+                  ? `${Math.min(100, Math.round((awardedTotal / challenge.contribution_points_reward) * 100))}%`
+                  : undefined,
+              },
+              isML ? {
+                key: 'metric',
+                label: bestMetricLabel ? `Best ${bestMetricLabel}` : 'Best metric',
+                value: bestMetricValue !== null ? bestMetricValue.toFixed(3) : '—',
+                meta: bestMetricValue !== null ? 'from submitted model versions' : 'no metric yet',
+                barWidth: bestMetricValue !== null ? `${Math.round(bestMetricValue * 100)}%` : undefined,
+              } : isValidation ? {
+                key: 'contributions',
+                label: 'Contributions',
+                value: String(contributions.length),
+                meta: 'submissions & verdicts recorded',
+              } : {
+                key: 'tasks',
+                label: 'Tasks',
+                value: `${completion}%`,
+                meta: `${doneTasks} of ${tasks.length} tasks validated`,
+                barWidth: `${completion}%`,
+              },
+              {
+                key: 'team',
+                label: 'Team',
+                value: String(team.length),
+                unit: team.length === 1 ? 'member' : 'members',
+                team,
+              },
+            ]}
+          />
         </div>
 
         {/* Tabs */}

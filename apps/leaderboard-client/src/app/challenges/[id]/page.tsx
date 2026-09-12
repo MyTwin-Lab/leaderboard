@@ -27,8 +27,7 @@ import {
   CodeChallengePanel, type CodeParticipation, type ProjectContribution,
 } from '@/components/challenges/CodeChallengePanel';
 import { MeetingsSection } from '@/components/challenges/MeetingsSection';
-import { HeroStatCard } from '@/components/challenges/HeroStatCard';
-import { HeroStatCarousel } from '@/components/challenges/HeroStatCarousel';
+import { HeroStats, type HeroStat } from '@/components/challenges/HeroStats';
 import { fetchJson } from '@/lib/fetchJson';
 import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
 import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
@@ -372,67 +371,55 @@ export default function ChallengeDetailPage() {
     .filter(m => ['completed', 'processed', 'cancelled'].includes(m.status))
     .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
-  // ── Cartes KPI ──
-  // Extraites en variables parce que deux dispositions les consomment : la
-  // grille de trois en tête de page, et la colonne de droite de l'écran brief,
-  // qui n'en prend que deux. Les inliner dans les deux endroits dupliquerait
-  // le calcul du pool et la liste d'avatars.
-  const cpAwardedCard = (
-    <HeroStatCard
-      key="cp-awarded"
-      label="CP awarded"
-      value={awardedTotal.toLocaleString()}
-      unit="CP"
-      meta={challenge.contribution_points_reward ? `of a ${challenge.contribution_points_reward.toLocaleString()} CP pool` : undefined}
-      barWidth={challenge.contribution_points_reward
-        ? `${Math.min(100, Math.round((awardedTotal / challenge.contribution_points_reward) * 100))}%`
-        : undefined}
-    />
-  );
+  // ── KPI ──
+  // Extraits en variables parce que deux dispositions les consomment : la
+  // ligne en tête de page, et la colonne de droite de l'écran brief, qui n'en
+  // prend que deux. Les inliner dans les deux endroits dupliquerait le calcul
+  // du pool et la liste d'avatars.
+  const cpAwardedStat: HeroStat = {
+    key: 'cp-awarded',
+    label: 'CP awarded',
+    value: awardedTotal.toLocaleString(),
+    unit: 'CP',
+    meta: challenge.contribution_points_reward ? `of a ${challenge.contribution_points_reward.toLocaleString()} CP pool` : undefined,
+    barWidth: challenge.contribution_points_reward
+      ? `${Math.min(100, Math.round((awardedTotal / challenge.contribution_points_reward) * 100))}%`
+      : undefined,
+  };
 
-  const teamCard = (
-    <HeroStatCard
-      key="team"
-      label="Team"
-      value={String(team.length)}
-      unit={team.length === 1 ? 'member' : 'members'}
-      team={team}
-    />
-  );
+  const teamStat: HeroStat = {
+    key: 'team',
+    label: 'Team',
+    value: String(team.length),
+    unit: team.length === 1 ? 'member' : 'members',
+    team,
+  };
 
-  // La carte du milieu est la seule qui dépende du type et de l'appartenance.
-  const middleCard = isML ? (
-    <HeroStatCard
-      key="metric"
-      label={bestMetricLabel ? `Best ${bestMetricLabel}` : 'Best metric'}
-      value={bestMetricValue !== null ? bestMetricValue.toFixed(3) : '—'}
-      meta={bestMetricValue !== null ? 'from submitted model versions' : 'no metric yet'}
-      barWidth={bestMetricValue !== null ? `${Math.round(bestMetricValue * 100)}%` : undefined}
-    />
-  ) : isValidation ? (
-    <HeroStatCard
-      key="contributions"
-      label="Contributions"
-      value={String(contributions.length)}
-      meta="submissions & verdicts recorded"
-    />
-  ) : isMember ? (
-    <HeroStatCard
-      key="tasks"
-      label="Tasks"
-      value={`${myCompletion}%`}
-      meta={`${myDoneTasks} of ${myTasks.length} tasks done · your board`}
-      barWidth={`${myCompletion}%`}
-    />
-  ) : (
-    <HeroStatCard
-      key="tasks"
-      label="Tasks"
-      value={String(team.length)}
-      unit={team.length === 1 ? 'participant' : 'participants'}
-      meta="join the challenge to start your board"
-    />
-  );
+  // La mesure du milieu est la seule qui dépende du type et de l'appartenance.
+  const middleStat: HeroStat = isML ? {
+    key: 'metric',
+    label: bestMetricLabel ? `Best ${bestMetricLabel}` : 'Best metric',
+    value: bestMetricValue !== null ? bestMetricValue.toFixed(3) : '—',
+    meta: bestMetricValue !== null ? 'from submitted model versions' : 'no metric yet',
+    barWidth: bestMetricValue !== null ? `${Math.round(bestMetricValue * 100)}%` : undefined,
+  } : isValidation ? {
+    key: 'contributions',
+    label: 'Contributions',
+    value: String(contributions.length),
+    meta: 'submissions & verdicts recorded',
+  } : isMember ? {
+    key: 'tasks',
+    label: 'Tasks',
+    value: `${myCompletion}%`,
+    meta: `${myDoneTasks} of ${myTasks.length} tasks done · your board`,
+    barWidth: `${myCompletion}%`,
+  } : {
+    key: 'tasks',
+    label: 'Tasks',
+    value: String(team.length),
+    unit: team.length === 1 ? 'participant' : 'participants',
+    meta: 'join the challenge to start your board',
+  };
 
   return (
     <>
@@ -533,11 +520,9 @@ export default function ChallengeDetailPage() {
           </p>
         )}
 
-        {/* Hero stat cards — remplacés par la colonne de droite du brief */}
+        {/* KPI du hero — remplacés par la colonne de droite du brief */}
         {!showBrief && (
-        <div className="mt-6">
-          <HeroStatCarousel cards={[cpAwardedCard, middleCard, teamCard]} />
-        </div>
+          <HeroStats stats={[cpAwardedStat, middleStat, teamStat]} className="mt-5" />
         )}
       </div>
 
@@ -568,10 +553,10 @@ export default function ChallengeDetailPage() {
           la hauteur d'un brief long. Sur mobile la grille s'effondre et les
           cartes passent sous le brief — c'est lui qu'on vient lire.
 
-          Deux cartes et non trois : pour un non-membre, la carte du milieu
-          affiche `team.length`, exactement comme la carte Team. Côte à côte
-          dans une grille de trois le doublon passe ; empilé dans une colonne
-          étroite, il saute aux yeux. */}
+          Deux mesures et non trois : pour un non-membre, celle du milieu
+          affiche `team.length`, exactement comme Team. Alignées sur une ligne
+          le doublon passe ; empilé dans une colonne étroite, il saute aux
+          yeux. */}
       {showBrief && (
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)] lg:gap-7">
           <div className="min-w-0">
@@ -584,10 +569,7 @@ export default function ChallengeDetailPage() {
               invite={inviteToken ? inviteQuery.data ?? null : null}
             />
           </div>
-          <div className="flex min-w-0 flex-col gap-3">
-            {cpAwardedCard}
-            {teamCard}
-          </div>
+          <HeroStats stats={[cpAwardedStat, teamStat]} orientation="column" className="min-w-0" />
         </div>
       )}
 
