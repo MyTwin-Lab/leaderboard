@@ -21,6 +21,27 @@
  * session, ou une identité anonyme portée par le cookie `sb_anon` (absente
  * tant que le visiteur n'a jamais staré — on ne pose pas de cookie sur un GET).
  */
+import type { SandboxStarTier } from "../../../../../packages/database-service/domain/entities";
+
+/**
+ * Ce que sert `GET /api/sandboxes` : le listing, et les réglages d'instance
+ * qui l'accompagnent. Partagé avec la page d'une proposition, qui s'y sert
+ * pour s'afficher sans attendre son propre fetch — la liste porte déjà la
+ * proposition entière.
+ */
+export interface SandboxListResponse {
+  sandboxes: SandboxView[];
+  tiers: SandboxStarTier[];
+  promotion_bonus_cp: number;
+}
+
+/** Ce que sert `GET /api/sandboxes/[id]` : une proposition, mêmes réglages. */
+export interface SandboxDetailResponse {
+  sandbox: SandboxView;
+  tiers: SandboxStarTier[];
+  promotion_bonus_cp: number;
+}
+
 export type SandboxViewer =
   | { kind: "anonymous"; anonId: string | null }
   | { kind: "account"; userId: string; role: string };

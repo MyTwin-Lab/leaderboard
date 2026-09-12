@@ -5,20 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { fetchJson } from "@/lib/fetchJson";
-import type { SandboxView } from "@/lib/public/sandbox";
+import type { SandboxDetailResponse, SandboxListResponse, SandboxView } from "@/lib/public/sandbox";
 import type { SandboxStarTier } from "../../../../../../packages/database-service/domain/entities";
 import { CreateChallengeDrawer } from "@/components/admin/CreateChallengeDrawer";
 import { CreateSandboxModal } from "@/components/sandbox/CreateSandboxModal";
 import { SandboxDetail } from "@/components/sandbox/SandboxDetail";
 import type { StarState } from "@/components/sandbox/StarButton";
-
-interface SandboxDetailResponse {
-  sandbox: SandboxView;
-  // Réglages d'instance servis avec le détail. Les charger depuis le listing
-  // reviendrait à tirer toutes les propositions pour afficher deux valeurs.
-  tiers: SandboxStarTier[];
-  promotion_bonus_cp: number;
-}
 
 function Skeleton() {
   return (
@@ -76,6 +68,25 @@ export default function SandboxDetailPage() {
     // Après le refresh de session, sinon le détail se lirait avec le jeton
     // expiré que `meQuery` est en train de renouveler.
     enabled: !!sandboxId && !meQuery.isPending,
+    /**
+     * Venu de la liste, on connaît déjà la proposition : la page s'affiche
+     * avec, et le fetch ne fait plus que confirmer en arrière-plan. Sans cet
+     * amorçage la page passe par son squelette, et deux choses en pâtissent —
+     * l'attente, visible, et la transition depuis la carte, qui ne peut
+     * apparier son en-tête que s'il est rendu dans le même commit que la
+     * navigation (un fallback intercalé casse la paire).
+     *
+     * `initialDataUpdatedAt: 0` date cette graine de l'époque zéro : elle est
+     * donc périmée d'emblée et relue tout de suite. On affiche vite, on
+     * corrige juste après.
+     */
+    initialData: () => {
+      const liste = queryClient.getQueryData<SandboxListResponse>(["sandboxes"]);
+      const connue = liste?.sandboxes.find((s) => s.uuid === sandboxId);
+      if (!liste || !connue) return undefined;
+      return { sandbox: connue, tiers: liste.tiers, promotion_bonus_cp: liste.promotion_bonus_cp };
+    },
+    initialDataUpdatedAt: 0,
     // L'évaluation formative est fire-and-forget : son statut vit sur le
     // sandbox. Tant qu'un run est en vol, on relit toutes les 3 s — c'est ce
     // qui fait passer `FormativeEvaluationPanel` d'« Evaluating… » au score.
