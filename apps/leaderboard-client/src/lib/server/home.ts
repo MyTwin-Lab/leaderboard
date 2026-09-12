@@ -48,13 +48,14 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * DAY_MS);
 
-  const [projects, challenges, contributions, users, challengeTeams, contributionMembers] = await Promise.all([
+  const [projects, challenges, contributions, users, challengeTeams, contributionMembers, sandboxRewards] = await Promise.all([
     repositories.project.findAll(),
     repositories.challenge.findAll(),
     repositories.contribution.findAll(),
     repositories.user.findAll(),
     repositories.challengeTeam.findAll(),
     repositories.contributionMember.findAll(),
+    repositories.sandboxReward.findAll(),
   ]);
 
   const projectsMap = new Map(projects.map((p) => [p.uuid, p]));
@@ -66,6 +67,7 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
     challenges,
     users,
     contributionMembers,
+    sandboxRewards,
     projectId: null,
     timePeriod: "all",
   });
@@ -123,9 +125,18 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
   }));
 
   // ── Global stats + 7-day activity spark ──
-  const cpDistributedTotal = contributions.reduce((sum, c) => sum + (c.reward ?? 0), 0);
   const recentContributions = contributions.filter((c) => c.submitted_at >= sevenDaysAgo);
-  const cpDistributedWeek = recentContributions.reduce((sum, c) => sum + (c.reward ?? 0), 0);
+  // Les CP du sandbox comptent dans la statistique globale parce qu'ils
+  // comptent déjà dans le podium juste au-dessus : sans eux, un contributeur
+  // pourrait afficher plus de CP que la plateforme n'en aurait distribué.
+  const sandboxCpTotal = sandboxRewards.reduce((sum, r) => sum + r.points, 0);
+  const sandboxCpWeek = sandboxRewards
+    .filter((r) => r.created_at >= sevenDaysAgo)
+    .reduce((sum, r) => sum + r.points, 0);
+  const cpDistributedTotal =
+    contributions.reduce((sum, c) => sum + (c.reward ?? 0), 0) + sandboxCpTotal;
+  const cpDistributedWeek =
+    recentContributions.reduce((sum, c) => sum + (c.reward ?? 0), 0) + sandboxCpWeek;
   const activeChallenges = challenges.filter((c) => c.status === "active");
   const activeChallengesProjects = new Set(activeChallenges.map((c) => c.project_id)).size;
 

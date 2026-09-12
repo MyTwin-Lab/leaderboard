@@ -7,7 +7,7 @@ import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import {
   ArrowLeft, CheckCircle2, CalendarDays, BrainCircuit,
   GitBranch, GitPullRequest, Trophy, BarChart2, FlaskConical, Medal, FileText, Info,
-  Database, Cpu, ExternalLink, Users,
+  Database, Cpu, ExternalLink, Users, UserPlus,
 } from 'lucide-react';
 import type { TeamMember } from '@/lib/types';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
@@ -17,6 +17,7 @@ import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseA
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { ChallengeBrief, type GroupInvite } from '@/components/challenges/ChallengeBrief';
 import { GroupInviteModal } from '@/components/challenges/GroupInviteModal';
+import { JoinModal } from '@/components/challenges/JoinModal';
 // groupPolicy et non group : ce dernier instancie un repository, donc un
 // client Postgres, qui n'a rien à faire dans le bundle navigateur.
 import { GROUP_MAX_SIZE } from '../../../../../../packages/services/challenge/groupPolicy';
@@ -26,13 +27,13 @@ import {
   CodeChallengePanel, type CodeParticipation, type ProjectContribution,
 } from '@/components/challenges/CodeChallengePanel';
 import { MeetingsSection } from '@/components/challenges/MeetingsSection';
-import { HeroStatCard } from '@/components/challenges/HeroStatCard';
-import { HeroStatCarousel } from '@/components/challenges/HeroStatCarousel';
+import { HeroStats, type HeroStat } from '@/components/challenges/HeroStats';
 import { fetchJson } from '@/lib/fetchJson';
 import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
 import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
-import { findBrief, shouldShowBrief } from '@/lib/challengeBrief';
+import { shouldShowBrief } from '@/lib/challengeBrief';
+import { showJoinInHeader } from '@/lib/joinGate';
 import { useJoinChallenge } from '@/lib/useJoinChallenge';
 
 const ML_REPO_TYPES = ['kaggle_dataset', 'kaggle_model'];
@@ -128,9 +129,9 @@ export default function ChallengeDetailPage() {
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
   const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [joinModalOpen, setJoinModalOpen] = useState(false);
   // Couvre la fenêtre entre la création du groupe et le rechargement de
   // l'overview, qui est la source de vérité une fois arrivée.
-  const [ownGroupId, setOwnGroupId] = useState<string | null>(null);
 
   // Declared before overviewQuery so its refetchInterval closure (below) can
   // read meQuery.data without a temporal-dead-zone hazard.
@@ -244,10 +245,12 @@ export default function ChallengeDetailPage() {
   const workspaceOwnerId = overviewQuery.data?.my_workspace_owner_id ?? currentUserId;
   const myParticipation = participants.find(p => p.user_id === workspaceOwnerId) ?? null;
   // Seul le group_id du visiteur est publié : chez les autres il est masqué,
-  // puisque c'est le jeton qui permet de rejoindre. `ownGroupId` couvre la
-  // fenêtre entre la création du groupe et le rechargement de l'overview.
-  const myGroupId =
-    ownGroupId ?? participants.find(p => p.user_id === currentUserId)?.group_id ?? null;
+  // puisque c'est le jeton qui permet de rejoindre.
+  //
+  // Plus de cache optimiste : `useJoinChallenge` attend le rechargement de
+  // l'overview avant de rendre la main, donc le jeton est déjà là quand la
+  // modale de join affiche sa confirmation.
+  const myGroupId = participants.find(p => p.user_id === currentUserId)?.group_id ?? null;
   const myGroupSize = myGroupId
     ? participants.filter(p => p.group_owner_id === workspaceOwnerId).length
     : 0;
@@ -279,13 +282,6 @@ export default function ChallengeDetailPage() {
     staleTime: 30_000,
   });
 
-  const createGroup = async () => {
-    const result = await join({ mode: 'group' });
-    if (!result?.groupId) return;
-    setOwnGroupId(result.groupId);
-    setInviteOpen(true);
-  };
-
   const acceptInvite = async () => {
     if (!inviteToken) return;
     const result = await join({ group: inviteToken });
@@ -297,15 +293,17 @@ export default function ChallengeDetailPage() {
     router.replace(`/challenges/${challengeId}`);
   };
 
-  // Le brief n'intéresse que le contributeur connecté qui n'a pas encore
-  // rejoint — ni l'anonyme, ni le membre ne le lisent ici. La requête ne part
-  // donc que pour lui.
-  const briefNeeded = !isAnonymous && !isMember && !!challenge;
+  // Le brief s'adresse à qui n'a pas encore rejoint, connecté ou non — un
+  // membre, lui, le retrouve dans le tiroir Docs. La requête suit : elle part
+  // sans session, la route `documents` étant publique en lecture.
+  const briefNeeded = !isMember && !!challenge;
   const briefQuery = useQuery({
     queryKey: ['challenge-brief', challengeId],
     queryFn: async () => {
-      const docs = await fetchJson(`/api/challenges/${challengeId}/documents`) as { filename: string; content: string }[];
-      return findBrief(Array.isArray(docs) ? docs : [])?.content ?? null;
+      // `brief` et non `documents` : le tiroir Docs est derrière le proxy, et
+      // un visiteur sans compte y prendrait un 401 avant même le handler.
+      const { content } = await fetchJson(`/api/challenges/${challengeId}/brief`) as { content: string | null };
+      return content;
     },
     enabled: !!challengeId && briefNeeded,
     staleTime: 5 * 60_000,
@@ -352,10 +350,18 @@ export default function ChallengeDetailPage() {
   // rejoint, un contributeur n'a ni board, ni branche, ni soumission dont ces
   // blocs pourraient parler.
   const showBrief = shouldShowBrief({
-    isAnonymous,
     isMember,
     challengeType: challenge.type,
     brief: briefQuery.data,
+  });
+
+  // `Join` prend la place de `Docs` tant que le visiteur n'a pas rejoint. La
+  // condition ignore `isAnonymous` volontairement : la page est publique, et le
+  // bouton renvoie alors vers la connexion plutôt que d'ouvrir la modale.
+  const joinInHeader = showJoinInHeader({
+    isMember,
+    challengeType: challenge.type,
+    challengeStatus: challenge.status,
   });
 
   const upcomingMeetings = meetings
@@ -365,6 +371,56 @@ export default function ChallengeDetailPage() {
   const pastMeetings = meetings
     .filter(m => ['completed', 'processed', 'cancelled'].includes(m.status))
     .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+
+  // ── KPI ──
+  // Extraits en variables parce que deux dispositions les consomment : la
+  // ligne en tête de page, et la colonne de droite de l'écran brief, qui n'en
+  // prend que deux. Les inliner dans les deux endroits dupliquerait le calcul
+  // du pool et la liste d'avatars.
+  const cpAwardedStat: HeroStat = {
+    key: 'cp-awarded',
+    label: 'CP awarded',
+    value: awardedTotal.toLocaleString(),
+    unit: 'CP',
+    meta: challenge.contribution_points_reward ? `of a ${challenge.contribution_points_reward.toLocaleString()} CP pool` : undefined,
+    barWidth: challenge.contribution_points_reward
+      ? `${Math.min(100, Math.round((awardedTotal / challenge.contribution_points_reward) * 100))}%`
+      : undefined,
+  };
+
+  const teamStat: HeroStat = {
+    key: 'team',
+    label: 'Team',
+    value: String(team.length),
+    unit: team.length === 1 ? 'member' : 'members',
+    team,
+  };
+
+  // La mesure du milieu est la seule qui dépende du type et de l'appartenance.
+  const middleStat: HeroStat = isML ? {
+    key: 'metric',
+    label: bestMetricLabel ? `Best ${bestMetricLabel}` : 'Best metric',
+    value: bestMetricValue !== null ? bestMetricValue.toFixed(3) : '-',
+    meta: bestMetricValue !== null ? 'from submitted model versions' : 'no metric yet',
+    barWidth: bestMetricValue !== null ? `${Math.round(bestMetricValue * 100)}%` : undefined,
+  } : isValidation ? {
+    key: 'contributions',
+    label: 'Contributions',
+    value: String(contributions.length),
+    meta: 'submissions & verdicts recorded',
+  } : isMember ? {
+    key: 'tasks',
+    label: 'Tasks',
+    value: `${myCompletion}%`,
+    meta: `${myDoneTasks} of ${myTasks.length} tasks done · your board`,
+    barWidth: `${myCompletion}%`,
+  } : {
+    key: 'tasks',
+    label: 'Tasks',
+    value: String(team.length),
+    unit: team.length === 1 ? 'participant' : 'participants',
+    meta: 'join the challenge to start your board',
+  };
 
   return (
     <>
@@ -395,9 +451,9 @@ export default function ChallengeDetailPage() {
               <span className="text-white/20">·</span>
               <span className="flex items-center gap-1 text-xs text-white/40">
                 <CalendarDays className="h-3 w-3 text-primary-100/50" />
-                {challenge.start_date ? formatDate(challenge.start_date, { month: 'short', day: 'numeric' }) : '—'}
+                {challenge.start_date ? formatDate(challenge.start_date, { month: 'short', day: 'numeric' }) : '-'}
                 {' → '}
-                {challenge.end_date ? formatDate(challenge.end_date, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                {challenge.end_date ? formatDate(challenge.end_date, { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
               </span>
             </>
           )}
@@ -412,14 +468,40 @@ export default function ChallengeDetailPage() {
             {challenge.title}
           </h1>
           <div className="mt-1 flex shrink-0 items-center gap-2">
-            <button
-              onClick={() => setDocsDrawerOpen(true)}
-              title="Documents"
-              className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-brandCP/30 hover:bg-brandCP/[0.07] hover:text-brandCP/70 hover:shadow-[0_4px_16px_rgba(10,247,193,0.1)] active:translate-y-0"
-            >
-              <FileText className="h-3.5 w-3.5" />
-              Docs
-            </button>
+            {joinInHeader ? (
+              isAnonymous ? (
+                // Aucun chemin ne doit permettre à un non-connecté de lancer
+                // une requête de join : on l'envoie se connecter.
+                <a
+                  href={`/signin?from=/challenges/${challengeId}`}
+                  title="Join this challenge"
+                  style={{ color: '#fff' }}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-brandCP px-4 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(10,247,193,0.2)] active:translate-y-0"
+                >
+                  <UserPlus className="h-3.5 w-3.5" style={{ color: '#fff' }} />
+                  Join
+                </a>
+              ) : (
+                <button
+                  onClick={() => setJoinModalOpen(true)}
+                  title="Join this challenge"
+                  style={{ color: '#fff' }}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-brandCP px-4 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(10,247,193,0.2)] active:translate-y-0"
+                >
+                  <UserPlus className="h-3.5 w-3.5" style={{ color: '#fff' }} />
+                  Join
+                </button>
+              )
+            ) : (
+              <button
+                onClick={() => setDocsDrawerOpen(true)}
+                title="Documents"
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-brandCP/30 hover:bg-brandCP/[0.07] hover:text-brandCP/70 hover:shadow-[0_4px_16px_rgba(10,247,193,0.1)] active:translate-y-0"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Docs
+              </button>
+            )}
             <button
               onClick={() => setRulesDrawerOpen(true)}
               title="Reward rules"
@@ -439,63 +521,9 @@ export default function ChallengeDetailPage() {
           </p>
         )}
 
-        {/* Hero stat cards — masqués derrière le brief */}
+        {/* KPI du hero — remplacés par la colonne de droite du brief */}
         {!showBrief && (
-        <div className="mt-6">
-          <HeroStatCarousel
-            cards={[
-              <HeroStatCard
-                key="cp-awarded"
-                label="CP awarded"
-                value={awardedTotal.toLocaleString()}
-                unit="CP"
-                meta={challenge.contribution_points_reward ? `of a ${challenge.contribution_points_reward.toLocaleString()} CP pool` : undefined}
-                barWidth={challenge.contribution_points_reward
-                  ? `${Math.min(100, Math.round((awardedTotal / challenge.contribution_points_reward) * 100))}%`
-                  : undefined}
-              />,
-              isML ? (
-                <HeroStatCard
-                  key="metric"
-                  label={bestMetricLabel ? `Best ${bestMetricLabel}` : 'Best metric'}
-                  value={bestMetricValue !== null ? bestMetricValue.toFixed(3) : '—'}
-                  meta={bestMetricValue !== null ? 'from submitted model versions' : 'no metric yet'}
-                  barWidth={bestMetricValue !== null ? `${Math.round(bestMetricValue * 100)}%` : undefined}
-                />
-              ) : isValidation ? (
-                <HeroStatCard
-                  key="contributions"
-                  label="Contributions"
-                  value={String(contributions.length)}
-                  meta="submissions & verdicts recorded"
-                />
-              ) : isMember ? (
-                <HeroStatCard
-                  key="tasks"
-                  label="Tasks"
-                  value={`${myCompletion}%`}
-                  meta={`${myDoneTasks} of ${myTasks.length} tasks done · your board`}
-                  barWidth={`${myCompletion}%`}
-                />
-              ) : (
-                <HeroStatCard
-                  key="tasks"
-                  label="Tasks"
-                  value={String(team.length)}
-                  unit={team.length === 1 ? 'participant' : 'participants'}
-                  meta="join the challenge to start your board"
-                />
-              ),
-              <HeroStatCard
-                key="team"
-                label="Team"
-                value={String(team.length)}
-                unit={team.length === 1 ? 'member' : 'members'}
-                team={team}
-              />,
-            ]}
-          />
-        </div>
+          <HeroStats stats={[cpAwardedStat, middleStat, teamStat]} className="mt-5" />
         )}
       </div>
 
@@ -520,25 +548,39 @@ export default function ChallengeDetailPage() {
         </div>
       )}
 
-      {/* ── Brief: le contributeur connecté qui n'a pas encore rejoint ── */}
+      {/* ── Brief: le visiteur qui n'a pas encore rejoint ──
+          Deux colonnes, sur la grille du détail sandbox : la lecture à gauche,
+          les KPI à droite. `items-start` pour que la colonne ne s'étire pas à
+          la hauteur d'un brief long. Sur mobile la grille s'effondre et les
+          cartes passent sous le brief — c'est lui qu'on vient lire.
+
+          Deux mesures et non trois : pour un non-membre, celle du milieu
+          affiche `team.length`, exactement comme Team. Alignées sur une ligne
+          le doublon passe ; empilé dans une colonne étroite, il saute aux
+          yeux. */}
       {showBrief && (
-        <ChallengeBrief
-          content={briefQuery.data!}
-          challengeType={challenge.type}
-          onJoin={() => join()}
-          onJoinGroup={createGroup}
-          onAcceptInvite={acceptInvite}
-          joining={joining}
-          error={joinError}
-          invite={inviteToken ? inviteQuery.data ?? null : null}
-        />
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)] lg:gap-7">
+          <div className="min-w-0">
+            <ChallengeBrief
+              content={briefQuery.data!}
+              challengeType={challenge.type}
+              onAcceptInvite={acceptInvite}
+              joining={joining}
+              error={joinError}
+              invite={inviteToken ? inviteQuery.data ?? null : null}
+            />
+          </div>
+          <HeroStats stats={[cpAwardedStat, teamStat]} orientation="column" className="min-w-0" />
+        </div>
       )}
 
       {/* ── Signed out: one block, no tabs ───────────────── */}
       {/* Every interactive panel below needs an account, so an anonymous
           visitor gets the single thing worth showing for this challenge type:
-          its dataset and model metrics, or how far each contributor has got. */}
-      {isAnonymous && (
+          its dataset and model metrics, or how far each contributor has got.
+          Sauf quand le brief est là : il occupe déjà la page, et ces blocs
+          reviendraient à lui coller un second écran par-dessous. */}
+      {isAnonymous && !showBrief && (
         isML
           ? <ChallengeMetrics repoActivity={repoActivity} />
           : (
@@ -605,7 +647,11 @@ export default function ChallengeDetailPage() {
       ]} />
       )}
 
-      {isAnonymous && (
+      {/* Deuxième appel à l'action, donc réservé aux pages qui n'en ont pas
+          déjà un : sur l'écran du brief, le `Join` de l'en-tête mène lui aussi
+          à la connexion, et le répéter en bas de page demande deux fois la
+          même chose. */}
+      {isAnonymous && !showBrief && (
         <div className="mt-10 flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-6 py-8 text-center">
           <p className="text-sm text-white/60">
             Sign in to join this challenge and start your own board.
@@ -635,6 +681,14 @@ export default function ChallengeDetailPage() {
     />
     {/* Hors du conteneur animé, comme les drawers : un transform casse le
         positionnement fixed de l'overlay. */}
+    {joinModalOpen && (
+      <JoinModal
+        challengeId={challengeId}
+        challengeType={challenge.type ?? 'code'}
+        onClose={() => setJoinModalOpen(false)}
+        onJoined={reloadBoard}
+      />
+    )}
     {inviteOpen && myGroupId && (
       <GroupInviteModal
         inviteUrl={`${window.location.origin}/challenges/${challengeId}?group=${myGroupId}`}

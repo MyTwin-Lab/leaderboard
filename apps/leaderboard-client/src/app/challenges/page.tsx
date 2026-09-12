@@ -1,11 +1,12 @@
 import { ProjectChallengesExplorer } from "@/components/public/ProjectChallengesExplorer";
+import { SandboxCTA } from "@/components/sandbox/SandboxCTA";
 import { fetchProjectsWithChallenges } from "@/lib/server/publicPages";
 import { getSessionUser } from "@/lib/auth";
 import { repositories } from "@/lib/db";
 //import { FiltersBar } from "@/components/leaderboard/FiltersBar";
 
 export const metadata = {
-  title: "Challenges publics",
+  title: "Challenges",
   description: "Découvrez les projets en cours et les challenges ouverts du Lab",
 };
 
@@ -24,6 +25,8 @@ export default async function PublicChallengesPage() {
         isAdmin={isAdmin}
         managedProjectIds={managedProjectIds}
       />
+
+      <SandboxCTA />
     </div>
   );
 }

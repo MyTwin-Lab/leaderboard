@@ -111,13 +111,27 @@ Tasks only exist for `type: 'code'` challenges — `ml` challenges never have ta
 
 | Table | Purpose |
 |-------|---------|
-| `app_settings` | Singleton row (`id = 1`) holding instance-wide admin settings: active theme (`theme_key`, optional custom `primary_color` / `background_color`, `theme_mode`), module visibility toggles (`modules_meetings_enabled`, `modules_onboarding_enabled`), the digest schedule (`digest_enabled`, `digest_frequency_days` — see [`digest.md`](./digest.md)), and the encrypted GitHub/Kaggle/Slack/OpenAI/Scaleway connection state. See [`admin-settings.md`](./admin-settings.md). |
+| `app_settings` | Singleton row (`id = 1`) holding instance-wide admin settings: active theme (`theme_key`, optional custom `primary_color` / `background_color`, `theme_mode`), module visibility toggles (`modules_meetings_enabled`, `modules_onboarding_enabled`), the digest schedule (`digest_enabled`, `digest_frequency_days` — see [`digest.md`](./digest.md)), the sandbox economy (`sandbox_star_tiers`, `sandbox_promotion_bonus_cp` — see [`sandbox.md`](./sandbox.md)), and the encrypted GitHub/Kaggle/Slack/OpenAI/Scaleway connection state. See [`admin-settings.md`](./admin-settings.md). |
 
 ### Digest
 
 | Table | Purpose |
 |-------|---------|
 | `digests` | One immutable snapshot of platform activity per period: `uuid`, `period_start`, `period_end`, `generated_at`, `trigger_source` (`cron` / `manual`), `payload` (jsonb, five sections). `period_start` always equals the previous row's `period_end`, so the table is its own cursor — no gap, no overlap, and no "last generated" field anywhere. Never updated after insert. See [`digest.md`](./digest.md). |
+
+### Sandbox
+
+| Table | Purpose |
+|-------|---------|
+| `sandboxes` | A contributor-proposed unit of work, outside the challenge system: no pool, no members, no tasks. `type` (`code` / `ml`) is immutable, the proposal is held by `context` / `goals` / `why`, and the formative evaluation lives on the row (`evaluation`, `evaluation_status`, `evaluated_at`) because it pays no CP and must not reach the ledger. `promoted_challenge_id` is `ON DELETE SET NULL` — deleting the challenge must not erase the proposal behind it. |
+| `sandbox_stars` | One row per identity per sandbox, signed in (`user_id`) or not (`anon_id`, from a signed cookie). Uniqueness is two partial unique indexes rather than a composite key, which tolerates no NULL. Unstarring is a soft delete (`removed_at`): a paid milestone is never taken back, so the wave has to stay auditable. `ip_hash` is HMAC'd and rate-limits only — never uniqueness, since a campus leaves through one address — and is purged after 30 days. |
+| `sandbox_rewards` | The sandbox CP ledger, separate from `reward_entries` (whose `challenge_id` is NOT NULL and whose rows the leaderboard aggregates per contribution). Two partial unique indexes carry idempotence: one `star_tier` row per crossed threshold, one `promotion` row per sandbox. No cached total — the CP are summed live, so deleting a row is the clawback. See [`sandbox.md`](./sandbox.md). |
+
+### Notifications
+
+| Table | Purpose |
+|-------|---------|
+| `notifications` | In-app notifications. `type` is a string rather than an enum so a second kind needs no migration; the only one today is `group_invite`, carrying a group's token to its invitee. `payload` is denormalised on purpose — a notification is the trace of what was true when it was sent, and re-joining it to a challenge renamed since would rewrite history. `dedupe_key` holds the group token, and a partial unique index on `(user_id, type, dedupe_key)` is what stops a double click from stacking two rows. There is **no pending state and no acceptance**: see [`challenge-groups.md`](./challenge-groups.md). |
 
 ---
 
@@ -143,6 +157,9 @@ challenges ─── challenges (source_challenge_id, validation → ml, 1:1)
 challenges ──< validation_targets >── contributions
 challenges ──< validation_reference_cases >── users (author)
 validation_reference_cases ──< validation_case_claims >── contributions
+users ──< sandboxes >── challenges (promoted_challenge_id, nullable)
+sandboxes ──< sandbox_stars >── users (user_id nullable — null = anonymous star)
+sandboxes ──< sandbox_rewards >── users (author)
 validation_case_claims >── users (validator)
 challenges ──< validation_attempts >── contributions
 validation_attempts >── validation_case_claims (reference_case_claim_id)

@@ -45,6 +45,9 @@ export async function GET(request: Request) {
         new_challenges: d.payload?.new_challenges?.length ?? 0,
         completed_challenges: d.payload?.completed_challenges?.length ?? 0,
         new_contributors: d.payload?.new_contributors?.length ?? 0,
+        // Absente des payloads v1 : un digest généré avant la section reste
+        // lisible, il affiche simplement 0.
+        new_sandboxes: d.payload?.new_sandboxes?.length ?? 0,
         cp_distributed: d.payload?.cp_distributed?.length ?? 0,
       },
     })),

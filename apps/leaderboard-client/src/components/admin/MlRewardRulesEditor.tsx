@@ -114,7 +114,7 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
           so {toPct(rules.model.kaggleShare)}% of {rules.model.cap} CP goes to a perfect score and nothing to one at
           the baseline. The rest is unlocked by the model&apos;s GitHub, scored as code.
           {rules.model.metric.baseline > 0 && (
-            <> A {rules.model.metric.name.toUpperCase()} at or below {toPct(rules.model.metric.baseline)}% earns 0 —
+            <> A {rules.model.metric.name.toUpperCase()} at or below {toPct(rules.model.metric.baseline)}% earns 0 -
             without it, a coin-flip model would collect {Math.round(rules.model.cap * rules.model.kaggleShare * 0.5)} CP
             for free.</>
           )}
@@ -128,7 +128,7 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
           />
         </FormField>
 
-        <FormField label="Block threshold (%) — optional">
+        <FormField label="Block threshold (%) - optional">
           <input
             type="number" min={0} max={100} className={inputClass}
             value={rules.model.metric.blockThreshold != null ? toPct(rules.model.metric.blockThreshold) : ''}
@@ -145,7 +145,7 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
         {rules.model.metric.blockThreshold != null && (
           <p className="text-xs text-white/30">
             Once {rules.model.metric.name.toUpperCase()} reaches {toPct(rules.model.metric.blockThreshold)}%,
-            dataset and model submissions close — only API packaging stays open.
+            dataset and model submissions close - only API packaging stays open.
           </p>
         )}
       </div>
@@ -182,7 +182,7 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
 
         <p className="text-xs text-white/30">
           These shares are <span className="text-white/50">taken from</span> the reuser&apos;s model points, not added on
-          top — the pool is unchanged. Reuse someone&apos;s dataset and earn 500 CP on your model, and
+          top - the pool is unchanged. Reuse someone&apos;s dataset and earn 500 CP on your model, and
           {' '}{Math.round(500 * rules.reuse.datasetShare)} CP go to its author.
         </p>
       </div>
@@ -218,7 +218,7 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
           <p className="flex items-start gap-1.5 text-xs text-amber-300/80">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             The pool runs out before everyone is paid. Awards are clamped to whatever is left, so late contributors
-            may earn nothing — raise the CP reward or lower the caps.
+            may earn nothing - raise the CP reward or lower the caps.
           </p>
         )}
       </div>

@@ -355,7 +355,7 @@ function StepPanel({
         ) : step.locked && (
           <span className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-0.5 text-xs font-medium text-white/40">
             <Lock className="h-3 w-3" />
-            Locked — threshold reached
+            Locked - threshold reached
           </span>
         )}
       </div>
@@ -501,7 +501,7 @@ function RepoSubmission({
       {locked && (
         <div className="flex items-center gap-1.5 text-xs text-white/35">
           <Lock className="h-3.5 w-3.5 shrink-0" />
-          Threshold reached — submissions are closed for this step.
+          Threshold reached - submissions are closed for this step.
         </div>
       )}
 

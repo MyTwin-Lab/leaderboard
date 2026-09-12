@@ -10,7 +10,7 @@ export function LeaderboardCTA() {
           Not on the board yet?
         </span>
         <span className="text-sm leading-relaxed text-white/55">
-          Join an open challenge — your first evaluated contribution puts you on it.
+          Join an open challenge - your first evaluated contribution puts you on it.
         </span>
       </div>
       <Link

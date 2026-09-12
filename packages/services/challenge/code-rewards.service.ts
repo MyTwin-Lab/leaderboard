@@ -1,7 +1,4 @@
-import { OpenAIAgentEvaluator } from "../../evaluator/evaluator.js";
-import { EvaluationGridRegistry } from "../../evaluator/grids/index.js";
 import { computeCodeAward } from "../../evaluator/code-reward.js";
-import type { EvaluateContext, SnapshotInfo } from "../../evaluator/types.js";
 import {
   ChallengeRepository,
   ChallengeRepoRepository,
@@ -15,9 +12,11 @@ import { splitShares } from "../../evaluator/share.js";
 import { getGroupContext, type GroupContext } from "./group.js";
 import type { Challenge, ChallengeTeam, Contribution } from "../../database-service/domain/entities.js";
 import { parseCodeRewardRules } from "../../database-service/domain/codeRewardRules.js";
-import { ConnectorRegistry } from "../../connectors/registry.js";
-import { SnapshotService } from "./snapshot.service.js";
-import { DatabaseGridProvider } from "../database-grid-provider.js";
+import {
+  ensureDatabaseGridProvider,
+  evaluateGithubRepo,
+  parseGithubRepoUrl,
+} from "./repo-evaluation.js";
 
 /** Une contribution "projet global" par (challenge, user) — le pendant code de dataset/model/api_packaging. */
 export const PROJECT_CONTRIBUTION_TYPE = "project";
@@ -39,19 +38,6 @@ export type CannotEvaluateReason =
   | "challenge_closed";
 
 /**
- * Parse `owner/repo` (+ branche optionnelle) depuis une URL GitHub — repo
- * racine ou `/tree/<branch>`. Seul point de vérité pour ce regex, partagé par
- * `resolveWorkspaceTarget` (mode `external`) et `resolveTarget` (fallback du
- * mode `github`).
- */
-function parseGithubUrl(url?: string): { slug: string; branch?: string } | null {
-  if (!url) return null;
-  const m = url.match(/github\.com\/([^/?#]+)\/([^/?#]+?)(?:\.git)?(?:\/tree\/([^?#]+))?(?:[?#]|$)/);
-  if (!m) return null;
-  return { slug: `${m[1]}/${m[2]}`, branch: m[3] ?? undefined };
-}
-
-/**
  * Où lire le code à évaluer.
  * - provider 'github' (mode provided_repo) : le repo du challenge, sur la branche perso.
  * - provider 'external' (mode own_repo) : le repo GitHub public du contributeur.
@@ -65,7 +51,7 @@ export function resolveWorkspaceTarget(
     return { slug: codeRepoExternalId, branch: participation.workspace_ref.replace("refs/heads/", "") };
   }
   if (participation.workspace_provider === "external" && participation.workspace_url) {
-    const parsed = parseGithubUrl(participation.workspace_url);
+    const parsed = parseGithubRepoUrl(participation.workspace_url);
     if (!parsed) return null;
     return { slug: parsed.slug, branch: parsed.branch };
   }
@@ -100,15 +86,11 @@ export interface CodeRewardsDeps {
  */
 export class CodeRewardsService {
   private deps: CodeRewardsDeps;
-  private snapshotService = new SnapshotService();
-  private evaluator = new OpenAIAgentEvaluator();
-  private static dbProviderInitialized = false;
 
   constructor(deps?: Partial<CodeRewardsDeps>) {
-    if (!CodeRewardsService.dbProviderInitialized) {
-      EvaluationGridRegistry.setDatabaseProvider(new DatabaseGridProvider());
-      CodeRewardsService.dbProviderInitialized = true;
-    }
+    // Le registre de grilles est statique : l'installer une fois suffit, et
+    // `repo-evaluation.ts` porte le drapeau pour tous ses appelants.
+    ensureDatabaseGridProvider();
     this.deps = {
       challengeRepo: new ChallengeRepository(),
       challengeTeamRepo: new ChallengeTeamRepository(),
@@ -321,7 +303,7 @@ export class CodeRewardsService {
    */
   private async resolveTarget(challenge: Challenge, participation: ChallengeTeam) {
     if (participation.workspace_provider === "github") {
-      const fromUrl = parseGithubUrl(participation.workspace_url)?.slug;
+      const fromUrl = parseGithubRepoUrl(participation.workspace_url)?.slug;
       if (fromUrl) return resolveWorkspaceTarget(participation, fromUrl);
 
       const repos = await this.deps.challengeRepoRepo.findByChallengeWithRepo(challenge.uuid);
@@ -331,43 +313,27 @@ export class CodeRewardsService {
     return resolveWorkspaceTarget(participation, undefined);
   }
 
-  /** Snapshot agrégé (≤100 commits) sur la branche/le repo, grille `code`, note ramenée /10. */
-  private async runAgentDefault({ slug, branch, contribution, challenge }: {
+  /**
+   * Snapshot agrégé (≤100 commits) sur la branche/le repo, grille `code`, note
+   * ramenée /10 — le cœur est partagé avec l'évaluation formative du sandbox
+   * (`repo-evaluation.ts`), ce service ne garde ici que la traduction de ses
+   * propres objets (contribution, challenge) vers le sujet évalué.
+   */
+  private runAgentDefault({ slug, branch, contribution, challenge }: {
     slug: string; branch?: string; contribution: Contribution; challenge: Challenge;
   }): Promise<{ score10: number; evaluation: unknown }> {
-    const connector = await ConnectorRegistry.createConnector(
-      { uuid: "", title: slug, type: "github", external_repo_id: slug, project_id: "" },
-      branch ? { branch } : undefined
-    );
-    if (!connector) throw new Error(`[CodeRewardsService] No GitHub connector for ${slug}`);
-
-    await connector.connect();
-    try {
-      const items = await connector.fetchItems();
-      const shas = items.slice(0, 100).map(i => i.id);
-      if (shas.length === 0) throw new Error(`[CodeRewardsService] No commits found on ${slug}${branch ? `@${branch}` : ""}`);
-
-      const aggregated = await this.snapshotService.buildAggregatedSnapshot(() => connector, shas);
-      if (!aggregated) throw new Error(`[CodeRewardsService] Unable to build snapshot for ${slug}`);
-      const prepared = await this.snapshotService.prepareSnapshot(aggregated);
-
-      const grid = await EvaluationGridRegistry.getGridAsync("code");
-      const evalContext: EvaluateContext = { snapshot: prepared as SnapshotInfo, grid };
-
-      const evaluation = await this.evaluator.evaluate(!!contribution.evaluation, {
+    return evaluateGithubRepo({
+      slug,
+      branch,
+      gridSlug: "code",
+      subject: {
         title: contribution.title,
         type: "code",
         description: contribution.description,
-        challenge_id: challenge.uuid,
+        challengeId: challenge.uuid,
         userId: contribution.user_id,
-        commitShas: shas,
-      }, evalContext);
-
-      // globalScore est sur 0–9 (cf. ml-rewards.service.ts:302) — ramené /10.
-      const score10 = Math.min(10, Math.max(0, (evaluation.globalScore / 9) * 10));
-      return { score10, evaluation: { scores: evaluation.scores, globalScore: evaluation.globalScore } };
-    } finally {
-      await connector.disconnect?.();
-    }
+      },
+      hasPriorEvaluation: !!contribution.evaluation,
+    });
   }
 }

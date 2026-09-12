@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
   CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck, Cpu, Package,
-  ListTodo, Trash2, FileText, Eye,
+  ListTodo, Trash2, FileText, Eye, Rocket,
 } from 'lucide-react';
 import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
@@ -17,6 +17,8 @@ import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEdi
 import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
 import { flushTemplateTasks } from './templateTasksFlush';
 import { flushBrief } from './briefFlush';
+import { buildPromotionRequestBody } from './promotionRequestBody';
+import { buildPromotedDescription } from '../../../../../packages/services/sandbox/promotion';
 import { Markdown } from '@/components/ui/Markdown';
 import { BRIEF_TEMPLATE, findBrief } from '@/lib/challengeBrief';
 import {
@@ -54,6 +56,20 @@ export interface EditableChallenge {
   workspace_mode?: 'provided_repo' | 'own_repo' | null;
 }
 
+/**
+ * La proposition dont ce tiroir fait un challenge. Réduite à ce qui pré-remplit
+ * le formulaire — le reste (auteur, stars, dépôt) est déjà décidé côté serveur.
+ */
+export interface PromotableSandbox {
+  uuid: string;
+  title: string;
+  /** 'code' | 'ml'. Hérité, jamais choisi : le sélecteur de type est verrouillé. */
+  type: string;
+  context?: string | null;
+  goals: string[];
+  why?: string | null;
+}
+
 interface CreateChallengeDrawerProps {
   open: boolean;
   onClose: () => void;
@@ -65,6 +81,13 @@ interface CreateChallengeDrawerProps {
    * already racing against both.
    */
   challenge?: EditableChallenge;
+  /**
+   * Présente = mode promotion, **exclusif** de `challenge`. Le tiroir crée un
+   * challenge depuis une proposition : titre, description, type, buts et mode
+   * de workspace sont pré-remplis, le type est verrouillé, et le formulaire
+   * poste vers `/api/sandboxes/:id/promote` au lieu de `/api/challenges`.
+   */
+  promotion?: PromotableSandbox;
 }
 
 /** Date inputs need YYYY-MM-DD; the API hands back ISO strings or Dates. */
@@ -83,8 +106,13 @@ function fgAt(opacity: number) {
   return `color-mix(in srgb, var(--foreground) ${Math.round(opacity * 100)}%, transparent)`;
 }
 
-export function CreateChallengeDrawer({ open, onClose, projects, onCreated, challenge }: CreateChallengeDrawerProps) {
+export function CreateChallengeDrawer({ open, onClose, projects, onCreated, challenge, promotion }: CreateChallengeDrawerProps) {
   const isEdit = !!challenge;
+  const isPromotion = !!promotion;
+  // Le type décide des repos créés, et ils ne le sont qu'une fois : à
+  // l'édition parce qu'ils existent déjà, à la promotion parce qu'il est
+  // hérité de la proposition (elle a fixé les champs saisis et la grille).
+  const typeLocked = isEdit || isPromotion;
 
   const [title, setTitle] = useState('');
   const [projectId, setProjectId] = useState(projects[0]?.id ?? '');
@@ -169,8 +197,31 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setSourceChallengeId(challenge.source_challenge_id ?? '');
       setCpPerValidation(challenge.cp_per_validation ?? 5);
       setComputeEnabled(challenge.compute_enabled ?? false);
+    } else if (promotion) {
+      setTitle(promotion.title);
+      setType(promotion.type === 'ml' ? 'ml' : 'code');
+      // La description markdown est composée par la même fonction que le
+      // serveur, pour que ce que l'admin relit soit exactement ce qui serait
+      // écrit s'il n'y touchait pas.
+      setDescription(buildPromotedDescription({
+        context: promotion.context ?? null,
+        goals: promotion.goals ?? [],
+        why: promotion.why ?? null,
+      }));
+      // Les buts sont le candidat naturel aux tâches du challenge : ils
+      // arrivent en template tasks, éditables avant l'envoi.
+      setPendingTasks((promotion.goals ?? []).map((title, i) => ({ id: String(i), title })));
+      nextPendingTaskId.current = (promotion.goals ?? []).length;
+      // Un sandbox code devient un challenge `own_repo` : l'auteur arrive avec
+      // son dépôt, il n'y a pas de repo partagé à provisionner.
+      setWorkspaceMode('own_repo');
+      // Promouvoir, c'est ouvrir le challenge — pas préparer un brouillon.
+      setStatus('active');
+      // Le tiroir s'ouvre après le chargement des projets : sans ça, l'état
+      // initial (`projects[0]` au premier rendu) resterait vide.
+      setProjectId((current) => current || projects[0]?.id || '');
     }
-  }, [open, challenge]);
+  }, [open, challenge, promotion]);
 
   // Le brief vit dans les documents du challenge, pas dans sa ligne : en
   // édition il faut aller le chercher. Silencieux en cas d'échec — le tiroir
@@ -194,14 +245,16 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   // Only needed to populate the source-challenge picker when creating a new
   // validation challenge — editing never touches this field (locked).
   useEffect(() => {
-    if (!open || isEdit) return;
+    // Sert seulement au sélecteur de challenge source d'un challenge de
+    // validation — inaccessible en édition comme en promotion.
+    if (!open || typeLocked) return;
     fetch('/api/challenges')
       .then(r => r.ok ? r.json() : [])
       .then((all: any[]) => setMlChallenges(
         (Array.isArray(all) ? all : []).filter(c => c.type === 'ml').map(c => ({ id: c.uuid, title: c.title }))
       ))
       .catch(() => {});
-  }, [open, isEdit]);
+  }, [open, typeLocked]);
 
   // Close on Escape
   useEffect(() => {
@@ -296,25 +349,49 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       // validation challenges) the source challenge / CP rate: they define the
       // challenge's shape and budget, and contributors/validators are already
       // racing against them. Omitting them means the API cannot change them.
+      //
+      // La promotion a sa propre route et son propre corps : le type, le mode
+      // de workspace et le repo n'y sont pas envoyés du tout — ils découlent de
+      // la proposition. Voir `promotionRequestBody.ts`.
       const res = await fetch(
-        isEdit ? `/api/challenges/${challenge!.uuid}` : '/api/challenges',
+        isPromotion
+          ? `/api/sandboxes/${promotion!.uuid}/promote`
+          : isEdit
+            ? `/api/challenges/${challenge!.uuid}`
+            : '/api/challenges',
         {
           method: isEdit ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
-            isEdit
-              ? shared
-              : {
-                  ...shared,
-                  project_id: projectId,
-                  contribution_points_reward: cp,
-                  workspace_mode: type === 'code' ? workspaceMode : undefined,
-                  github_repo: type === 'code' && workspaceMode === 'provided_repo' && githubRepo.trim() ? githubRepo.trim() : undefined,
-                  source_challenge_id: type === 'validation' ? sourceChallengeId : undefined,
-                  cp_per_validation: type === 'validation' ? cpPerValidation : undefined,
-                  required_validations: type === 'validation' ? requiredValidations : undefined,
-                  api_packaging_enabled: type === 'ml' ? apiPackagingEnabled : undefined,
-                }
+            isPromotion
+              ? buildPromotionRequestBody({
+                  title,
+                  status,
+                  type: type === 'ml' ? 'ml' : 'code',
+                  startDate,
+                  endDate,
+                  description,
+                  roadmap,
+                  cp,
+                  projectId,
+                  rewardRules,
+                  codeRules,
+                  computeEnabled,
+                  apiPackagingEnabled,
+                })
+              : isEdit
+                ? shared
+                : {
+                    ...shared,
+                    project_id: projectId,
+                    contribution_points_reward: cp,
+                    workspace_mode: type === 'code' ? workspaceMode : undefined,
+                    github_repo: type === 'code' && workspaceMode === 'provided_repo' && githubRepo.trim() ? githubRepo.trim() : undefined,
+                    source_challenge_id: type === 'validation' ? sourceChallengeId : undefined,
+                    cp_per_validation: type === 'validation' ? cpPerValidation : undefined,
+                    required_validations: type === 'validation' ? requiredValidations : undefined,
+                    api_packaging_enabled: type === 'ml' ? apiPackagingEnabled : undefined,
+                  }
           ),
         }
       );
@@ -353,7 +430,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           // normal success path) would carry the admin off before they ever
           // see this. Hold here — no resetForm/onCreated/onClose — until they
           // click Continue in the footer.
-          setError(`Challenge ${isEdit ? 'updated' : 'created'}, but ${problems.join(' and ')} — fix ${problems.length > 1 ? 'them' : 'it'} from the edit drawer.`);
+          setError(`Challenge ${isEdit ? 'updated' : 'created'}, but ${problems.join(' and ')} - fix ${problems.length > 1 ? 'them' : 'it'} from the edit drawer.`);
           setPendingChallengeId(targetId);
         } else {
           setTimeout(() => {
@@ -364,7 +441,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         }
       } else {
         const d = await res.json();
-        setError(d.error || `Failed to ${isEdit ? 'update' : 'create'} challenge`);
+        setError(d.error || `Failed to ${isPromotion ? 'promote this sandbox' : isEdit ? 'update' : 'create'} challenge`);
       }
     } catch {
       setError('Network error');
@@ -392,12 +469,14 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brandCP/15">
-              {isEdit
-                ? <Pencil className="h-3.5 w-3.5 text-brandCP" />
-                : <Plus className="h-4 w-4 text-brandCP" />}
+              {isPromotion
+                ? <Rocket className="h-3.5 w-3.5 text-brandCP" />
+                : isEdit
+                  ? <Pencil className="h-3.5 w-3.5 text-brandCP" />
+                  : <Plus className="h-4 w-4 text-brandCP" />}
             </div>
             <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
-              {isEdit ? 'Edit challenge' : 'New challenge'}
+              {isPromotion ? 'Promote to challenge' : isEdit ? 'Edit challenge' : 'New challenge'}
             </h2>
           </div>
           <button
@@ -411,6 +490,26 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
+
+          {/* ── Effets de la promotion ──
+              Dit une fois, en tête : promouvoir n'est pas « créer un challenge
+              de plus », c'est une opération qui touche la proposition, son
+              auteur et le pool. L'admin doit le lire avant de valider. */}
+          {isPromotion && (
+            <div className="space-y-2 rounded-xl border border-brandCP/25 bg-brandCP/[0.06] px-4 py-3.5">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-brandCP">
+                <Rocket className="h-3.5 w-3.5" />
+                What promoting does
+              </p>
+              <ul className="space-y-1 text-[11px] leading-relaxed" style={{ color: fgAt(0.5) }}>
+                <li>• Creates this challenge and closes the sandbox as <strong>Promoted</strong> - for good.</li>
+                <li>• The author joins as a member, with their repository already declared.</li>
+                <li>• The work already submitted becomes contributions and gets scored on this pool.</li>
+                <li>• The promotion bonus is paid to the author, per the Sandbox settings.</li>
+                <li>• The type stays the sandbox&apos;s - it decides the steps and the grid.</li>
+              </ul>
+            </div>
+          )}
 
           {/* ── Title ── */}
           <div className="space-y-1.5">
@@ -428,7 +527,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
           {/* ── Type ── */}
           {/* Locked on edit: the type decides which repos are created, and they
-              only get created once, at creation. */}
+              only get created once, at creation. Locked on promotion too, for
+              the same reason seen from the other end: it is inherited from the
+              sandbox, which already fixed the fields and the grid. */}
           <Field label="Type">
             <div className="flex gap-2">
               {([
@@ -438,17 +539,17 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
               ] as const).map(opt => {
                 const Icon = opt.icon;
                 const active = type === opt.value;
-                if (isEdit && !active) return null;
+                if (typeLocked && !active) return null;
                 return (
                   <button
                     key={opt.value}
-                    onClick={() => !isEdit && setType(opt.value)}
-                    disabled={isEdit}
+                    onClick={() => !typeLocked && setType(opt.value)}
+                    disabled={typeLocked}
                     className={`flex flex-1 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
                       active
                         ? 'border-brandCP/40 bg-brandCP/10 ring-1 ring-brandCP/20'
                         : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'
-                    } ${isEdit ? 'cursor-default' : ''}`}
+                    } ${typeLocked ? 'cursor-default' : ''}`}
                   >
                     <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-brandCP' : ''}`} style={active ? undefined : { color: fgAt(0.3) }} />
                     <div>
@@ -464,7 +565,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           {/* ── Project ── */}
           <Field icon={<ChevronDown className="h-3.5 w-3.5" />} label="Project">
             {isEdit ? (
-              <LockedValue text={projects.find(p => p.id === projectId)?.name ?? '—'} />
+              <LockedValue text={projects.find(p => p.id === projectId)?.name ?? '-'} />
             ) : (
               <SelectDropdown
                 options={projectOptions}
@@ -548,13 +649,16 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           {/* ── Code: workspace mode ── */}
           {/* Locked on edit: it decides which repos exist and how contributors
               submit — it only makes sense to fix at creation. */}
-          {type === 'code' && (
+          {/* Masqué en promotion : un sandbox code devient forcément un
+              challenge `own_repo` sur le dépôt de son auteur — il n'y a pas de
+              choix à offrir, et la route n'accepte pas le champ. */}
+          {type === 'code' && !isPromotion && (
             <Field label="Workspace mode">
               {isEdit ? (
                 <LockedValue
                   text={workspaceMode === 'own_repo'
-                    ? 'Own repo — each contributor submits their repo URL'
-                    : 'Shared repo — one personal branch per contributor'}
+                    ? 'Own repo - each contributor submits their repo URL'
+                    : 'Shared repo - one personal branch per contributor'}
                 />
               ) : (
                 <div className="flex gap-2">
@@ -641,7 +745,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                     onChange={setSourceChallengeId}
                   />
                   <p className="text-[11px] mt-1.5" style={{ color: fgAt(0.25) }}>
-                    Only ML challenges without a validation challenge yet will actually save — the API rejects duplicates.
+                    Only ML challenges without a validation challenge yet will actually save - the API rejects duplicates.
                   </p>
                 </>
               )}
@@ -686,7 +790,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                     style={{ color: 'var(--foreground)' }}
                   />
                   <p className="text-[11px]" style={{ color: fgAt(0.25) }}>
-                    Must be odd — majority wins once this many validators have voted.
+                    Must be odd - majority wins once this many validators have voted.
                   </p>
                 </div>
               )}
@@ -852,7 +956,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           )}
 
           {/* ── GitHub repo (code only, creation only, provided_repo mode only) ── */}
-          {type === 'code' && !isEdit && workspaceMode === 'provided_repo' && (
+          {type === 'code' && !isEdit && !isPromotion && workspaceMode === 'provided_repo' && (
             <Field icon={<Github className="h-3.5 w-3.5" />} label="GitHub Repository">
               <input
                 type="url"
@@ -862,7 +966,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                 className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
                 style={{ color: 'var(--foreground)' }}
               />
-              <p className="text-[11px]" style={{ color: fgAt(0.25) }}>Optional — can be set later</p>
+              <p className="text-[11px]" style={{ color: fgAt(0.25) }}>Optional - can be set later</p>
             </Field>
           )}
 
@@ -920,9 +1024,11 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             {success && <CheckCircle2 className="h-4 w-4" />}
             {pendingChallengeId
               ? 'Continue'
-              : isEdit
-                ? (success ? 'Saved!' : saving ? 'Saving…' : 'Save changes')
-                : (success ? 'Created!' : saving ? 'Creating…' : 'Create challenge')}
+              : isPromotion
+                ? (success ? 'Promoted!' : saving ? 'Promoting…' : 'Promote to challenge')
+                : isEdit
+                  ? (success ? 'Saved!' : saving ? 'Saving…' : 'Save changes')
+                  : (success ? 'Created!' : saving ? 'Creating…' : 'Create challenge')}
           </button>
         </div>
       </div>

@@ -1,8 +1,11 @@
 import { config } from "../../config/index.js";
 import "dotenv/config";
-import { pgTable, text, varchar, timestamp, uuid, integer, json, jsonb, date, serial, real, index, uniqueIndex, boolean, customType, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, uuid, integer, json, jsonb, date, serial, real, index, uniqueIndex, boolean, customType, primaryKey, check } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+// Import de type seul : effacé à la compilation, donc aucun cycle d'import à
+// l'exécution entre le schéma et le domaine.
+import type { SandboxStarTier } from "../domain/entities.js";
+import { relations, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
@@ -774,6 +777,12 @@ export const app_settings = pgTable("app_settings", {
   // d'admin ne s'active pas seule sur les instances existantes.
   digest_enabled: boolean("digest_enabled").notNull().default(false),
   digest_frequency_days: integer("digest_frequency_days").notNull().default(7),
+  // Sandbox — voir docs/input/spec-sandbox.md. Les deux défauts sont inertes,
+  // dans l'esprit de digest_enabled = false : tant que l'admin n'a pas saisi de
+  // palier ni de bonus, starer et promouvoir ne distribuent aucun CP. Une
+  // instance existante ne se met donc pas à payer toute seule au déploiement.
+  sandbox_star_tiers: jsonb("sandbox_star_tiers").$type<SandboxStarTier[]>().notNull().default([]),
+  sandbox_promotion_bonus_cp: integer("sandbox_promotion_bonus_cp").notNull().default(0),
 });
 
 // --- DIGESTS ---
@@ -799,6 +808,192 @@ export const digests = pgTable("digests", {
   payload: jsonb("payload").notNull(),
 }, (table) => ({
   periodEndIdx: index("idx_digests_period_end").on(table.period_end),
+}));
+
+// --- SANDBOXES ---
+// Unité de travail proposée par un contributeur, hors du système de challenges.
+//
+// Volontairement décorrélée de `challenges` : pas de pool, pas de membres, pas
+// de tâches, pas de cycle draft→active→completed. Seul l'auteur y travaille ;
+// la communauté n'interagit que par des stars. Voir docs/sandbox.md.
+//
+// L'évaluation vit sur la row et non dans `contributions` : elle est formative,
+// ne rapporte aucun CP et ne doit toucher ni le ledger ni le leaderboard.
+export const sandboxes = pgTable("sandboxes", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  // 'code' | 'ml'. Choisi à la création et immuable : il pilote les champs
+  // attendus, la grille d'évaluation, et le type du challenge issu de la
+  // promotion. 'validation' est exclu — un challenge de validation dérive
+  // d'un challenge ML existant, il ne peut pas naître d'une proposition.
+  type: varchar("type", { length: 10 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  // Les trois sections de la proposition, telles que la page détail les rend.
+  // `context` et `why` sont du markdown libre ; `goals` est un tableau d'items
+  // courts plutôt qu'une liste markdown, parce qu'ils sont rendus un par un et
+  // qu'ils sont le candidat naturel aux tâches du challenge après promotion.
+  context: text("context"),
+  goals: jsonb("goals").$type<string[]>().notNull().default([]),
+  why: text("why"),
+  repo_url: text("repo_url").notNull(),
+  // ML uniquement. Le modèle est optionnel (un sandbox ML peut démarrer sans
+  // artefact), au moins un dataset est requis à la création.
+  model_url: text("model_url"),
+  dataset_urls: jsonb("dataset_urls").$type<string[]>().notNull().default([]),
+  // 'open' | 'promoted' | 'archived'. Créé directement 'open' : aucune
+  // validation admin n'est nécessaire pour exister.
+  status: varchar("status", { length: 10 }).notNull().default("open"),
+  // Posé à la promotion. ON DELETE SET NULL : supprimer le challenge issu de
+  // la promotion ne doit pas emporter la proposition qui lui a donné naissance.
+  promoted_challenge_id: uuid("promoted_challenge_id").references(() => challenges.uuid, { onDelete: "set null" }),
+  promoted_at: timestamp("promoted_at"),
+  // Dernier résultat d'évaluation formative, même forme que celle d'une
+  // contribution ({ scores[], globalScore }) pour partager l'affichage.
+  evaluation: jsonb("evaluation"),
+  // 'pending' | 'running' | 'done' | 'failed'. NULL = jamais évalué.
+  evaluation_status: varchar("evaluation_status", { length: 10 }),
+  // Fin du dernier run, succès ou échec. Distinct de updated_at, que toute
+  // édition de l'auteur réécrit : c'est la seule date qui dit « ce score date
+  // d'avant/après le dernier commit » quand l'UI affiche le panneau.
+  evaluated_at: timestamp("evaluated_at"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_sandboxes_user_id").on(table.user_id),
+  statusIdx: index("idx_sandboxes_status").on(table.status),
+}));
+
+// --- SANDBOX_STARS ---
+// Le signal de demande de la plateforme. Toggle façon GitHub, ouvert aussi aux
+// visiteurs non connectés — c'est ce qui permettra de liker un sandbox depuis
+// une newsletter, et ces stars paient les paliers comme celles des comptes.
+//
+// PK de surface `uuid` et non (sandbox_id, user_id) : une star anonyme n'a pas
+// de user_id, et une PK composite ne tolère aucun NULL. L'unicité est donc
+// portée par deux index uniques *partiels*, un par nature d'identité — un même
+// (sandbox_id, anon_id) ne peut exister qu'une fois tant qu'il n'est pas
+// rattaché, et un (sandbox_id, user_id) qu'une fois tout court.
+//
+// Soft-delete plutôt que DELETE : un palier payé n'est jamais repris, donc une
+// vague star → unstar doit laisser une trace exploitable pour l'audit, et le
+// rate-limit continue de compter sur `created_at`. Le compteur public ne lit
+// que `removed_at IS NULL`, et re-starer réactive la ligne plutôt que d'en
+// créer une seconde.
+export const sandbox_stars = pgTable("sandbox_stars", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  sandbox_id: uuid("sandbox_id").references(() => sandboxes.uuid, { onDelete: "cascade" }).notNull(),
+  // NULL pour une star anonyme. Une star faite en étant connecté s'écrit
+  // toujours ici, jamais sous anon_id : aucune ligne anonyme ne peut donc
+  // apparaître pendant une session.
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }),
+  // Identifiant aléatoire porté par le cookie signé `sb_anon`. Sans lien avec
+  // la personne, donc conservé sans limite de durée.
+  anon_id: varchar("anon_id", { length: 64 }),
+  // 'account' | 'anonymous', figé à la création. Redondant avec user_id tant
+  // que la ligne n'est pas rattachée, mais c'est justement ce qui permet à
+  // l'audit de distinguer une star de compte d'une star anonyme migrée.
+  origin: varchar("origin", { length: 10 }).notNull(),
+  // HMAC-SHA256 de l'IP, jamais l'IP en clair. Sert au débit uniquement :
+  // l'unicité ne doit surtout pas s'y appuyer, un campus ou une entreprise
+  // sortant derrière une seule adresse. Purgé à 30 jours (RGPD).
+  ip_hash: varchar("ip_hash", { length: 64 }),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  removed_at: timestamp("removed_at"),
+  // Posé quand une star anonyme est rattachée au compte à la connexion. La
+  // ligne cesse alors d'être visible pour l'identité anonyme du navigateur :
+  // personne ne peut dé-starer la star d'un compte sans y être connecté.
+  attached_at: timestamp("attached_at"),
+}, (table) => ({
+  // Une ligne sans aucune identité ne serait rattachable à personne et
+  // fausserait le compteur sans trace exploitable.
+  identity: check("sandbox_stars_identity", sql`user_id IS NOT NULL OR anon_id IS NOT NULL`),
+  uniqueUser: uniqueIndex("idx_sandbox_stars_unique_user")
+    .on(table.sandbox_id, table.user_id)
+    .where(sql`user_id IS NOT NULL`),
+  // Partiel sur `user_id IS NULL` et non sur `anon_id IS NOT NULL` : une ligne
+  // rattachée garde son anon_id (trace d'audit), et deux rattachements
+  // successifs du même navigateur doivent pouvoir coexister sur un sandbox.
+  uniqueAnon: uniqueIndex("idx_sandbox_stars_unique_anon")
+    .on(table.sandbox_id, table.anon_id)
+    .where(sql`user_id IS NULL`),
+  // Comptage : l'index ne porte que les stars vivantes, qui sont la seule
+  // chose que le listing lit.
+  activeIdx: index("idx_sandbox_stars_active")
+    .on(table.sandbox_id)
+    .where(sql`removed_at IS NULL`),
+  ipHashIdx: index("idx_sandbox_stars_ip_hash").on(table.ip_hash, table.created_at),
+  anonIdIdx: index("idx_sandbox_stars_anon_id").on(table.anon_id),
+}));
+
+// --- SANDBOX_REWARDS ---
+// Ledger des CP gagnés sur le sandbox, séparé de `reward_entries`.
+//
+// Pourquoi une table à part : `reward_entries` est le ledger du système
+// challenge/contribution — `challenge_id` y est NOT NULL et tout le
+// leaderboard l'agrège par contribution. Un sandbox n'a ni challenge ni
+// contribution, et il n'a pas vocation à en simuler. Ces CP rejoignent le
+// classement par un chemin dédié (voir lib/leaderboard.ts).
+//
+// Les deux index uniques partiels portent l'idempotence du paiement :
+//   - un palier de stars n'est payé qu'une fois par sandbox, donc les cycles
+//     star/unstar ne peuvent pas payer deux fois, et un palier déjà payé n'est
+//     jamais repris si le compte de stars redescend ;
+//   - un sandbox ne peut être promu — et donc payé — qu'une fois.
+// Ils sont partiels parce que `tier_stars` n'a de sens que pour 'star_tier' :
+// un index unique global le laisserait NULL, et Postgres considère deux NULL
+// comme distincts, ce qui n'empêcherait aucun doublon de promotion.
+export const sandbox_rewards = pgTable("sandbox_rewards", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  sandbox_id: uuid("sandbox_id").references(() => sandboxes.uuid, { onDelete: "cascade" }).notNull(),
+  // L'auteur au moment du paiement. Dénormalisé depuis sandboxes.user_id pour
+  // que le leaderboard lise les CP sans jointure.
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  // 'star_tier' | 'promotion'
+  rule_key: varchar("rule_key", { length: 20 }).notNull(),
+  // Le seuil franchi, pour 'star_tier' uniquement. NULL pour 'promotion'.
+  tier_stars: integer("tier_stars"),
+  points: integer("points").notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_sandbox_rewards_user_id").on(table.user_id),
+  sandboxIdIdx: index("idx_sandbox_rewards_sandbox_id").on(table.sandbox_id),
+  uniqueTier: uniqueIndex("idx_sandbox_rewards_unique_tier")
+    .on(table.sandbox_id, table.tier_stars)
+    .where(sql`rule_key = 'star_tier'`),
+  uniquePromotion: uniqueIndex("idx_sandbox_rewards_unique_promotion")
+    .on(table.sandbox_id)
+    .where(sql`rule_key = 'promotion'`),
+}));
+
+// --- NOTIFICATIONS ---
+// Notifications in-app. Voir docs/challenge-groups.md.
+//
+// Le premier et seul type est `group_invite` : il porte le jeton d'invitation
+// d'un groupe. Il n'y a **pas** d'état en attente et pas d'acceptation — la
+// notification transporte un lien, et le lien reste l'invitation. Toutes les
+// barrières restent là où elles étaient, dans GET /group/:token et POST /join.
+export const notifications = pgTable("notifications", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  // Chaîne et non enum : un second type ne doit pas demander de migration.
+  type: varchar("type", { length: 40 }).notNull(),
+  // Dénormalisé : une notification est la trace de ce qui était vrai à
+  // l'envoi. La re-joindre à un challenge renommé depuis réécrirait l'histoire.
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  // Idempotence : le jeton du groupe pour un `group_invite`, NULL sinon.
+  dedupe_key: varchar("dedupe_key", { length: 200 }),
+  read_at: timestamp("read_at"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userCreatedIdx: index("idx_notifications_user_created").on(table.user_id, table.created_at),
+  unreadIdx: index("idx_notifications_unread")
+    .on(table.user_id)
+    .where(sql`read_at IS NULL`),
+  // Partiel : `dedupe_key` est NULL pour un type sans déduplication, et deux
+  // NULL sont distincts pour Postgres.
+  dedupeIdx: uniqueIndex("idx_notifications_dedupe")
+    .on(table.user_id, table.type, table.dedupe_key)
+    .where(sql`dedupe_key IS NOT NULL`),
 }));
 
 // --- SYNC MEETINGS ---

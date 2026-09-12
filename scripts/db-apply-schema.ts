@@ -230,6 +230,172 @@ const STATEMENTS: Array<{ label: string; sql: string }> = [
     label: "app_settings.digest_frequency_days",
     sql: `ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS digest_frequency_days integer NOT NULL DEFAULT 7`,
   },
+
+  // --- Sandbox (docs/input/spec-sandbox.md) ---
+  //
+  // Trois tables et deux réglages. Contrairement à drizzle/0020_sandbox.sql,
+  // les FK et le CHECK sont déclarés dans le CREATE TABLE plutôt qu'en
+  // ALTER TABLE ADD CONSTRAINT : Postgres n'a pas d'IF NOT EXISTS sur
+  // ADD CONSTRAINT, et ce script rejoue à chaque déploiement.
+  {
+    label: "sandboxes",
+    sql: `
+      CREATE TABLE IF NOT EXISTS sandboxes (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        type varchar(10) NOT NULL,
+        title varchar(255) NOT NULL,
+        context text,
+        goals jsonb NOT NULL DEFAULT '[]'::jsonb,
+        why text,
+        repo_url text NOT NULL,
+        model_url text,
+        dataset_urls jsonb NOT NULL DEFAULT '[]'::jsonb,
+        status varchar(10) NOT NULL DEFAULT 'open',
+        promoted_challenge_id uuid REFERENCES challenges(uuid) ON DELETE SET NULL,
+        promoted_at timestamp,
+        evaluation jsonb,
+        evaluation_status varchar(10),
+        evaluated_at timestamp,
+        created_at timestamp NOT NULL DEFAULT now(),
+        updated_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+  {
+    label: "sandboxes.user_id (index)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_sandboxes_user_id ON sandboxes (user_id)`,
+  },
+  {
+    label: "sandboxes.status (index)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_sandboxes_status ON sandboxes (status)`,
+  },
+
+  // Une star anonyme n'a pas de user_id, d'où une PK de surface : une PK
+  // composite (sandbox_id, user_id) ne tolérerait aucun NULL. L'unicité est
+  // portée par deux index uniques partiels, un par nature d'identité.
+  {
+    label: "sandbox_stars",
+    sql: `
+      CREATE TABLE IF NOT EXISTS sandbox_stars (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        sandbox_id uuid NOT NULL REFERENCES sandboxes(uuid) ON DELETE CASCADE,
+        user_id uuid REFERENCES users(uuid) ON DELETE CASCADE,
+        anon_id varchar(64),
+        origin varchar(10) NOT NULL,
+        ip_hash varchar(64),
+        created_at timestamp NOT NULL DEFAULT now(),
+        removed_at timestamp,
+        attached_at timestamp,
+        CONSTRAINT sandbox_stars_identity CHECK (user_id IS NOT NULL OR anon_id IS NOT NULL)
+      )`,
+  },
+  {
+    label: "sandbox_stars (unicité par compte)",
+    sql: `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sandbox_stars_unique_user
+        ON sandbox_stars (sandbox_id, user_id) WHERE user_id IS NOT NULL`,
+  },
+  // Prédicat sur user_id IS NULL : une ligne rattachée garde son anon_id pour
+  // l'audit, et c'est ce prédicat que l'upsert anonyme passe en ON CONFLICT.
+  {
+    label: "sandbox_stars (unicité par identité anonyme)",
+    sql: `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sandbox_stars_unique_anon
+        ON sandbox_stars (sandbox_id, anon_id) WHERE user_id IS NULL`,
+  },
+  {
+    label: "sandbox_stars (comptage)",
+    sql: `
+      CREATE INDEX IF NOT EXISTS idx_sandbox_stars_active
+        ON sandbox_stars (sandbox_id) WHERE removed_at IS NULL`,
+  },
+  {
+    label: "sandbox_stars.ip_hash (index de débit)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_sandbox_stars_ip_hash ON sandbox_stars (ip_hash, created_at)`,
+  },
+  {
+    label: "sandbox_stars.anon_id (index)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_sandbox_stars_anon_id ON sandbox_stars (anon_id)`,
+  },
+
+  // Ledger séparé de reward_entries, sans colonne de cache : le total d'un
+  // contributeur est un SUM en direct, donc rien à ajouter à db-resync-rewards.
+  {
+    label: "sandbox_rewards",
+    sql: `
+      CREATE TABLE IF NOT EXISTS sandbox_rewards (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        sandbox_id uuid NOT NULL REFERENCES sandboxes(uuid) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        rule_key varchar(20) NOT NULL,
+        tier_stars integer,
+        points integer NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+  {
+    label: "sandbox_rewards.user_id (index)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_sandbox_rewards_user_id ON sandbox_rewards (user_id)`,
+  },
+  {
+    label: "sandbox_rewards.sandbox_id (index)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_sandbox_rewards_sandbox_id ON sandbox_rewards (sandbox_id)`,
+  },
+  // Partiels : tier_stars est NULL pour une promotion, et Postgres considère
+  // deux NULL comme distincts — un index global ne bloquerait rien.
+  {
+    label: "sandbox_rewards (un palier payé une fois)",
+    sql: `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sandbox_rewards_unique_tier
+        ON sandbox_rewards (sandbox_id, tier_stars) WHERE rule_key = 'star_tier'`,
+  },
+  {
+    label: "sandbox_rewards (une promotion payée une fois)",
+    sql: `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sandbox_rewards_unique_promotion
+        ON sandbox_rewards (sandbox_id) WHERE rule_key = 'promotion'`,
+  },
+
+  // Défauts inertes, comme digest_enabled = false : rien n'est payé tant que
+  // l'admin n'a saisi ni palier ni bonus.
+  {
+    label: "app_settings.sandbox_star_tiers",
+    sql: `ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS sandbox_star_tiers jsonb NOT NULL DEFAULT '[]'::jsonb`,
+  },
+  {
+    label: "app_settings.sandbox_promotion_bonus_cp",
+    sql: `ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS sandbox_promotion_bonus_cp integer NOT NULL DEFAULT 0`,
+  },
+
+  // notifications — voir drizzle/0021_notifications.sql. La DDL vit ici en
+  // double parce que `drizzle-kit push` ne peut pas tourner au déploiement
+  // (prompt interactif sans TTY, cf. l'en-tête de ce fichier).
+  {
+    label: "notifications table",
+    sql: `CREATE TABLE IF NOT EXISTS notifications (
+      uuid uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+      user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+      type varchar(40) NOT NULL,
+      payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+      dedupe_key varchar(200),
+      read_at timestamp,
+      created_at timestamp NOT NULL DEFAULT now()
+    )`,
+  },
+  {
+    label: "idx_notifications_user_created",
+    sql: `CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications (user_id, created_at DESC)`,
+  },
+  {
+    label: "idx_notifications_unread",
+    sql: `CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications (user_id) WHERE read_at IS NULL`,
+  },
+  // Porte l'idempotence de l'invitation : partiel, parce que `dedupe_key` est
+  // NULL pour un type sans déduplication et que deux NULL sont distincts.
+  {
+    label: "idx_notifications_dedupe",
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_dedupe ON notifications (user_id, type, dedupe_key) WHERE dedupe_key IS NOT NULL`,
+  },
 ];
 
 async function main() {

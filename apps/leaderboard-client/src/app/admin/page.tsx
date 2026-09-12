@@ -229,7 +229,7 @@ export default function AdminPage() {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
           <p className="text-sm text-red-300/80">
             <span className="font-medium text-red-400">{failedRuns.length} evaluation run{failedRuns.length > 1 ? 's' : ''} failed</span>
-            {' — '}
+            {' - '}
             <Link href="/admin/evaluation-runs" className="underline hover:text-red-300">check Runs</Link>
           </p>
         </div>

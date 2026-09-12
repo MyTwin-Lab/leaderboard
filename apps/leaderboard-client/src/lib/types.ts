@@ -66,6 +66,27 @@ export type ContributorRankGap = {
   cp: number;
 };
 
+/** Une ligne du ledger sandbox, telle que la fiche contributeur l'affiche. */
+export type ContributorSandboxReward = {
+  id: string;
+  /** `star_tier` ou `promotion`. */
+  ruleKey: string;
+  /** Le seuil de stars franchi ; `null` pour une promotion. */
+  tierStars: number | null;
+  cp: number;
+  awardedAt: string | null;
+};
+
+export type ContributorSandbox = {
+  id: string;
+  title: string;
+  /** `open` / `promoted` / `archived`. */
+  status: string;
+  /** Somme des `rewards` — il n'existe aucune colonne de cache côté base. */
+  totalCP: number;
+  rewards: ContributorSandboxReward[];
+};
+
 export type ContributorProfile = {
   userId: string;
   displayName: string;
@@ -73,8 +94,14 @@ export type ContributorProfile = {
   /** Free-text bio — same field the leaderboard/podium already show under a name. */
   bio?: string;
   avatarUrl?: string;
+  /** Challenges **plus** CP du sandbox : c'est le total que classe le leaderboard. */
   totalCP: number;
   challenges: ContributorChallenge[];
+  /**
+   * Sandboxes ayant payé des CP à ce contributeur. Séparés des challenges :
+   * ils n'ont ni pool ni `contributionShare`, seulement un ledger propre.
+   */
+  sandboxes: ContributorSandbox[];
   globalRank?: number;
   /** CP gap to the nearest adjacent rank on the global leaderboard. */
   rankGap?: ContributorRankGap;

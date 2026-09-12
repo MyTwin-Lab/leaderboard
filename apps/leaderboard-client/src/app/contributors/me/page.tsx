@@ -6,6 +6,7 @@ import { ChallengeList } from "@/components/contributor/ChallengeList";
 import { ContributionHeatmap } from "@/components/contributor/ContributionHeatmap";
 import { ContributionDashboard } from "@/components/contributor/ContributionDashboard";
 import { ContributorTabs } from "@/components/contributor/ContributorTabs";
+import { SandboxRewardsList } from "@/components/contributor/SandboxRewardsList";
 import { ThemeSettings } from "@/components/contributor/ThemeSettings";
 import { fetchContributorProfile, fetchContributorSession } from "@/lib/contributor";
 import { LogoutButton } from "@/components/contributor/LogoutButton";
@@ -24,6 +25,12 @@ import { ModulesSettings } from "@/components/contributor/ModulesSettings";
 import { OnboardingProgressTable } from "@/components/contributor/OnboardingProgressTable";
 import { EvaluationGridsTab } from "@/components/contributor/evaluation-grids/EvaluationGridsTab";
 import { DigestTab } from "@/components/contributor/DigestTab";
+import { NotificationsTab } from "@/components/contributor/NotificationsTab";
+import { SandboxSettings } from "@/components/contributor/SandboxSettings";
+
+export const metadata = {
+  title: "Profile",
+};
 
 const appSettingsRepo = new AppSettingsRepository();
 const onboardingProgressRepo = new OnboardingProgressRepository();
@@ -65,7 +72,19 @@ export default async function ContributorSelfPage({
     },
     {
       label: "Contributions",
-      panel: <ChallengeList challenges={profile.challenges} />,
+      panel: (
+        <>
+          <ChallengeList challenges={profile.challenges} />
+          <SandboxRewardsList sandboxes={profile.sandboxes} />
+        </>
+      ),
+    },
+    // Avant les onglets conditionnels au rôle : tout le monde peut recevoir une
+    // invitation de groupe. Atteignable en direct par ?tab=notifications, que
+    // `ContributorTabs` résout déjà sur le libellé.
+    {
+      label: "Notifications",
+      panel: <NotificationsTab />,
     },
     {
       label: "Profile",
@@ -90,7 +109,7 @@ export default async function ContributorSelfPage({
                 initialAvatarUrl={profile.avatarUrl}
               />
               <p className="text-sm text-white/50">
-                Click your avatar to replace it — PNG or JPG, square works best.
+                Click your avatar to replace it - PNG or JPG, square works best.
               </p>
             </div>
           </div>
@@ -166,6 +185,17 @@ export default async function ContributorSelfPage({
           <DigestTab
             enabled={settings.digest_enabled}
             frequencyDays={settings.digest_frequency_days}
+          />
+        </div>
+      ),
+    });
+    tabs.push({
+      label: "Sandbox",
+      panel: (
+        <div className="mx-auto max-w-lg py-2 lg:max-w-4xl">
+          <SandboxSettings
+            tiers={settings.sandbox_star_tiers ?? []}
+            promotionBonusCp={settings.sandbox_promotion_bonus_cp ?? 0}
           />
         </div>
       ),

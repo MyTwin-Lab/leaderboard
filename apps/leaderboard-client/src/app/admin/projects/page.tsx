@@ -88,7 +88,7 @@ export default function ProjectsPage() {
         {
           label: editingProject ? 'Edit Project' : 'New Project',
           panel: (
-            <Card title={editingProject ? `Edit — ${editingProject.title}` : 'New Project'}>
+            <Card title={editingProject ? `Edit - ${editingProject.title}` : 'New Project'}>
               <ProjectForm
                 project={editingProject}
                 contributors={contributors}

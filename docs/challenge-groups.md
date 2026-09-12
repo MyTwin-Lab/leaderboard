@@ -190,25 +190,69 @@ cannot reuse your own artefact.
 
 ## Forming a group
 
-The brief screen (shown to a signed-in contributor who has not joined yet)
-carries two actions: **Join** and **Join as a group**.
+There is **one** action, `Join`, and it opens a modal. Solo or group is decided
+inside it, by whether you put anyone in the list — not by which button you
+pressed.
+
+The header carries that `Join` in place of `Docs` until you have joined, and
+the brief shows the same single button. An anonymous visitor sees it too: the
+challenge page is public, and their button links to the Google sign-in rather
+than attempting a join.
 
 ```
-Join as a group
-   → POST /join { mode: 'group' }        creates group_id, copies the board,
-                                          provisions the branch, returns the token
-   → invite modal opens with the link
+Join (single button, its label follows the selection)
+   → 0 selected    POST /join {}                   solo, unchanged
+   → 1–2 selected  POST /join { mode: 'group' }    creates group_id, copies the
+                                                    board, provisions the branch,
+                                                    returns the token
+                   POST /group/invite × N          one notification each
+                   → confirmation screen shows the link
 
-teammate opens /challenges/:id?group=<token>
+teammate opens /challenges/:id?group=<token>       (from the notification, or
+                                                    from the link, same URL)
    → GET /group/:token                   holder's name, size, joinable?
    → brief screen, single action "Join <name>'s group"
    → POST /join { group: <token> }       no board copy, no provisioning,
                                           branch reopened to every member
 ```
 
-There is no invitation record, no pending state, no notification: **the link
-is the invitation**. That is why the modal is the only place it appears, and
-why a banner on the workspace brings it back later.
+**Nothing is written until that single click.** The selection is built
+client-side, so the group — and therefore its token — is created at the moment
+the contributor commits, never while they are still browsing.
+
+### The invitation is a record, but still not a pending state
+
+There *is* now an invitation record: a `group_invite` notification, delivered to
+the invitee's profile, where two round buttons accept or dismiss it.
+
+What there still is **not** is a pending state. No `accepted_at`, no
+`declined_at`, no transition — the notification carries the link, and **the link
+remains the invitation**. The two buttons are shortcuts over the existing flow,
+not a state machine:
+
+- **Accept** calls `POST /join { group: <token> }`, the same route the invite
+  screen uses, with the same four barriers. None of them are reimplemented in
+  the profile; it displays whatever reason the route returns and keeps the row
+  so the reason stays readable. On success it clears the spent notification and
+  lands on the challenge.
+- **Dismiss** deletes the notification and **revokes nothing**. The token stays
+  valid, and a link the inviter shared elsewhere still works. Without a pending
+  state, declining files the invitation away — it does not veto it.
+
+Every barrier therefore stays exactly where it was, in `GET /group/:token` and
+`POST /join`. Nothing reserves a seat, nothing expires, nothing needs to be
+cleaned up: a stale invitation simply lands on the barrier screen that already
+exists, with its four reasons.
+
+The contributor picker is a **search**, not a list — which answers the original
+objection that a list of who signed up can get long. Contributors already on the
+challenge are shown disabled with their reason rather than hidden, because the
+question someone actually has is *where is Christyl?*, not *why is my search
+broken?*
+
+A group of one behaves exactly like a solo participation (multiplier 1, own
+workspace) but keeps the door open, which a solo participation never does.
+Inviting is therefore strictly safer than going alone.
 
 ### Guard rails
 
@@ -218,7 +262,12 @@ why a banner on the workspace brings it back later.
   branch. The brief says so up front rather than letting people find out too
   late.
 - Groups are invisible: no listing of open groups, no acceptance mechanic. A
-  group is reachable only through its link.
+  group is reachable only through its link — you can invite someone you name,
+  and you can be invited, but you cannot browse.
+- **Only a member of a group can invite into it.** The server now hands out the
+  token, where a human used to copy it out of a modal, so `POST /group/invite`
+  checks that the caller's `challenge_teams` row carries the `group_id`. Without
+  that check, any signed-in account could broadcast any group's token.
 - The size cap is soft. The unique index closes the double-join, but two
   simultaneous `POST /join` can still overshoot by one. Locking that down would
   need a serialisable transaction for a three-person scenario.
@@ -324,8 +373,6 @@ there is only ever one of each.
   dedupe and reuse on ML challenges.
 - **A persistent cross-challenge group** from the profile — too much lifecycle
   for a first version.
-- **A contributor picker** to build the group — assumes you know who signed up,
-  and the list can get long.
 - **A short code to type** instead of a link — less fluid, same mechanics.
 - **A public list of open groups** — would require an acceptance mechanic.
 - **SSE / WebSocket for the shared board** — no realtime infrastructure exists

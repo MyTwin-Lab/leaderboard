@@ -159,6 +159,7 @@ leaderboard/
 | Meeting analysis | `packages/sync-meeting-agent/` |
 | Slack signals | `packages/services/slack/` + `packages/slack-signal-agent/` |
 | Activity digest | `packages/services/digest/` (see [`digest.md`](./digest.md)) |
+| Sandbox (contributor proposals) | `packages/services/sandbox/` + `apps/leaderboard-client/src/app/sandbox/` + `src/components/sandbox/` + `src/lib/public/sandbox.ts` (see [`sandbox.md`](./sandbox.md)) |
 | Theme / integrations / module toggles | `packages/database-service/repositories/appSettings.repo.ts` (see [`admin-settings.md`](./admin-settings.md)) |
 | Env config & encrypted credentials | `packages/config/` |
 | Root npm scripts | `package.json` (root) |

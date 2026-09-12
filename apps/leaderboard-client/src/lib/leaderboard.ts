@@ -2,6 +2,7 @@ import type {
   Contribution,
   ContributionMember,
   Challenge,
+  SandboxReward,
   User,
   Project,
 } from "../../../../packages/database-service/domain/entities.js";
@@ -19,6 +20,7 @@ export function aggregateUsersByContribution({
   challenges,
   users,
   contributionMembers,
+  sandboxRewards,
   projectId,
   timePeriod,
 }: {
@@ -30,6 +32,12 @@ export function aggregateUsersByContribution({
    * est une contribution solo : tout son reward va à `user_id`, comme avant.
    */
   contributionMembers?: ContributionMember[];
+  /**
+   * Ledger des CP du sandbox (`sandbox_rewards`), séparé de `reward_entries`
+   * parce qu'un sandbox n'a ni challenge ni contribution. C'est le seul point
+   * d'injection de ces CP dans le classement : rangs et écarts en découlent.
+   */
+  sandboxRewards?: SandboxReward[];
   projectId?: string | null;
   timePeriod?: "all" | "month" | "week";
 }): AggregatedUser[] {
@@ -88,6 +96,24 @@ export function aggregateUsersByContribution({
       if (contribution.type !== "discussion") {
         counts.set(userId, (counts.get(userId) ?? 0) + 1);
       }
+    }
+  }
+
+  // CP du sandbox : ils s'ajoutent aux totaux **sans toucher `counts`**, le
+  // traitement déjà réservé aux contributions `discussion`. Un palier de stars
+  // franchi paie une proposition, ce n'est pas une contribution de plus.
+  //
+  // Un filtre projet les écarte en bloc : un sandbox n'a pas de projet, donc
+  // aucun ne peut appartenir à celui qu'on regarde. Les inclure gonflerait le
+  // total d'un contributeur avec des CP gagnés hors du périmètre demandé.
+  if (!projectId) {
+    for (const reward of sandboxRewards ?? []) {
+      // `user_id` est l'auteur au moment du paiement, dénormalisé : pas de
+      // jointure ici. Un utilisateur absent du jeu de données (filtré en
+      // amont, ou supprimé) est ignoré, comme pour une contribution.
+      if (!userById.has(reward.user_id)) continue;
+      if (dateThreshold && reward.created_at < dateThreshold) continue;
+      totals.set(reward.user_id, (totals.get(reward.user_id) ?? 0) + reward.points);
     }
   }
 

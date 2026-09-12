@@ -15,13 +15,17 @@ export async function fetchLeaderboard(
   projectId?: string,
   timePeriod?: "all" | "month" | "week"
 ): Promise<LeaderboardResponse> {
-  const [projects, contributions, challenges, users, contributionMembers] = await Promise.all([
-    repositories.project.findAll(),
-    repositories.contribution.findAll(),
-    repositories.challenge.findAll(),
-    repositories.user.findAll(),
-    repositories.contributionMember.findAll(),
-  ]);
+  const [projects, contributions, challenges, users, contributionMembers, sandboxRewards] =
+    await Promise.all([
+      repositories.project.findAll(),
+      repositories.contribution.findAll(),
+      repositories.challenge.findAll(),
+      repositories.user.findAll(),
+      repositories.contributionMember.findAll(),
+      // Ledger sandbox complet : l'agrégation le filtre elle-même par période,
+      // et l'écarte entièrement dès qu'un projet est sélectionné.
+      repositories.sandboxReward.findAll(),
+    ]);
 
   let selectedProjectId: string | null = null;
   if (projectId && projectId !== "all") {
@@ -37,6 +41,7 @@ export async function fetchLeaderboard(
     challenges,
     users,
     contributionMembers,
+    sandboxRewards,
     projectId: selectedProjectId,
     timePeriod: timePeriod ?? "all",
   });
@@ -55,16 +60,25 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     return null;
   }
 
-  const [ownContributions, challenges, projects, allContributions, allUsers, myShares, allMembers] =
-    await Promise.all([
-      repositories.contribution.findByUser(userId),
-      repositories.challenge.findAll(),
-      repositories.project.findAll(),
-      repositories.contribution.findAll(),
-      repositories.user.findAll(),
-      repositories.contributionMember.findByUser(userId),
-      repositories.contributionMember.findAll(),
-    ]);
+  const [
+    ownContributions, challenges, projects, allContributions, allUsers, myShares, allMembers,
+    mySandboxes, mySandboxRewards, allSandboxRewards,
+  ] = await Promise.all([
+    repositories.contribution.findByUser(userId),
+    repositories.challenge.findAll(),
+    repositories.project.findAll(),
+    repositories.contribution.findAll(),
+    repositories.user.findAll(),
+    repositories.contributionMember.findByUser(userId),
+    repositories.contributionMember.findAll(),
+    // Les siens, archivés compris : un sandbox archivé qui a payé un palier
+    // garde ses CP, il doit donc rester lisible sur la fiche.
+    repositories.sandbox.findByUser(userId),
+    repositories.sandboxReward.findByUser(userId),
+    // Le ledger complet, pour que le rang global se calcule sur les mêmes
+    // totaux que le classement lui-même.
+    repositories.sandboxReward.findAll(),
+  ]);
 
   // `findByUser` ne voit que ce qu'on a soumis : sur une contribution de
   // groupe, `contributions.user_id` est le porteur. Un co-membre ne verrait
@@ -182,7 +196,37 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
           .sort((a, b) => b.totalCp - a.totalCp);
       })
   );
-  const totalCP = aggregated.reduce((acc, item) => acc + item.reward, 0);
+  // Ledger sandbox du contributeur, regroupé par sandbox. `contributionShare`
+  // n'est pas touché : il reste la part du pool d'un challenge, et un sandbox
+  // n'a pas de pool.
+  const sandboxById = new Map(mySandboxes.map((s) => [s.uuid, s]));
+  const sandboxesMap = new Map<string, ContributorProfile["sandboxes"][number]>();
+  for (const reward of mySandboxRewards) {
+    // Défensif : `sandbox_rewards` est en cascade sur `sandboxes` et la fusion
+    // de comptes réassigne les deux ensemble, donc la ligne existe toujours.
+    const sandbox = sandboxById.get(reward.sandbox_id);
+    if (!sandbox) continue;
+    let entry = sandboxesMap.get(sandbox.uuid);
+    if (!entry) {
+      entry = { id: sandbox.uuid, title: sandbox.title, status: sandbox.status, totalCP: 0, rewards: [] };
+      sandboxesMap.set(sandbox.uuid, entry);
+    }
+    entry.totalCP += reward.points;
+    entry.rewards.push({
+      id: reward.uuid,
+      ruleKey: reward.rule_key,
+      tierStars: reward.tier_stars,
+      cp: reward.points,
+      awardedAt: reward.created_at ? reward.created_at.toISOString() : null,
+    });
+  }
+  const sandboxes = [...sandboxesMap.values()].sort((a, b) => b.totalCP - a.totalCP);
+
+  // Le total affiché est celui qui classe : challenges **plus** sandbox. Sans
+  // les seconds, la fiche contredirait le rang qu'elle annonce juste à côté.
+  const challengesCP = aggregated.reduce((acc, item) => acc + item.reward, 0);
+  const sandboxCP = mySandboxRewards.reduce((acc, reward) => acc + reward.points, 0);
+  const totalCP = challengesCP + sandboxCP;
 
   // Calculate global rank
   const globalAggregated = aggregateUsersByContribution({
@@ -190,6 +234,7 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     challenges,
     users: allUsers,
     contributionMembers: allMembers,
+    sandboxRewards: allSandboxRewards,
     projectId: null,
     timePeriod: "all",
   });
@@ -251,6 +296,7 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     avatarUrl: user.avatar_url ?? undefined,
     totalCP,
     challenges: aggregated,
+    sandboxes,
     globalRank,
     rankGap,
     contributingSince,

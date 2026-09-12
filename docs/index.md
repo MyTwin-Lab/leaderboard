@@ -35,6 +35,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`onboarding.md`](./onboarding.md) | New contributor onboarding missions |
 | [`admin-settings.md`](./admin-settings.md) | Instance-wide theme, GitHub/Kaggle/Slack connections, and module toggles |
 | [`digest.md`](./digest.md) | Periodic, frozen snapshots of platform activity, browsable by admins |
+| [`sandbox.md`](./sandbox.md) | Contributor-proposed open challenges, community stars, and promotion into official challenges |
 
 ## Dev & ops
 

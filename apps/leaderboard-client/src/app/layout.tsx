@@ -25,7 +25,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MyTwin Leaderboard",
+  // `template` habille le titre des pages enfants, `default` sert à celles qui
+  // n'en déclarent pas : le nom de l'app reste dans l'onglet partout.
+  title: {
+    default: "MyTwin Leaderboard",
+    template: "%s - MyTwin Leaderboard",
+  },
   description: "Visualisez le classement des contributeurs du Lab",
 };
 

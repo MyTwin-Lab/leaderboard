@@ -111,7 +111,7 @@ export function ContributionDashboard({ challenges }: ContributionDashboardProps
               key={project.name}
               className={`h-full transition-[width] duration-700 ease-out ${project.color}`}
               style={{ width: barsReady ? `${project.pct}%` : "0%" }}
-              title={`${project.name} — ${formatCP(project.cp)} CP`}
+              title={`${project.name} - ${formatCP(project.cp)} CP`}
             />
           ))}
         </div>

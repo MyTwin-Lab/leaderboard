@@ -119,7 +119,7 @@ export default function ChallengesPage() {
           {
             label: editingChallenge ? 'Edit Challenge' : 'New Challenge',
             panel: (
-              <Card title={editingChallenge ? `Edit — ${editingChallenge.title}` : 'New Challenge'}>
+              <Card title={editingChallenge ? `Edit - ${editingChallenge.title}` : 'New Challenge'}>
                 <ChallengeForm
                   challenge={editingChallenge}
                   projects={projects}

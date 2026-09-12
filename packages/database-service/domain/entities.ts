@@ -525,6 +525,79 @@ export interface AppSettings {
   scaleway_disconnect_requested_at?: Date | null;
   digest_enabled: boolean;
   digest_frequency_days: number;
+  /** Vide = l'économie des stars ne paie rien. Voir SandboxStarTier. */
+  sandbox_star_tiers: SandboxStarTier[];
+  sandbox_promotion_bonus_cp: number;
+}
+
+// --- SANDBOX ---
+// Proposition ouverte déposée par un contributeur. Voir docs/sandbox.md.
+
+/** 'validation' est exclu : un challenge de validation dérive d'un challenge ML existant. */
+export type SandboxType = 'code' | 'ml';
+
+export type SandboxStatus = 'open' | 'promoted' | 'archived';
+
+/** Pas de 'skipped_reuse' ici : une évaluation formative n'a rien à réutiliser. */
+export type SandboxEvaluationStatus = 'pending' | 'running' | 'done' | 'failed';
+
+export interface Sandbox {
+  uuid: string;
+  user_id: string;
+  /** Figé à la création : il a déjà déterminé les champs saisis et la grille. */
+  type: SandboxType;
+  title: string;
+  context: string | null;
+  goals: string[];
+  why: string | null;
+  repo_url: string;
+  /** ML uniquement, et optionnel : un sandbox ML peut démarrer sans artefact. */
+  model_url: string | null;
+  dataset_urls: string[];
+  status: SandboxStatus;
+  promoted_challenge_id: string | null;
+  promoted_at: Date | null;
+  evaluation?: any; // même forme que contributions.evaluation – à typer plus tard
+  evaluation_status: SandboxEvaluationStatus | null;
+  evaluated_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+/** Figé à la création : une star anonyme rattachée garde `anonymous`. */
+export type SandboxStarOrigin = 'account' | 'anonymous';
+
+export interface SandboxStar {
+  uuid: string;
+  sandbox_id: string;
+  user_id: string | null;
+  anon_id: string | null;
+  origin: SandboxStarOrigin;
+  ip_hash: string | null;
+  created_at: Date;
+  /** Non nul = unstar. La ligne reste, le compteur ne la voit plus. */
+  removed_at: Date | null;
+  attached_at: Date | null;
+}
+
+export type SandboxRewardRuleKey = 'star_tier' | 'promotion';
+
+export interface SandboxReward {
+  uuid: string;
+  sandbox_id: string;
+  /** Auteur au moment du paiement, dénormalisé pour que le leaderboard lise sans jointure. */
+  user_id: string;
+  rule_key: SandboxRewardRuleKey;
+  /** Le seuil franchi ; null pour une promotion. */
+  tier_stars: number | null;
+  points: number;
+  created_at: Date;
+}
+
+/** Un palier de l'économie des stars, tel que l'admin le configure. */
+export interface SandboxStarTier {
+  stars: number;
+  cp: number;
 }
 
 // --- DIGEST ---
@@ -555,7 +628,12 @@ export interface DigestCpRow {
  * fenêtre, invisible autrement. Voir docs/input/spec-digest.md §4.
  */
 export interface DigestPayload {
-  version: 1;
+  /**
+   * Un digest déjà généré est immuable : le type décrit donc aussi les
+   * anciennes versions, et le rendu doit tolérer l'absence des sections
+   * apparues après. 1 = sections initiales ; 2 = ajout de `new_sandboxes`.
+   */
+  version: number;
   new_contributions: Array<{
     contribution_id: string;
     title: string;
@@ -587,6 +665,24 @@ export interface DigestPayload {
     full_name: string;
     role: string;
     joined_at: string;
+  }>;
+  /**
+   * Sandboxes déposés sur la période (version ≥ 2).
+   *
+   * Optionnel parce qu'un digest v1 n'en a pas et reste lisible tel quel.
+   *
+   * Leurs CP n'apparaissent nulle part ici : `cp_distributed` agrège
+   * `reward_entries` par (user, challenge), et un sandbox n'a ni challenge ni
+   * contribution. C'est délibéré — cette section raconte l'arrivée de
+   * propositions, pas une distribution de points.
+   */
+  new_sandboxes?: Array<{
+    sandbox_id: string;
+    title: string;
+    type: string;
+    author: { user_id: string; full_name: string };
+    /** Stars actives au moment de la génération, pas sur la seule fenêtre. */
+    star_count: number;
   }>;
   cp_distributed: DigestCpRow[];
 }
@@ -627,4 +723,31 @@ export interface OnboardingProgress {
   completed_at?: Date;
   created_at: Date;
   updated_at: Date;
+}
+
+// --- NOTIFICATIONS ---
+// Voir docs/challenge-groups.md. Une notification transporte un lien, jamais
+// un état : il n'y a ni acceptation, ni refus, ni « en attente ».
+
+/** Le seul type aujourd'hui. La colonne reste une chaîne pour le suivant. */
+export type NotificationType = 'group_invite';
+
+/** Ce que porte un `group_invite` — dénormalisé, cf. le commentaire du schéma. */
+export interface GroupInviteNotificationPayload {
+  challengeId: string;
+  challengeTitle: string;
+  groupToken: string;
+  fromUserId: string;
+  fromName: string;
+}
+
+export interface Notification {
+  uuid: string;
+  user_id: string;
+  type: NotificationType;
+  payload: Record<string, unknown>;
+  /** Le jeton du groupe pour un `group_invite`, NULL pour un type sans dédup. */
+  dedupe_key: string | null;
+  read_at: Date | null;
+  created_at: Date;
 }

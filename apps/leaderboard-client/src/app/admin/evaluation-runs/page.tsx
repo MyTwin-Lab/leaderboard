@@ -81,7 +81,7 @@ export default function EvaluationRunsPage() {
       const res = await fetch(`/api/evaluation-runs/${run.uuid}/retry`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        toast(`Evaluation re-launched — ${data.count} contributions processed`, 'success');
+        toast(`Evaluation re-launched - ${data.count} contributions processed`, 'success');
         await fetchRuns();
       } else {
         toast(data.error ?? 'Failed to re-run evaluation', 'error');

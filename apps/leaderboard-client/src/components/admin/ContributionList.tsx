@@ -48,7 +48,7 @@ export function ContributionList({ contributions, users, challenges, onEdit, onD
       render: (contrib: Contribution) => {
         const challenge = challenges.find(c => c.uuid === contrib.challenge_id);
         return (
-          <div className="text-sm text-white/60">{challenge?.title ?? <span className="text-white/30 italic">—</span>}</div>
+          <div className="text-sm text-white/60">{challenge?.title ?? <span className="text-white/30 italic">-</span>}</div>
         );
       },
       width: '180px',
@@ -60,7 +60,7 @@ export function ContributionList({ contributions, users, challenges, onEdit, onD
         const score = (contrib.evaluation as any)?.globalScore ?? null;
         return (
           <div className="text-sm font-medium text-primary-100">
-            {score !== null ? score.toFixed(1) : <span className="text-white/30">—</span>}
+            {score !== null ? score.toFixed(1) : <span className="text-white/30">-</span>}
           </div>
         );
       },

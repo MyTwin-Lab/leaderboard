@@ -116,11 +116,21 @@ Every sync/evaluation triggers an `evaluation_runs` record (trigger type, time w
 
 ---
 
+## Shared with the sandbox
+
+The snapshot → grid → score core lives in `packages/services/challenge/repo-evaluation.ts`, extracted from `CodeRewardsService` (which now calls it) so that a sandbox scores a repository exactly like a code challenge does.
+
+A sandbox run uses the `code` grid for **both** its types, pays no CP and writes to no ledger — see [`sandbox.md`](./sandbox.md). One practical consequence of the sharing: a custom grid published in the database under the `code` slug serves challenges and sandboxes alike.
+
+---
+
 ## Key files
 
 | File | Purpose |
 |------|---------|
 | `packages/services/challenge/code-rewards.service.ts` | Main pipeline — preconditions, snapshot, evaluation, ledger, completion |
+| `packages/services/challenge/repo-evaluation.ts` | The snapshot → grid → score core, shared by code challenges and sandboxes |
+| `packages/services/challenge/repo-score.ts` | `toScore10` / `parseGithubRepoUrl` — kept apart so a client component can import them |
 | `packages/evaluator/code-reward.ts` | `computeCodeAward()` — pure fixed + capped-delta calculation |
 | `packages/evaluator/evaluator.ts` | `OpenAIAgentEvaluator` — calls the OpenAI scoring agent |
 | `packages/evaluator/openai/evaluate.agent.ts` | The OpenAI agent that produces scores |

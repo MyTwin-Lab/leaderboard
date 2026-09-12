@@ -66,6 +66,12 @@ All request bodies are JSON unless noted (a few validation routes take `multipar
 | `POST` | `/api/challenges/:id/sync` | Legacy challenge-level evaluation sync. Superseded by per-contributor project evaluation. | Admin |
 | `POST` | `/api/challenges/:id/join` | Join a challenge — creates the participation, copies the task template, provisions the personal branch. Optional body: `{ mode: 'group' }` creates a group and returns its invite token, `{ group: <uuid> }` joins one (no board copy, no provisioning). | Contributor+ |
 | `GET` | `/api/challenges/:id/group/:token` | Who holds an invited group and whether it can still be joined. Answers only on an exact token, lists nothing. | Contributor+ |
+| `POST` | `/api/challenges/:id/group/invite` | Drop a `group_invite` notification, carrying the group's token, into a contributor's profile. Body `{ userId }`. Idempotent per (recipient, group). **The caller must already be in a group on this challenge** — the server hands out the token here, so without that check any account could broadcast any group's. | Group member |
+| `GET` | `/api/contributors/search?q=&challenge=` | Contributor picker for the join modal. At most 10 rows of `uuid` / `full_name` / `avatar_url` plus a `blocked_reason`, and **never** an email — unlike `GET /api/users`, which returns whole rows. | Contributor+ |
+| `GET` | `/api/notifications` | Your notifications, newest first, capped at 50, plus an unread count. | Self |
+| `PATCH` | `/api/notifications` | Mark all of yours read. | Self |
+| `PATCH` | `/api/notifications/:id` | Mark one of yours read. 404 covers "not found", "not yours" and "already read" alike — a 403 would confirm the row exists. | Self |
+| `DELETE` | `/api/notifications/:id` | Remove one of yours — declining a group invitation, or clearing one a successful join has spent. **Revokes nothing**: the group token stays valid and a link shared elsewhere still works. | Self |
 | `PATCH` | `/api/challenges/:id/workspace` | `own_repo` mode: declare or change your public GitHub repo URL. | Contributor (self) |
 | `POST` | `/api/challenges/:id/project-evaluation` | Trigger the evaluation of your own delivery. Fire-and-forget; poll the contribution's `evaluation_status`. | Contributor (self) |
 | `GET` | `/api/challenges/:id/repos` | Repos linked to a challenge. | Public |
@@ -209,6 +215,29 @@ Tasks are personal boards on `code` challenges (see [`challenges-and-tasks.md`](
 | `GET` | `/api/onboarding` | The authenticated user's onboarding progress. | Contributor+ |
 | `PATCH` | `/api/onboarding` | Mark a quest as completed (idempotent). | Contributor+ |
 | `GET` | `/api/onboarding/all` | Every contributor's progress. | Admin |
+
+---
+
+## Sandbox
+
+Contributor-proposed open challenges. See [`sandbox.md`](./sandbox.md).
+
+Listing and detail are **public** — this is what lets a newsletter link to a sandbox and have its reader star it. `/api/sandboxes/**` sits outside the proxy matcher, like `/api/admin/*`, so every handler runs its own check.
+
+| Method | Path | Description | Auth |
+|--------|------|-------------|------|
+| `GET` | `/api/sandboxes` | List sandboxes with star counts, the caller's star state, the configured tiers and the promotion bonus. Archived ones only for their author and admins. | Public |
+| `POST` | `/api/sandboxes` | Create a sandbox. Goes live as `open` immediately. | `admin`, `contributor`, `medical_pro` |
+| `GET` | `/api/sandboxes/:id` | Detail. The evaluation score is present only for the author and admins. | Public |
+| `PATCH` | `/api/sandboxes/:id` | Edit title, sections, repo, model, datasets. `{ status: 'archived' }` archives it. `type` is immutable. | Author (archive: author or admin) |
+| `PUT` | `/api/sandboxes/:id/star` | Star. Idempotent, checks the tiers, and issues the anonymous cookie when the request carries none. `403` for the author, `409` if not `open`, `429` past the rate limit. | Public |
+| `DELETE` | `/api/sandboxes/:id/star` | Unstar. Soft delete — never reverses a paid tier. | Public |
+| `PATCH` | `/api/admin/sandbox-settings` | Update the star tiers and the promotion bonus. | Admin |
+| `GET` | `/api/admin/sandboxes/:id/stars` | Audit: stars grouped by origin, hashed-IP prefix and day. Never the full hash or the `anon_id`. | Admin |
+| `DELETE` | `/api/admin/sandboxes/:id/stars` | Delete stars by id, by hashed IP or by time window. | Admin |
+| `DELETE` | `/api/admin/sandbox-rewards/:id` | Delete a paid reward. Lowers the leaderboard total immediately — there is no cache. | Admin |
+
+Star responses carry `paid_tier_thresholds` alongside the count. Paid milestones are **read from the ledger, never derived from the count**: attaching anonymous stars on sign-in can drop a count back below a threshold that was already paid.
 
 ---
 

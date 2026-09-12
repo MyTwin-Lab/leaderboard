@@ -19,14 +19,14 @@ interface EvaluationRunListProps {
 }
 
 function formatDuration(ms?: number) {
-  if (!ms) return '—';
+  if (!ms) return '-';
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
 }
 
 function formatDate(d?: Date | string) {
-  if (!d) return '—';
+  if (!d) return '-';
   return new Date(d).toLocaleString('fr-FR', {
     day: '2-digit', month: '2-digit', year: '2-digit',
     hour: '2-digit', minute: '2-digit',
@@ -90,7 +90,7 @@ export function EvaluationRunList({ runs, onRetry, onDelete, onSelect, retryingI
       header: 'Contribs',
       render: (run: EvaluationRunWithChallenge) => (
         <div className="text-sm font-medium text-brandCP">
-          {run.meta?.contributionCount ?? <span className="text-white/30">—</span>}
+          {run.meta?.contributionCount ?? <span className="text-white/30">-</span>}
         </div>
       ),
       width: '80px',

@@ -5,7 +5,7 @@ import {
   RepoRepository,
   ChallengeRepoRepository,
 } from '../../../../../../packages/database-service/repositories';
-import type { ChallengeRepoRole } from '../../../../../../packages/database-service/domain/entities';
+import { buildRepoDefinitions } from '../../../../../../packages/services/challenge/challengeRepos';
 import { parseMlRewardRules } from '../../../../../../packages/database-service/domain/mlRewardRules';
 import { parseCodeRewardRules } from '../../../../../../packages/database-service/domain/codeRewardRules';
 import { repositories } from '@/lib/db';
@@ -156,32 +156,17 @@ export async function POST(request: NextRequest) {
 
     const githubSlug = validated.github_repo ? parseGithubSlug(validated.github_repo) : undefined;
 
-    // Auto-create repos based on challenge type and link them.
-    // ML repos carry an explicit role: the model step has two repos (Kaggle +
-    // GitHub) and both are typed 'github'/'kaggle_model', so the type alone can
-    // no longer tell the model's code repo from the API packaging one.
-    // Validation challenges never own repos of their own — they reference an
-    // existing ML challenge's submissions instead.
-    const repoDefinitions: {
-      title: string;
-      type: string;
-      role?: ChallengeRepoRole;
-      external_repo_id?: string;
-    }[] =
-      validated.type === 'ml'
-        ? [
-            { title: `${validated.title} — Dataset`,    type: 'kaggle_dataset', role: 'dataset'    },
-            { title: `${validated.title} — Model`,      type: 'kaggle_model',   role: 'model'      },
-            { title: `${validated.title} — Model Code`, type: 'github',         role: 'model_code' },
-            ...(validated.api_packaging_enabled !== false
-              ? [{ title: `${validated.title} — API`, type: 'github', role: 'api' as const }]
-              : []),
-          ]
-        : validated.type === 'validation'
-          ? []
-          : (validated.workspace_mode ?? 'provided_repo') === 'own_repo'
-            ? []
-            : [{ title: `${validated.title} — Code`, type: 'github', external_repo_id: githubSlug }];
+    // Auto-create repos based on challenge type and link them. La construction
+    // vit dans `services/challenge/challengeRepos.ts` : la promotion d'un
+    // sandbox crée un challenge sans passer par cette route et doit produire
+    // exactement les mêmes repos.
+    const repoDefinitions = buildRepoDefinitions({
+      type: validated.type,
+      title: validated.title,
+      workspaceMode: validated.workspace_mode,
+      githubSlug,
+      apiPackagingEnabled: validated.api_packaging_enabled,
+    });
 
     await Promise.all(
       repoDefinitions.map(async ({ title, type, role, external_repo_id }) => {

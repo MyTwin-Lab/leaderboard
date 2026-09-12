@@ -239,7 +239,7 @@ export function GridTestRun({ gridId, onBack }: GridTestRunProps) {
             value={contextNote}
             onChange={(e) => setContextNote(e.target.value)}
             rows={3}
-            placeholder="Describe the challenge this contribution would belong to — given to the evaluator as extra context."
+            placeholder="Describe the challenge this contribution would belong to - given to the evaluator as extra context."
             className={inputClass}
           />
         </div>

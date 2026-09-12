@@ -46,7 +46,7 @@ function AccountMergePanelInner({ unlinkedUsers, linkedUsers }: Props) {
 
     const ok = await confirm({
       title: 'Fusionner les comptes',
-      message: `Le Google de "${googleAccount.full_name}" (${googleAccount.email ?? '—'}) sera transféré vers "${placeholder.full_name}", puis le compte "${googleAccount.full_name}" sera supprimé. S'il est connecté, il devra se reconnecter à sa prochaine action.`,
+      message: `Le Google de "${googleAccount.full_name}" (${googleAccount.email ?? '-'}) sera transféré vers "${placeholder.full_name}", puis le compte "${googleAccount.full_name}" sera supprimé. S'il est connecté, il devra se reconnecter à sa prochaine action.`,
       confirmLabel: 'Fusionner',
       variant: 'danger',
     });
@@ -92,7 +92,7 @@ function AccountMergePanelInner({ unlinkedUsers, linkedUsers }: Props) {
                   placeholder="Choisir le compte Google…"
                   value={selected[u.uuid] ?? ''}
                   onChange={(value) => setSelected((prev) => ({ ...prev, [u.uuid]: value }))}
-                  options={linked.map((l) => ({ value: l.uuid, label: `${l.full_name} (${l.email ?? '—'})` }))}
+                  options={linked.map((l) => ({ value: l.uuid, label: `${l.full_name} (${l.email ?? '-'})` }))}
                 />
                 <Button
                   size="sm"

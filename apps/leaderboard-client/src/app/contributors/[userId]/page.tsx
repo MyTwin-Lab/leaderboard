@@ -5,8 +5,13 @@ import { ChallengeList } from "@/components/contributor/ChallengeList";
 import { ContributionHeatmap } from "@/components/contributor/ContributionHeatmap";
 import { ContributionDashboard } from "@/components/contributor/ContributionDashboard";
 import { ContributorTabs } from "@/components/contributor/ContributorTabs";
+import { SandboxRewardsList } from "@/components/contributor/SandboxRewardsList";
 import { fetchContributorProfile } from "@/lib/server/leaderboard";
 import { getSessionUser } from "@/lib/auth";
+
+export const metadata = {
+  title: "Contributor",
+};
 
 interface ContributorPageProps {
   params: Promise<{
@@ -54,7 +59,12 @@ export default async function ContributorPage({ params, searchParams }: Contribu
           },
           {
             label: "Contributions",
-            panel: <ChallengeList challenges={profile.challenges} />,
+            panel: (
+              <>
+                <ChallengeList challenges={profile.challenges} />
+                <SandboxRewardsList sandboxes={profile.sandboxes} />
+              </>
+            ),
           },
         ]}
       />

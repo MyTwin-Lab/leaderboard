@@ -93,7 +93,7 @@ export function ReferenceCasesOverviewPanel({ challengeId, open }: { challengeId
 
       {cases.length === 0 ? (
         <p className="rounded-[14px] border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
-          No reference case written yet — medical_pro users can write one from the challenge page.
+          No reference case written yet - medical_pro users can write one from the challenge page.
         </p>
       ) : (
         <div className="space-y-1.5">

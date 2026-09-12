@@ -159,7 +159,7 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
             <FileText className="h-3.5 w-3.5 text-brandCP/70" /> Author a reference case
           </p>
           <p className="text-xs text-white/40">
-            Ground-truth input + expected output. Validators claim your cases blind —
+            Ground-truth input + expected output. Validators claim your cases blind -
             {' '}{myCases.length} authored{quotaReached ? '' : `, ${requiredValidations - myCases.length} pending`}.
           </p>
         </div>
@@ -176,7 +176,7 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
 
       {quotaReached ? (
         <p className="text-xs text-white/35">
-          Your {requiredValidations} reference cases are written — validation can start once the challenge total reaches this number.
+          Your {requiredValidations} reference cases are written - validation can start once the challenge total reaches this number.
         </p>
       ) : formOpen && (
         <form onSubmit={handleSubmit} className="space-y-4 border-t border-white/[0.07] pt-4">

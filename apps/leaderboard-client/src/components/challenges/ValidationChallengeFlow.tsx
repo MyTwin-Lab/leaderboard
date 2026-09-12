@@ -256,7 +256,7 @@ function TargetCard({
         body: JSON.stringify({ reference_case_id: referenceCaseId }),
       });
       if (res.status === 409) {
-        setError('This case was just claimed by someone else — pick another one.');
+        setError('This case was just claimed by someone else - pick another one.');
         await loadClaimableCases();
         return;
       }
@@ -517,7 +517,7 @@ function TargetCard({
           <p className="text-white/40">
             {verdictResult.resolved
               ? `Resolved: ${verdictResult.outcome === 'works' ? 'Works' : 'Broken'}`
-              : 'Verdict recorded — waiting on other validators'}
+              : 'Verdict recorded - waiting on other validators'}
           </p>
         </div>
       )}

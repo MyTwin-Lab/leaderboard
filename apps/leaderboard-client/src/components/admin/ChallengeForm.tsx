@@ -253,7 +253,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
                   className={inputClass}
                 />
                 <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                  Must be odd — a target resolves once this many validators have voted, majority wins.
+                  Must be odd - a target resolves once this many validators have voted, majority wins.
                 </p>
               </>
             )}

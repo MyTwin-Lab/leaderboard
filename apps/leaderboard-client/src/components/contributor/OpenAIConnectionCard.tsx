@@ -127,7 +127,7 @@ export function OpenAIConnectionCard() {
         ) : (
           <>
             <p className="text-[12px] leading-relaxed text-white/30">
-              Powers every AI feature: contribution evaluation, meeting analysis and Slack signal detection. Paste an API key from your OpenAI dashboard — it replaces the <code className="text-white/40">OPENAI_API_KEY</code> env var.
+              Powers every AI feature: contribution evaluation, meeting analysis and Slack signal detection. Paste an API key from your OpenAI dashboard - it replaces the <code className="text-white/40">OPENAI_API_KEY</code> env var.
             </p>
 
             <input

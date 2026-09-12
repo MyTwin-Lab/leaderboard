@@ -261,6 +261,12 @@ export async function proxy(request: NextRequest) {
       // Rejoindre un challenge
       const isChallengeJoinRoute = pathname.endsWith('/join');
 
+      // Inviter un contributeur dans son groupe. L'appartenance au groupe est
+      // vérifiée dans le handler — sans cette exception, le garde-fou
+      // « admin only » plus bas bloquerait la fonctionnalité pour tout
+      // contributeur, qui en est pourtant le seul utilisateur.
+      const isGroupInviteRoute = pathname.endsWith('/group/invite');
+
       // Lancer l'évaluation de son board personnel (code) / déclarer son repo
       // perso en mode own_repo — ownership vérifiée dans les handlers.
       const isChallengeSelfServiceRoute =
@@ -268,6 +274,13 @@ export async function proxy(request: NextRequest) {
 
       // Mise à jour du profil par le contributeur lui-même
       const isContributorSelfRoute = pathname === '/api/contributors/me' && method === 'PATCH';
+
+      // Ses propres notifications : marquer lu (PATCH), ou retirer une ligne
+      // (DELETE, c'est-à-dire refuser une invitation). La propriété est
+      // vérifiée dans le repository, où le userId est dans le WHERE — une garde
+      // écrite là ne peut pas être oubliée.
+      const isNotificationSelfRoute =
+        pathname.startsWith('/api/notifications') && ['PATCH', 'DELETE'].includes(method);
 
       // Routes accessibles aux managers de projet (auth vérifiée dans le handler)
       const isManagerAccessibleRoute =
@@ -290,7 +303,7 @@ export async function proxy(request: NextRequest) {
 
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isMedicalProValidationRoute) {
+        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isMedicalProValidationRoute && !isNotificationSelfRoute && !isGroupInviteRoute) {
           return respond(NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }
@@ -316,6 +329,12 @@ export const config = {
     '/api/repos/:path*',
     '/api/contributions/:path*',
     '/api/contributors/:path*',
+    // Dans le matcher, et non authentifiées à la main comme /api/sandboxes/** :
+    // ces routes sont toujours authentifiées, et rester dans le matcher leur
+    // vaut le rafraîchissement silencieux du token — un panneau de
+    // notifications lu sur un profil ouvert depuis longtemps est exactement là
+    // où une session qui expire se voit.
+    '/api/notifications/:path*',
     '/api/tasks/:path*',
     '/api/auth/:path*',
     '/api/google-auth/:path*',

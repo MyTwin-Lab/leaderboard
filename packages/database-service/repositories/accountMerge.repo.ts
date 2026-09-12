@@ -15,8 +15,11 @@ import {
   sync_meetings,
   app_settings,
   onboarding_progress,
+  sandboxes,
+  sandbox_stars,
+  sandbox_rewards,
 } from "../db/drizzle";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { toDomainUser } from "../db/mappers";
 import type { User } from "../domain/entities";
 
@@ -69,6 +72,50 @@ export class AccountMergeRepository {
       await tx.update(app_settings).set({ openai_connected_by: p }).where(eq(app_settings.openai_connected_by, g));
       await tx.update(app_settings).set({ slack_connected_by: p }).where(eq(app_settings.slack_connected_by, g));
       await tx.update(app_settings).set({ scaleway_connected_by: p }).where(eq(app_settings.scaleway_connected_by, g));
+
+      // Sandbox — sans ces réassignations, le ON DELETE CASCADE sur `users`
+      // effacerait purement et simplement les propositions du compte absorbé,
+      // leurs stars et les CP qu'elles ont payés.
+      await tx.update(sandboxes).set({ user_id: p }).where(eq(sandboxes.user_id, g));
+      await tx.update(sandbox_rewards).set({ user_id: p }).where(eq(sandbox_rewards.user_id, g));
+
+      // Les stars se dédoublonnent avant d'être migrées : si les deux comptes
+      // ont staré le même sandbox, l'UPDATE violerait l'index unique
+      // (sandbox_id, user_id). C'est la ligne du compte absorbé qui saute — le
+      // placeholder est celui qu'on conserve.
+      const placeholderStarred = await tx
+        .select({ sandbox_id: sandbox_stars.sandbox_id })
+        .from(sandbox_stars)
+        .where(eq(sandbox_stars.user_id, p));
+      if (placeholderStarred.length > 0) {
+        await tx.delete(sandbox_stars).where(
+          and(
+            eq(sandbox_stars.user_id, g),
+            inArray(sandbox_stars.sandbox_id, placeholderStarred.map((row) => row.sandbox_id))
+          )
+        );
+      }
+      await tx.update(sandbox_stars).set({ user_id: p }).where(eq(sandbox_stars.user_id, g));
+
+      // Une fusion peut rendre le compte conservé auteur d'un sandbox qu'il
+      // avait staré sous son autre identité. Personne ne star son propre
+      // sandbox : ces stars sautent, sinon le compteur crédite l'auteur de sa
+      // propre voix et un palier pourrait se payer sur elle.
+      const ownIds = await tx
+        .select({ uuid: sandboxes.uuid })
+        .from(sandboxes)
+        .where(eq(sandboxes.user_id, p));
+      if (ownIds.length > 0) {
+        await tx.delete(sandbox_stars).where(
+          and(
+            eq(sandbox_stars.user_id, p),
+            inArray(
+              sandbox_stars.sandbox_id,
+              ownIds.map((row) => row.uuid)
+            )
+          )
+        );
+      }
 
       const [googleOnboarding] = await tx
         .select()

@@ -1,4 +1,4 @@
-import { db, projects, users, challenges, contributions, challenge_teams } from "../packages/database-service/db/drizzle.js";
+import { db, projects, users, challenges, contributions, challenge_teams, sandboxes, sandbox_stars, sandbox_rewards } from "../packages/database-service/db/drizzle.js";
 import { readFileSync } from "fs";
 import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
@@ -196,6 +196,15 @@ async function resetAll() {
   console.log("  ✓ contributions cleared");
   await db.delete(challenges);
   console.log("  ✓ challenges cleared");
+  // Sandbox avant users : les trois tables cascadent depuis `users`, mais on
+  // les vide explicitement pour que le log dise ce qui a été détruit — un
+  // sandbox et ses CP ne disparaissent pas silencieusement.
+  await db.delete(sandbox_rewards);
+  console.log("  ✓ sandbox_rewards cleared");
+  await db.delete(sandbox_stars);
+  console.log("  ✓ sandbox_stars cleared");
+  await db.delete(sandboxes);
+  console.log("  ✓ sandboxes cleared");
   await db.delete(users);
   console.log("  ✓ users cleared");
   await db.delete(projects);

@@ -32,7 +32,7 @@ export function RepoList({ repos, projects, onLinkToChallenge, onDelete, onViewD
       key: 'external_repo_id',
       header: 'External ID',
       render: (repo: Repo) => (
-        <div className="text-sm text-white/50 font-mono">{repo.external_repo_id || <span className="italic text-white/25">—</span>}</div>
+        <div className="text-sm text-white/50 font-mono">{repo.external_repo_id || <span className="italic text-white/25">-</span>}</div>
       ),
     },
     {

@@ -58,13 +58,13 @@ function parseImportedGrid(raw: unknown): {
   categories: ImportedCategory[];
 } {
   if (typeof raw !== 'object' || raw === null) {
-    throw new Error('Invalid grid file — expected a JSON object.');
+    throw new Error('Invalid grid file - expected a JSON object.');
   }
   const obj = raw as Record<string, unknown>;
   const name = typeof obj.name === 'string' ? obj.name.trim() : '';
   const slug = typeof obj.slug === 'string' ? obj.slug.trim() : '';
   if (!name || !slug) {
-    throw new Error('Invalid grid file — "name" and "slug" are required.');
+    throw new Error('Invalid grid file - "name" and "slug" are required.');
   }
 
   const rawCategories = Array.isArray(obj.categories) ? obj.categories : [];
@@ -227,7 +227,7 @@ export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
     }
 
     if (failures > 0) {
-      toast(`Grid created — ${failures} imported item(s) failed and may need to be re-added manually.`, 'error');
+      toast(`Grid created - ${failures} imported item(s) failed and may need to be re-added manually.`, 'error');
     }
     setImportProgress(null);
   };

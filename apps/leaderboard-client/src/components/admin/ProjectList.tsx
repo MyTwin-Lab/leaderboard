@@ -42,7 +42,7 @@ export function ProjectList({ projects, users = [], onEdit, onDelete }: ProjectL
       header: 'Manager',
       render: (project: Project) => (
         <div className="text-sm text-white/50">
-          {project.manager_id ? (usersMap.get(project.manager_id) ?? <span className="text-white/25 italic">Unknown</span>) : <span className="text-white/25">—</span>}
+          {project.manager_id ? (usersMap.get(project.manager_id) ?? <span className="text-white/25 italic">Unknown</span>) : <span className="text-white/25">-</span>}
         </div>
       ),
       width: '140px',
