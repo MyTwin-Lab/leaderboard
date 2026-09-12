@@ -24,11 +24,10 @@ function isOpen(status: string | null | undefined): boolean {
 /**
  * Le bouton `Join` remplace-t-il `Docs` dans l'en-tête ?
  *
- * C'est `shouldShowBrief` moins deux choses. Moins la présence d'un brief,
- * parce qu'un challenge qui n'en a pas a quand même besoin d'un chemin pour
- * être rejoint. Et moins l'exclusion des anonymes : la page challenge est
- * publique, donc un visiteur qui peut tout lire mérite qu'on lui dise comment
- * participer.
+ * C'est `shouldShowBrief` moins la présence d'un brief : un challenge qui n'en
+ * a pas a quand même besoin d'un chemin pour être rejoint. Les deux portes
+ * s'ouvrent aux anonymes — la page challenge est publique, donc un visiteur
+ * qui peut tout lire mérite qu'on lui dise comment participer.
  *
  * C'est le composant qui envoie un anonyme vers `/signin` plutôt que d'ouvrir
  * la modale — et c'est ainsi qu'aucun chemin ne permet plus à un non-connecté

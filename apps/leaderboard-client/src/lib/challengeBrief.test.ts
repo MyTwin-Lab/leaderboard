@@ -18,18 +18,14 @@ describe('findBrief', () => {
 });
 
 describe('shouldShowBrief', () => {
-  const base = { isAnonymous: false, isMember: false, challengeType: 'code', brief: '## Context' };
+  const base = { isMember: false, challengeType: 'code', brief: '## Context' };
 
-  it('shows the brief to a signed-in contributor who has not joined', () => {
+  it('shows the brief to a contributor who has not joined', () => {
     expect(shouldShowBrief(base)).toBe(true);
   });
 
   it('shows it on ML challenges too', () => {
     expect(shouldShowBrief({ ...base, challengeType: 'ml' })).toBe(true);
-  });
-
-  it('never shows it to an anonymous visitor', () => {
-    expect(shouldShowBrief({ ...base, isAnonymous: true })).toBe(false);
   });
 
   it('never shows it to a member — they have already joined', () => {

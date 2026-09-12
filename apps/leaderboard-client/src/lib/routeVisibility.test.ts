@@ -29,10 +29,17 @@ describe('isPublicPage', () => {
 });
 
 describe('isPublicApiRoute', () => {
-  it('opens exactly the three read routes', () => {
+  it('opens exactly the four read routes', () => {
     expect(isPublicApiRoute('/api/challenges/abc/overview')).toBe(true);
     expect(isPublicApiRoute('/api/challenges/abc/repo-activity')).toBe(true);
     expect(isPublicApiRoute('/api/challenges/abc/ml-rewards')).toBe(true);
+    expect(isPublicApiRoute('/api/challenges/abc/brief')).toBe(true);
+  });
+
+  // Le brief est public, le tiroir qui le contient ne l'est pas : c'est toute
+  // la raison d'être de la route dédiée.
+  it('keeps the documents drawer closed even though the brief is open', () => {
+    expect(isPublicApiRoute('/api/challenges/abc/documents')).toBe(false);
   });
 
   it('keeps every mutating or sensitive sibling closed', () => {

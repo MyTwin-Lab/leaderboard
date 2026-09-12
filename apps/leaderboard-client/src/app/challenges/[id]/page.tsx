@@ -32,7 +32,7 @@ import { fetchJson } from '@/lib/fetchJson';
 import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
 import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
-import { findBrief, shouldShowBrief } from '@/lib/challengeBrief';
+import { shouldShowBrief } from '@/lib/challengeBrief';
 import { showJoinInHeader } from '@/lib/joinGate';
 import { useJoinChallenge } from '@/lib/useJoinChallenge';
 
@@ -293,15 +293,17 @@ export default function ChallengeDetailPage() {
     router.replace(`/challenges/${challengeId}`);
   };
 
-  // Le brief n'intéresse que le contributeur connecté qui n'a pas encore
-  // rejoint — ni l'anonyme, ni le membre ne le lisent ici. La requête ne part
-  // donc que pour lui.
-  const briefNeeded = !isAnonymous && !isMember && !!challenge;
+  // Le brief s'adresse à qui n'a pas encore rejoint, connecté ou non — un
+  // membre, lui, le retrouve dans le tiroir Docs. La requête suit : elle part
+  // sans session, la route `documents` étant publique en lecture.
+  const briefNeeded = !isMember && !!challenge;
   const briefQuery = useQuery({
     queryKey: ['challenge-brief', challengeId],
     queryFn: async () => {
-      const docs = await fetchJson(`/api/challenges/${challengeId}/documents`) as { filename: string; content: string }[];
-      return findBrief(Array.isArray(docs) ? docs : [])?.content ?? null;
+      // `brief` et non `documents` : le tiroir Docs est derrière le proxy, et
+      // un visiteur sans compte y prendrait un 401 avant même le handler.
+      const { content } = await fetchJson(`/api/challenges/${challengeId}/brief`) as { content: string | null };
+      return content;
     },
     enabled: !!challengeId && briefNeeded,
     staleTime: 5 * 60_000,
@@ -348,7 +350,6 @@ export default function ChallengeDetailPage() {
   // rejoint, un contributeur n'a ni board, ni branche, ni soumission dont ces
   // blocs pourraient parler.
   const showBrief = shouldShowBrief({
-    isAnonymous,
     isMember,
     challengeType: challenge.type,
     brief: briefQuery.data,
@@ -547,7 +548,7 @@ export default function ChallengeDetailPage() {
         </div>
       )}
 
-      {/* ── Brief: le contributeur connecté qui n'a pas encore rejoint ──
+      {/* ── Brief: le visiteur qui n'a pas encore rejoint ──
           Deux colonnes, sur la grille du détail sandbox : la lecture à gauche,
           les KPI à droite. `items-start` pour que la colonne ne s'étire pas à
           la hauteur d'un brief long. Sur mobile la grille s'effondre et les
@@ -576,8 +577,10 @@ export default function ChallengeDetailPage() {
       {/* ── Signed out: one block, no tabs ───────────────── */}
       {/* Every interactive panel below needs an account, so an anonymous
           visitor gets the single thing worth showing for this challenge type:
-          its dataset and model metrics, or how far each contributor has got. */}
-      {isAnonymous && (
+          its dataset and model metrics, or how far each contributor has got.
+          Sauf quand le brief est là : il occupe déjà la page, et ces blocs
+          reviendraient à lui coller un second écran par-dessous. */}
+      {isAnonymous && !showBrief && (
         isML
           ? <ChallengeMetrics repoActivity={repoActivity} />
           : (
@@ -644,7 +647,11 @@ export default function ChallengeDetailPage() {
       ]} />
       )}
 
-      {isAnonymous && (
+      {/* Deuxième appel à l'action, donc réservé aux pages qui n'en ont pas
+          déjà un : sur l'écran du brief, le `Join` de l'en-tête mène lui aussi
+          à la connexion, et le répéter en bas de page demande deux fois la
+          même chose. */}
+      {isAnonymous && !showBrief && (
         <div className="mt-10 flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-6 py-8 text-center">
           <p className="text-sm text-white/60">
             Sign in to join this challenge and start your own board.

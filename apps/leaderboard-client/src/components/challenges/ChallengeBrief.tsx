@@ -5,9 +5,9 @@ import { Markdown } from '@/components/ui/Markdown';
 import { JoinButton } from '@/components/challenges/JoinButton';
 
 /**
- * Le brief d'un challenge, affiché à un contributeur connecté qui ne l'a pas
- * encore rejoint — à la place des KPI et de l'espace de travail, qui n'ont
- * rien à lui dire tant qu'il n'a ni board, ni branche, ni soumission.
+ * Le brief d'un challenge, affiché à qui ne l'a pas encore rejoint — connecté
+ * ou non — à la place des KPI et de l'espace de travail, qui n'ont rien à lui
+ * dire tant qu'il n'a ni board, ni branche, ni soumission.
  *
  * Le contenu est libre : c'est le Markdown rédigé par l'admin. La maquette
  * suppose des sections Context / Objective / Expected result, mais rien ici

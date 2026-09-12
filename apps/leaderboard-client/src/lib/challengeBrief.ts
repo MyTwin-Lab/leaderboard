@@ -48,17 +48,20 @@ export const BRIEF_GATED_TYPES = ['code', 'ml'];
 /**
  * Le brief remplace-t-il les KPI et l'espace de travail ?
  *
- * Un visiteur anonyme ne le voit pas : il garde l'invitation à se connecter,
- * qui est la seule action qu'il puisse faire. Un membre non plus — il a déjà
- * rejoint, son brief reste dans le tiroir Docs.
+ * Le visiteur anonyme le lit comme le contributeur connecté : c'est la page
+ * qui dit de quoi ce challenge parle, et la retenir jusqu'à la connexion
+ * demande de s'engager avant de savoir sur quoi. Le `Join` de l'en-tête
+ * l'emmène se connecter au moment où il décide, pas avant.
+ *
+ * Un membre ne le voit pas — il a déjà rejoint, son brief reste dans le
+ * tiroir Docs.
  */
-export function shouldShowBrief({ isAnonymous, isMember, challengeType, brief }: {
-  isAnonymous: boolean;
+export function shouldShowBrief({ isMember, challengeType, brief }: {
   isMember: boolean;
   challengeType: string | null | undefined;
   brief: string | null | undefined;
 }): boolean {
-  if (isAnonymous || isMember) return false;
+  if (isMember) return false;
   if (!brief || !brief.trim()) return false;
   return BRIEF_GATED_TYPES.includes(challengeType ?? '');
 }
