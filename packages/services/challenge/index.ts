@@ -8,6 +8,9 @@ export { normalizeArtifactUrl, extractArtifactRef } from "./artifactUrl.js";
 export { validationModeFor, TARGET_CONTRIBUTION_TYPE } from "./validation-mode.js";
 export { ScenarioStepsService } from "./scenario-steps.service.js";
 export type { ScenarioStepsDeps } from "./scenario-steps.service.js";
+export { assertScenarioChallenge } from "./scenario-guard.js";
+export { ScenarioWalkthroughService } from "./scenario-walkthrough.service.js";
+export type { ScenarioWalkthroughDeps, WalkthroughState, WalkthroughStepState } from "./scenario-walkthrough.service.js";
 export * from "./scenario-errors.js";
 
 // Types
