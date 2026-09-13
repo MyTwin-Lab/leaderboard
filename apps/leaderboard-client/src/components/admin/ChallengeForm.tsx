@@ -60,10 +60,16 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       .catch(() => {});
   }, [challenge?.uuid]);
 
-  // Le mode se lit sur le type du challenge source sélectionné, exactement
-  // comme le fait l'API. Rien à stocker, rien à synchroniser.
+  // En création, le mode se lit sur le type du challenge source sélectionné.
+  // En édition la liste des sources n'est jamais chargée (fetch sauté ci-
+  // dessus), mais `required_validations` porte la même information : l'API
+  // la force à null pour une source `code`, où rien ne se résout et où il
+  // n'y a pas de quorum. `== null` couvre aussi `undefined` — un strict
+  // `===` manquerait un challenge dont le champ est simplement absent.
   const sourceChallenge = sourceChallenges.find(c => c.id === sourceChallengeId);
-  const isScenarioMode = sourceChallenge?.type === 'code';
+  const isScenarioMode = challenge?.uuid
+    ? challenge?.required_validations == null
+    : sourceChallenge?.type === 'code';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
