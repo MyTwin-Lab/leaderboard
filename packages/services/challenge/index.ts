@@ -6,6 +6,9 @@ export { MlRewardsService } from "./ml-rewards.service.js";
 export { SnapshotService } from "./snapshot.service.js";
 export { normalizeArtifactUrl, extractArtifactRef } from "./artifactUrl.js";
 export { validationModeFor, TARGET_CONTRIBUTION_TYPE } from "./validation-mode.js";
+export { ScenarioStepsService } from "./scenario-steps.service.js";
+export type { ScenarioStepsDeps } from "./scenario-steps.service.js";
+export * from "./scenario-errors.js";
 
 // Types
 export type { 
