@@ -3,6 +3,7 @@ import { validation_scenario_runs } from "../db/drizzle";
 import { eq, and, isNull } from "drizzle-orm";
 import { toDomainValidationScenarioRun, toDbValidationScenarioRun } from "../db/mappers";
 import type { ValidationScenarioRun } from "../domain/entities";
+import { validationScenarioRunSchema } from "../domain/schemas_zod";
 
 /** Code d'unicité que Postgres lève sur un doublon (challenge, contribution, validateur). */
 const POSTGRES_UNIQUE_VIOLATION = "23505";
@@ -65,10 +66,13 @@ export class ScenarioRunRepository {
   async create(
     entity: Omit<ValidationScenarioRun, "uuid" | "created_at" | "global_feedback" | "completed_at">
   ): Promise<ValidationScenarioRun | null> {
+    const validated = validationScenarioRunSchema
+      .omit({ uuid: true, created_at: true, global_feedback: true, completed_at: true })
+      .parse(entity);
     try {
       const [row] = await db
         .insert(validation_scenario_runs)
-        .values(toDbValidationScenarioRun(entity))
+        .values(toDbValidationScenarioRun(validated))
         .returning();
       return toDomainValidationScenarioRun(row);
     } catch (error: any) {

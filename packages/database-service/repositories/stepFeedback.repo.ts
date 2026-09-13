@@ -3,6 +3,7 @@ import { validation_step_feedbacks } from "../db/drizzle";
 import { eq, inArray } from "drizzle-orm";
 import { toDomainValidationStepFeedback } from "../db/mappers";
 import type { ValidationStepFeedback } from "../domain/entities";
+import { validationStepFeedbackSchema } from "../domain/schemas_zod";
 
 export class StepFeedbackRepository {
   async findByRun(runId: string): Promise<ValidationStepFeedback[]> {
@@ -31,21 +32,22 @@ export class StepFeedbackRepository {
    * suffit, sans lecture préalable.
    */
   async upsert(entity: Omit<ValidationStepFeedback, "uuid" | "created_at">): Promise<ValidationStepFeedback> {
+    const validated = validationStepFeedbackSchema.omit({ uuid: true, created_at: true }).parse(entity);
     const [row] = await db
       .insert(validation_step_feedbacks)
       .values({
-        run_id: entity.run_id,
-        step_id: entity.step_id,
-        result: entity.result,
-        comment: entity.comment ?? null,
-        medical_comment: entity.medical_comment ?? null,
+        run_id: validated.run_id,
+        step_id: validated.step_id,
+        result: validated.result,
+        comment: validated.comment ?? null,
+        medical_comment: validated.medical_comment ?? null,
       })
       .onConflictDoUpdate({
         target: [validation_step_feedbacks.run_id, validation_step_feedbacks.step_id],
         set: {
-          result: entity.result,
-          comment: entity.comment ?? null,
-          medical_comment: entity.medical_comment ?? null,
+          result: validated.result,
+          comment: validated.comment ?? null,
+          medical_comment: validated.medical_comment ?? null,
         },
       })
       .returning();
