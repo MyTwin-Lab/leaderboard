@@ -32,11 +32,26 @@ vi.mock('@/lib/auth', () => ({ verifyRequestToken: mockVerifyRequestToken }));
 
 import { GET } from './route';
 
+const CHALLENGE_ID = 'c1';
+
 function get() {
   const req = new NextRequest('http://localhost/api/challenges/c1/overview', {
     headers: { host: 'localhost:3000' },
   });
   return GET(req, { params: Promise.resolve({ id: 'c1' }) });
+}
+
+// Comme `getTargets` dans le test des validation-targets : une NextRequest
+// paramétrée, avec un cookie de session optionnel. `verifyRequestToken` étant
+// mocké directement dans ce fichier (pas de vrai JWT ici), le token ne fait
+// que piloter ce mock — le cookie reste posé pour que la requête ressemble à
+// une vraie requête authentifiée.
+function getOverview(token?: string) {
+  mockVerifyRequestToken.mockResolvedValue(token ? { userId: 'u9', role: 'contributor' } : null);
+  const req = new NextRequest(`http://localhost/api/challenges/${CHALLENGE_ID}/overview`, {
+    headers: token ? { cookie: `access_token=${token}` } : undefined,
+  });
+  return GET(req, { params: Promise.resolve({ id: CHALLENGE_ID }) });
 }
 
 beforeEach(() => {
@@ -138,5 +153,48 @@ describe('GET /api/challenges/[id]/overview', () => {
     mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'validation' });
 
     expect((await get()).status).toBe(200);
+  });
+});
+
+describe('validation mode derivation', () => {
+  it('publishes the source challenge type so the page knows which validation flow to render', async () => {
+    // Dérivé, jamais stocké. Le publier ici évite une seconde requête sur les
+    // deux coquilles de page, qui lisent déjà cet endpoint.
+    mockFindById.mockImplementation(async (id: string) =>
+      id === CHALLENGE_ID
+        ? { uuid: CHALLENGE_ID, type: 'validation', status: 'active', source_challenge_id: 'code-ch-1' }
+        : { uuid: 'code-ch-1', type: 'code' }
+    );
+
+    const body = await (await getOverview('valid-token')).json();
+
+    expect(body.source_challenge_type).toBe('code');
+  });
+
+  it('publishes null for a challenge with no source challenge', async () => {
+    mockFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', status: 'active' });
+
+    const body = await (await getOverview('valid-token')).json();
+
+    expect(body.source_challenge_type).toBeNull();
+  });
+
+  it('never publishes it to an anonymous visitor', async () => {
+    // toPublicOverview est une liste blanche : un nouveau champ est privé par
+    // défaut. Ce test est là pour que ça reste vrai si quelqu'un la réécrit.
+    // Le challenge principal est de type `code` (et non `validation`) pour
+    // que le visiteur anonyme atteigne bien le payload plutôt que de recevoir
+    // un 404 de visibilité avant même de l'avoir vu.
+    mockFindById.mockImplementation(async (id: string) =>
+      id === CHALLENGE_ID
+        ? { uuid: CHALLENGE_ID, type: 'code', status: 'active', source_challenge_id: 'code-ch-1' }
+        : { uuid: 'code-ch-1', type: 'code' }
+    );
+
+    const res = await getOverview();
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.source_challenge_type).toBeUndefined();
   });
 });
