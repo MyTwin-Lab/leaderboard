@@ -240,7 +240,7 @@ describe('POST /api/challenges', () => {
       expect(res.status).toBe(400);
     });
 
-    it('requires required_validations', async () => {
+    it('requires required_validations when the source is an ML challenge', async () => {
       const res = await postChallenge(validationBody({ required_validations: undefined }), 'valid-token');
       expect(res.status).toBe(400);
     });
@@ -250,10 +250,42 @@ describe('POST /api/challenges', () => {
       expect(res.status).toBe(400);
     });
 
-    it('rejects a source_challenge_id that does not reference an ML challenge', async () => {
+    it('accepts a code source challenge — the scenario flow', async () => {
       mockChallengeFindById.mockResolvedValue({ uuid: mlSourceId, type: 'code' });
 
+      const res = await postChallenge(
+        validationBody({ required_validations: undefined }),
+        'valid-token'
+      );
+
+      expect(res.status).toBe(201);
+    });
+
+    it('stores required_validations as null for a code source — nothing resolves in scenario mode', async () => {
+      mockChallengeFindById.mockResolvedValue({ uuid: mlSourceId, type: 'code' });
+
+      await postChallenge(validationBody({ required_validations: 3 }), 'valid-token');
+
+      // Même envoyé par un client obsolète, le champ ne doit pas être écrit :
+      // il n'a aucun sens sans quorum, et une valeur non nulle en base
+      // laisserait croire qu'un target peut se résoudre.
+      expect(mockChallengeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ required_validations: null })
+      );
+    });
+
+    it('rejects a source_challenge_id that is neither an ml nor a code challenge', async () => {
+      mockChallengeFindById.mockResolvedValue({ uuid: mlSourceId, type: 'validation' });
+
       const res = await postChallenge(validationBody(), 'valid-token');
+
+      expect(res.status).toBe(400);
+    });
+
+    it('still requires an odd required_validations when the source is an ML challenge', async () => {
+      mockChallengeFindById.mockResolvedValue({ uuid: mlSourceId, type: 'ml' });
+
+      const res = await postChallenge(validationBody({ required_validations: 4 }), 'valid-token');
 
       expect(res.status).toBe(400);
     });
@@ -272,6 +304,17 @@ describe('POST /api/challenges', () => {
       ]);
 
       const res = await postChallenge(validationBody(), 'valid-token');
+
+      expect(res.status).toBe(409);
+    });
+
+    it('returns 409 when the code challenge already has a linked validation challenge', async () => {
+      mockChallengeFindById.mockResolvedValue({ uuid: mlSourceId, type: 'code' });
+      mockChallengeFindAll.mockResolvedValue([
+        { uuid: 'existing-validation', type: 'validation', source_challenge_id: mlSourceId },
+      ]);
+
+      const res = await postChallenge(validationBody({ required_validations: undefined }), 'valid-token');
 
       expect(res.status).toBe(409);
     });

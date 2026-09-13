@@ -8,6 +8,7 @@ import {
 import { buildRepoDefinitions } from '../../../../../../packages/services/challenge/challengeRepos';
 import { parseMlRewardRules } from '../../../../../../packages/database-service/domain/mlRewardRules';
 import { parseCodeRewardRules } from '../../../../../../packages/database-service/domain/codeRewardRules';
+import { validationModeFor } from '../../../../../../packages/services/challenge/validation-mode';
 import { repositories } from '@/lib/db';
 import { z } from 'zod';
 
@@ -105,6 +106,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Le mode se déduit du type du challenge source, il ne se stocke pas :
+    // `ml` -> flux cas de référence, `code` -> flux scénario. Les règles
+    // communes (source obligatoire, CP par validation, 1:1) valent dans les
+    // deux ; le quorum n'existe que côté ML.
+    let validationMode: ReturnType<typeof validationModeFor> = null;
     if (validated.type === 'validation') {
       if (!validated.source_challenge_id) {
         return NextResponse.json({ error: 'source_challenge_id is required for validation challenges' }, { status: 400 });
@@ -112,22 +118,34 @@ export async function POST(request: NextRequest) {
       if (!validated.cp_per_validation) {
         return NextResponse.json({ error: 'cp_per_validation is required for validation challenges' }, { status: 400 });
       }
-      if (!validated.required_validations) {
-        return NextResponse.json({ error: 'required_validations is required for validation challenges' }, { status: 400 });
-      }
-      if (validated.required_validations % 2 === 0) {
-        return NextResponse.json({ error: 'required_validations must be odd' }, { status: 400 });
-      }
+
       const source = await challengeRepo.findById(validated.source_challenge_id);
-      if (!source || source.type !== 'ml') {
-        return NextResponse.json({ error: 'source_challenge_id must reference an ML challenge' }, { status: 400 });
+      validationMode = validationModeFor(source?.type);
+      if (!validationMode) {
+        return NextResponse.json(
+          { error: 'source_challenge_id must reference an ML or a Code challenge' },
+          { status: 400 }
+        );
       }
+
+      // Le quorum n'a de sens que face à un endpoint qui répond works/broken.
+      // En mode scénario chaque walkthrough complétée paie, il n'y a rien à
+      // résoudre — le champ n'est donc ni demandé ni écrit.
+      if (validationMode === 'reference_case') {
+        if (!validated.required_validations) {
+          return NextResponse.json({ error: 'required_validations is required for validation challenges' }, { status: 400 });
+        }
+        if (validated.required_validations % 2 === 0) {
+          return NextResponse.json({ error: 'required_validations must be odd' }, { status: 400 });
+        }
+      }
+
       const allChallenges = await challengeRepo.findAll();
       const alreadyLinked = allChallenges.some(
         c => c.type === 'validation' && c.source_challenge_id === validated.source_challenge_id
       );
       if (alreadyLinked) {
-        return NextResponse.json({ error: 'This ML challenge already has a validation challenge' }, { status: 409 });
+        return NextResponse.json({ error: 'This challenge already has a validation challenge' }, { status: 409 });
       }
     }
 
@@ -139,7 +157,7 @@ export async function POST(request: NextRequest) {
       reward_rules: rewardRules,
       source_challenge_id: validated.type === 'validation' ? validated.source_challenge_id : null,
       cp_per_validation: validated.type === 'validation' ? validated.cp_per_validation : null,
-      required_validations: validated.type === 'validation' ? validated.required_validations : null,
+      required_validations: validationMode === 'reference_case' ? validated.required_validations : null,
       compute_enabled: validated.type === 'ml' ? (validated.compute_enabled ?? false) : false,
       workspace_mode: validated.type === 'code' ? (validated.workspace_mode ?? 'provided_repo') : null,
     });
