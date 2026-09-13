@@ -396,6 +396,76 @@ const STATEMENTS: Array<{ label: string; sql: string }> = [
     label: "idx_notifications_dedupe",
     sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_dedupe ON notifications (user_id, type, dedupe_key) WHERE dedupe_key IS NOT NULL`,
   },
+
+  // --- Challenges de validation en mode scénario (source = challenge `code`) ---
+  // Le mode n'est pas stocké : il se déduit du type du challenge source. Ces
+  // trois tables ne portent donc aucune colonne de mode.
+  {
+    label: "validation_scenario_steps",
+    sql: `
+      CREATE TABLE IF NOT EXISTS validation_scenario_steps (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        validation_challenge_id uuid NOT NULL REFERENCES challenges(uuid) ON DELETE CASCADE,
+        position integer NOT NULL DEFAULT 0,
+        title varchar(255) NOT NULL,
+        instructions text,
+        created_at timestamp DEFAULT now()
+      )`,
+  },
+  {
+    label: "idx_validation_scenario_steps_challenge_id",
+    sql: `CREATE INDEX IF NOT EXISTS idx_validation_scenario_steps_challenge_id ON validation_scenario_steps (validation_challenge_id, position)`,
+  },
+  {
+    label: "validation_scenario_runs",
+    sql: `
+      CREATE TABLE IF NOT EXISTS validation_scenario_runs (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        validation_challenge_id uuid NOT NULL REFERENCES challenges(uuid) ON DELETE CASCADE,
+        contribution_id uuid NOT NULL REFERENCES contributions(uuid) ON DELETE CASCADE,
+        validator_user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        global_feedback text,
+        completed_at timestamp,
+        created_at timestamp DEFAULT now()
+      )`,
+  },
+  {
+    label: "idx_validation_scenario_runs_challenge_id",
+    sql: `CREATE INDEX IF NOT EXISTS idx_validation_scenario_runs_challenge_id ON validation_scenario_runs (validation_challenge_id)`,
+  },
+  {
+    label: "idx_validation_scenario_runs_validator_id",
+    sql: `CREATE INDEX IF NOT EXISTS idx_validation_scenario_runs_validator_id ON validation_scenario_runs (validator_user_id)`,
+  },
+  // Porte la garantie « une walkthrough par (validateur, application) », donc
+  // « cp_per_validation payé une fois ». C'est la base qui l'applique, pas
+  // l'application : deux requêtes concurrentes se départagent ici.
+  {
+    label: "idx_validation_scenario_runs_unique",
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_validation_scenario_runs_unique ON validation_scenario_runs (validation_challenge_id, contribution_id, validator_user_id)`,
+  },
+  {
+    label: "validation_step_feedbacks",
+    sql: `
+      CREATE TABLE IF NOT EXISTS validation_step_feedbacks (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        run_id uuid NOT NULL REFERENCES validation_scenario_runs(uuid) ON DELETE CASCADE,
+        step_id uuid NOT NULL REFERENCES validation_scenario_steps(uuid) ON DELETE CASCADE,
+        result varchar(10) NOT NULL,
+        comment text,
+        medical_comment text,
+        created_at timestamp DEFAULT now()
+      )`,
+  },
+  {
+    label: "idx_validation_step_feedbacks_run_id",
+    sql: `CREATE INDEX IF NOT EXISTS idx_validation_step_feedbacks_run_id ON validation_step_feedbacks (run_id)`,
+  },
+  // La cible du ON CONFLICT de StepFeedbackRepository.upsert.
+  {
+    label: "idx_validation_step_feedbacks_unique",
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_validation_step_feedbacks_unique ON validation_step_feedbacks (run_id, step_id)`,
+  },
 ];
 
 async function main() {

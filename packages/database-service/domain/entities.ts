@@ -253,6 +253,45 @@ export interface ValidationAttempt {
   reference_case_claim_id: string | null; // FK -> validation_case_claims.uuid
 }
 
+/** Ce qu'un validateur a conclu d'une étape : déjà un vote, simplement non compté en v1. */
+export type ScenarioStepResult = 'passed' | 'failed' | 'blocked';
+
+/** Une étape du scénario d'un challenge de validation en mode scénario (source `code`). */
+export interface ValidationScenarioStep {
+  uuid: string;
+  validation_challenge_id: string; // FK -> challenges.uuid
+  position: number;                // dense, 0-based
+  title: string;
+  instructions: string | null;
+  created_at: Date;
+}
+
+/**
+ * Le passage d'un validateur sur une application. `completed_at === null`
+ * signifie brouillon : reprenable à l'identique, modifiable partout.
+ * Une fois complété, immuable — et payé.
+ */
+export interface ValidationScenarioRun {
+  uuid: string;
+  validation_challenge_id: string; // FK -> challenges.uuid
+  contribution_id: string;         // FK -> contributions.uuid (l'application parcourue)
+  validator_user_id: string;       // FK -> users.uuid
+  global_feedback: string | null;  // requis à la complétion
+  completed_at: Date | null;
+  created_at: Date;
+}
+
+/** Le retour d'un validateur sur une étape : un résultat, un commentaire UX, et un avis médical réservé aux medical_pro. */
+export interface ValidationStepFeedback {
+  uuid: string;
+  run_id: string;  // FK -> validation_scenario_runs.uuid
+  step_id: string; // FK -> validation_scenario_steps.uuid
+  result: ScenarioStepResult;
+  comment: string | null;
+  medical_comment: string | null;
+  created_at: Date;
+}
+
 export type ComputeRequestStatus = 'pending' | 'rejected' | 'approved' | 'provisioning' | 'ready' | 'expired' | 'failed';
 export type ComputeRequestExpireReason = 'timeout' | 'challenge_closed' | 'challenge_deleted';
 
