@@ -7,6 +7,11 @@ import {
   EmptyScenarioError,
   SelfWalkthroughError,
   TargetNotExposedError,
+  MedicalCommentForbiddenError,
+  RunNotFoundError,
+  ForbiddenRunAccessError,
+  RunAlreadyCompletedError,
+  StepNotFoundError,
 } from "./scenario-errors.js";
 import type {
   Challenge, Contribution, ContributionMember, User,
@@ -233,5 +238,112 @@ describe("openWalkthrough", () => {
     const { deps } = makeDeps({ sourceType: "ml" });
 
     await expect(open(deps)).rejects.toThrow(ScenarioModeError);
+  });
+});
+
+const DRAFT: ValidationScenarioRun = {
+  uuid: "run-mine", validation_challenge_id: VCH, contribution_id: APP,
+  validator_user_id: VALIDATOR, global_feedback: null, completed_at: null, created_at: new Date(),
+};
+
+function save(deps: ScenarioWalkthroughDeps, over: Partial<Parameters<ScenarioWalkthroughService["saveStepFeedback"]>[0]> = {}) {
+  return new ScenarioWalkthroughService(deps).saveStepFeedback({
+    validationChallengeId: VCH, runId: "run-mine", stepId: "step-1", validatorUserId: VALIDATOR,
+    result: "passed", comment: null, medicalComment: null,
+    ...over,
+  });
+}
+
+describe("saveStepFeedback", () => {
+  it("upserts the result and the comment, and returns the whole walkthrough state", async () => {
+    const { deps, upserts } = makeDeps({ existingRun: DRAFT });
+
+    const state = await save(deps, { result: "blocked", comment: "The save button does nothing." });
+
+    expect(upserts).toEqual([{
+      run_id: "run-mine", step_id: "step-1", result: "blocked",
+      comment: "The save button does nothing.", medical_comment: null,
+    }]);
+    expect(state.runId).toBe("run-mine");
+    expect(state.steps).toHaveLength(2);
+  });
+
+  it("lets a medical_pro record a medical comment alongside the user-experience one", async () => {
+    // Les deux lentilles coexistent sur la même étape : ce n'est pas un
+    // onglet, pas un mode, pas un remplacement.
+    const { deps, upserts } = makeDeps({ existingRun: DRAFT, validatorRole: "medical_pro" });
+
+    await save(deps, {
+      result: "failed",
+      comment: "The PDF opens blank.",
+      medicalComment: "A measurement without its unit is not a clinical record.",
+    });
+
+    expect(upserts[0]).toMatchObject({
+      comment: "The PDF opens blank.",
+      medical_comment: "A measurement without its unit is not a clinical record.",
+    });
+  });
+
+  it("refuses a medical comment from a validator who is not a medical_pro", async () => {
+    const { deps, upserts } = makeDeps({ existingRun: DRAFT, validatorRole: "contributor" });
+
+    await expect(save(deps, { medicalComment: "Clinically unsafe." })).rejects.toThrow(MedicalCommentForbiddenError);
+    expect(upserts).toEqual([]);
+  });
+
+  it("accepts an empty-string medical comment from a non-medical_pro as no comment at all", async () => {
+    // Le champ n'existe pas dans leur interface ; un client qui envoie une
+    // chaîne vide ne doit pas être traité comme une tentative d'écriture.
+    const { deps, upserts } = makeDeps({ existingRun: DRAFT, validatorRole: "contributor" });
+
+    await save(deps, { medicalComment: "   " });
+
+    expect(upserts[0].medical_comment).toBeNull();
+  });
+
+  it("lets me go back and change an earlier step while the walkthrough is a draft", async () => {
+    // Revenir n'est pas un rollback : un validateur qui comprend à l'étape 5
+    // que l'étape 2 était cassée doit pouvoir la corriger.
+    const { deps, upserts } = makeDeps({
+      existingRun: DRAFT,
+      feedbacks: [{ uuid: "fb-1", run_id: "run-mine", step_id: "step-1", result: "passed", comment: null, medical_comment: null, created_at: new Date() }],
+    });
+
+    await save(deps, { stepId: "step-1", result: "failed", comment: "Actually broken." });
+
+    expect(upserts[0]).toMatchObject({ step_id: "step-1", result: "failed", comment: "Actually broken." });
+  });
+
+  it("refuses to touch a completed walkthrough", async () => {
+    const { deps } = makeDeps({
+      existingRun: { ...DRAFT, completed_at: new Date(), global_feedback: "Done." },
+    });
+
+    await expect(save(deps)).rejects.toThrow(RunAlreadyCompletedError);
+  });
+
+  it("refuses a walkthrough that belongs to someone else", async () => {
+    const { deps } = makeDeps({ existingRun: { ...DRAFT, validator_user_id: "carol" } });
+
+    await expect(save(deps)).rejects.toThrow(ForbiddenRunAccessError);
+  });
+
+  it("404s on a walkthrough that does not exist", async () => {
+    const { deps } = makeDeps({ existingRun: null });
+
+    await expect(save(deps)).rejects.toThrow(RunNotFoundError);
+  });
+
+  it("404s on a walkthrough recorded against another challenge", async () => {
+    const { deps } = makeDeps({ existingRun: { ...DRAFT, validation_challenge_id: "other-vch" } });
+
+    await expect(save(deps)).rejects.toThrow(RunNotFoundError);
+  });
+
+  it("404s on a step that is not part of this challenge's scenario", async () => {
+    const { deps } = makeDeps({ existingRun: DRAFT });
+
+    await expect(save(deps, { stepId: "step-elsewhere" })).rejects.toThrow(StepNotFoundError);
   });
 });

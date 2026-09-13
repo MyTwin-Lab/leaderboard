@@ -18,10 +18,20 @@ import type {
 import { assertScenarioChallenge } from "./scenario-guard.js";
 import {
   EmptyScenarioError,
+  ForbiddenRunAccessError,
+  MedicalCommentForbiddenError,
+  RunAlreadyCompletedError,
   RunNotFoundError,
   SelfWalkthroughError,
+  StepNotFoundError,
   TargetNotExposedError,
 } from "./scenario-errors.js";
+
+/** Un champ texte vide ou blanc vaut « pas de contenu », jamais une chaîne vide en base. */
+function blankToNull(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
 
 /** Une étape telle que le client la reçoit : le contenu du scénario + ce que j'y ai répondu. */
 export interface WalkthroughStepState {
@@ -168,6 +178,86 @@ export class ScenarioWalkthroughService {
     if (members.some(m => m.user_id === userId)) {
       throw new SelfWalkthroughError("You cannot walk through your own group's application");
     }
+  }
+
+  /**
+   * Enregistre le retour sur une étape. Appelé à chaque saisie, ce qui est ce
+   * qui rend la navigation entre étapes non destructive et la fermeture de
+   * l'onglet sans conséquence.
+   *
+   * Le corps porte l'état complet du panneau d'étape : un champ commentaire
+   * absent vaut vide, jamais « garde l'ancienne valeur ». C'est ce contrat qui
+   * permet un seul upsert, sans lecture préalable.
+   */
+  async saveStepFeedback(input: {
+    validationChallengeId: string;
+    runId: string;
+    stepId: string;
+    validatorUserId: string;
+    result: ScenarioStepResult;
+    comment: string | null;
+    medicalComment: string | null;
+  }): Promise<WalkthroughState> {
+    const { validationChallengeId, runId, stepId, validatorUserId, result } = input;
+
+    await assertScenarioChallenge(this.deps.challengeRepo, validationChallengeId);
+    const run = await this.loadDraft(validationChallengeId, runId, validatorUserId);
+
+    const steps = await this.deps.stepRepo.findByChallenge(validationChallengeId);
+    if (!steps.some(s => s.uuid === stepId)) {
+      throw new StepNotFoundError("Step not found in this challenge's scenario");
+    }
+
+    const medicalComment = await this.resolveMedicalComment(validatorUserId, input.medicalComment);
+
+    await this.deps.feedbackRepo.upsert({
+      run_id: run.uuid,
+      step_id: stepId,
+      result,
+      comment: blankToNull(input.comment),
+      medical_comment: medicalComment,
+    });
+
+    return this.stateOf(run, steps);
+  }
+
+  /**
+   * L'avis médical est réservé au rôle `medical_pro` — la même frontière de
+   * qualification que le flux ML trace déjà, et non une frontière
+   * d'appartenance au challenge.
+   *
+   * Une chaîne vide n'est pas une tentative d'écriture : un validateur sans
+   * le rôle n'a simplement pas le champ, et un client qui poste `""` ne doit
+   * pas récolter un 403.
+   */
+  private async resolveMedicalComment(validatorUserId: string, raw: string | null): Promise<string | null> {
+    const value = blankToNull(raw);
+    if (value === null) return null;
+
+    const user = await this.deps.userRepo.findById(validatorUserId);
+    if (user?.role !== "medical_pro") {
+      throw new MedicalCommentForbiddenError("Only medical_pro users can leave a medical opinion");
+    }
+    return value;
+  }
+
+  /** La walkthrough doit exister sur ce challenge, m'appartenir, et être encore brouillon. */
+  private async loadDraft(
+    validationChallengeId: string,
+    runId: string,
+    validatorUserId: string
+  ): Promise<ValidationScenarioRun> {
+    const run = await this.deps.runRepo.findById(runId);
+    if (!run || run.validation_challenge_id !== validationChallengeId) {
+      throw new RunNotFoundError("Walkthrough not found on this validation challenge");
+    }
+    if (run.validator_user_id !== validatorUserId) {
+      throw new ForbiddenRunAccessError("This walkthrough does not belong to you");
+    }
+    if (run.completed_at) {
+      throw new RunAlreadyCompletedError("This walkthrough is completed and cannot be changed");
+    }
+    return run;
   }
 
   /** Le scénario joint à mes réponses, dans l'ordre des étapes. */
