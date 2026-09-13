@@ -15,10 +15,15 @@ import type {
   ValidationScenarioStep,
   ValidationStepFeedback,
 } from "../../database-service/domain/entities.js";
+import type { RewardEntryDraft } from "../../database-service/repositories/index.js";
+import type { Challenge } from "../../database-service/domain/entities.js";
 import { assertScenarioChallenge } from "./scenario-guard.js";
+import { findOrCreateValidatorContribution } from "./validatorContribution.js";
 import {
   EmptyScenarioError,
   ForbiddenRunAccessError,
+  GlobalFeedbackRequiredError,
+  IncompleteWalkthroughError,
   MedicalCommentForbiddenError,
   RunAlreadyCompletedError,
   RunNotFoundError,
@@ -55,6 +60,12 @@ export interface WalkthroughState {
   completedAt: Date | null;
   globalFeedback: string | null;
   steps: WalkthroughStepState[];
+}
+
+export interface CompleteWalkthroughResult {
+  completed: true;
+  /** CP réellement versés — 0 si le pool était déjà vide quand c'est arrivé à ce validateur. */
+  cpAwarded: number;
 }
 
 export interface ScenarioWalkthroughDeps {
@@ -239,6 +250,86 @@ export class ScenarioWalkthroughService {
       throw new MedicalCommentForbiddenError("Only medical_pro users can leave a medical opinion");
     }
     return value;
+  }
+
+  /**
+   * Clôt la walkthrough : elle devient immuable et paie `cp_per_validation`,
+   * écrêté au reliquat du pool.
+   *
+   * L'ordre compte. `runRepo.complete()` est gardé sur `completed_at IS NULL`
+   * et renvoie null si une requête concurrente est passée avant — on paie
+   * donc **après** l'avoir gagné, jamais avant. C'est ce qui rend un
+   * double-clic inoffensif sans transaction explicite, exactement comme
+   * `targetRepo.resolve()` côté ML.
+   *
+   * Ne touche ni `evaluation_status`, ni `evaluation`, ni `globalScore` de la
+   * contribution `project` parcourue, et ne verse rien à son auteur : les CP
+   * restent entièrement du côté validateur.
+   */
+  async completeWalkthrough(input: {
+    validationChallengeId: string;
+    runId: string;
+    validatorUserId: string;
+    globalFeedback: string;
+  }): Promise<CompleteWalkthroughResult> {
+    const { validationChallengeId, runId, validatorUserId } = input;
+
+    const challenge = await assertScenarioChallenge(this.deps.challengeRepo, validationChallengeId);
+    const run = await this.loadDraft(validationChallengeId, runId, validatorUserId);
+
+    const globalFeedback = blankToNull(input.globalFeedback);
+    if (!globalFeedback) {
+      throw new GlobalFeedbackRequiredError("An overall feedback is required to finish a walkthrough");
+    }
+
+    // Défense en profondeur : la garde a déjà tourné à l'ouverture, mais une
+    // adhésion de groupe a pu naître entre-temps — et castVerdict revérifie
+    // pareil ce que la route de révélation avait déjà imposé.
+    await this.assertNotOwnApplication(run.contribution_id, validatorUserId);
+
+    const steps = await this.deps.stepRepo.findByChallenge(validationChallengeId);
+    const answered = new Set((await this.deps.feedbackRepo.findByRun(run.uuid)).map(f => f.step_id));
+    const missingStepIds = steps.filter(s => !answered.has(s.uuid)).map(s => s.uuid);
+    if (missingStepIds.length > 0) {
+      throw new IncompleteWalkthroughError(
+        missingStepIds.length === 1
+          ? "1 step still has no result"
+          : `${missingStepIds.length} steps still have no result`,
+        missingStepIds
+      );
+    }
+
+    const completedRun = await this.deps.runRepo.complete(run.uuid, globalFeedback);
+    if (!completedRun) {
+      // Une requête concurrente a complété — et payé — cette walkthrough.
+      throw new RunAlreadyCompletedError("This walkthrough is completed and cannot be changed");
+    }
+
+    const cpAwarded = await this.payWalkthrough(challenge, completedRun);
+    return { completed: true, cpAwarded };
+  }
+
+  /** Une seule ligne de ledger, écrêtée au reliquat. Même forme exactement que le paiement ML, donc `validation-rewards` et ValidationRewardsPanel n'ont rien à apprendre. */
+  private async payWalkthrough(challenge: Challenge, run: ValidationScenarioRun): Promise<number> {
+    const distributed = await this.deps.rewardRepo.sumByChallenge(challenge.uuid);
+    const remaining = Math.max(0, challenge.contribution_points_reward - distributed);
+    const grant = Math.min(challenge.cp_per_validation ?? 0, remaining);
+    // Pool vide : la walkthrough est complétée quand même. Refuser ici
+    // effacerait un parcours entier déjà effectué ; la bannière de pool est
+    // ce qui évite la surprise, en amont.
+    if (grant <= 0) return 0;
+
+    const validatorContribution = await findOrCreateValidatorContribution(this.deps, challenge, run.validator_user_id);
+    const entry: RewardEntryDraft = {
+      challenge_id: challenge.uuid,
+      user_id: run.validator_user_id,
+      contribution_id: validatorContribution.uuid,
+      rule_key: "validation",
+      points: grant,
+      meta: { targetContributionId: run.contribution_id, runId: run.uuid },
+    };
+    await this.deps.rewardRepo.createManyAndSyncRewards([entry]);
+    return grant;
   }
 
   /** La walkthrough doit exister sur ce challenge, m'appartenir, et être encore brouillon. */

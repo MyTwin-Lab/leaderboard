@@ -12,6 +12,8 @@ import {
   ForbiddenRunAccessError,
   RunAlreadyCompletedError,
   StepNotFoundError,
+  IncompleteWalkthroughError,
+  GlobalFeedbackRequiredError,
 } from "./scenario-errors.js";
 import type {
   Challenge, Contribution, ContributionMember, User,
@@ -345,5 +347,131 @@ describe("saveStepFeedback", () => {
     const { deps } = makeDeps({ existingRun: DRAFT });
 
     await expect(save(deps, { stepId: "step-elsewhere" })).rejects.toThrow(StepNotFoundError);
+  });
+});
+
+function bothAnswered(): ValidationStepFeedback[] {
+  return [
+    { uuid: "fb-1", run_id: "run-mine", step_id: "step-1", result: "passed", comment: null, medical_comment: null, created_at: new Date() },
+    { uuid: "fb-2", run_id: "run-mine", step_id: "step-2", result: "failed", comment: "Login loops.", medical_comment: null, created_at: new Date() },
+  ];
+}
+
+function complete(deps: ScenarioWalkthroughDeps, globalFeedback = "Usable, but the login loops.") {
+  return new ScenarioWalkthroughService(deps).completeWalkthrough({
+    validationChallengeId: VCH, runId: "run-mine", validatorUserId: VALIDATOR, globalFeedback,
+  });
+}
+
+describe("completeWalkthrough", () => {
+  it("stamps the walkthrough completed and pays cp_per_validation", async () => {
+    const { deps, completed, rewardBatches } = makeDeps({
+      existingRun: DRAFT, feedbacks: bothAnswered(), cpPerValidation: 200, pool: 12000, distributed: 2600,
+    });
+
+    const result = await complete(deps);
+
+    expect(completed).toEqual([{ uuid: "run-mine", feedback: "Usable, but the login loops." }]);
+    expect(result).toEqual({ completed: true, cpAwarded: 200 });
+    expect(rewardBatches).toEqual([[{
+      challenge_id: VCH,
+      user_id: VALIDATOR,
+      contribution_id: "validator-contrib",
+      rule_key: "validation",
+      points: 200,
+      meta: { targetContributionId: APP, runId: "run-mine" },
+    }]]);
+  });
+
+  it("attributes the entry to the validator's aggregate validation contribution", async () => {
+    const { deps, contributionsCreated } = makeDeps({ existingRun: DRAFT, feedbacks: bothAnswered() });
+
+    await complete(deps);
+
+    expect(contributionsCreated).toEqual([expect.objectContaining({
+      type: "validation", user_id: VALIDATOR, challenge_id: VCH, reward: 0,
+    })]);
+  });
+
+  it("clamps the payment to what is left in the pool", async () => {
+    const { deps, rewardBatches } = makeDeps({
+      existingRun: DRAFT, feedbacks: bothAnswered(), cpPerValidation: 200, pool: 12000, distributed: 11950,
+    });
+
+    const result = await complete(deps);
+
+    expect(result.cpAwarded).toBe(50);
+    expect(rewardBatches[0][0].points).toBe(50);
+  });
+
+  it("completes for 0 CP against an exhausted pool rather than refusing the work already done", async () => {
+    // La bannière de pool est ce qui évite la surprise ; refuser ici
+    // effacerait un parcours entier déjà effectué.
+    const { deps, completed, rewardBatches } = makeDeps({
+      existingRun: DRAFT, feedbacks: bothAnswered(), pool: 12000, distributed: 12000,
+    });
+
+    const result = await complete(deps);
+
+    expect(result).toEqual({ completed: true, cpAwarded: 0 });
+    expect(completed).toHaveLength(1);
+    expect(rewardBatches).toEqual([]);
+  });
+
+  it("refuses while a step has no result, and names the offending steps", async () => {
+    // Le client allume les points correspondants dans la barre de
+    // progression : le validateur saute dessus au lieu de les chercher.
+    const { deps, completed } = makeDeps({
+      existingRun: DRAFT,
+      feedbacks: [{ uuid: "fb-1", run_id: "run-mine", step_id: "step-1", result: "passed", comment: null, medical_comment: null, created_at: new Date() }],
+    });
+
+    await expect(complete(deps)).rejects.toMatchObject({
+      constructor: IncompleteWalkthroughError,
+      missingStepIds: ["step-2"],
+    });
+    expect(completed).toEqual([]);
+  });
+
+  it("refuses an empty overall feedback", async () => {
+    const { deps } = makeDeps({ existingRun: DRAFT, feedbacks: bothAnswered() });
+
+    await expect(complete(deps, "   ")).rejects.toThrow(GlobalFeedbackRequiredError);
+  });
+
+  it("refuses to complete twice", async () => {
+    const { deps } = makeDeps({
+      existingRun: { ...DRAFT, completed_at: new Date(), global_feedback: "Done." },
+      feedbacks: bothAnswered(),
+    });
+
+    await expect(complete(deps)).rejects.toThrow(RunAlreadyCompletedError);
+  });
+
+  it("pays nothing when it loses the completion race", async () => {
+    // complete() garde sur `completed_at IS NULL` : renvoyer null veut dire
+    // qu'une requête concurrente a déjà complété ET payé cette walkthrough.
+    const { deps, rewardBatches } = makeDeps({
+      existingRun: DRAFT, feedbacks: bothAnswered(), completeReturnsNull: true,
+    });
+
+    await expect(complete(deps)).rejects.toThrow(RunAlreadyCompletedError);
+    expect(rewardBatches).toEqual([]);
+  });
+
+  it("re-checks the not-my-own-application guard at completion, not only at opening", async () => {
+    // Même posture de défense en profondeur que castVerdict, qui revérifie ce
+    // que la route de révélation a déjà imposé.
+    const { deps } = makeDeps({
+      existingRun: DRAFT, feedbacks: bothAnswered(), appHolder: "alice", appMembers: ["alice", VALIDATOR],
+    });
+
+    await expect(complete(deps)).rejects.toThrow(SelfWalkthroughError);
+  });
+
+  it("refuses a walkthrough that belongs to someone else", async () => {
+    const { deps } = makeDeps({ existingRun: { ...DRAFT, validator_user_id: "carol" }, feedbacks: bothAnswered() });
+
+    await expect(complete(deps)).rejects.toThrow(ForbiddenRunAccessError);
   });
 });
