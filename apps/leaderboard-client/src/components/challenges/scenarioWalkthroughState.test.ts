@@ -3,6 +3,7 @@ import {
   firstUnansweredIndex,
   finishBlocker,
   finishHint,
+  mergeStepsAfterSave,
   type WalkthroughStepView,
 } from './scenarioWalkthroughState';
 
@@ -82,5 +83,40 @@ describe('finishHint', () => {
 
   it('reports an unsaved step even once everything else is in order', () => {
     expect(finishHint(steps('passed'), 'Usable.', 200, 1)).toBe('1 step could not be saved — retry before finishing');
+  });
+});
+
+describe('mergeStepsAfterSave', () => {
+  it('takes the server value for a step whose local content matches what was last confirmed', () => {
+    const confirmed = steps('passed', null);
+    const local = steps('passed', null);
+    const server = steps('passed', 'failed'); // someone else's step-2 update landed on the server
+
+    const merged = mergeStepsAfterSave(local, confirmed, server, 'step-1');
+
+    expect(merged[1].result).toBe('failed');
+  });
+
+  it('preserves a step whose local content still diverges from what was last confirmed, even though it was not the one just saved', () => {
+    // Un commentaire tapé sur l'étape 2 sans résultat n'est jamais PUT : le
+    // serveur ne l'a jamais vu, donc son snapshot ne le contient pas.
+    const confirmed = steps(null, null);
+    const local = steps('passed', null);
+    local[1] = { ...local[1], comment: 'Typed but never sent' };
+    const server = steps('passed', null); // step-1 just got confirmed; step-2 untouched server-side
+
+    const merged = mergeStepsAfterSave(local, confirmed, server, 'step-1');
+
+    expect(merged[1].comment).toBe('Typed but never sent');
+  });
+
+  it('always takes the server value for the step that was just saved', () => {
+    const confirmed = steps(null, null);
+    const local = steps('passed', null);
+    const server = steps('passed', null);
+
+    const merged = mergeStepsAfterSave(local, confirmed, server, 'step-1');
+
+    expect(merged[0]).toEqual(server[0]);
   });
 });

@@ -57,3 +57,39 @@ export function finishHint(
 ): string {
   return finishBlocker(steps, globalFeedback, unsavedCount) ?? `Pays ${cpPerValidation} CP from the remaining pool`;
 }
+
+function stepContentEqual(a: WalkthroughStepView, b: WalkthroughStepView): boolean {
+  return a.result === b.result && a.comment === b.comment && a.medicalComment === b.medicalComment;
+}
+
+/**
+ * Fusionne le snapshot renvoyé par le serveur après l'enregistrement d'une
+ * étape avec l'état local, étape par étape plutôt qu'en remplaçant tout le
+ * tableau.
+ *
+ * Un commentaire tapé sur une étape sans résultat n'est jamais PUT (l'étape
+ * n'a rien à enregistrer tant qu'aucun résultat n'est choisi) : sans cette
+ * fusion, l'enregistrement réussi d'une AUTRE étape écrasait ce texte avec le
+ * snapshot serveur, qui ne l'a jamais vu passer. Ici, une étape dont le local
+ * diverge encore de ce qu'on sait confirmé (ni la réponse du serveur, ni
+ * l'étape qu'on vient d'enregistrer) survit intacte ; toutes les autres
+ * prennent la version serveur, la plus à jour qu'on ait.
+ */
+export function mergeStepsAfterSave(
+  local: WalkthroughStepView[],
+  confirmed: WalkthroughStepView[],
+  serverSteps: WalkthroughStepView[],
+  justSavedStepId: string
+): WalkthroughStepView[] {
+  const confirmedById = new Map(confirmed.map(s => [s.stepId, s]));
+  const localById = new Map(local.map(s => [s.stepId, s]));
+  return serverSteps.map(serverStep => {
+    if (serverStep.stepId === justSavedStepId) return serverStep;
+    const localStep = localById.get(serverStep.stepId);
+    const confirmedStep = confirmedById.get(serverStep.stepId);
+    if (localStep && confirmedStep && !stepContentEqual(localStep, confirmedStep)) {
+      return localStep;
+    }
+    return serverStep;
+  });
+}

@@ -14,6 +14,7 @@ import {
   StepNotFoundError,
   IncompleteWalkthroughError,
   GlobalFeedbackRequiredError,
+  ValidatorRoleError,
 } from "./scenario-errors.js";
 import type {
   Challenge, Contribution, ContributionMember, User,
@@ -240,6 +241,31 @@ describe("openWalkthrough", () => {
     const { deps } = makeDeps({ sourceType: "ml" });
 
     await expect(open(deps)).rejects.toThrow(ScenarioModeError);
+  });
+
+  it("lets a contributor open a walkthrough", async () => {
+    const { deps } = makeDeps({ validatorRole: "contributor" });
+
+    await expect(open(deps)).resolves.toMatchObject({ runId: "run-new" });
+  });
+
+  it("lets a medical_pro open a walkthrough", async () => {
+    const { deps } = makeDeps({ validatorRole: "medical_pro" });
+
+    await expect(open(deps)).resolves.toMatchObject({ runId: "run-new" });
+  });
+
+  it("lets an admin open a walkthrough", async () => {
+    const { deps } = makeDeps({ validatorRole: "admin" });
+
+    await expect(open(deps)).resolves.toMatchObject({ runId: "run-new" });
+  });
+
+  it("refuses a viewer — read-only everywhere else, and CP paid to one can't be recovered", async () => {
+    const { deps, runsCreated } = makeDeps({ validatorRole: "viewer" });
+
+    await expect(open(deps)).rejects.toThrow(ValidatorRoleError);
+    expect(runsCreated).toEqual([]);
   });
 });
 

@@ -44,6 +44,15 @@ export class MedicalCommentForbiddenError extends Error {}
 export class TargetNotExposedError extends Error {}
 
 /**
+ * Un `viewer` (rôle assignable, lecture seule partout ailleurs) essaie
+ * d'ouvrir une walkthrough. Le reste des rôles connectés — contributor,
+ * medical_pro, admin — passe ; seul viewer est exclu, parce qu'un viewer
+ * refusé à tort ne coûte qu'un changement de rôle par un admin, alors que des
+ * CP versés à tort à un compte en lecture seule ne se reprennent pas. -> 403
+ */
+export class ValidatorRoleError extends Error {}
+
+/**
  * Il reste des étapes sans résultat. Porte leurs identifiants pour que le
  * client puisse allumer les points correspondants dans la barre de
  * progression, au lieu de laisser le validateur chercher. -> 400

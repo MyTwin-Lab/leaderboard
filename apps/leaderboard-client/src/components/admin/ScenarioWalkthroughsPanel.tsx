@@ -138,6 +138,7 @@ export function ScenarioWalkthroughsPanel({ challengeId, open }: { challengeId: 
   const [steps, setSteps] = useState<ScenarioStep[]>([]);
   const [runs, setRuns] = useState<WalkthroughRun[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const wasOpen = useRef(false);
   useEffect(() => {
@@ -145,9 +146,23 @@ export function ScenarioWalkthroughsPanel({ challengeId, open }: { challengeId: 
     wasOpen.current = open;
     if (!justOpened) return;
     setLoading(true);
+    setError('');
     fetch(`/api/challenges/${challengeId}/validation-scenario-runs`)
-      .then(res => (res.ok ? res.json() : { steps: [], runs: [] }))
-      .then(d => { setSteps(d.steps ?? []); setRuns(d.runs ?? []); })
+      .then(async res => {
+        if (!res.ok) {
+          // Avec zéro quorum ce panneau EST le contrôle qualité : un 403/500
+          // qui se lit "No walkthrough yet" est la seule mauvaise réponse
+          // possible à donner à un manager qui inspecte le travail des
+          // validateurs.
+          const d = await res.json().catch(() => ({}));
+          setError(d.error || 'Could not load the walkthroughs');
+          return;
+        }
+        const d = await res.json();
+        setSteps(d.steps ?? []);
+        setRuns(d.runs ?? []);
+      })
+      .catch(() => setError('Network error'))
       .finally(() => setLoading(false));
   }, [open, challengeId]);
 
@@ -156,6 +171,12 @@ export function ScenarioWalkthroughsPanel({ challengeId, open }: { challengeId: 
       <div className="flex items-center gap-2 py-2 text-xs" style={{ color: fgAt(0.35) }}>
         <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <p className="rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs text-red-400">{error}</p>
     );
   }
 

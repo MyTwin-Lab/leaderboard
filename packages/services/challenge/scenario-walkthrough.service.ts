@@ -30,7 +30,11 @@ import {
   SelfWalkthroughError,
   StepNotFoundError,
   TargetNotExposedError,
+  ValidatorRoleError,
 } from "./scenario-errors.js";
+
+/** Rôles autorisés à parcourir un scénario et être payés pour — tout sauf `viewer`. */
+const ELIGIBLE_VALIDATOR_ROLES = ["contributor", "medical_pro", "admin"];
 
 /** Un champ texte vide ou blanc vaut « pas de contenu », jamais une chaîne vide en base. */
 function blankToNull(value: string | null | undefined): string | null {
@@ -130,6 +134,7 @@ export class ScenarioWalkthroughService {
 
     await assertScenarioChallenge(this.deps.challengeRepo, validationChallengeId);
     await this.assertExposed(validationChallengeId, contributionId);
+    await this.assertValidatorRole(validatorUserId);
 
     const steps = await this.deps.stepRepo.findByChallenge(validationChallengeId);
     if (steps.length === 0) {
@@ -164,6 +169,20 @@ export class ScenarioWalkthroughService {
     const targets = await this.deps.targetRepo.findByChallenge(validationChallengeId);
     if (!targets.some(t => t.contribution_id === contributionId)) {
       throw new TargetNotExposedError("This application is not exposed on this validation challenge");
+    }
+  }
+
+  /**
+   * « Any signed-in contributor » dans la spec veut dire ce que le rôle dit :
+   * contributor, medical_pro et admin peuvent parcourir un scénario ; viewer
+   * — assignable, lecture seule partout ailleurs dans proxy.ts — ne peut pas.
+   * Vérifié ici plutôt que dans le middleware pour que ce soit testable et
+   * pour que toute route qui appelle openWalkthrough en hérite.
+   */
+  private async assertValidatorRole(validatorUserId: string): Promise<void> {
+    const user = await this.deps.userRepo.findById(validatorUserId);
+    if (!user || !ELIGIBLE_VALIDATOR_ROLES.includes(user.role)) {
+      throw new ValidatorRoleError("Only a contributor, medical_pro or admin can walk through a scenario");
     }
   }
 

@@ -204,6 +204,18 @@ describe('GET /api/challenges/[id]/validation-targets', () => {
     expect(target.brokenCount).toBeUndefined();
   });
 
+  it('never discloses the contributor endpoint URL in reference-case mode — only the server-side proxy ever calls it', async () => {
+    mockTargetFindByChallenge.mockResolvedValue([
+      { uuid: 't1', contribution_id: 'c1', outcome: 'pending', resolved_at: null },
+    ]);
+    mockContributionFindById.mockResolvedValue({ uuid: 'c1', user_id: 'u1', live_endpoint_url: 'https://model.example.com/predict' });
+
+    const res = await getTargets();
+    const body = await res.json();
+
+    expect(body.targets[0].endpointUrl).toBeUndefined();
+  });
+
   it('exposes worksCount/brokenCount and alreadyValidatedByMe to the manager', async () => {
     mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
     mockTargetFindByChallenge.mockResolvedValue([

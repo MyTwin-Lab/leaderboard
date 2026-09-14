@@ -171,16 +171,18 @@ export async function GET(
           submitterUserId: c?.user_id ?? null,
           submitterName: submitter?.full_name ?? 'Unknown',
           submitterAvatarUrl: submitter?.avatar_url ?? null,
-          // Le navigateur du validateur est ce qui charge l'application, donc
-          // l'URL doit sortir jusqu'au client. Elle a déjà passé
-          // assertPublicHttpUrl à l'exposition.
-          endpointUrl: c?.live_endpoint_url ?? null,
           alreadyValidatedByMe: validatedContributionIds.has(t.contribution_id),
           verdictCount: attempts.length,
           outcome: t.outcome,
           resolvedAt: t.resolved_at,
           myOpenClaims: myOpenClaimsByTarget[i],
           ...(isScenario ? {
+            // Le navigateur du validateur est ce qui charge l'application en
+            // mode scénario, donc l'URL doit sortir jusqu'au client — elle a
+            // déjà passé assertPublicHttpUrl à l'exposition. En mode
+            // référence le proxy serveur est seul à appeler l'endpoint ;
+            // cette URL n'a jamais eu à quitter le serveur et ne le doit pas.
+            endpointUrl: c?.live_endpoint_url ?? null,
             walkthroughCount: allRuns.filter(r => r.contribution_id === t.contribution_id).length,
             myWalkthrough: myRun ? { runId: myRun.uuid, completedAt: myRun.completed_at } : null,
           } : {}),

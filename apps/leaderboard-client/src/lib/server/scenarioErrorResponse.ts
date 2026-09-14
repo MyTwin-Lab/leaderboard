@@ -12,6 +12,7 @@ import {
   MedicalCommentForbiddenError,
   TargetNotExposedError,
   IncompleteWalkthroughError,
+  ValidatorRoleError,
 } from "../../../../../packages/services/challenge/scenario-errors";
 
 /**
@@ -45,6 +46,9 @@ export function scenarioErrorResponse(error: unknown): NextResponse | null {
     return NextResponse.json({ error: error.message }, { status: 403 });
   }
   if (error instanceof MedicalCommentForbiddenError) {
+    return NextResponse.json({ error: error.message }, { status: 403 });
+  }
+  if (error instanceof ValidatorRoleError) {
     return NextResponse.json({ error: error.message }, { status: 403 });
   }
   if (error instanceof RunNotFoundError) {

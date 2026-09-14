@@ -309,17 +309,19 @@ export async function proxy(request: NextRequest) {
 
       // Parcours de scénario (challenge-018) : ouvrir ou reprendre une
       // walkthrough, enregistrer le retour d'une étape, et la clore. Ouvert à
-      // TOUT contributeur connecté, sans condition de rôle — contrairement au
-      // flux cas de référence, il n'y a pas de vérité terrain à être qualifié
-      // pour juger, seulement un scénario à parcourir. C'est le geste central
-      // de la fonctionnalité, pas une action d'administration.
+      // tout principal connecté à ce niveau, sans condition de rôle ici —
+      // contrairement au flux cas de référence, il n'y a pas de vérité
+      // terrain à être qualifié pour juger, seulement un scénario à
+      // parcourir. C'est le geste central de la fonctionnalité, pas une
+      // action d'administration.
       //
       // Les vraies gardes vivent dans ScenarioWalkthroughService, où elles sont
-      // testées : pas ma propre application (porteur ET membres du groupe),
-      // la walkthrough m'appartient et est encore brouillon, l'avis médical
-      // réservé aux medical_pro. Sans cette exception, le garde-fou « admin
-      // only » ci-dessous interdirait à tout le monde sauf un admin de démarrer
-      // une walkthrough — et donc d'être payé.
+      // testées : rôle éligible (contributor/medical_pro/admin — pas viewer,
+      // lecture seule partout ailleurs), pas ma propre application (porteur ET
+      // membres du groupe), la walkthrough m'appartient et est encore
+      // brouillon, l'avis médical réservé aux medical_pro. Sans cette
+      // exception, le garde-fou « admin only » ci-dessous interdirait à tout
+      // le monde sauf un admin de démarrer une walkthrough — et donc d'être payé.
       const isScenarioWalkthroughRoute = pathname.includes('/validation-scenario-runs');
 
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes

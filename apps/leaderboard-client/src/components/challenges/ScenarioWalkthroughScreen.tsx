@@ -7,6 +7,7 @@ import {
   finishHint,
   finishBlocker,
   firstUnansweredIndex,
+  mergeStepsAfterSave,
   type WalkthroughStepView,
 } from './scenarioWalkthroughState';
 
@@ -39,6 +40,11 @@ export function ScenarioWalkthroughScreen({
   challengeId, contributionId, submitterName, endpointUrl, onClose,
 }: Props) {
   const [steps, setSteps] = useState<WalkthroughStepView[]>([]);
+  // Le dernier snapshot qu'on sait confirmé par le serveur — pas un miroir de
+  // `steps`, qui peut être en avance dessus le temps d'une saisie. C'est la
+  // référence par rapport à laquelle mergeStepsAfterSave détecte qu'une autre
+  // étape a encore une saisie locale non confirmée à préserver.
+  const [confirmedSteps, setConfirmedSteps] = useState<WalkthroughStepView[]>([]);
   const [runId, setRunId] = useState<string | null>(null);
   const [completedAt, setCompletedAt] = useState<string | null>(null);
   const [globalFeedback, setGlobalFeedback] = useState('');
@@ -79,6 +85,7 @@ export function ScenarioWalkthroughScreen({
         if (cancelled) return;
         setRunId(run.runId);
         setSteps(run.steps ?? []);
+        setConfirmedSteps(run.steps ?? []);
         setCompletedAt(run.completedAt ?? null);
         setGlobalFeedback(run.globalFeedback ?? '');
         // Reprendre sur la première étape sans résultat, pas sur l'étape 1.
@@ -143,7 +150,13 @@ export function ScenarioWalkthroughScreen({
       );
       if (res.ok) {
         const state = await res.json();
-        setSteps(state.steps ?? []);
+        const serverSteps: WalkthroughStepView[] = state.steps ?? [];
+        // Fusion étape par étape, pas un remplacement du tableau entier : une
+        // autre étape peut porter une saisie locale (un commentaire tapé sans
+        // résultat, donc jamais PUT) que ce snapshot n'a jamais vue et qui ne
+        // doit pas disparaître sous prétexte que CETTE étape vient de réussir.
+        setSteps(prev => mergeStepsAfterSave(prev, confirmedSteps, serverSteps, step.stepId));
+        setConfirmedSteps(serverSteps);
         setMissingStepIds([]);
         // Confirmé par le serveur : ce n'est plus un texte tapé qui ne lui
         // est jamais parvenu.
@@ -162,7 +175,7 @@ export function ScenarioWalkthroughScreen({
       setUnsavedStepIds(prev => (prev.includes(step.stepId) ? prev : [...prev, step.stepId]));
     }
     finally { setSaving(false); }
-  }, [challengeId, runId, step, isReadOnly]);
+  }, [challengeId, runId, step, isReadOnly, confirmedSteps]);
 
   const handleFinish = async () => {
     if (!runId || blocker) return;
@@ -283,18 +296,19 @@ export function ScenarioWalkthroughScreen({
       <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
         <div className="space-y-2.5">
           {endpointUrl ? (
-            // `allow` délègue la caméra et le micro à l'application encadrée.
-            // Sans cet attribut, une iframe multi-origine n'y a aucun droit :
-            // la politique de permissions par défaut vaut `self`, et
+            // `allow` délègue la caméra à l'application encadrée. Sans cet
+            // attribut, une iframe multi-origine n'y a aucun droit : la
+            // politique de permissions par défaut vaut `self`, et
             // getUserMedia y est refusé sans même afficher de demande. Une
             // application dont le coeur est la caméra serait alors bloquée par
             // NOTRE cadre, pas par son propre code — un résultat de validation
             // faux. La délégation ne vaut que pour l'origine chargée ici, et
-            // le navigateur demande quand même son accord au validateur.
+            // le navigateur demande quand même son accord au validateur. Pas
+            // de micro : rien dans le scénario ne le justifie.
             <iframe
               src={endpointUrl}
               title={`${submitterName} — application under validation`}
-              allow="camera; microphone"
+              allow="camera"
               className="h-[min(620px,70vh)] w-full rounded-[20px] border border-white/10 bg-white"
             />
           ) : (
@@ -387,7 +401,13 @@ export function ScenarioWalkthroughScreen({
                   return (
                     <button
                       key={r}
-                      onClick={() => saveStep({ result: on ? null : r })}
+                      // Un clic sur le résultat déjà choisi ne fait rien : il
+                      // n'y a pas de route DELETE, donc désélectionner en
+                      // local créerait un état que le serveur ne peut pas
+                      // représenter — la ligne resterait, la vue ne la
+                      // montrerait plus, jusqu'à ce que le prochain
+                      // enregistrement d'une autre étape la fasse réapparaître.
+                      onClick={() => { if (!on) saveStep({ result: r }); }}
                       className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all ${
                         on ? `${meta.bg} ${meta.border} ${meta.text}` : 'border-white/10 hover:border-white/20'
                       }`}

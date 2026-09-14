@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ValidationTargetRepository, ValidationAttemptRepository } from '../../../../../../../../../packages/database-service/repositories';
+import { ValidationTargetRepository, ValidationAttemptRepository, ScenarioRunRepository } from '../../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 
 const targetRepo = new ValidationTargetRepository();
 const attemptRepo = new ValidationAttemptRepository();
+const scenarioRunRepo = new ScenarioRunRepository();
 
 // DELETE /api/challenges/[id]/validation-targets/[targetId] — admin/manager only
 export async function DELETE(
@@ -25,10 +26,24 @@ export async function DELETE(
       return NextResponse.json({ error: 'Target not found' }, { status: 404 });
     }
 
-    const attempts = await attemptRepo.findByChallengeAndContribution(challengeId, existing.contribution_id);
+    // Deux modes, deux formes de « travail déjà là » sur cette cible : un vote
+    // en mode référence, une walkthrough (brouillon ou complétée et payée) en
+    // mode scénario. `attempts` est toujours vide en mode scénario, donc sans
+    // ce second compte la garde ne voyait jamais rien à protéger dans ce mode.
+    const [attempts, runs] = await Promise.all([
+      attemptRepo.findByChallengeAndContribution(challengeId, existing.contribution_id),
+      scenarioRunRepo.findByChallenge(challengeId),
+    ]);
+    const walkthroughCount = runs.filter(r => r.contribution_id === existing.contribution_id).length;
     if (attempts.length > 0) {
       return NextResponse.json(
         { error: `Cannot remove a target that already has ${attempts.length} vote(s)` },
+        { status: 409 }
+      );
+    }
+    if (walkthroughCount > 0) {
+      return NextResponse.json(
+        { error: `Cannot remove a target that already has ${walkthroughCount} walkthrough(s)` },
         { status: 409 }
       );
     }

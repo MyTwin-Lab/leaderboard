@@ -17,6 +17,9 @@ interface TargetItem {
   outcome: 'pending' | 'works' | 'broken';
   worksCount?: number;
   brokenCount?: number;
+  // Mode scénario seulement — 0 vote n'y signifie jamais "rien à protéger",
+  // c'est walkthroughCount qui porte le travail déjà fait sur cette cible.
+  walkthroughCount?: number;
 }
 
 function fgAt(opacity: number) {
@@ -63,6 +66,7 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
           outcome: t.outcome ?? 'pending',
           worksCount: t.worksCount,
           brokenCount: t.brokenCount,
+          walkthroughCount: t.walkthroughCount,
         })));
       }
       if (eligibleRes.ok) {
@@ -143,8 +147,14 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
                   </div>
                   <button
                     onClick={() => handleRemove(t.id)}
-                    disabled={deletingId === t.id || t.verdictCount > 0}
-                    title={t.verdictCount > 0 ? 'This target already received votes - it cannot be removed' : undefined}
+                    disabled={deletingId === t.id || t.verdictCount > 0 || !!t.walkthroughCount}
+                    title={
+                      t.verdictCount > 0
+                        ? 'This target already received votes - it cannot be removed'
+                        : t.walkthroughCount
+                          ? 'This target already has walkthroughs - it cannot be removed'
+                          : undefined
+                    }
                     className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white/25"
                     aria-label="Remove submission"
                   >

@@ -33,7 +33,7 @@ The same gap exists on the `code` side: a code challenge's tasks are AI-graded f
 
 Validation is gated on a dedicated role — `users.role = 'medical_pro'` — not on challenge membership. Only a `medical_pro` can author a reference case, claim one, record an observation, reveal an expected output, or cast a verdict. Admins and project managers get oversight (they can read every case and every run) but **cannot** author cases or vote: authorship is a qualification boundary, not a permission level.
 
-In scenario mode the walkthrough itself is open to any signed-in contributor — there is no ground truth to be qualified to judge against, only steps to follow. The one place the role still matters is the optional medical opinion on each step: writing it is gated on `role = 'medical_pro'`, exactly the same qualification boundary as above, just narrowed to one field instead of the whole flow.
+In scenario mode the walkthrough itself is open to any signed-in contributor — there is no ground truth to be qualified to judge against, only steps to follow. "Contributor" means what it says, though: `openWalkthrough` allows `contributor`, `medical_pro` and `admin`, and refuses `viewer` (`ValidatorRoleError`, 403). `viewer` is a real assignable, read-only-everywhere-else role, and a walkthrough pays CP on completion — a viewer wrongly refused costs an admin a role change, CP paid to a read-only account does not come back. The one place the role still matters beyond that is the optional medical opinion on each step: writing it is gated on `role = 'medical_pro'`, exactly the same qualification boundary as above, just narrowed to one field instead of the whole flow.
 
 The role is assigned by an admin in `/admin/users`. See [`auth.md`](./auth.md#roles).
 
@@ -170,7 +170,7 @@ Any signed-in contributor (not the application's own author or group)
       cp_per_validation, clamped to the pool
 ```
 
-**Guards.** Not your own application — checked against `contributions.user_id` **and** `contribution_members`, because `code` challenges support groups of 2-3 sharing one contribution where `user_id` is only the *holder*; ML has no groups, so this guard has no equivalent in the reference-case flow. Re-checked at completion, the same defense-in-depth posture as `castVerdict`. One walkthrough per (validator, application), enforced by a unique index so concurrent requests race safely. The medical comment is gated on the role, not on challenge membership.
+**Guards.** Eligible role — `contributor`, `medical_pro` or `admin`; `viewer` is refused (`ValidatorRoleError`, 403), checked in `openWalkthrough` so every route into it inherits the check. Not your own application — checked against `contributions.user_id` **and** `contribution_members`, because `code` challenges support groups of 2-3 sharing one contribution where `user_id` is only the *holder*; ML has no groups, so this guard has no equivalent in the reference-case flow. Re-checked at completion, the same defense-in-depth posture as `castVerdict`. One walkthrough per (validator, application), enforced by a unique index so concurrent requests race safely. The medical comment is gated on the role, not on challenge membership.
 
 **Why the browser calls the application.** The exact inverse of the reference-case flow's rationale, and worth writing down: there is no proxy, no timeout, no size cap and nothing needs an SSRF check at walkthrough time — that guard existed to defend the *server* issuing the request, and here the browser issues it directly to the application in an iframe. The guard at **exposure** time stays, and still buys the useful half: a `javascript:` URL can never be stored and later rendered as a link, and a typo pointing at a private address is caught while the admin is still looking at the form.
 
@@ -235,9 +235,9 @@ Any signed-in contributor (not the application's own author or group)
 | `packages/services/challenge/scenario-guard.ts` | `assertScenarioChallenge` — shared "is this challenge really in scenario mode" check |
 | `packages/services/challenge/scenario-steps.service.ts` | Step CRUD + reorder, the freeze check |
 | `packages/services/challenge/scenario-walkthrough.service.ts` | Open/resume a run, save a step, complete + pay — the group-aware ownership guard |
-| `packages/services/challenge/scenario-errors.ts` | The twelve typed error classes both scenario services throw |
+| `packages/services/challenge/scenario-errors.ts` | The thirteen typed error classes both scenario services throw |
 | `packages/services/challenge/validatorContribution.ts` | `findOrCreateValidatorContribution` — the aggregating `type: 'validation'` contribution, shared by both modes' payment paths |
-| `apps/leaderboard-client/src/lib/server/scenarioErrorResponse.ts` | Maps all twelve scenario error classes to HTTP statuses — one mapping shared by all five scenario routes |
+| `apps/leaderboard-client/src/lib/server/scenarioErrorResponse.ts` | Maps all thirteen scenario error classes to HTTP statuses — one mapping shared by all five scenario routes |
 | `apps/leaderboard-client/src/app/api/challenges/[id]/validation-*/` | Every route in the flows above, both modes |
 | `apps/leaderboard-client/src/components/challenges/ValidationChallengeFlow.tsx` | Reviewer: claim → observe → reveal → vote (reference-case mode) |
 | `apps/leaderboard-client/src/components/challenges/ReferenceCaseAuthorPanel.tsx` | Reviewer: author a reference case |
