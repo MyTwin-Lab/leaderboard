@@ -3,7 +3,7 @@ import { toPublicMlRewards } from './mlRewards';
 
 // This route looks harmless and is not: it returns CP per person and the
 // reward configuration itself. The page reads neither — mlRewardsQuery types
-// its result as { metric, bestValue } (challenges/[id]/page.tsx:176-179).
+// its result as { metric, bestValue } (challenges/[id]/ChallengeDetailClient.tsx, mlRewardsQuery).
 const RAW = {
   pool: 1000,
   distributed: 420,
