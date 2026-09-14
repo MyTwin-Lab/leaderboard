@@ -500,4 +500,19 @@ describe("completeWalkthrough", () => {
 
     await expect(complete(deps)).rejects.toThrow(ForbiddenRunAccessError);
   });
+
+  it("re-checks the role guard at completion, not only at opening — a contributor demoted to viewer mid-draft is refused and paid nothing", async () => {
+    // Même défense en profondeur que la garde de non-propriété juste
+    // au-dessus : un rôle peut changer entre l'ouverture d'un brouillon et sa
+    // clôture. Le point n'est pas seulement que ça lève, mais que personne
+    // n'est payé pour autant — d'où l'assertion sur rewardBatches, pas
+    // seulement sur l'erreur.
+    const { deps, rewardBatches, completed } = makeDeps({
+      existingRun: DRAFT, feedbacks: bothAnswered(), validatorRole: "viewer",
+    });
+
+    await expect(complete(deps)).rejects.toThrow(ValidatorRoleError);
+    expect(rewardBatches).toEqual([]);
+    expect(completed).toEqual([]);
+  });
 });

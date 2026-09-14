@@ -25,10 +25,13 @@ const feedbackRepo = new StepFeedbackRepository();
 
 const openRunSchema = z.object({ contribution_id: z.string().uuid() });
 
-// POST /api/challenges/[id]/validation-scenario-runs — tout contributeur connecté.
+// POST /api/challenges/[id]/validation-scenario-runs — tout principal connecté
+// à ce niveau ; ScenarioWalkthroughService.openWalkthrough affine ensuite :
+// contributor, medical_pro et admin peuvent ouvrir une walkthrough, viewer
+// est refusé (ValidatorRoleError, 403).
 // Idempotent : crée le brouillon, ou renvoie celui laissé en cours avec les
-// retours d'étape déjà enregistrés. Aucun rôle requis — seul l'avis médical
-// est gardé sur medical_pro, étape par étape.
+// retours d'étape déjà enregistrés. L'avis médical, lui, reste gardé sur
+// medical_pro, étape par étape.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

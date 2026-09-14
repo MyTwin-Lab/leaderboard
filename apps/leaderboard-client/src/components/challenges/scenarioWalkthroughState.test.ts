@@ -90,7 +90,7 @@ describe('mergeStepsAfterSave', () => {
   it('takes the server value for a step whose local content matches what was last confirmed', () => {
     const confirmed = steps('passed', null);
     const local = steps('passed', null);
-    const server = steps('passed', 'failed'); // someone else's step-2 update landed on the server
+    const server = steps('passed', 'failed'); // the server snapshot carries no local edit it was never told about — nothing to preserve over it
 
     const merged = mergeStepsAfterSave(local, confirmed, server, 'step-1');
 

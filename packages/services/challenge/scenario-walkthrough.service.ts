@@ -301,9 +301,13 @@ export class ScenarioWalkthroughService {
       throw new GlobalFeedbackRequiredError("An overall feedback is required to finish a walkthrough");
     }
 
-    // Défense en profondeur : la garde a déjà tourné à l'ouverture, mais une
-    // adhésion de groupe a pu naître entre-temps — et castVerdict revérifie
-    // pareil ce que la route de révélation avait déjà imposé.
+    // Défense en profondeur : les deux gardes ont déjà tourné à l'ouverture,
+    // mais un rôle peut avoir été rétrogradé, et une adhésion de groupe peut
+    // être née, entre l'ouverture d'un brouillon et sa clôture — castVerdict
+    // revérifie pareil ce que la route de révélation avait déjà imposé. Sans
+    // ce second appel, un contributeur passé viewer en cours de route
+    // resterait payable à la clôture malgré la garde posée à l'ouverture.
+    await this.assertValidatorRole(validatorUserId);
     await this.assertNotOwnApplication(run.contribution_id, validatorUserId);
 
     const steps = await this.deps.stepRepo.findByChallenge(validationChallengeId);
