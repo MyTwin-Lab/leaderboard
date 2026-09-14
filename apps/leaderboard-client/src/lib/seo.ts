@@ -2,37 +2,49 @@ import type { Metadata, MetadataRoute } from "next";
 
 /**
  * Ce que les moteurs de recherche et les aperçus de lien lisent : nom du site,
- * URL publique, descriptions, et forme des métadonnées d'une page.
+ * URL publique, descriptions, forme des métadonnées d'une page et données
+ * structurées (JSON-LD).
  *
  * Pur (ni base, ni `server-only`) : `robots.ts`, `opengraph-image.tsx` et les
  * layouts l'importent, et les tests l'appellent sans rien mocker.
  */
-export const SITE_NAME = "MyTwin Leaderboard";
-
-export const DEFAULT_DESCRIPTION =
-  "Students, engineers, clinicians and researchers building the most advanced digital twin of the human body. Every contribution is tracked, evaluated and rewarded in CP.";
-
-const LOCAL_URL = "http://localhost:3000";
+export const SITE_NAME = "MyTwin Lab";
 
 /**
  * L'URL publique canonique, sans slash final.
  *
- * Lue dans `NEXT_PUBLIC_APP_URL` et non dans la requête (comme `getBaseUrl`) :
- * une URL canonique ne doit pas changer selon l'hôte par lequel on est arrivé.
- * Une valeur absente ou invalide retombe sur localhost plutôt que de faire
- * planter `metadataBase`, qui exige une URL valide.
+ * Une constante, et non plus `NEXT_PUBLIC_APP_URL` : la variable valait l'URL
+ * Scalingo en production, si bien que canonical, sitemap et robots.txt
+ * désignaient tous un domaine qui redirige vers celui-ci — le signal que Google
+ * sait le moins consolider. Le domaine fait partie de l'entité (il est dans
+ * l'`@id` du JSON-LD), il n'a pas à varier d'un environnement à l'autre.
  */
-export function siteUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (raw) {
-    try {
-      return new URL(raw).origin;
-    } catch {
-      // Valeur mal formée : on garde le repli local.
-    }
-  }
-  return LOCAL_URL;
-}
+export const SITE_URL = "https://mytwinlab.care";
+
+export const DEFAULT_DESCRIPTION =
+  "MyTwin Lab is the open innovation lab of MyTwin: clinicians, researchers, engineers and students take on real health challenges, together and in the open.";
+
+/**
+ * L'entité mère, déclarée par mytwin.care (`src/lib/seo.ts` du repo
+ * mytwin-health-landing). Nom, URL et `@id` doivent y être identiques au
+ * caractère près : c'est l'`@id` qui relie les deux graphes en une seule
+ * famille d'entités, et deux orthographes la couperaient en deux.
+ */
+export const MYTWIN = {
+  name: "MyTwin",
+  url: "https://mytwin.care",
+  id: "https://mytwin.care/#organization",
+  /** L'accueil réel : `/` redirige vers la locale par défaut. */
+  home: "https://mytwin.care/en",
+  clinicians: "https://mytwin.care/en/clinicians",
+  contact: "https://mytwin.care/en/contact-us",
+} as const;
+
+/**
+ * Pages externes qui représentent le Lab lui-même. On ne déclare que ce qui
+ * existe et se vérifie : un `sameAs` vers un profil mort dessert l'entité.
+ */
+const LAB_SAME_AS = ["https://github.com/MyTwin-Lab"] as const;
 
 /**
  * Réduit un texte saisi (souvent du markdown) à une meta description : texte
@@ -74,22 +86,27 @@ export function toMetaDescription(text: string | null | undefined, max = 160): s
  * remplace cet objet d'un niveau à l'autre au lieu de le fusionner. L'image,
  * elle, vient de `app/opengraph-image.tsx` et s'applique partout.
  *
- * Sans `title`, la page garde le titre par défaut du site (l'accueil).
+ * `title` passe par le gabarit du layout (« Titre | MyTwin Lab ») ;
+ * `absoluteTitle` l'écrit en entier, pour les pages dont le titre commence par
+ * la marque. Sans l'un ni l'autre, la page garde le titre par défaut du site.
  */
 export function pageMetadata({
   title,
+  absoluteTitle,
   description,
   path,
 }: {
   title?: string;
+  absoluteTitle?: string;
   description?: string;
   path: string;
 }): Metadata {
-  const fullTitle = title ? `${title} - ${SITE_NAME}` : SITE_NAME;
+  const fullTitle = absoluteTitle ?? (title ? `${title} | ${SITE_NAME}` : SITE_NAME);
+  const withTitle = absoluteTitle ? { title: { absolute: absoluteTitle } } : title ? { title } : {};
   const withDescription = description ? { description } : {};
 
   return {
-    ...(title ? { title } : {}),
+    ...withTitle,
     ...withDescription,
     alternates: { canonical: path },
     openGraph: {
@@ -119,23 +136,25 @@ export type SitemapInput = {
   challenges: { uuid: string; created_at: Date; closed_at?: Date | null }[];
   /** Déjà filtrés sur ce qu'un visiteur anonyme peut ouvrir. */
   sandboxes: { uuid: string; updated_at: Date }[];
-  contributorIds: string[];
 };
 
-export function buildSitemap({
-  baseUrl,
-  challenges,
-  sandboxes,
-  contributorIds,
-}: SitemapInput): MetadataRoute.Sitemap {
+/**
+ * Ne liste que les pages qui doivent être indexées. Les profils contributeurs
+ * n'y figurent plus : ils sont en `noindex` (des noms de personnes n'ont rien
+ * à faire dans Google), et une URL en `noindex` dans un sitemap dégrade la
+ * confiance que Google accorde au fichier entier.
+ */
+export function buildSitemap({ baseUrl, challenges, sandboxes }: SitemapInput): MetadataRoute.Sitemap {
   const url = (path: string) => `${baseUrl}${path}`;
 
   return [
     { url: url("/"), changeFrequency: "daily", priority: 1 },
-    { url: url("/leaderboard"), changeFrequency: "daily", priority: 0.9 },
+    { url: url("/about"), changeFrequency: "monthly", priority: 0.9 },
     { url: url("/challenges"), changeFrequency: "daily", priority: 0.9 },
     { url: url("/sandbox"), changeFrequency: "daily", priority: 0.8 },
-    { url: url("/about"), changeFrequency: "monthly", priority: 0.5 },
+    { url: url("/leaderboard"), changeFrequency: "daily", priority: 0.6 },
+    { url: url("/terms-of-use"), changeFrequency: "yearly", priority: 0.2 },
+    { url: url("/privacy-policy"), changeFrequency: "yearly", priority: 0.2 },
     ...challenges.map((challenge) => ({
       url: url(`/challenges/${challenge.uuid}`),
       lastModified: challenge.closed_at ?? challenge.created_at,
@@ -146,12 +165,82 @@ export function buildSitemap({
       url: url(`/sandbox/${sandbox.uuid}`),
       lastModified: sandbox.updated_at,
       changeFrequency: "weekly" as const,
-      priority: 0.6,
-    })),
-    ...contributorIds.map((id) => ({
-      url: url(`/contributors/${id}`),
-      changeFrequency: "weekly" as const,
-      priority: 0.5,
+      priority: 0.7,
     })),
   ];
+}
+
+// ---------------------------------------------------------------------------
+// Données structurées
+// ---------------------------------------------------------------------------
+// L'entité MyTwin Lab est déclarée ici une seule fois et émise à l'identique
+// partout où elle apparaît : une entité qui se décrit différemment selon la
+// page est une entité floue.
+
+type JsonLdNode = Record<string, unknown>;
+
+export const LAB_ORGANIZATION_ID = `${SITE_URL}/#organization`;
+export const WEBSITE_ID = `${SITE_URL}/#website`;
+
+/**
+ * Le Lab est une organisation fille de MyTwin, pas la même entité : d'où
+ * `parentOrganization` plutôt qu'un `sameAs` vers mytwin.care, qui dirait à
+ * Google que les deux sites parlent d'une seule et même chose.
+ */
+export function labOrganizationJsonLd(): JsonLdNode {
+  return {
+    "@type": "Organization",
+    "@id": LAB_ORGANIZATION_ID,
+    name: SITE_NAME,
+    url: SITE_URL,
+    logo: {
+      "@type": "ImageObject",
+      url: `${SITE_URL}/logos/mytwinlab-logo.png`,
+      width: 924,
+      height: 372,
+    },
+    description: DEFAULT_DESCRIPTION,
+    parentOrganization: {
+      "@type": "Organization",
+      "@id": MYTWIN.id,
+      name: MYTWIN.name,
+      url: MYTWIN.url,
+    },
+    sameAs: [...LAB_SAME_AS],
+  };
+}
+
+/** `alternateName` : le nom sous lequel le site a d'abord circulé. */
+export function websiteJsonLd(): JsonLdNode {
+  return {
+    "@type": "WebSite",
+    "@id": WEBSITE_ID,
+    name: SITE_NAME,
+    alternateName: ["MyTwin Lab Leaderboard"],
+    url: SITE_URL,
+    inLanguage: "en",
+    publisher: { "@id": LAB_ORGANIZATION_ID },
+  };
+}
+
+export function jsonLdGraph(...nodes: JsonLdNode[]): JsonLdNode {
+  return { "@context": "https://schema.org", "@graph": nodes };
+}
+
+/**
+ * Le fil d'Ariane d'une page de détail. Les URLs des challenges et des
+ * sandboxes finissent par un UUID : sans lui, Google afficherait
+ * « mytwinlab.care › challenges › 8e53bee5-… » sous le résultat, au lieu du
+ * nom de la section et du titre.
+ */
+export function breadcrumbJsonLd(items: { name: string; path: string }[]): JsonLdNode {
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: `${SITE_URL}${item.path}`,
+    })),
+  };
 }

@@ -11,7 +11,7 @@ import { fetchOnboardingProgress } from "@/lib/server/onboarding";
 import { AppSettingsRepository } from "@packages/database-service/repositories";
 import { THEMES, DEFAULT_THEME_KEY, isValidThemeKey } from "@/lib/themes";
 import { resolveTheme } from "@/lib/color-utils";
-import { DEFAULT_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/seo";
+import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 import "./globals.css";
 
@@ -28,12 +28,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   // Base des URL relatives (canonical, og:url, og:image) : sans elle, les
   // aperçus de lien reçoivent des chemins qu'ils ne savent pas résoudre.
-  metadataBase: new URL(siteUrl()),
+  metadataBase: new URL(SITE_URL),
   // `template` habille le titre des pages enfants, `default` sert à celles qui
-  // n'en déclarent pas : le nom de l'app reste dans l'onglet partout.
+  // n'en déclarent pas : le nom de l'app reste dans l'onglet partout. Même
+  // séparateur que mytwin.care (« Page | MyTwin »), pour une famille cohérente.
   title: {
     default: SITE_NAME,
-    template: `%s - ${SITE_NAME}`,
+    template: `%s | ${SITE_NAME}`,
   },
   description: DEFAULT_DESCRIPTION,
   applicationName: SITE_NAME,

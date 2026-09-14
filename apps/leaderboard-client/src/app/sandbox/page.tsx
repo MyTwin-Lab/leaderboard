@@ -2,9 +2,9 @@ import { SandboxExplorer } from "@/components/sandbox/SandboxExplorer";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Sandbox",
+  title: "Sandbox: Community Health Projects",
   description:
-    "Community proposals in the health domain - star what you want built, and see the best ones promoted into official challenges.",
+    "Propose a health project, no approval needed. The community stars what it wants built, and the best projects are promoted into official MyTwin Lab challenges.",
   path: "/sandbox",
 });
 

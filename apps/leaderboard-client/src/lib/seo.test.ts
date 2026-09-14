@@ -1,24 +1,21 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildSitemap, pageMetadata, siteUrl, toMetaDescription, unindexedMetadata } from "./seo";
+import { describe, expect, it } from "vitest";
+import {
+  LAB_ORGANIZATION_ID,
+  MYTWIN,
+  SITE_URL,
+  breadcrumbJsonLd,
+  buildSitemap,
+  labOrganizationJsonLd,
+  pageMetadata,
+  toMetaDescription,
+  unindexedMetadata,
+  websiteJsonLd,
+} from "./seo";
 
-describe("siteUrl", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it("keeps only the origin of NEXT_PUBLIC_APP_URL", () => {
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://lab.example.com/some/path/");
-    expect(siteUrl()).toBe("https://lab.example.com");
-  });
-
-  it("falls back to localhost when the variable is missing", () => {
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
-    expect(siteUrl()).toBe("http://localhost:3000");
-  });
-
-  it("falls back to localhost when the variable is not a URL", () => {
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "lab.example.com");
-    expect(siteUrl()).toBe("http://localhost:3000");
+describe("SITE_URL", () => {
+  it("is the production origin, without a trailing slash", () => {
+    expect(SITE_URL).toBe("https://mytwinlab.care");
+    expect(new URL(SITE_URL).origin).toBe(SITE_URL);
   });
 });
 
@@ -67,10 +64,18 @@ describe("pageMetadata", () => {
     expect(metadata.alternates?.canonical).toBe("/challenges");
     expect(metadata.openGraph).toMatchObject({
       url: "/challenges",
-      title: "Challenges - MyTwin Leaderboard",
+      siteName: "MyTwin Lab",
+      title: "Challenges | MyTwin Lab",
       description: "Open challenges",
     });
     expect(metadata.twitter).toMatchObject({ card: "summary_large_image" });
+  });
+
+  it("writes an absolute title in full, bypassing the layout template", () => {
+    const metadata = pageMetadata({ absoluteTitle: "About MyTwin Lab | Sandbox", path: "/about" });
+
+    expect(metadata.title).toEqual({ absolute: "About MyTwin Lab | Sandbox" });
+    expect(metadata.openGraph).toMatchObject({ title: "About MyTwin Lab | Sandbox" });
   });
 
   it("keeps the site title when the page has none", () => {
@@ -78,7 +83,7 @@ describe("pageMetadata", () => {
 
     expect(metadata).not.toHaveProperty("title");
     expect(metadata).not.toHaveProperty("description");
-    expect(metadata.openGraph).toMatchObject({ title: "MyTwin Leaderboard" });
+    expect(metadata.openGraph).toMatchObject({ title: "MyTwin Lab" });
   });
 });
 
@@ -92,7 +97,7 @@ describe("unindexedMetadata", () => {
 });
 
 describe("buildSitemap", () => {
-  it("lists the public pages, then every entity it is given", () => {
+  it("lists the indexable pages, then every entity it is given", () => {
     const created = new Date("2026-06-01T00:00:00Z");
     const closed = new Date("2026-08-01T00:00:00Z");
     const updated = new Date("2026-09-01T00:00:00Z");
@@ -104,22 +109,58 @@ describe("buildSitemap", () => {
         { uuid: "c2", created_at: created, closed_at: closed },
       ],
       sandboxes: [{ uuid: "s1", updated_at: updated }],
-      contributorIds: ["u1"],
     });
 
     expect(sitemap.map((entry) => entry.url)).toEqual([
       "https://lab.example.com/",
-      "https://lab.example.com/leaderboard",
+      "https://lab.example.com/about",
       "https://lab.example.com/challenges",
       "https://lab.example.com/sandbox",
-      "https://lab.example.com/about",
+      "https://lab.example.com/leaderboard",
+      "https://lab.example.com/terms-of-use",
+      "https://lab.example.com/privacy-policy",
       "https://lab.example.com/challenges/c1",
       "https://lab.example.com/challenges/c2",
       "https://lab.example.com/sandbox/s1",
-      "https://lab.example.com/contributors/u1",
     ]);
-    expect(sitemap[5].lastModified).toBe(created);
-    expect(sitemap[6].lastModified).toBe(closed);
-    expect(sitemap[7].lastModified).toBe(updated);
+    expect(sitemap[7].lastModified).toBe(created);
+    expect(sitemap[8].lastModified).toBe(closed);
+    expect(sitemap[9].lastModified).toBe(updated);
+  });
+});
+
+describe("structured data", () => {
+  it("declares the Lab as a child organization of MyTwin, not as the same entity", () => {
+    const organization = labOrganizationJsonLd();
+
+    expect(organization).toMatchObject({
+      "@type": "Organization",
+      "@id": "https://mytwinlab.care/#organization",
+      name: "MyTwin Lab",
+      url: "https://mytwinlab.care",
+    });
+    // Must match the @id declared by mytwin.care, character for character.
+    expect(organization.parentOrganization).toMatchObject({ "@id": "https://mytwin.care/#organization" });
+    expect(organization.sameAs).not.toContain(MYTWIN.url);
+  });
+
+  it("publishes the website under the Lab organization", () => {
+    expect(websiteJsonLd()).toMatchObject({
+      "@type": "WebSite",
+      name: "MyTwin Lab",
+      publisher: { "@id": LAB_ORGANIZATION_ID },
+    });
+  });
+
+  it("numbers breadcrumb items from 1 with absolute URLs", () => {
+    const breadcrumb = breadcrumbJsonLd([
+      { name: "MyTwin Lab", path: "/" },
+      { name: "Challenges", path: "/challenges" },
+    ]);
+
+    expect(breadcrumb.itemListElement).toEqual([
+      { "@type": "ListItem", position: 1, name: "MyTwin Lab", item: "https://mytwinlab.care/" },
+      { "@type": "ListItem", position: 2, name: "Challenges", item: "https://mytwinlab.care/challenges" },
+    ]);
   });
 });

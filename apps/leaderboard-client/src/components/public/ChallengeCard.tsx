@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrainCircuit, Code2, ShieldCheck } from "lucide-react";
 import { TeamAvatars } from "../ui/TeamAvatars";
@@ -101,7 +102,22 @@ export function ChallengeCard({
             <span className="text-xs text-white/45">{projectName}</span>
           </div>
           <h3 className="truncate text-lg font-semibold tracking-tight text-white transition-colors duration-200 group-hover:text-brandCP">
-            {challengeTitle}
+            {/* Un vrai lien pour les moteurs, qui ne suivent ni un onClick ni un
+                router.push : sans lui, aucune page de challenge n'était
+                atteignable depuis /challenges. Un clic simple reste géré par
+                la carte (navigation ou menu admin) ; un clic modifié
+                (nouvel onglet) est laissé au navigateur. */}
+            <Link
+              href={dest}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) e.stopPropagation();
+                else e.preventDefault();
+              }}
+              className="focus-visible:outline-none"
+              tabIndex={-1}
+            >
+              {challengeTitle}
+            </Link>
           </h3>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">

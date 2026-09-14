@@ -5,15 +5,21 @@ const nextConfig: NextConfig = {
   // Config turbopack vide pour permettre l'utilisation de --webpack
   turbopack: {},
 
-  // Les réponses de l'API n'ont rien à faire dans un index. Un en-tête plutôt
-  // qu'un Disallow dans robots.txt : voir app/robots.ts.
+  // Ni l'API ni les pages privées n'ont rien à faire dans un index. Un en-tête
+  // plutôt qu'un Disallow dans robots.txt, pour que le moteur puisse le lire :
+  // voir app/robots.ts. Il couvre aussi les pages client (`/tasks`,
+  // `/sync-meetings`, `/admin`), qui ne peuvent pas exporter de métadonnées.
   async headers() {
+    const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
     return [
-      {
-        source: "/api/:path*",
-        headers: [{ key: "X-Robots-Tag", value: "noindex" }],
-      },
-    ];
+      "/api/:path*",
+      "/admin/:path*",
+      "/signin",
+      "/contributors/me",
+      "/challenges/:id/manage",
+      "/tasks/:path*",
+      "/sync-meetings/:path*",
+    ].map((source) => ({ source, headers: noindex }));
   },
 
   // Configuration webpack pour résoudre les imports du monorepo
