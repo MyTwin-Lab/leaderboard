@@ -17,6 +17,7 @@ import { ScenarioStepsEditor } from '@/components/admin/ScenarioStepsEditor';
 import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
 import { ReferenceCasesOverviewPanel } from '@/components/admin/ReferenceCasesOverviewPanel';
 import { ValidationRunsPanel } from '@/components/admin/ValidationRunsPanel';
+import { ScenarioWalkthroughsPanel } from '@/components/admin/ScenarioWalkthroughsPanel';
 import { ComputeRequestsPanel } from '@/components/challenges/ComputeRequestsPanel';
 import type { MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
@@ -593,10 +594,9 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
     },
     {
       label: isScenarioValidation ? 'Walkthroughs' : 'Runs',
-      // ScenarioWalkthroughsPanel n'existe pas encore — tâche 13. En
-      // attendant, ce panneau reste celui des cas de référence même en mode
-      // scénario ; seul le libellé de l'onglet change déjà.
-      panel: <ValidationRunsPanel challengeId={challengeId} open />,
+      panel: isScenarioValidation
+        ? <ScenarioWalkthroughsPanel challengeId={challengeId} open />
+        : <ValidationRunsPanel challengeId={challengeId} open />,
     },
   ] : [
     {
