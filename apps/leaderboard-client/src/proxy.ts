@@ -287,7 +287,13 @@ export async function proxy(request: NextRequest) {
         (pathname.match(/^\/api\/challenges\/[^/]+$/) && ['PUT', 'PATCH'].includes(method)) ||
         (pathname === '/api/challenges' && method === 'POST') ||
         (pathname.startsWith('/api/repos') && ['POST', 'PUT'].includes(method)) ||
-        pathname.includes('/documents');
+        pathname.includes('/documents') ||
+        // Écriture du scénario d'un challenge de validation en mode scénario :
+        // admin OU manager de ce challenge, vérifié dans le handler via
+        // isManagerOfChallenge, plus le gel côté service dès la première
+        // walkthrough. Sans cette exception un manager non-admin ne pourrait
+        // pas écrire le scénario qu'il est censé écrire.
+        pathname.includes('/validation-scenario-steps');
 
       // Cycle de vote de la validation qualifiée (challenge-014) : claim/observation/
       // reveal/verdict/authoring d'un cas de référence — réservé aux medical_pro,
@@ -301,9 +307,24 @@ export async function proxy(request: NextRequest) {
           pathname.includes('/validation-case-claims') ||
           pathname.includes('/validation-reference-cases'));
 
+      // Parcours de scénario (challenge-018) : ouvrir ou reprendre une
+      // walkthrough, enregistrer le retour d'une étape, et la clore. Ouvert à
+      // TOUT contributeur connecté, sans condition de rôle — contrairement au
+      // flux cas de référence, il n'y a pas de vérité terrain à être qualifié
+      // pour juger, seulement un scénario à parcourir. C'est le geste central
+      // de la fonctionnalité, pas une action d'administration.
+      //
+      // Les vraies gardes vivent dans ScenarioWalkthroughService, où elles sont
+      // testées : pas ma propre application (porteur ET membres du groupe),
+      // la walkthrough m'appartient et est encore brouillon, l'avis médical
+      // réservé aux medical_pro. Sans cette exception, le garde-fou « admin
+      // only » ci-dessous interdirait à tout le monde sauf un admin de démarrer
+      // une walkthrough — et donc d'être payé.
+      const isScenarioWalkthroughRoute = pathname.includes('/validation-scenario-runs');
+
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isMedicalProValidationRoute && !isNotificationSelfRoute && !isGroupInviteRoute) {
+        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isMedicalProValidationRoute && !isScenarioWalkthroughRoute && !isNotificationSelfRoute && !isGroupInviteRoute) {
           return respond(NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }

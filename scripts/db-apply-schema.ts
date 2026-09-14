@@ -101,9 +101,26 @@ const STATEMENTS: Array<{ label: string; sql: string }> = [
   // still NOT NULL with no default — every task creation fails with
   //   null value in column "type" violates not-null constraint
   // Dropping the constraint rather than the column keeps existing rows intact.
+  //
+  // Gardé sur information_schema parce qu'une base créée depuis le schéma
+  // drizzle actuel (drizzle-kit push, tout poste neuf) n'a JAMAIS eu cette
+  // colonne : l'ALTER y échouait alors en 42703 « la colonne "type" de la
+  // relation "tasks" n'existe pas ». Ce script étant fatal par conception,
+  // il s'arrêtait là et aucune des instructions suivantes n'était appliquée —
+  // y compris les tables les plus récentes, tout en fin de tableau. Postgres
+  // n'offre pas d'IF EXISTS sur ALTER COLUMN ... DROP NOT NULL, d'où le bloc DO.
   {
     label: "tasks.type (drop leftover NOT NULL)",
-    sql: `ALTER TABLE tasks ALTER COLUMN type DROP NOT NULL`,
+    sql: `
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'tasks' AND column_name = 'type'
+        ) THEN
+          ALTER TABLE tasks ALTER COLUMN type DROP NOT NULL;
+        END IF;
+      END $$`,
   },
 
   // ── Travail en groupe (docs/input/spec-groupes-challenge.md) ──

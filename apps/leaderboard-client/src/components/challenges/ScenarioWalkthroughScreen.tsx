@@ -283,9 +283,18 @@ export function ScenarioWalkthroughScreen({
       <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
         <div className="space-y-2.5">
           {endpointUrl ? (
+            // `allow` délègue la caméra et le micro à l'application encadrée.
+            // Sans cet attribut, une iframe multi-origine n'y a aucun droit :
+            // la politique de permissions par défaut vaut `self`, et
+            // getUserMedia y est refusé sans même afficher de demande. Une
+            // application dont le coeur est la caméra serait alors bloquée par
+            // NOTRE cadre, pas par son propre code — un résultat de validation
+            // faux. La délégation ne vaut que pour l'origine chargée ici, et
+            // le navigateur demande quand même son accord au validateur.
             <iframe
               src={endpointUrl}
               title={`${submitterName} — application under validation`}
+              allow="camera; microphone"
               className="h-[min(620px,70vh)] w-full rounded-[20px] border border-white/10 bg-white"
             />
           ) : (
