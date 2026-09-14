@@ -630,6 +630,63 @@ const STATEMENTS: Array<{ label: string; sql: string }> = [
       WHERE status IN ('expired', 'failed', 'rejected')
         AND access_token_enc IS NOT NULL`,
   },
+
+  // --- Cache contributions.reward (drizzle/0018) ---
+  // Le trigger n'existait que dans la migration drizzle/0018, jamais appliquée
+  // par ce script : sans lui, createManyAndSyncRewards écrit le ledger mais
+  // contributions.reward reste à 0 jusqu'au prochain db-resync-rewards.
+  // Idempotent : CREATE OR REPLACE pour la fonction, DROP IF EXISTS puis
+  // CREATE pour le trigger. Pas de backfill ici — db-resync-rewards tourne
+  // juste après dans le postdeploy et recale les caches déjà dérivés.
+  {
+    label: "sync_contribution_reward() (fonction)",
+    sql: `
+      CREATE OR REPLACE FUNCTION sync_contribution_reward() RETURNS trigger AS $$
+      BEGIN
+        IF TG_OP = 'DELETE' THEN
+          IF OLD.contribution_id IS NOT NULL THEN
+            UPDATE contributions
+            SET reward = COALESCE(
+              (SELECT SUM(points) FROM reward_entries WHERE contribution_id = OLD.contribution_id), 0
+            )
+            WHERE uuid = OLD.contribution_id;
+          END IF;
+          RETURN OLD;
+        END IF;
+
+        IF NEW.contribution_id IS NOT NULL THEN
+          UPDATE contributions
+          SET reward = COALESCE(
+            (SELECT SUM(points) FROM reward_entries WHERE contribution_id = NEW.contribution_id), 0
+          )
+          WHERE uuid = NEW.contribution_id;
+        END IF;
+
+        IF TG_OP = 'UPDATE' AND OLD.contribution_id IS DISTINCT FROM NEW.contribution_id
+           AND OLD.contribution_id IS NOT NULL THEN
+          UPDATE contributions
+          SET reward = COALESCE(
+            (SELECT SUM(points) FROM reward_entries WHERE contribution_id = OLD.contribution_id), 0
+          )
+          WHERE uuid = OLD.contribution_id;
+        END IF;
+
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql`,
+  },
+  {
+    label: "trg_sync_contribution_reward (suppression avant recréation)",
+    sql: `DROP TRIGGER IF EXISTS trg_sync_contribution_reward ON reward_entries`,
+  },
+  {
+    label: "trg_sync_contribution_reward",
+    sql: `
+      CREATE TRIGGER trg_sync_contribution_reward
+      AFTER INSERT OR UPDATE OR DELETE ON reward_entries
+      FOR EACH ROW
+      EXECUTE FUNCTION sync_contribution_reward()`,
+  },
 ];
 
 async function main() {
