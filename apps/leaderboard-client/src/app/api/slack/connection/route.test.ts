@@ -2,15 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const {
-  mockVerifyRequestToken, mockEncryptToken, mockUpdateSlackConnection, mockClearSlackConnection,
+  mockGetSessionUser, mockEncryptToken, mockUpdateSlackConnection, mockClearSlackConnection,
 } = vi.hoisted(() => ({
-  mockVerifyRequestToken: vi.fn(),
+  mockGetSessionUser: vi.fn(),
   mockEncryptToken: vi.fn(),
   mockUpdateSlackConnection: vi.fn(),
   mockClearSlackConnection: vi.fn(),
 }));
 
-vi.mock('@/lib/auth', () => ({ verifyRequestToken: mockVerifyRequestToken }));
+vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
 
 vi.mock('../../../../../../../packages/config/slackCredentials.js', () => ({
   encryptToken: mockEncryptToken,
@@ -44,7 +44,7 @@ const mockFetch = vi.fn();
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal('fetch', mockFetch);
-  mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin', email: 'a@b.com' });
+  mockGetSessionUser.mockResolvedValue({ id:'admin-1', role: 'admin', email: 'a@b.com' });
   mockEncryptToken.mockReturnValue({ enc: 'enc-value', iv: 'iv-value' });
   mockUpdateSlackConnection.mockResolvedValue(undefined);
   mockClearSlackConnection.mockResolvedValue(undefined);
@@ -57,14 +57,14 @@ afterEach(() => {
 
 describe('POST /api/slack/connection', () => {
   it('returns 401 when not authenticated', async () => {
-    mockVerifyRequestToken.mockResolvedValue(null);
+    mockGetSessionUser.mockResolvedValue(null);
     const res = await postConnection({ bot_token: 'xoxb-1' });
     expect(res.status).toBe(401);
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('returns 401 when authenticated but not admin', async () => {
-    mockVerifyRequestToken.mockResolvedValue({ userId: 'u1', role: 'contributor', email: 'a@b.com' });
+    mockGetSessionUser.mockResolvedValue({ id:'u1', role: 'contributor', email: 'a@b.com' });
     const res = await postConnection({ bot_token: 'xoxb-1' });
     expect(res.status).toBe(401);
   });
@@ -124,14 +124,14 @@ describe('POST /api/slack/connection', () => {
 
 describe('DELETE /api/slack/connection', () => {
   it('returns 401 when not authenticated', async () => {
-    mockVerifyRequestToken.mockResolvedValue(null);
+    mockGetSessionUser.mockResolvedValue(null);
     const res = await deleteConnection();
     expect(res.status).toBe(401);
     expect(mockClearSlackConnection).not.toHaveBeenCalled();
   });
 
   it('returns 401 when authenticated but not admin', async () => {
-    mockVerifyRequestToken.mockResolvedValue({ userId: 'u1', role: 'contributor', email: 'a@b.com' });
+    mockGetSessionUser.mockResolvedValue({ id:'u1', role: 'contributor', email: 'a@b.com' });
     const res = await deleteConnection();
     expect(res.status).toBe(401);
   });

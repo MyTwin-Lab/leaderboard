@@ -7,5 +7,4 @@ export type {
   Utterance,
   Decision,
   Action,
-  ContributionSignal,
 } from './types.js';

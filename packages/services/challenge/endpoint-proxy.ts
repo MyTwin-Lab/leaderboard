@@ -1,4 +1,4 @@
-import { assertPublicHttpUrl } from "./ssrf-guard.js";
+import { assertPublicHttpUrl, createGuardedLookup } from "./ssrf-guard.js";
 
 /** The proxied call itself failed (SSRF-blocked, unreachable, timed out, too large) — a 5xx-shaped problem. */
 export class EndpointCallError extends Error {}
@@ -20,9 +20,42 @@ const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const TIMEOUT_MS = 15_000;
 
 /**
- * SSRF-guarded, redirect-refusing, size-capped POST of a file to a target
- * endpoint. Wraps every failure — including a rejected `assertPublicHttpUrl`
- * check — in `EndpointCallError`.
+ * Dispatcher undici dont la résolution DNS passe par `createGuardedLookup`.
+ *
+ * `undici` n'est pas une dépendance du dépôt : on réutilise la classe `Agent`
+ * embarquée par Node pour son `fetch` global. Node l'expose sous
+ * `Symbol.for("undici.globalDispatcher.1")` dès que son implémentation web est
+ * chargée — ce que fait n'importe quelle construction de `Response`, sans
+ * aucun appel réseau ni appel à `fetch`.
+ *
+ * Mis en cache : un seul agent pour le processus. Son `lookup` est rejoué à
+ * chaque nouvelle connexion, donc une connexion réutilisée a déjà été
+ * contrôlée à son ouverture.
+ */
+let pinnedDispatcher: object | null = null;
+
+function getPinnedDispatcher(): object {
+  if (pinnedDispatcher) return pinnedDispatcher;
+
+  void new Response("");
+  const globalDispatcher = (globalThis as Record<symbol, unknown>)[Symbol.for("undici.globalDispatcher.1")];
+  const AgentClass = (globalDispatcher as { constructor?: unknown } | undefined)?.constructor;
+  if (typeof AgentClass !== "function") {
+    // Échec fermé : sans résolution épinglée, le DNS rebinding redevient
+    // possible. Mieux vaut une validation en erreur qu'un appel non gardé.
+    throw new Error("Pinned DNS dispatcher unavailable in this runtime — refusing an unguarded endpoint call");
+  }
+
+  pinnedDispatcher = new (AgentClass as new (options: object) => object)({
+    connect: { lookup: createGuardedLookup() },
+  });
+  return pinnedDispatcher;
+}
+
+/**
+ * SSRF-guarded, DNS-pinned, redirect-refusing, size-capped POST of a file to a
+ * target endpoint. Wraps every failure — including a rejected
+ * `assertPublicHttpUrl` check — in `EndpointCallError`.
  *
  * Extracted from `ValidationChallengeService.callEndpointDefault` (its
  * original home) so `ReferenceCaseService.claimCase` can reuse the exact same
@@ -31,6 +64,8 @@ const TIMEOUT_MS = 15_000;
  */
 export async function proxyFileToEndpoint(url: string, file: ProxyFile): Promise<ProxyResult> {
   try {
+    // Contrôle précoce, pour une erreur claire. Le contrôle qui fait foi est
+    // celui du dispatcher ci-dessous, rejoué sur l'adresse réellement connectée.
     await assertPublicHttpUrl(url);
 
     const form = new FormData();
@@ -45,7 +80,17 @@ export async function proxyFileToEndpoint(url: string, file: ProxyFile): Promise
       // redirect this server-side call to a private address after the check
       // already passed. Node's fetch returns the raw redirect response (not an
       // opaque one) under "manual", so we can detect and reject it explicitly.
-      const res = await fetch(url, { method: "POST", body: form, signal: controller.signal, redirect: "manual" });
+      //
+      // `dispatcher` épingle la résolution DNS : sans lui, `fetch` résoudrait le
+      // nom une seconde fois, et un enregistrement à TTL nul pourrait alors
+      // pointer vers 127.0.0.1 ou 169.254.169.254 (DNS rebinding).
+      const res = await fetch(url, {
+        method: "POST",
+        body: form,
+        signal: controller.signal,
+        redirect: "manual",
+        dispatcher: getPinnedDispatcher(),
+      } as RequestInit);
       if (res.status >= 300 && res.status < 400) {
         throw new Error(`Endpoint responded with a redirect (${res.status}) — redirects are not followed`);
       }

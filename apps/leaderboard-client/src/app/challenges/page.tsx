@@ -7,9 +7,9 @@ import { pageMetadata } from "@/lib/seo";
 //import { FiltersBar } from "@/components/leaderboard/FiltersBar";
 
 export const metadata = pageMetadata({
-  title: "Challenges",
+  title: "Open Health Innovation Challenges",
   description:
-    "Open projects and challenges at MyTwin Lab: join one, contribute code or models, and earn contribution points (CP).",
+    "Real health problems turned into open challenges: join one, contribute code, datasets or models, get evaluated on clear criteria and earn contribution points.",
   path: "/challenges",
 });
 

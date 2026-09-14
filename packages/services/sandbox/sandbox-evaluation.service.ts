@@ -112,15 +112,49 @@ export class SandboxEvaluationService {
   ): Promise<{ ok: boolean; reason?: CannotEvaluateSandboxReason }> {
     const sandbox = await this.deps.sandboxRepo.findById(sandboxId);
     if (!sandbox) return { ok: false, reason: "not_found" };
-    if (sandbox.user_id !== userId) return { ok: false, reason: "not_author" };
-    if (!parseGithubRepoUrl(sandbox.repo_url)) return { ok: false, reason: "invalid_repo" };
-    if (isInFlight(sandbox.evaluation_status)) return { ok: false, reason: "already_running" };
+    const reason = refusalFor(sandbox, userId);
+    return reason ? { ok: false, reason } : { ok: true };
+  }
+
+  /**
+   * Prise du run — attendue par la route **avant** son 202.
+   *
+   * Mêmes préconditions que `canEvaluate`, puis bascule vers `running` en
+   * compare-and-set (`expectedFrom`) : de deux `POST /evaluation` concurrents,
+   * un seul obtient `true`, l'autre reçoit `already_running` et la route
+   * répond 409 sans rien planifier. Tant que ce CAS vivait dans le run
+   * planifié, les deux appels avaient déjà reçu 202.
+   *
+   * Pas de reprise d'un `running` orphelin (process mort en plein run) : la
+   * table n'a aucune date de lancement — `evaluated_at` date la fin du
+   * dernier run, `updated_at` la dernière édition de l'auteur.
+   */
+  async claim(
+    event: SandboxEvaluationEvent,
+  ): Promise<{ ok: boolean; reason?: CannotEvaluateSandboxReason }> {
+    const { sandboxId, userId } = event;
+
+    const sandbox = await this.deps.sandboxRepo.findById(sandboxId);
+    if (!sandbox) return { ok: false, reason: "not_found" };
+    const reason = refusalFor(sandbox, userId);
+    if (reason) return { ok: false, reason };
+
+    const claimed = await this.deps.sandboxRepo.setEvaluationStatus(sandboxId, "running", {
+      expectedFrom: sandbox.evaluation_status ?? null,
+    });
+    if (!claimed) {
+      console.log(`[SandboxEvaluationService] Another run took ${sandboxId} — skipping`);
+      return { ok: false, reason: "already_running" };
+    }
     return { ok: true };
   }
 
-  /** Fire-and-forget : l'appel agent dure des dizaines de secondes, le statut vit sur le sandbox. */
-  scheduleEvaluation(event: SandboxEvaluationEvent): void {
-    this.evaluate(event).catch((error) => {
+  /**
+   * Fire-and-forget : l'appel agent dure des dizaines de secondes, le statut
+   * vit sur le sandbox. À n'appeler qu'après un `claim` réussi.
+   */
+  scheduleRun(event: SandboxEvaluationEvent): void {
+    this.run(event).catch((error) => {
       console.error(
         `[SandboxEvaluationService] Evaluation failed for ${event.userId} on ${event.sandboxId}:`,
         error,
@@ -128,41 +162,30 @@ export class SandboxEvaluationService {
     });
   }
 
-  async evaluate(event: SandboxEvaluationEvent): Promise<void> {
+  /**
+   * Le run lui-même. Rien ne transite depuis `claim` (la route a répondu
+   * entre-temps) : le sandbox est relu, et un statut autre que `running` veut
+   * dire qu'aucun run n'a été pris — on ne fait rien.
+   */
+  async run(event: SandboxEvaluationEvent): Promise<void> {
     const { sandboxId, userId } = event;
 
     const sandbox = await this.deps.sandboxRepo.findById(sandboxId);
     if (!sandbox) return;
-    // Re-vérifié ici et pas seulement dans `canEvaluate` : `scheduleEvaluation`
-    // est appelable depuis n'importe où, la règle ne doit pas dépendre de la route.
+    // Re-vérifié ici et pas seulement dans `claim` : `run` est appelable
+    // depuis n'importe où, la règle ne doit pas dépendre de la route.
     if (sandbox.user_id !== userId) return;
-
-    const target = parseGithubRepoUrl(sandbox.repo_url);
-    if (!target) {
-      console.warn(`[SandboxEvaluationService] Unparseable repo URL on ${sandboxId}: ${sandbox.repo_url}`);
-      return;
-    }
-
-    // Relecture du statut juste avant la bascule, et non seulement dans
-    // `canEvaluate` — c'est la fenêtre que deux `POST /evaluation` concurrents
-    // traverseraient tous les deux. La garde `expectedFrom` la referme pour de
-    // bon : le passage à `running` est un compare-and-set, un seul des deux
-    // appels obtient `true`.
-    const fresh = await this.deps.sandboxRepo.findById(sandboxId);
-    if (!fresh) return;
-    if (isInFlight(fresh.evaluation_status)) {
-      console.log(`[SandboxEvaluationService] Evaluation already running on ${sandboxId} — skipping`);
-      return;
-    }
-    const claimed = await this.deps.sandboxRepo.setEvaluationStatus(sandboxId, "running", {
-      expectedFrom: fresh.evaluation_status ?? null,
-    });
-    if (!claimed) {
-      console.log(`[SandboxEvaluationService] Another run took ${sandboxId} — skipping`);
+    if (sandbox.evaluation_status !== "running") {
+      console.log(`[SandboxEvaluationService] No claimed run on ${sandboxId} — skipping`);
       return;
     }
 
     try {
+      // Validée au claim, mais l'auteur a pu éditer l'URL depuis : le run
+      // échoue alors proprement plutôt que de laisser `running` en place.
+      const target = parseGithubRepoUrl(sandbox.repo_url);
+      if (!target) throw new Error(`Unparseable repo URL on ${sandboxId}: ${sandbox.repo_url}`);
+
       const { evaluation } = await this.deps.evaluateRepo({
         slug: target.slug,
         branch: target.branch,
@@ -187,6 +210,21 @@ export class SandboxEvaluationService {
       throw error;
     }
   }
+
+  /** `claim` puis `run` d'un seul tenant, pour un appelant qui peut attendre. */
+  async evaluate(event: SandboxEvaluationEvent): Promise<void> {
+    const { ok } = await this.claim(event);
+    if (!ok) return;
+    await this.run(event);
+  }
+}
+
+/** Les refus communs à `canEvaluate` et `claim`, sur un sandbox existant. */
+function refusalFor(sandbox: Sandbox, userId: string): CannotEvaluateSandboxReason | null {
+  if (sandbox.user_id !== userId) return "not_author";
+  if (!parseGithubRepoUrl(sandbox.repo_url)) return "invalid_repo";
+  if (isInFlight(sandbox.evaluation_status)) return "already_running";
+  return null;
 }
 
 /** `pending` comme `running` : un run est en vol, l'UI poll et le bouton est bloqué. */

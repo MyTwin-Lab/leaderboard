@@ -26,27 +26,32 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!session) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
     const { id } = await params;
+    const event = { sandboxId: id, userId: session.userId };
 
-    const check = await service.canEvaluate(id, session.userId);
-    if (!check.ok) {
+    // Le passage à `running` est attendu ici, avant le 202 : c'est ce
+    // compare-and-set, et non une simple lecture du statut, qui fait qu'un
+    // second lancement concurrent reçoit 409 au lieu de planifier un second
+    // run (et un second appel LLM). `claim` porte aussi les préconditions.
+    const claim = await service.claim(event);
+    if (!claim.ok) {
       // 403 et non 404 pour un tiers : le détail d'un sandbox est public, son
       // existence n'est pas un secret — c'est le droit de lancer qui manque.
       // 409 quand un run est déjà en vol, comme project-evaluation.
       const status =
-        check.reason === "not_found"
+        claim.reason === "not_found"
           ? 404
-          : check.reason === "not_author"
+          : claim.reason === "not_author"
             ? 403
-            : check.reason === "already_running"
+            : claim.reason === "already_running"
               ? 409
               : 400;
       return NextResponse.json(
-        { error: "Cannot start evaluation", reason: check.reason },
+        { error: "Cannot start evaluation", reason: claim.reason },
         { status },
       );
     }
 
-    service.scheduleEvaluation({ sandboxId: id, userId: session.userId });
+    service.scheduleRun(event);
     return NextResponse.json({ scheduled: true }, { status: 202 });
   } catch (error) {
     console.error("[sandbox] evaluation start failed", error);

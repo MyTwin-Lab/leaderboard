@@ -1089,32 +1089,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Success'
 
-  /challenges/{id}/context:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-    get:
-      tags: [Challenges]
-      summary: Contexte complet d'un challenge
-      description: Récupère le challenge avec toutes ses données associées (tâches, équipe, repos, etc.).
-      responses:
-        '200':
-          description: Contexte du challenge
-          content:
-            application/json:
-              schema:
-                type: object
-        '500':
-          description: Erreur serveur
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
   /challenges/{id}/close:
     parameters:
       - name: id

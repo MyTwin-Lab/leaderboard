@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { encryptToken } from '../../../../../../../packages/config/openaiCredentials.js';
 import { AppSettingsRepository } from '../../../../../../../packages/database-service/repositories/index.js';
-import { verifyRequestToken } from '@/lib/auth';
+import { getSessionUser } from '@/lib/auth';
 
 const appSettingsRepo = new AppSettingsRepository();
 
 // POST /api/openai/connection — save OpenAI API key
 export async function POST(request: NextRequest) {
-  const payload = await verifyRequestToken(request);
-  if (!payload || payload.role !== 'admin') {
+  // Rôle relu en base, pas celui du JWT : une rétrogradation prend effet tout de suite.
+  const session = await getSessionUser();
+  if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     await appSettingsRepo.updateOpenAIConnection({
       openai_key_enc: enc,
       openai_key_iv: iv,
-      openai_connected_by: payload.userId,
+      openai_connected_by: session.id,
     });
   } catch {
     return NextResponse.json({ error: 'Failed to save credentials' }, { status: 500 });
@@ -51,9 +52,10 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/openai/connection — remove OpenAI API key
-export async function DELETE(request: NextRequest) {
-  const payload = await verifyRequestToken(request);
-  if (!payload || payload.role !== 'admin') {
+export async function DELETE(_request: NextRequest) {
+  // Rôle relu en base, pas celui du JWT : une rétrogradation prend effet tout de suite.
+  const session = await getSessionUser();
+  if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

@@ -5,10 +5,12 @@ import {
   ForbiddenClaimAccessError,
   ObservationRequiredError,
 } from '../../../../../../../../../../packages/services/challenge/reference-case.service';
+import { CaseClaimRepository } from '../../../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
 import { buildSafeFileHeaders } from '@/lib/server/safeFileHeaders';
 
 const service = new ReferenceCaseService();
+const caseClaimRepo = new CaseClaimRepository();
 
 // POST /api/challenges/[id]/validation-case-claims/[claimId]/reveal
 // medical_pro only, must own the claim. Returns the reference case's expected
@@ -29,6 +31,22 @@ export async function POST(
     }
 
     const { claimId } = await params;
+
+    // Purge de conservation passée : 410 plutôt qu'un fichier vide. Seulement
+    // pour le propriétaire du claim — pour tout autre appelant, le service
+    // ci-dessous garde la main et répond 404/403 comme avant.
+    const purgeState = await caseClaimRepo.findPurgeState(claimId);
+    if (
+      purgeState &&
+      purgeState.validator_user_id === user.id &&
+      (purgeState.claim_purged_at || purgeState.case_purged_at)
+    ) {
+      return NextResponse.json(
+        { error: 'Expected output no longer available (purged after the retention period)' },
+        { status: 410 }
+      );
+    }
+
     const expected = await service.revealExpectedOutput({ claimId, validatorUserId: user.id });
 
     return new NextResponse(new Uint8Array(expected.body), {

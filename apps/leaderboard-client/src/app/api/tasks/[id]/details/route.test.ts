@@ -1,14 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindById, mockFindSubTasks, mockTeamFindByChallenge, mockVerifyRequestToken } = vi.hoisted(() => ({
+const {
+  mockFindById, mockFindSubTasks, mockTeamFindByChallenge, mockVerifyRequestToken, mockCanAccessChallengeInternals,
+} = vi.hoisted(() => ({
   mockFindById: vi.fn(),
   mockFindSubTasks: vi.fn(),
   mockTeamFindByChallenge: vi.fn(),
   mockVerifyRequestToken: vi.fn(),
+  mockCanAccessChallengeInternals: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ verifyRequestToken: mockVerifyRequestToken }));
+vi.mock('@/lib/server/managerAuth', () => ({
+  canAccessChallengeInternals: mockCanAccessChallengeInternals,
+}));
 
 vi.mock('../../../../../../../../packages/database-service/repositories', () => ({
   TaskRepository: class {
@@ -36,6 +42,60 @@ beforeEach(() => {
   mockFindSubTasks.mockResolvedValue([]);
   mockTeamFindByChallenge.mockResolvedValue([]);
   mockVerifyRequestToken.mockResolvedValue(null); // visiteur anonyme par défaut
+  mockCanAccessChallengeInternals.mockResolvedValue(false);
+});
+
+describe('GET /api/tasks/[id]/details — personal tasks', () => {
+  const PERSONAL = { uuid: TASK_ID, title: 'Private plan', challenge_id: 'challenge-1', user_id: 'alice' };
+
+  beforeEach(() => {
+    mockFindById.mockResolvedValue(PERSONAL);
+  });
+
+  it('returns 404 to an anonymous visitor', async () => {
+    const res = await getDetails();
+
+    expect(res.status).toBe(404);
+    expect(mockFindSubTasks).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 to a session outside the challenge, without the title', async () => {
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'mallory', role: 'contributor' });
+
+    const res = await getDetails();
+
+    expect(res.status).toBe(404);
+    expect(mockCanAccessChallengeInternals).toHaveBeenCalledWith({ id: 'mallory', role: 'contributor' }, 'challenge-1');
+    expect(JSON.stringify(await res.json())).not.toContain('Private plan');
+    expect(mockFindSubTasks).not.toHaveBeenCalled();
+  });
+
+  it('serves the owner without asking for challenge access', async () => {
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'alice', role: 'contributor' });
+
+    const res = await getDetails();
+
+    expect(res.status).toBe(200);
+    expect(mockCanAccessChallengeInternals).not.toHaveBeenCalled();
+  });
+
+  it('serves a member, manager or admin of the challenge', async () => {
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'bob', role: 'contributor' });
+    mockCanAccessChallengeInternals.mockResolvedValue(true);
+
+    const res = await getDetails();
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).task.title).toBe('Private plan');
+  });
+});
+
+describe('GET /api/tasks/[id]/details — templates', () => {
+  it('stays readable without a session', async () => {
+    const res = await getDetails();
+    expect(res.status).toBe(200);
+    expect(mockCanAccessChallengeInternals).not.toHaveBeenCalled();
+  });
 });
 
 describe('GET /api/tasks/[id]/details', () => {

@@ -7,32 +7,60 @@ import {
   generateRefreshToken,
   storeRefreshToken,
 } from '@/lib/auth';
-import { getBaseUrl } from '@/lib/url';
+import { getBaseUrl, safeInternalPath } from '@/lib/url';
+import { ACCESS_TOKEN_MAX_AGE, REFRESH_TOKEN_MAX_AGE, sessionCookieOptions } from '@/lib/sessionCookie';
 import { readAnonId } from '@/lib/server/anonVisitor';
 import { SandboxService } from '../../../../../../../packages/services/sandbox/index.js';
 
 const userRepo = new UserRepository();
 const onboardingRepo = new OnboardingProgressRepository();
 
+const STATE_COOKIE = 'g_oauth_state';
+
+/** `state` tel que posé par /api/google-auth/authorize, ou `null` s'il est illisible. */
+function parseState(raw: string | null): { nonce: string; from: string } | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    const { nonce, from } = parsed as Record<string, unknown>;
+    if (typeof nonce !== 'string' || nonce.length === 0) return null;
+    return { nonce, from: safeInternalPath(typeof from === 'string' ? from : null) };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const baseUrl = getBaseUrl(request);
+  // Le nonce est à usage unique : le cookie disparaît quelle que soit l'issue.
+  const redirectTo = (path: string) => {
+    const response = NextResponse.redirect(new URL(path, baseUrl));
+    response.cookies.delete(STATE_COOKIE);
+    return response;
+  };
 
   try {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
-    const stateParam = searchParams.get('state');
 
     if (!code) {
-      return NextResponse.redirect(new URL('/?error=missing_code', baseUrl));
+      return redirectTo('/?error=missing_code');
     }
 
-    const { from } = stateParam ? JSON.parse(stateParam) : { from: '/' };
+    // CSRF de connexion : sans ce contrôle, un attaquant fait consommer à la
+    // victime un `code` de son propre compte Google (docs/temp.md, M4).
+    const state = parseState(searchParams.get('state'));
+    const storedNonce = request.cookies.get(STATE_COOKIE)?.value;
+    if (!state || !storedNonce || state.nonce !== storedNonce) {
+      return redirectTo('/?error=invalid_state');
+    }
 
     const googleAuthService = new GoogleAuthService();
     const tokens = await googleAuthService.getTokensFromCode(code);
 
     if (!tokens.access_token) {
-      return NextResponse.redirect(new URL('/?error=no_token', baseUrl));
+      return redirectTo('/?error=no_token');
     }
 
     const userInfo = await googleAuthService.getUserInfo(tokens.access_token);
@@ -41,10 +69,22 @@ export async function GET(request: NextRequest) {
     let user = await userRepo.findByGoogleUserId(userInfo.google_user_id);
 
     if (!user) {
+      // Créer ou lier un compte sur la foi de l'email exige que Google en
+      // atteste la propriété.
+      if (!userInfo.email_verified) {
+        return redirectTo('/?error=email_not_verified');
+      }
+
       // Check if a user with this email already exists (link accounts)
       user = await userRepo.findByEmail(userInfo.email);
 
       if (user) {
+        // Un compte déjà lié à une autre identité Google n'est jamais
+        // réattribué : ce serait une prise de contrôle par l'email.
+        if (user.google_user_id && user.google_user_id !== userInfo.google_user_id) {
+          return redirectTo('/?error=account_conflict');
+        }
+
         // Link existing user to this Google account
         await userRepo.update(user.uuid, {
           google_user_id: userInfo.google_user_id,
@@ -66,13 +106,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (!user) {
-      return NextResponse.redirect(new URL('/?error=user_creation_failed', baseUrl));
+      return redirectTo('/?error=user_creation_failed');
     }
 
     // Generate JWT tokens
     const jwtPayload = {
       userId: user.uuid,
-      email: user.email ?? '',
       role: user.role,
     };
 
@@ -95,30 +134,14 @@ export async function GET(request: NextRequest) {
       console.warn('[sandbox] anonymous star attach failed', error);
     }
 
-    // Redirect with cookies — strict path validation to prevent open redirect
-    const safePath = (from && /^\/[a-zA-Z0-9\-_\/]*$/.test(from)) ? from : '/';
-    const redirectUrl = new URL(safePath, baseUrl);
-    const response = NextResponse.redirect(redirectUrl);
-
-    response.cookies.set('access_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 15, // 15 minutes
-      path: '/',
-    });
-
-    response.cookies.set('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    });
+    // `from` déjà passé par safeInternalPath dans parseState.
+    const response = redirectTo(state.from);
+    response.cookies.set('access_token', accessToken, sessionCookieOptions(ACCESS_TOKEN_MAX_AGE));
+    response.cookies.set('refresh_token', refreshToken, sessionCookieOptions(REFRESH_TOKEN_MAX_AGE));
 
     return response;
   } catch (error) {
     console.error('[GoogleAuth] Callback error:', error);
-    return NextResponse.redirect(new URL('/?error=callback_failed', baseUrl));
+    return redirectTo('/?error=callback_failed');
   }
 }

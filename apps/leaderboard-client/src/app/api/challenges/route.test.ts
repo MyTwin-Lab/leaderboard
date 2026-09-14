@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const {
-  mockJwtVerify, mockChallengeFindAll, mockChallengeFindById, mockChallengeCreate,
+  mockVerifyRequestToken, mockChallengeFindAll, mockChallengeFindById, mockChallengeCreate,
   mockRepoCreate, mockChallengeRepoCreate, mockProjectFindByManagerId, mockProjectFindById,
 } = vi.hoisted(() => ({
-  mockJwtVerify: vi.fn(),
+  mockVerifyRequestToken: vi.fn(),
   mockChallengeFindAll: vi.fn(),
   mockChallengeFindById: vi.fn(),
   mockChallengeCreate: vi.fn(),
@@ -15,7 +15,12 @@ const {
   mockProjectFindById: vi.fn(),
 }));
 
-vi.mock('jose', () => ({ jwtVerify: mockJwtVerify }));
+// Comme le vrai helper : `null` sans cookie access_token ; la doublure décide du reste
+// (`null` = jeton refusé, dont `sb_anon` et les refresh tokens).
+vi.mock('@/lib/auth', () => ({
+  verifyRequestToken: (req: NextRequest) =>
+    req.cookies.get('access_token') ? mockVerifyRequestToken(req) : Promise.resolve(null),
+}));
 
 vi.mock('../../../../../../packages/database-service/repositories', () => ({
   ChallengeRepository: class {
@@ -77,7 +82,7 @@ beforeEach(() => {
   mockChallengeRepoCreate.mockResolvedValue({});
   mockProjectFindByManagerId.mockResolvedValue([]);
   mockProjectFindById.mockResolvedValue({ uuid: validBody.project_id, manager_id: 'manager-1' });
-  mockJwtVerify.mockResolvedValue({ payload: { userId: 'admin-1', role: 'admin' } });
+  mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin' });
 });
 
 describe('GET /api/challenges', () => {
@@ -89,7 +94,7 @@ describe('GET /api/challenges', () => {
 
     expect(res.status).toBe(200);
     expect(body).toEqual([{ uuid: 'c1' }, { uuid: 'c2' }]);
-    expect(mockJwtVerify).not.toHaveBeenCalled();
+    expect(mockVerifyRequestToken).not.toHaveBeenCalled();
   });
 
   it('returns 401 for managed=true without a token', async () => {
@@ -99,7 +104,7 @@ describe('GET /api/challenges', () => {
   });
 
   it('filters challenges to those under the manager\'s projects for managed=true', async () => {
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'manager-1', role: 'manager' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'manager-1', role: 'manager' });
     mockProjectFindByManagerId.mockResolvedValue([{ uuid: 'p1' }]);
     mockChallengeFindAll.mockResolvedValue([
       { uuid: 'c1', project_id: 'p1' },
@@ -115,7 +120,7 @@ describe('GET /api/challenges', () => {
   });
 
   it('returns 401 when an invalid token throws during managed=true', async () => {
-    mockJwtVerify.mockRejectedValue(new Error('bad token'));
+    mockVerifyRequestToken.mockResolvedValue(null);
 
     const res = await getChallenges('?managed=true', 'garbage');
 
@@ -147,7 +152,7 @@ describe('POST /api/challenges', () => {
   });
 
   it('returns 403 when a non-admin does not manage the target project', async () => {
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'someone-else', role: 'manager' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'someone-else', role: 'manager' });
 
     const res = await postChallenge(validBody, 'valid-token');
 
@@ -155,7 +160,7 @@ describe('POST /api/challenges', () => {
   });
 
   it('returns 403 when the target project does not exist for a non-admin', async () => {
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'manager-1', role: 'manager' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'manager-1', role: 'manager' });
     mockProjectFindById.mockResolvedValue(null);
 
     const res = await postChallenge(validBody, 'valid-token');
@@ -164,7 +169,7 @@ describe('POST /api/challenges', () => {
   });
 
   it('allows a manager who owns the target project', async () => {
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'manager-1', role: 'manager' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'manager-1', role: 'manager' });
 
     const res = await postChallenge(validBody, 'valid-token');
 
@@ -336,7 +341,7 @@ describe('POST /api/challenges', () => {
   });
 
   it('returns 401 when an invalid token throws', async () => {
-    mockJwtVerify.mockRejectedValue(new Error('bad token'));
+    mockVerifyRequestToken.mockResolvedValue(null);
 
     const res = await postChallenge(validBody, 'garbage');
 

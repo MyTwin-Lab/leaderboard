@@ -22,8 +22,9 @@ export class GoogleAuthService {
       'https://www.googleapis.com/auth/userinfo.profile',
     ];
 
+    // Pas d'`access_type: 'offline'` : seule l'identité est lue, une fois, au
+    // callback — un refresh token Google ne servirait à rien.
     return this.oauth2Client.generateAuthUrl({
-      access_type: 'offline',
       scope: scopes,
       state: state,
       prompt: 'select_account',
@@ -54,6 +55,9 @@ export class GoogleAuthService {
       google_user_id: userInfo.id,
       email: userInfo.email,
       display_name: userInfo.name,
+      // Strictement `true` : une adresse non vérifiée ne prouve pas la
+      // propriété de la boîte, elle ne doit ni créer ni lier un compte.
+      email_verified: userInfo.verified_email === true,
     };
   }
 }

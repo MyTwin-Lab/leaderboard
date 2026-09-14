@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockGetTokenFromRequest, mockInvalidateAllUserTokens, mockVerifyToken } = vi.hoisted(() => ({
+const { mockGetTokenFromRequest, mockInvalidateRefreshToken, mockVerifyToken } = vi.hoisted(() => ({
   mockGetTokenFromRequest: vi.fn(),
-  mockInvalidateAllUserTokens: vi.fn(),
+  mockInvalidateRefreshToken: vi.fn(),
   mockVerifyToken: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({
   getTokenFromRequest: mockGetTokenFromRequest,
-  invalidateAllUserTokens: mockInvalidateAllUserTokens,
-  verifyToken: mockVerifyToken,
+  invalidateRefreshToken: mockInvalidateRefreshToken,
+  verifyRefreshToken: mockVerifyToken,
 }));
 
 import { POST } from './route';
@@ -33,30 +33,30 @@ describe('POST /api/auth/logout', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ success: true, message: 'Logged out successfully' });
     expect(mockVerifyToken).not.toHaveBeenCalled();
-    expect(mockInvalidateAllUserTokens).not.toHaveBeenCalled();
+    expect(mockInvalidateRefreshToken).not.toHaveBeenCalled();
     expect(res.cookies.get('access_token')?.value).toBe('');
     expect(res.cookies.get('refresh_token')?.value).toBe('');
   });
 
-  it('invalidates all user tokens when the refresh token is valid', async () => {
+  it('revokes this refresh token by its jti when it is valid', async () => {
     mockGetTokenFromRequest.mockReturnValue('refresh-token');
-    mockVerifyToken.mockResolvedValue({ userId: 'user-1', email: 'a@b.com', role: 'contributor' });
+    mockVerifyToken.mockResolvedValue({ userId: 'user-1', role: 'contributor', jti: 'jti-1' });
 
     const res = await postLogout();
 
     expect(res.status).toBe(200);
     expect(mockVerifyToken).toHaveBeenCalledWith('refresh-token');
-    expect(mockInvalidateAllUserTokens).toHaveBeenCalledWith('user-1');
+    expect(mockInvalidateRefreshToken).toHaveBeenCalledWith('jti-1');
   });
 
-  it('does not invalidate tokens when the refresh token fails verification', async () => {
+  it('does not revoke anything when the refresh token fails verification', async () => {
     mockGetTokenFromRequest.mockReturnValue('bad-token');
     mockVerifyToken.mockResolvedValue(null);
 
     const res = await postLogout();
 
     expect(res.status).toBe(200);
-    expect(mockInvalidateAllUserTokens).not.toHaveBeenCalled();
+    expect(mockInvalidateRefreshToken).not.toHaveBeenCalled();
   });
 
   it('returns 500 when an unexpected error is thrown', async () => {

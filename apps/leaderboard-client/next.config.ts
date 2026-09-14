@@ -5,14 +5,32 @@ const nextConfig: NextConfig = {
   // Config turbopack vide pour permettre l'utilisation de --webpack
   turbopack: {},
 
-  // Les réponses de l'API n'ont rien à faire dans un index. Un en-tête plutôt
-  // qu'un Disallow dans robots.txt : voir app/robots.ts.
+  // Ni l'API ni les pages privées n'ont rien à faire dans un index. Un en-tête
+  // plutôt qu'un Disallow dans robots.txt, pour que le moteur puisse le lire :
+  // voir app/robots.ts. Il couvre aussi les pages client (`/tasks`,
+  // `/sync-meetings`, `/admin`), qui ne peuvent pas exporter de métadonnées.
   async headers() {
+    const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
+    // En-têtes de sécurité, sur toutes les routes. La CSP se limite
+    // volontairement à `frame-ancestors` (anti-clickjacking) : une politique
+    // script-src casserait les scripts inline de Next sans nonce.
+    const security = [
+      { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+    ];
     return [
-      {
-        source: "/api/:path*",
-        headers: [{ key: "X-Robots-Tag", value: "noindex" }],
-      },
+      { source: "/:path*", headers: security },
+      ...[
+        "/api/:path*",
+        "/admin/:path*",
+        "/signin",
+        "/contributors/me",
+        "/challenges/:id/manage",
+        "/tasks/:path*",
+        "/sync-meetings/:path*",
+      ].map((source) => ({ source, headers: noindex })),
     ];
   },
 

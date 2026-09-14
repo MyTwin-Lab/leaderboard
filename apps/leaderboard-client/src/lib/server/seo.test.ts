@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { repositories } from "@/lib/db";
-
-vi.mock("@/lib/server/leaderboard", () => ({ fetchLeaderboard: vi.fn() }));
-
-import { fetchLeaderboard } from "@/lib/server/leaderboard";
-import { challengeMetadata, contributorMetadata, fetchSitemap, sandboxMetadata } from "./seo";
+import { challengeJsonLd, challengeMetadata, contributorMetadata, fetchSitemap, sandboxMetadata } from "./seo";
 
 const NOINDEX = { index: false, follow: false };
 
@@ -116,12 +112,34 @@ describe("sandboxMetadata", () => {
   });
 });
 
+describe("challengeJsonLd", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("gives a public challenge a breadcrumb ending on its title", async () => {
+    vi.spyOn(repositories.challenge, "findById").mockResolvedValue(challenge() as any);
+
+    const graph = (await challengeJsonLd("c1")) as { "@graph": { itemListElement: { name: string; item: string }[] }[] };
+    const items = graph["@graph"][0].itemListElement;
+
+    expect(items.map((item) => item.name)).toEqual(["MyTwin Lab", "Challenges", "Predict glucose"]);
+    expect(items[2].item).toBe("https://mytwinlab.care/challenges/c1");
+  });
+
+  it("describes nothing for a challenge an anonymous visitor cannot open", async () => {
+    vi.spyOn(repositories.challenge, "findById").mockResolvedValue(challenge({ status: "draft" }) as any);
+
+    expect(await challengeJsonLd("c1")).toBeNull();
+  });
+});
+
 describe("contributorMetadata", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("describes a contributor without a bio", async () => {
+  it("describes a contributor without a bio, and keeps the profile out of the index", async () => {
     vi.spyOn(repositories.user, "findById").mockResolvedValue(
       { uuid: "u1", full_name: "Alice Martin", role: "contributor", created_at: new Date() } as any,
     );
@@ -133,17 +151,17 @@ describe("contributorMetadata", () => {
       "Alice Martin's contributions to MyTwin Lab, tracked, evaluated and rewarded in CP.",
     );
     expect(metadata.alternates?.canonical).toBe("/contributors/u1");
+    // Hors de l'index, mais ses liens vers les challenges restent suivis.
+    expect(metadata.robots).toEqual({ index: false, follow: true });
   });
 });
 
 describe("fetchSitemap", () => {
   afterEach(() => {
     vi.restoreAllMocks();
-    vi.unstubAllEnvs();
   });
 
-  it("lists only what an anonymous visitor can open", async () => {
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://lab.example.com");
+  it("lists only what an anonymous visitor can open, and no contributor profile", async () => {
     vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([
       challenge({ uuid: "public" }),
       challenge({ uuid: "draft", status: "draft" }),
@@ -153,19 +171,11 @@ describe("fetchSitemap", () => {
       sandbox({ uuid: "open" }),
       sandbox({ uuid: "archived", status: "archived" }),
     ] as any);
-    vi.mocked(fetchLeaderboard).mockResolvedValue({
-      entries: [
-        { rank: 1, userId: "ranked", displayName: "A", totalCP: 120, contributionsCount: 3 },
-        { rank: 2, userId: "empty", displayName: "B", totalCP: 0, contributionsCount: 0 },
-      ],
-      filters: { projects: [] },
-    } as any);
 
     const urls = (await fetchSitemap()).map((entry) => entry.url);
 
-    expect(urls).toContain("https://lab.example.com/challenges/public");
-    expect(urls).toContain("https://lab.example.com/sandbox/open");
-    expect(urls).toContain("https://lab.example.com/contributors/ranked");
-    expect(urls.some((url) => /draft|validation|archived|empty/.test(url))).toBe(false);
+    expect(urls).toContain("https://mytwinlab.care/challenges/public");
+    expect(urls).toContain("https://mytwinlab.care/sandbox/open");
+    expect(urls.some((url) => /draft|validation|archived|contributors/.test(url))).toBe(false);
   });
 });

@@ -1,11 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockGetSessionUser, mockIsManagerOfChallenge, mockChallengeFindById, mockAttemptFindById } = vi.hoisted(() => ({
+const {
+  mockGetSessionUser,
+  mockIsManagerOfChallenge,
+  mockChallengeFindById,
+  mockAttemptFindById,
+  mockClaimFindById,
+  mockFindPurgeState,
+  mockFindInputById,
+} = vi.hoisted(() => ({
   mockGetSessionUser: vi.fn(),
   mockIsManagerOfChallenge: vi.fn(),
   mockChallengeFindById: vi.fn(),
   mockAttemptFindById: vi.fn(),
+  mockClaimFindById: vi.fn(),
+  mockFindPurgeState: vi.fn(),
+  mockFindInputById: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
@@ -14,8 +25,8 @@ vi.mock('@/lib/server/managerAuth', () => ({ isManagerOfChallenge: mockIsManager
 vi.mock('../../../../../../../../../../packages/database-service/repositories', () => ({
   ChallengeRepository: class { findById = mockChallengeFindById; },
   ValidationAttemptRepository: class { findById = mockAttemptFindById; },
-  CaseClaimRepository: class { findById = vi.fn(); },
-  ReferenceCaseRepository: class { findInputById = vi.fn(); },
+  CaseClaimRepository: class { findById = mockClaimFindById; findPurgeState = mockFindPurgeState; },
+  ReferenceCaseRepository: class { findInputById = mockFindInputById; },
 }));
 
 import { GET } from './route';
@@ -100,6 +111,56 @@ describe('GET /api/challenges/[id]/validation-runs/[attemptId]/file', () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get('content-disposition')).toMatch(/^attachment;/);
+  });
+
+  describe('claim-backed run (reference_case_claim_id set)', () => {
+    const CLAIM_ID = 'claim-1';
+
+    beforeEach(() => {
+      mockGetSessionUser.mockResolvedValue({ id: 'u1', role: 'admin' });
+      mockAttemptFindById.mockResolvedValue({
+        validation_challenge_id: CHALLENGE_ID,
+        reference_case_claim_id: CLAIM_ID,
+        file_bytes: null,
+      });
+    });
+
+    it('returns 410 without loading any blob once the reference case bytes were purged', async () => {
+      mockFindPurgeState.mockResolvedValue({
+        validator_user_id: 'v1',
+        claim_purged_at: new Date('2026-01-01'),
+        case_purged_at: new Date('2026-01-01'),
+      });
+
+      const res = await callGet();
+
+      expect(res.status).toBe(410);
+      expect(mockFindPurgeState).toHaveBeenCalledWith(CLAIM_ID);
+      expect(mockClaimFindById).not.toHaveBeenCalled();
+      expect(mockFindInputById).not.toHaveBeenCalled();
+    });
+
+    it('returns 410 when the claim no longer exists', async () => {
+      mockFindPurgeState.mockResolvedValue(null);
+      expect((await callGet()).status).toBe(410);
+      expect(mockFindInputById).not.toHaveBeenCalled();
+    });
+
+    it('streams the reference case input bytes when not purged', async () => {
+      mockFindPurgeState.mockResolvedValue({ validator_user_id: 'v1', claim_purged_at: null, case_purged_at: null });
+      mockClaimFindById.mockResolvedValue({ reference_case_id: 'case-1' });
+      mockFindInputById.mockResolvedValue({
+        input_bytes: Buffer.from('input'),
+        input_content_type: 'image/png',
+        input_filename: 'in.png',
+      });
+
+      const res = await callGet();
+
+      expect(res.status).toBe(200);
+      expect(mockFindInputById).toHaveBeenCalledWith('case-1');
+      expect(Buffer.from(await res.arrayBuffer()).toString()).toBe('input');
+    });
   });
 
   it('allows a manager of the challenge (not just admins)', async () => {

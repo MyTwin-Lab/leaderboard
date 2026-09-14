@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { encryptToken } from '../../../../../../../packages/config/scalewayCredentials.js';
 import { ScalewayClient } from '../../../../../../../packages/scaleway/index.js';
 import { AppSettingsRepository } from '../../../../../../../packages/database-service/repositories/index.js';
-import { verifyRequestToken } from '@/lib/auth';
+import { getSessionUser } from '@/lib/auth';
 
 const appSettingsRepo = new AppSettingsRepository();
 
 // POST /api/scaleway/connection — save Scaleway credentials
 export async function POST(request: NextRequest) {
-  const payload = await verifyRequestToken(request);
-  if (!payload || payload.role !== 'admin') {
+  // Rôle relu en base, pas celui du JWT : une rétrogradation prend effet tout de suite.
+  const session = await getSessionUser();
+  if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
       scaleway_secret_key_iv: iv,
       scaleway_project_id: projectId,
       scaleway_zone: zone,
-      scaleway_connected_by: payload.userId,
+      scaleway_connected_by: session.id,
     });
   } catch {
     return NextResponse.json({ error: 'Failed to save credentials' }, { status: 500 });
@@ -59,9 +60,10 @@ export async function POST(request: NextRequest) {
 // DELETE /api/scaleway/connection — soft-disconnect (an already-active
 // instance keeps living until its natural 24h expiration; only new
 // requests/approvals are blocked from this point on, see requestScalewayDisconnect).
-export async function DELETE(request: NextRequest) {
-  const payload = await verifyRequestToken(request);
-  if (!payload || payload.role !== 'admin') {
+export async function DELETE(_request: NextRequest) {
+  // Rôle relu en base, pas celui du JWT : une rétrogradation prend effet tout de suite.
+  const session = await getSessionUser();
+  if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

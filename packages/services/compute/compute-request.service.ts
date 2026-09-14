@@ -75,6 +75,13 @@ export class ComputeRequestService {
     });
 
     if (result.status === 'failed' || !result.secret) {
+      // Un serveur a pu être créé malgré l'échec (ref posée) : le détruire,
+      // sinon il tournerait sans que plus aucune ligne active ne le couvre.
+      if (result.ref) {
+        await provider.deprovision('', result.ref).catch((error) => {
+          console.error(`[ComputeRequestService] deprovision after failed provision failed for ${requestId}:`, error);
+        });
+      }
       await this.repo.updateFailed(requestId, result.error ?? 'Échec de la création de l\'instance');
       return;
     }
@@ -112,6 +119,11 @@ export class ComputeRequestService {
           const jupyterBaseUrl = await this.resolveJupyterUrl(request.provider_ref);
           await this.repo.updateReady(request.uuid, jupyterBaseUrl);
         } else if (status === 'failed') {
+          // Le serveur existe côté Scaleway (provider_ref posé) : on le détruit
+          // avant de marquer la ligne. Si la destruction échoue, la ligne reste
+          // en 'provisioning' — le poll suivant (ou le balayage d'expiration)
+          // retentera, plutôt que de laisser un serveur orphelin en 'failed'.
+          await provider.deprovision('', request.provider_ref);
           await this.repo.updateFailed(request.uuid, 'La création de l\'instance a échoué côté Scaleway.');
         }
       } catch (error: any) {
@@ -131,9 +143,13 @@ export class ComputeRequestService {
   }
 
   /**
-   * Pollée par le cron d'expiration — coupe toute demande 'ready' dont les
-   * 24h sont dépassées. La coupure applicative (updateExpired) ne doit
-   * jamais rester bloquée par un échec de l'appel API Scaleway.
+   * Pollée par le cron d'expiration — coupe toute demande active
+   * (approved/provisioning/ready) dont les 24h sont dépassées.
+   *
+   * Une ligne n'est marquée 'expired' qu'une fois le serveur réellement
+   * détruit : si le déprovisionnement échoue, elle reste active et le
+   * balayage suivant retente. Marquer d'abord laissait un serveur tourner
+   * (et facturer) sans plus aucune ligne pour le rattraper.
    */
   async sweepExpired(): Promise<void> {
     const now = new Date();
@@ -141,33 +157,47 @@ export class ComputeRequestService {
     const provider = await getScalewayProvider();
 
     for (const request of expired) {
-      if (provider && request.provider_ref) {
-        try {
-          await provider.deprovision('', request.provider_ref);
-        } catch (error) {
-          console.error(`[ComputeRequestService] deprovision failed for ${request.uuid}:`, error);
-        }
-      }
-      await this.repo.updateExpired(request.uuid, 'timeout');
+      await this.deprovisionThenExpire(request, provider, 'timeout');
     }
   }
 
-  /** Coupure immédiate (clôture ou suppression de challenge) — même logique best-effort que sweepExpired. */
+  /** Coupure immédiate (clôture ou suppression de challenge) — même règle que sweepExpired. */
   async terminateForChallenge(challengeId: string, reason: ComputeRequestExpireReason): Promise<void> {
     const active = await this.repo.findActiveForChallenge(challengeId);
     if (active.length === 0) return;
     const provider = await getScalewayProvider();
 
     for (const request of active) {
-      if (provider && request.provider_ref) {
-        try {
-          await provider.deprovision('', request.provider_ref);
-        } catch (error) {
-          console.error(`[ComputeRequestService] deprovision failed for ${request.uuid}:`, error);
-        }
-      }
-      await this.repo.updateExpired(request.uuid, reason);
+      await this.deprovisionThenExpire(request, provider, reason);
     }
+  }
+
+  /**
+   * Détruit le serveur s'il y en a un, puis marque la ligne 'expired'.
+   * Renvoie `false` (ligne laissée active, reprise au prochain balayage) si
+   * un serveur existe mais n'a pas pu être détruit — y compris quand Scaleway
+   * n'est plus connecté. Une demande sans `provider_ref` (provisioning jamais
+   * lancé) n'a rien à détruire et expire directement.
+   */
+  private async deprovisionThenExpire(
+    request: ComputeRequest,
+    provider: Awaited<ReturnType<typeof getScalewayProvider>>,
+    reason: ComputeRequestExpireReason
+  ): Promise<boolean> {
+    if (request.provider_ref) {
+      if (!provider) {
+        console.warn(`[ComputeRequestService] Scaleway not connected — ${request.uuid} left active until it can be deprovisioned`);
+        return false;
+      }
+      try {
+        await provider.deprovision('', request.provider_ref);
+      } catch (error) {
+        console.error(`[ComputeRequestService] deprovision failed for ${request.uuid} — left active for the next sweep:`, error);
+        return false;
+      }
+    }
+    await this.repo.updateExpired(request.uuid, reason);
+    return true;
   }
 
   /**

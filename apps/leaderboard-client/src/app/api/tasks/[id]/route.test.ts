@@ -2,22 +2,33 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const {
-  mockJwtVerify,
+  mockVerifyRequestToken,
   mockFindById, mockUpdate, mockDelete,
   mockChallengeFindById,
   mockProjectFindById,
   mockTeamFindByChallenge,
+  mockCanAccessChallengeInternals,
 } = vi.hoisted(() => ({
-  mockJwtVerify: vi.fn(),
+  mockVerifyRequestToken: vi.fn(),
   mockFindById: vi.fn(),
   mockUpdate: vi.fn(),
   mockDelete: vi.fn(),
   mockChallengeFindById: vi.fn(),
   mockProjectFindById: vi.fn(),
   mockTeamFindByChallenge: vi.fn(),
+  mockCanAccessChallengeInternals: vi.fn(),
 }));
 
-vi.mock('jose', () => ({ jwtVerify: mockJwtVerify }));
+vi.mock('@/lib/server/managerAuth', () => ({
+  canAccessChallengeInternals: mockCanAccessChallengeInternals,
+}));
+
+// Comme le vrai helper : `null` sans cookie access_token ; la doublure décide du reste
+// (`null` = jeton refusé, dont `sb_anon` et les refresh tokens).
+vi.mock('@/lib/auth', () => ({
+  verifyRequestToken: (req: NextRequest) =>
+    req.cookies.get('access_token') ? mockVerifyRequestToken(req) : Promise.resolve(null),
+}));
 
 vi.mock('../../../../../../../packages/database-service/repositories', () => ({
   TaskRepository: class {
@@ -81,18 +92,53 @@ beforeEach(() => {
   mockDelete.mockResolvedValue(undefined);
   mockChallengeFindById.mockResolvedValue({ uuid: 'challenge-1', project_id: 'project-1' });
   mockProjectFindById.mockResolvedValue({ uuid: 'project-1', manager_id: 'manager-1' });
-  mockJwtVerify.mockResolvedValue({ payload: { userId: 'alice', role: 'contributor' } });
+  mockVerifyRequestToken.mockResolvedValue({ userId: 'alice', role: 'contributor' });
   mockTeamFindByChallenge.mockResolvedValue([]); // personne en groupe
+  mockCanAccessChallengeInternals.mockResolvedValue(false);
 });
 
 describe('GET /api/tasks/[id]', () => {
-  it('returns the task when found (unchanged)', async () => {
-    const res = await getTask();
+  it('returns a personal task to its owner', async () => {
+    const res = await getTask('valid-token');
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(
       expect.objectContaining({ uuid: TASK_ID, title: 'Do the thing' })
     );
+    expect(mockCanAccessChallengeInternals).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 for a personal task without a session', async () => {
+    const res = await getTask();
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 for someone else\'s personal task outside the challenge', async () => {
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'mallory', role: 'contributor' });
+
+    const res = await getTask('valid-token');
+
+    expect(res.status).toBe(404);
+    expect(mockCanAccessChallengeInternals).toHaveBeenCalledWith({ id: 'mallory', role: 'contributor' }, 'challenge-1');
+    expect(JSON.stringify(await res.json())).not.toContain('Do the thing');
+  });
+
+  it('returns someone else\'s personal task to a member, manager or admin', async () => {
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'bob', role: 'contributor' });
+    mockCanAccessChallengeInternals.mockResolvedValue(true);
+
+    const res = await getTask('valid-token');
+
+    expect(res.status).toBe(200);
+  });
+
+  it('returns a template task without a session', async () => {
+    mockFindById.mockResolvedValue({ uuid: TASK_ID, title: 'Template', user_id: null, challenge_id: 'challenge-1' });
+
+    const res = await getTask();
+
+    expect(res.status).toBe(200);
   });
 });
 
@@ -105,7 +151,7 @@ describe('PATCH /api/tasks/[id]', () => {
   });
 
   it('returns 403 when another user tries to update the task', async () => {
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'bob', role: 'contributor' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'bob', role: 'contributor' });
 
     const res = await patchTask({ status: 'done' }, 'valid-token');
 
@@ -120,7 +166,7 @@ describe('PATCH /api/tasks/[id]', () => {
     expect(resContributor.status).toBe(403);
     expect(mockUpdate).not.toHaveBeenCalled();
 
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'admin-1', role: 'admin' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin' });
     const resAdmin = await patchTask({ status: 'done' }, 'valid-token');
     expect(resAdmin.status).toBe(200);
     expect(mockUpdate).toHaveBeenCalledWith(TASK_ID, { status: 'done' }, { expectedStatus: undefined });
@@ -176,7 +222,7 @@ describe('DELETE /api/tasks/[id]', () => {
     expect(mockDelete).toHaveBeenCalledWith(TASK_ID);
 
     mockDelete.mockClear();
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'bob', role: 'contributor' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'bob', role: 'contributor' });
     const resOther = await deleteTask('valid-token');
     expect(resOther.status).toBe(403);
     expect(mockDelete).not.toHaveBeenCalled();

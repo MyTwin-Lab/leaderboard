@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { NextRequest } from 'next/server';
 
-const { mockGet } = vi.hoisted(() => ({
+const { mockGet, mockVerifyAdmin } = vi.hoisted(() => ({
   mockGet: vi.fn(),
+  mockVerifyAdmin: vi.fn(),
 }));
 
 vi.mock('../../../../../../../packages/database-service/repositories/index.js', () => ({
@@ -10,10 +12,17 @@ vi.mock('../../../../../../../packages/database-service/repositories/index.js', 
   },
 }));
 
+vi.mock('@/lib/auth', () => ({ verifyAdmin: mockVerifyAdmin }));
+
 import { GET } from './route';
+
+function getStatus() {
+  return GET(new NextRequest('http://localhost/api/kaggle/status'));
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockVerifyAdmin.mockResolvedValue({ userId: 'admin-1', role: 'admin', email: 'a@b.com' });
 });
 
 describe('GET /api/kaggle/status', () => {
@@ -24,7 +33,7 @@ describe('GET /api/kaggle/status', () => {
       kaggle_connected_at: '2026-07-01T00:00:00.000Z',
     });
 
-    const res = await GET();
+    const res = await getStatus();
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
@@ -41,7 +50,7 @@ describe('GET /api/kaggle/status', () => {
       kaggle_connected_at: null,
     });
 
-    const res = await GET();
+    const res = await getStatus();
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
@@ -54,9 +63,32 @@ describe('GET /api/kaggle/status', () => {
   it('returns a safe disconnected payload when the settings lookup throws', async () => {
     mockGet.mockRejectedValue(new Error('db down'));
 
-    const res = await GET();
+    const res = await getStatus();
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ connected: false, username: null, connected_at: null });
+  });
+
+  it('returns only `connected` to a non-admin', async () => {
+    mockVerifyAdmin.mockResolvedValue(null);
+    mockGet.mockResolvedValue({
+      kaggle_is_connected: true,
+      kaggle_username: 'ada',
+      kaggle_connected_at: '2026-07-01T00:00:00.000Z',
+    });
+
+    const res = await getStatus();
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ connected: true });
+  });
+
+  it('returns only `connected: false` to a non-admin when the lookup throws', async () => {
+    mockVerifyAdmin.mockResolvedValue(null);
+    mockGet.mockRejectedValue(new Error('db down'));
+
+    const res = await getStatus();
+
+    expect(await res.json()).toEqual({ connected: false });
   });
 });

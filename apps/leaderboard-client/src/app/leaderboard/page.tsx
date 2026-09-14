@@ -8,9 +8,9 @@ export const dynamic = 'force-dynamic';
 // Canonique sans query string : chaque filtre (?projectId, ?q) est une vue de
 // la même page, pas une page à indexer à part.
 export const metadata = pageMetadata({
-  title: "Leaderboard",
+  title: "Contributor Leaderboard",
   description:
-    "The MyTwin Lab contributor ranking: who is building the digital twin of the human body, ranked by contribution points (CP) earned.",
+    "The MyTwin Lab contributor ranking: clinicians, researchers, engineers and students ranked by the contribution points (CP) their work has earned.",
   path: "/leaderboard",
 });
 

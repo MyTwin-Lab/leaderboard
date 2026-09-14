@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import { GradientBackground } from "@/components/layout/GradientBackground";
 import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
 import { OnboardingDrawer } from "@/components/onboarding/OnboardingDrawer";
 import { SessionGuard } from "@/components/layout/SessionGuard";
 import { fetchContributorSession } from "@/lib/contributor";
@@ -11,7 +12,7 @@ import { fetchOnboardingProgress } from "@/lib/server/onboarding";
 import { AppSettingsRepository } from "@packages/database-service/repositories";
 import { THEMES, DEFAULT_THEME_KEY, isValidThemeKey } from "@/lib/themes";
 import { resolveTheme } from "@/lib/color-utils";
-import { DEFAULT_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/seo";
+import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 import "./globals.css";
 
@@ -28,12 +29,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   // Base des URL relatives (canonical, og:url, og:image) : sans elle, les
   // aperçus de lien reçoivent des chemins qu'ils ne savent pas résoudre.
-  metadataBase: new URL(siteUrl()),
+  metadataBase: new URL(SITE_URL),
   // `template` habille le titre des pages enfants, `default` sert à celles qui
-  // n'en déclarent pas : le nom de l'app reste dans l'onglet partout.
+  // n'en déclarent pas : le nom de l'app reste dans l'onglet partout. Même
+  // séparateur que mytwin.care (« Page | MyTwin »), pour une famille cohérente.
   title: {
     default: SITE_NAME,
-    template: `%s - ${SITE_NAME}`,
+    template: `%s | ${SITE_NAME}`,
   },
   description: DEFAULT_DESCRIPTION,
   applicationName: SITE_NAME,
@@ -99,6 +101,7 @@ export default async function RootLayout({
             <main className="mx-auto w-full max-w-6xl px-4 pt-20 pb-16 sm:px-6 md:pt-24">
               {children}
             </main>
+            <Footer />
             {session && onboarding && !onboarding.completed_at && settings.modules_onboarding_enabled && (
               <OnboardingDrawer initialProgress={onboarding} />
             )}

@@ -68,7 +68,6 @@ export class MeetingAnalysisService {
           summary: result.summary,
           decisions: result.decisions as any,
           actions: result.actions as any,
-          contribution_signals: result.contribution_signals as any,
           status: 'completed',
           processed_at: new Date(),
         });

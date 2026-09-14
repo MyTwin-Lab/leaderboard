@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SyncMeetingService } from '../../../../../../packages/services/sync-meeting/sync-meeting.service.js';
-import { verifyRequestToken } from '@/lib/auth';
-import { isManagerOfChallenge } from '@/lib/server/managerAuth';
+import { getSessionUser } from '@/lib/auth';
+import { isManagerOfChallenge, canAccessChallengeInternals } from '@/lib/server/managerAuth';
+import { toMeetingView } from './meetingAccess';
 import { z } from 'zod';
 
 const createMeetingSchema = z.object({
@@ -15,23 +16,29 @@ const createMeetingSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const payload = await verifyRequestToken(request);
-    if (!payload) {
+    // Rôle relu en base : un rôle retiré ne survit pas jusqu'à l'expiration du JWT.
+    const user = await getSessionUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const isAdmin = user.role === 'admin';
 
     const searchParams = request.nextUrl.searchParams;
     const challengeId = searchParams.get('challenge_id');
 
-    const syncMeetingService = new SyncMeetingService();
-
     if (challengeId) {
-      const meetings = await syncMeetingService.getMeetingsByChallengeId(challengeId);
-      return NextResponse.json({ meetings });
+      if (!(await canAccessChallengeInternals(user, challengeId))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      const meetings = await new SyncMeetingService().getMeetingsByChallengeId(challengeId);
+      return NextResponse.json({ meetings: isAdmin ? meetings : meetings.map(toMeetingView) });
     }
 
-    // Retourner tous les meetings si pas de challenge_id
-    const allMeetings = await syncMeetingService.getAllMeetings();
+    // Tous les meetings, tous challenges confondus : vue admin uniquement.
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const allMeetings = await new SyncMeetingService().getAllMeetings();
     return NextResponse.json({ meetings: allMeetings });
   } catch (error) {
     console.error('[SyncMeetings] GET error:', error);
@@ -41,13 +48,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = await verifyRequestToken(request);
-    if (!payload) {
+    // Même raison que le GET : le rôle admin se relit en base.
+    const user = await getSessionUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    console.log('[SyncMeetings][POST] Raw body:', body);
     const parsed = createMeetingSchema.safeParse(body);
     if (!parsed.success) {
       console.error('[SyncMeetings][POST] Validation failed:', parsed.error.issues);
@@ -58,8 +65,8 @@ export async function POST(request: NextRequest) {
     }
     const validated = parsed.data;
 
-    const isAdmin = payload.role === 'admin';
-    const isManager = !isAdmin && await isManagerOfChallenge(payload.userId, validated.challenge_id);
+    const isAdmin = user.role === 'admin';
+    const isManager = !isAdmin && await isManagerOfChallenge(user.id, validated.challenge_id);
     if (!isAdmin && !isManager) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -71,7 +78,7 @@ export async function POST(request: NextRequest) {
       challenge_id: validated.challenge_id,
       start_time: new Date(validated.start_time),
       end_time: new Date(validated.end_time),
-      created_by: payload.userId,
+      created_by: user.id,
     });
 
     return NextResponse.json({ meeting }, { status: 201 });

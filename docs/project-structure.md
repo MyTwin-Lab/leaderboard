@@ -14,7 +14,9 @@ leaderboard/
 │       │   │   ├── page.tsx           # Curated homepage (hero + top contributors + trending challenges)
 │       │   │   ├── globals.css        # Tailwind 4 entry + overrideable theme tokens
 │       │   │   ├── leaderboard/       # Full leaderboard
-│       │   │   ├── about/             # About page
+│       │   │   ├── about/             # MyTwin Lab landing (institutions + contributors)
+│       │   │   ├── terms-of-use/  privacy-policy/   # legal pages, markdown in content/legal/
+│       │   │   ├── robots.ts  sitemap.ts  opengraph-image.tsx   # see seo.md
 │       │   │   ├── signin/            # Sign-in page
 │       │   │   ├── admin/             # Admin section (protected, admin role only)
 │       │   │   │   ├── challenges/  contributions/  evaluation-grids/

@@ -71,8 +71,10 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
     projectId: null,
     timePeriod: "all",
   });
-  const ranked = rankEntries(aggregated);
-  const contributorsRanked = ranked.filter((e) => e.totalCP > 0).length;
+  // Même règle que fetchLeaderboard : un compte à 0 CP n'est pas classé, et
+  // n'a donc pas à apparaître dans le podium ni dans la suite.
+  const ranked = rankEntries(aggregated.filter((a) => a.totalCP > 0));
+  const contributorsRanked = ranked.length;
 
   // Une contribution de groupe compte, et date, pour chacun de ses membres —
   // pas seulement pour celui qui l'a soumise.

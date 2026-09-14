@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserRepository } from '../../../../../../packages/database-service/repositories';
+import { userRoleSchema } from '../../../../../../packages/database-service/domain/schemas_zod';
+import { getSessionUser } from '@/lib/auth';
 import { z } from 'zod';
 
 const userRepo = new UserRepository();
@@ -8,12 +10,20 @@ const createUserSchema = z.object({
   github_username: z.string().min(1).optional(),
   full_name: z.string().min(1),
   email: z.string().email().optional(),
-  role: z.string(),
+  role: userRoleSchema,
 });
+
+// Les deux handlers sont réservés aux admins : la liste expose email,
+// google_user_id et rôle de chaque compte. getSessionUser() relit le rôle en
+// base, un JWT encore valide après une rétrogradation ne suffit donc pas.
 
 // GET /api/users - Liste tous les utilisateurs
 export async function GET() {
   try {
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (session.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
     const users = await userRepo.findAll();
     return NextResponse.json(users);
   } catch (error) {
@@ -28,16 +38,24 @@ export async function GET() {
 // POST /api/users - Créer un nouvel utilisateur
 export async function POST(request: NextRequest) {
   try {
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (session.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
     const body = await request.json();
     const validated = createUserSchema.parse(body);
-    
-    const user = await userRepo.create({
-      github_username: validated.github_username,
-      full_name: validated.full_name,
-      email: validated.email,
-      role: validated.role,
-    });
-    
+
+    // Le rôle initial est tracé dans role_changes, dans la transaction de l'INSERT.
+    const user = await userRepo.create(
+      {
+        github_username: validated.github_username,
+        full_name: validated.full_name,
+        email: validated.email,
+        role: validated.role,
+      },
+      { changedBy: session.id }
+    );
+
     return NextResponse.json(user, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -46,7 +64,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     console.error('Error creating user:', error);
     return NextResponse.json(
       { error: 'Failed to create user' },

@@ -19,6 +19,7 @@ const ERROR_MESSAGES: Record<string, string> = {
     'The connected account has no organization where you are an admin or owner. An organization account is required.',
   csrf: 'Connection attempt expired or was tampered with. Please try again.',
   exchange_failed: 'Failed to obtain GitHub token. Please try again.',
+  not_admin: 'Only an admin can connect a GitHub account.',
 };
 
 export function GitHubConnectionCard({ initialError }: Props) {

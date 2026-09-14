@@ -19,6 +19,10 @@ const PUBLIC_API_ROUTES = [
   // déposé, `brief` ne sert que la page de garde — celle qu'on lit justement
   // avant d'avoir un compte.
   /^\/api\/challenges\/[^/]+\/brief$/,
+  // Le détail d'une récompense, déplié depuis la fiche publique
+  // `/contributors/[userId]`. Ouvert parce que la route ne renvoie plus `meta`
+  // (extraits Slack, justifications IA) : libellés, points et noms seulement.
+  /^\/api\/contributions\/[^/]+\/rewards$/,
 ];
 
 export function isPublicPage(pathname: string): boolean {

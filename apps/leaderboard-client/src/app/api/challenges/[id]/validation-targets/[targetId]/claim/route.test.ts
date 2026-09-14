@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 const {
   MockValidationTargetError, MockSelfVoteError, MockInsufficientRoleError,
   MockSelfAuthoredCaseError, MockDuplicateClaimError, MockEndpointCallError,
-  mockClaimCase, mockFindById,
+  mockClaimCase, mockFindById, mockIsPurged,
 } = vi.hoisted(() => {
   return {
     MockValidationTargetError: class extends Error {},
@@ -15,6 +15,7 @@ const {
     MockEndpointCallError: class extends Error {},
     mockClaimCase: vi.fn(),
     mockFindById: vi.fn(),
+    mockIsPurged: vi.fn(),
   };
 });
 
@@ -32,6 +33,7 @@ vi.mock('../../../../../../../../../../packages/services/challenge/reference-cas
 
 vi.mock('../../../../../../../../../../packages/database-service/repositories', () => ({
   ValidationTargetRepository: class { findById = mockFindById; },
+  ReferenceCaseRepository: class { isPurged = mockIsPurged; },
 }));
 
 import { POST } from './route';
@@ -57,6 +59,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'medical_pro' });
   mockFindById.mockResolvedValue({ uuid: 'target-1', validation_challenge_id: 'challenge-1', contribution_id: 'contrib-1' });
+  mockIsPurged.mockResolvedValue(false);
 });
 
 describe('POST /api/challenges/[id]/validation-targets/[targetId]/claim', () => {
@@ -73,6 +76,28 @@ describe('POST /api/challenges/[id]/validation-targets/[targetId]/claim', () => 
     expect(res.headers.get('content-type')).toBe('application/json');
     const body = await res.text();
     expect(body).toBe('{"label":"cat"}');
+  });
+
+  it("never copies the endpoint's Content-Type blindly — nosniff, and HTML is forced to download", async () => {
+    mockClaimCase.mockResolvedValue({
+      claim: { uuid: 'claim-1' },
+      liveResponse: { status: 200, contentType: 'text/html; charset=utf-8', body: Buffer.from('<script>alert(1)</script>') },
+    });
+
+    const res = await call();
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(res.headers.get('content-disposition')).toMatch(/^attachment;/);
+    expect(res.headers.get('x-validation-status')).toBe('200');
+    expect(res.headers.get('x-claim-id')).toBe('claim-1');
+  });
+
+  it('returns 410 when the reference case was purged by the retention job', async () => {
+    mockIsPurged.mockResolvedValue(true);
+    const res = await call();
+    expect(res.status).toBe(410);
+    expect(mockClaimCase).not.toHaveBeenCalled();
   });
 
   it('returns 401 when not logged in', async () => {

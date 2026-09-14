@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
-import { getBaseUrl } from '@/lib/url';
+import { getBaseUrl, getInternalBaseUrl } from '@/lib/url';
 import { isPublicPage, isPublicApiRoute } from '@/lib/routeVisibility';
+import { parseSessionClaims } from '@/lib/sessionClaims';
 
 type UserRole = 'admin' | 'contributor' | 'viewer' | 'medical_pro';
 type ProtectedPage = { prefix: string; roles: readonly UserRole[] };
@@ -42,10 +43,8 @@ async function verifyTokenEdge(token: string): Promise<{ userId: string; role: s
   try {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const { payload } = await jwtVerify(token, secret);
-    return {
-      userId: payload.userId as string,
-      role: payload.role as string,
-    };
+    // Une signature valide ne fait pas une session : voir lib/sessionClaims.ts.
+    return parseSessionClaims(payload, 'access');
   } catch {
     return null;
   }
@@ -72,10 +71,41 @@ function withUpdatedCookie(cookieHeader: string | null, name: string, value: str
   return pairs.join('; ');
 }
 
+const WRITE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+
+/**
+ * Défense CSRF en profondeur, en plus de SameSite (docs/temp.md, L6) : une
+ * écriture sur l'API émise par un autre site est refusée.
+ *
+ * Une requête sans `Origin` ni `Sec-Fetch-Site` passe : ce n'est pas un
+ * navigateur (crons, curl, fetch interne du proxy vers /api/auth/refresh).
+ * `X-Forwarded-Host` compte parmi les hôtes admis : derrière le reverse proxy
+ * c'est l'hôte public, et un site tiers ne peut pas le poser sans préflight CORS.
+ */
+function isCrossSiteWrite(request: NextRequest): boolean {
+  if (!WRITE_METHODS.includes(request.method)) return false;
+  if (request.headers.get('sec-fetch-site') === 'cross-site') return true;
+
+  const origin = request.headers.get('origin');
+  if (origin === null) return false;
+  let originHost: string;
+  try {
+    originHost = new URL(origin).host;
+  } catch {
+    return true; // `Origin: null` (iframe sandboxée, redirection…) ou illisible
+  }
+  const allowedHosts = [
+    request.headers.get('x-forwarded-host'),
+    request.headers.get('host'),
+    request.nextUrl.host,
+  ];
+  return !allowedHosts.includes(originHost);
+}
+
 /**
  * Tente un refresh silencieux via /api/auth/refresh (Node runtime — c'est là
- * que vivent la rotation en base et bcrypt, impossibles à faire tourner ici
- * même raison que verifyTokenEdge existe au lieu d'importer lib/auth.ts).
+ * que vit la rotation en base, impossible à faire tourner ici pour la même
+ * raison que verifyTokenEdge existe au lieu d'importer lib/auth.ts).
  * Appel HTTP interne, même déploiement.
  */
 async function tryRefreshSession(request: NextRequest): Promise<{
@@ -86,8 +116,9 @@ async function tryRefreshSession(request: NextRequest): Promise<{
   if (!refreshToken) return null;
 
   try {
-    const baseUrl = getBaseUrl(request);
-    const res = await fetch(new URL('/api/auth/refresh', baseUrl), {
+    // Origine fixe, jamais X-Forwarded-Host : le refresh token part avec cet
+    // appel (docs/temp.md, L5).
+    const res = await fetch(new URL('/api/auth/refresh', getInternalBaseUrl()), {
       method: 'POST',
       headers: { cookie: `refresh_token=${refreshToken}` },
     });
@@ -111,13 +142,15 @@ async function tryRefreshSession(request: NextRequest): Promise<{
  * existant (Node runtime — même contrainte que tryRefreshSession : l'Edge
  * runtime ne peut pas interroger `pg` directement).
  */
-async function checkSessionStillValid(request: NextRequest, userId: string): Promise<boolean> {
+async function checkSessionStillValid(userId: string): Promise<boolean> {
   try {
-    const baseUrl = getBaseUrl(request);
-    const url = new URL('/api/auth/check-session', baseUrl);
+    const url = new URL('/api/auth/check-session', getInternalBaseUrl());
     url.searchParams.set('userId', userId);
     const res = await fetch(url);
-    if (!res.ok) return true; // panne du check : ne pas bloquer tout le trafic
+    // Seule une panne du check (5xx) laisse passer, pour ne pas bloquer tout le
+    // trafic. Un 4xx est une réponse : la session est refusée.
+    if (res.status >= 500) return true;
+    if (!res.ok) return false;
     const data = await res.json();
     return data.valid !== false;
   } catch {
@@ -136,6 +169,15 @@ export async function proxy(request: NextRequest) {
   const isProtectedApiRoute = !isPublicApiRoute(pathname)
     && protectedApiRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
+
+  // Avant tout le reste, routes d'auth comprises (logout, refresh). Les
+  // callbacks OAuth sont des GET : non concernés.
+  if (pathname.startsWith('/api/') && isCrossSiteWrite(request)) {
+    return NextResponse.json(
+      { error: 'Cross-site request refused' },
+      { status: 403 }
+    );
+  }
 
   // Les routes d'auth sont toujours accessibles
   if (isAuthRoute) {
@@ -202,7 +244,7 @@ export async function proxy(request: NextRequest) {
     // encore : un admin a pu le fusionner (Onboarding > Lier) ou le supprimer
     // entre deux requêtes. Un seul lookup indexé côté Node runtime détecte ça
     // immédiatement au lieu d'attendre l'expiration de l'access_token (15 min).
-    if (!(await checkSessionStillValid(request, payload.userId))) {
+    if (!(await checkSessionStillValid(payload.userId))) {
       if (isProtectedApiRoute) {
         return respond(NextResponse.json(
           { error: 'SESSION_INVALID' },
@@ -324,9 +366,23 @@ export async function proxy(request: NextRequest) {
       // le monde sauf un admin de démarrer une walkthrough — et donc d'être payé.
       const isScenarioWalkthroughRoute = pathname.includes('/validation-scenario-runs');
 
+      // Puissance de calcul GPU (challenges ML) : un contributeur demande une
+      // instance et lit son propre token Jupyter — les handlers relisent la
+      // session en base et ne touchent qu'à la demande de l'appelant ; un
+      // manager ou un admin tranche une demande — rôle et isManagerOfChallenge
+      // vérifiés dans le handler de decision.
+      const isComputeRequestRoute =
+        method === 'POST' &&
+        (/^\/api\/challenges\/[^/]+\/compute-request(\/reveal-token)?$/.test(pathname) ||
+          /^\/api\/challenges\/[^/]+\/compute-requests\/[^/]+\/decision$/.test(pathname));
+
+      // Planifier un meeting : admin ou manager du challenge, vérifié dans le
+      // handler (isManagerOfChallenge).
+      const isSyncMeetingCreateRoute = pathname === '/api/sync-meetings' && method === 'POST';
+
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isMedicalProValidationRoute && !isScenarioWalkthroughRoute && !isNotificationSelfRoute && !isGroupInviteRoute) {
+        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isMedicalProValidationRoute && !isScenarioWalkthroughRoute && !isNotificationSelfRoute && !isGroupInviteRoute && !isComputeRequestRoute && !isSyncMeetingCreateRoute) {
           return respond(NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }

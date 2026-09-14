@@ -42,6 +42,7 @@ import {
   sandbox_stars,
   sandbox_rewards,
   notifications,
+  role_changes,
 } from "./drizzle.js";
 import { parseMlRewardRules } from "../domain/mlRewardRules.js";
 import { parseCodeRewardRules } from "../domain/codeRewardRules.js";
@@ -65,6 +66,7 @@ import type {
   ScenarioStepResult,
   ComputeRequest,
   User,
+  RoleChange,
   Contribution,
   ContributionMember,
   RefreshToken,
@@ -224,6 +226,18 @@ export function toDomainUser(row: DbUser): User {
     bio: row.bio ?? undefined,
     avatar_url: row.avatar_url ?? undefined,
     created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDomainRoleChange(row: InferSelectModel<typeof role_changes>): RoleChange {
+  return {
+    uuid: row.uuid,
+    user_id: row.user_id,
+    old_role: row.old_role ?? null,
+    new_role: row.new_role,
+    changed_by: row.changed_by ?? null,
+    note: row.note ?? null,
+    created_at: new Date(row.created_at),
   };
 }
 
@@ -557,7 +571,7 @@ export function toDomainSyncMeeting(row: DbSyncMeeting): SyncMeeting {
     conference_id: row.conference_id ?? undefined,
     conference_record_id: row.conference_record_id ?? undefined,
     status: row.status as SyncMeetingStatus,
-    created_by: row.created_by,
+    created_by: row.created_by ?? null,
     created_at: row.created_at!,
     updated_at: row.updated_at!,
   };
@@ -575,7 +589,7 @@ export function toDbSyncMeeting(entity: Omit<SyncMeeting, "uuid" | "created_at" 
     conference_id: entity.conference_id ?? null,
     conference_record_id: entity.conference_record_id ?? null,
     status: entity.status,
-    created_by: entity.created_by,
+    created_by: entity.created_by ?? null,
   };
 }
 
@@ -607,7 +621,6 @@ export function toDomainMeetingAnalysis(row: DbMeetingAnalysis): MeetingAnalysis
     summary: row.summary ?? undefined,
     decisions: row.decisions as any[] | undefined,
     actions: row.actions as any[] | undefined,
-    contribution_signals: row.contribution_signals as any[] | undefined,
     status: row.status as MeetingAnalysisStatus,
     processed_at: row.processed_at ?? undefined,
     error_message: row.error_message ?? undefined,
@@ -621,7 +634,6 @@ export function toDbMeetingAnalysis(entity: Omit<MeetingAnalysis, "uuid" | "crea
     summary: entity.summary ?? null,
     decisions: entity.decisions ?? null,
     actions: entity.actions ?? null,
-    contribution_signals: entity.contribution_signals ?? null,
     status: entity.status,
     processed_at: entity.processed_at ?? null,
     error_message: entity.error_message ?? null,
@@ -750,6 +762,7 @@ export function toDomainValidationReferenceCase(row: Partial<DbValidationReferen
     expected_output_filename: row.expected_output_filename ?? null,
     expected_output_content_type: row.expected_output_content_type ?? '',
     created_at: new Date(row.created_at ?? Date.now()),
+    purged_at: row.purged_at ? new Date(row.purged_at) : null,
   };
 }
 
@@ -782,6 +795,7 @@ export function toDomainValidationCaseClaim(row: Partial<DbValidationCaseClaim> 
     observed_at: row.observed_at ? new Date(row.observed_at) : null,
     revealed_at: row.revealed_at ? new Date(row.revealed_at) : null,
     created_at: new Date(row.created_at ?? Date.now()),
+    purged_at: row.purged_at ? new Date(row.purged_at) : null,
   };
 }
 
@@ -978,7 +992,7 @@ export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>):
     theme_key: row.theme_key,
     primary_color: row.primary_color ?? null,
     background_color: row.background_color ?? null,
-    theme_mode: row.theme_mode ?? "dark",
+    theme_mode: row.theme_mode ?? "light",
     updated_at: row.updated_at ?? undefined,
     github_org: row.github_org ?? null,
     github_connected_at: row.github_connected_at ?? null,
@@ -995,8 +1009,8 @@ export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>):
     slack_connected_at: row.slack_connected_at ?? null,
     slack_connected_by: row.slack_connected_by ?? null,
     slack_is_connected: !!row.slack_token_enc,
-    modules_meetings_enabled: row.modules_meetings_enabled ?? true,
-    modules_onboarding_enabled: row.modules_onboarding_enabled ?? true,
+    modules_meetings_enabled: row.modules_meetings_enabled ?? false,
+    modules_onboarding_enabled: row.modules_onboarding_enabled ?? false,
     scaleway_project_id: row.scaleway_project_id ?? null,
     scaleway_zone: row.scaleway_zone ?? null,
     scaleway_connected_at: row.scaleway_connected_at ?? null,

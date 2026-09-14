@@ -3,13 +3,13 @@ import { NextRequest } from 'next/server';
 
 const {
   mockEncryptToken, mockTestConnection, mockUpdateScalewayConnection,
-  mockRequestScalewayDisconnect, mockVerifyRequestToken,
+  mockRequestScalewayDisconnect, mockGetSessionUser,
 } = vi.hoisted(() => ({
   mockEncryptToken: vi.fn(),
   mockTestConnection: vi.fn(),
   mockUpdateScalewayConnection: vi.fn(),
   mockRequestScalewayDisconnect: vi.fn(),
-  mockVerifyRequestToken: vi.fn(),
+  mockGetSessionUser: vi.fn(),
 }));
 
 vi.mock('../../../../../../../packages/config/scalewayCredentials.js', () => ({
@@ -29,7 +29,7 @@ vi.mock('../../../../../../../packages/database-service/repositories/index.js', 
   },
 }));
 
-vi.mock('@/lib/auth', () => ({ verifyRequestToken: mockVerifyRequestToken }));
+vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
 
 import { POST, DELETE } from './route';
 
@@ -62,7 +62,7 @@ const validBody = { secret_key: 'sk-secret', project_id: 'proj-1', zone: 'fr-par
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin', email: 'a@b.com' });
+  mockGetSessionUser.mockResolvedValue({ id:'admin-1', role: 'admin', email: 'a@b.com' });
   mockTestConnection.mockResolvedValue(true);
   mockEncryptToken.mockReturnValue({ enc: 'enc-value', iv: 'iv-value' });
   mockUpdateScalewayConnection.mockResolvedValue(undefined);
@@ -71,7 +71,7 @@ beforeEach(() => {
 
 describe('POST /api/scaleway/connection', () => {
   it('returns 401 when not authenticated', async () => {
-    mockVerifyRequestToken.mockResolvedValue(null);
+    mockGetSessionUser.mockResolvedValue(null);
 
     const res = await postConnection(validBody);
 
@@ -80,7 +80,7 @@ describe('POST /api/scaleway/connection', () => {
   });
 
   it('returns 401 when authenticated but not admin', async () => {
-    mockVerifyRequestToken.mockResolvedValue({ userId: 'u1', role: 'contributor', email: 'a@b.com' });
+    mockGetSessionUser.mockResolvedValue({ id:'u1', role: 'contributor', email: 'a@b.com' });
 
     const res = await postConnection(validBody);
 
@@ -149,7 +149,7 @@ describe('POST /api/scaleway/connection', () => {
 
 describe('DELETE /api/scaleway/connection', () => {
   it('returns 401 when not authenticated', async () => {
-    mockVerifyRequestToken.mockResolvedValue(null);
+    mockGetSessionUser.mockResolvedValue(null);
 
     const res = await deleteConnection();
 
@@ -158,7 +158,7 @@ describe('DELETE /api/scaleway/connection', () => {
   });
 
   it('returns 401 when authenticated but not admin', async () => {
-    mockVerifyRequestToken.mockResolvedValue({ userId: 'u1', role: 'contributor', email: 'a@b.com' });
+    mockGetSessionUser.mockResolvedValue({ id:'u1', role: 'contributor', email: 'a@b.com' });
 
     const res = await deleteConnection();
 

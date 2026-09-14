@@ -40,6 +40,12 @@ export async function GET(
     // See the sibling file/route.ts for why this falls back to the claim —
     // since challenge-014, response_bytes lives on the claim, not the attempt.
     if (attempt.reference_case_claim_id) {
+      // Purge de conservation passée : response_bytes a été vidé sur le claim.
+      // 410 plutôt qu'un 200 à corps vide — vérifié avant de charger le blob.
+      const purgeState = await caseClaimRepo.findPurgeState(attempt.reference_case_claim_id);
+      if (!purgeState || purgeState.claim_purged_at) {
+        return NextResponse.json({ error: 'Response not available (purged or missing)' }, { status: 410 });
+      }
       const claim = await caseClaimRepo.findById(attempt.reference_case_claim_id);
       if (!claim) return NextResponse.json({ error: 'Response not available (purged or missing)' }, { status: 410 });
       const headers = buildSafeFileHeaders(claim.response_content_type, 'response');

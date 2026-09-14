@@ -44,6 +44,9 @@ describe("fetchHomeOverview", () => {
       { uuid: "u2", full_name: "Bob", bio: null, avatar_url: null, github_username: "bob" },
       { uuid: "u3", full_name: "Carol", bio: null, avatar_url: null, github_username: "carol" },
       { uuid: "u4", full_name: "Dave", bio: null, avatar_url: null, github_username: "dave" },
+      // Inscrite sans aucun CP : ni podium, ni suite (L11). Sans le filtre
+      // serveur, elle apparaîtrait dans `rest` juste derrière Dave.
+      { uuid: "u5", full_name: "Eve", bio: "Private bio", avatar_url: null, github_username: "eve" },
     ] as any);
 
     vi.spyOn(repositories.contribution, "findAll").mockResolvedValue([

@@ -29,7 +29,71 @@ import { sql } from "drizzle-orm";
  *
  * Une exception, documentée sur place : la déduplication de challenge_teams,
  * sans laquelle l'index unique posé juste après ne peut pas être créé.
+ *
+ * Depuis M6, il réécrit aussi des contraintes de clé étrangère (passage en
+ * ON DELETE SET NULL) et vide des tokens déjà expirés. Les deux restent
+ * idempotents : un second passage ne trouve plus rien à modifier.
  */
+
+/**
+ * FK `<table>.<column> → users(uuid)` passée en ON DELETE SET NULL.
+ *
+ * Postgres n'a ni `ADD CONSTRAINT IF NOT EXISTS` ni `ALTER CONSTRAINT … ON
+ * DELETE`, d'où ce bloc DO :
+ *   1. on retrouve la contrainte par sa colonne plutôt que par son nom — les
+ *      bases créées à différentes époques (migrations drizzle/, push) ne
+ *      l'ont pas forcément nommée pareil ;
+ *   2. on ne supprime que celles dont l'action n'est pas déjà SET NULL
+ *      (`confdeltype <> 'n'`) ;
+ *   3. on n'ajoute la nouvelle que s'il n'en reste aucune en SET NULL.
+ * Au second passage, l'étape 2 ne trouve rien et l'étape 3 non plus : no-op.
+ *
+ * Gardé sur l'existence de la colonne (`to_regclass` rend NULL sans lever
+ * d'erreur), pour la même raison que le bloc tasks.type : ce script est fatal,
+ * une table absente ne doit pas bloquer tout ce qui suit.
+ */
+function fkSetNullStatement(table: string, column: string): { label: string; sql: string } {
+  const constraintName = `${table}_${column}_users_uuid_fk`;
+  const matchingFk = `
+          FROM pg_constraint c
+          JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+          WHERE c.contype = 'f'
+            AND c.conrelid = to_regclass('${table}')
+            AND c.confrelid = 'users'::regclass
+            AND array_length(c.conkey, 1) = 1
+            AND a.attname = '${column}'`;
+  return {
+    label: `${table}.${column} (FK users ON DELETE SET NULL)`,
+    sql: `
+      DO $$
+      DECLARE
+        fk record;
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_attribute
+          WHERE attrelid = to_regclass('${table}') AND attname = '${column}' AND NOT attisdropped
+        ) THEN
+          RETURN;
+        END IF;
+
+        FOR fk IN
+          SELECT c.conname ${matchingFk}
+            AND c.confdeltype <> 'n'
+        LOOP
+          EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I', '${table}', fk.conname);
+        END LOOP;
+
+        IF NOT EXISTS (
+          SELECT 1 ${matchingFk}
+            AND c.confdeltype = 'n'
+        ) THEN
+          ALTER TABLE ${table}
+            ADD CONSTRAINT ${constraintName}
+            FOREIGN KEY (${column}) REFERENCES users(uuid) ON DELETE SET NULL;
+        END IF;
+      END $$`,
+  };
+}
 
 const STATEMENTS: Array<{ label: string; sql: string }> = [
   // challenges.workspace_mode — c'est cette colonne qui manquait et faisait
@@ -482,6 +546,146 @@ const STATEMENTS: Array<{ label: string; sql: string }> = [
   {
     label: "idx_validation_step_feedbacks_unique",
     sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_validation_step_feedbacks_unique ON validation_step_feedbacks (run_id, step_id)`,
+  },
+
+  // --- Audit des rôles (L8) ---
+  // Une row par changement effectif, écrite dans la transaction de l'UPDATE
+  // (UserRepository.updateRole). old_role NULL = rôle attribué à la création.
+  {
+    label: "role_changes",
+    sql: `
+      CREATE TABLE IF NOT EXISTS role_changes (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        old_role varchar(100),
+        new_role varchar(100) NOT NULL,
+        changed_by uuid REFERENCES users(uuid) ON DELETE SET NULL,
+        note text,
+        created_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+  {
+    label: "idx_role_changes_user_created",
+    sql: `CREATE INDEX IF NOT EXISTS idx_role_changes_user_created ON role_changes (user_id, created_at)`,
+  },
+
+  // --- Suppression de compte (M6) ---
+  // Ces FK n'avaient pas d'action ON DELETE : elles bloquaient la suppression
+  // de tout admin ou manager ayant décidé, créé ou connecté quelque chose.
+  //
+  // DROP NOT NULL d'abord : un SET NULL sur une colonne NOT NULL passerait à
+  // la création mais échouerait à la première suppression. DROP NOT NULL sur
+  // une colonne déjà nullable est un no-op, sans erreur.
+  {
+    label: "sync_meetings.created_by (drop NOT NULL)",
+    sql: `
+      DO $$
+      BEGIN
+        IF to_regclass('sync_meetings') IS NOT NULL THEN
+          ALTER TABLE sync_meetings ALTER COLUMN created_by DROP NOT NULL;
+        END IF;
+      END $$`,
+  },
+  fkSetNullStatement("compute_requests", "decided_by"),
+  fkSetNullStatement("evaluation_runs", "created_by"),
+  fkSetNullStatement("evaluation_grids", "created_by"),
+  fkSetNullStatement("app_settings", "updated_by"),
+  fkSetNullStatement("app_settings", "github_connected_by"),
+  fkSetNullStatement("app_settings", "kaggle_connected_by"),
+  fkSetNullStatement("app_settings", "openai_connected_by"),
+  fkSetNullStatement("app_settings", "slack_connected_by"),
+  fkSetNullStatement("app_settings", "scaleway_connected_by"),
+  fkSetNullStatement("sync_meetings", "created_by"),
+
+  // --- Rétention des pièces de validation (L9) ---
+  // NULL = octets intacts. La purge elle-même vit côté application.
+  {
+    label: "validation_reference_cases.purged_at",
+    sql: `ALTER TABLE validation_reference_cases ADD COLUMN IF NOT EXISTS purged_at timestamp`,
+  },
+  {
+    label: "validation_case_claims.purged_at",
+    sql: `ALTER TABLE validation_case_claims ADD COLUMN IF NOT EXISTS purged_at timestamp`,
+  },
+
+  // --- Poids individuels des réunions de synchro (H4) ---
+  // SPEC challenge 008, §9 : aucune utilisation à des fins d'évaluation
+  // individuelle. L'agent ne produit plus ces signaux et plus aucun code ne lit
+  // la colonne ; on supprime aussi les poids déjà stockés. Destructif, mais
+  // c'est précisément le but. Idempotent : IF EXISTS, no-op au second passage.
+  {
+    label: "meeting_analyses.contribution_signals (suppression)",
+    sql: `ALTER TABLE meeting_analyses DROP COLUMN IF EXISTS contribution_signals`,
+  },
+
+  // --- Token Jupyter des instances GPU (M9) ---
+  // Rattrapage des lignes terminées avant que updateExpired/updateFailed ne
+  // vident le token. Idempotent : le filtre IS NOT NULL ne matche plus rien
+  // au second passage.
+  {
+    label: "compute_requests.access_token (purge des demandes terminées)",
+    sql: `
+      UPDATE compute_requests
+      SET access_token_enc = NULL, access_token_iv = NULL
+      WHERE status IN ('expired', 'failed', 'rejected')
+        AND access_token_enc IS NOT NULL`,
+  },
+
+  // --- Cache contributions.reward (drizzle/0018) ---
+  // Le trigger n'existait que dans la migration drizzle/0018, jamais appliquée
+  // par ce script : sans lui, createManyAndSyncRewards écrit le ledger mais
+  // contributions.reward reste à 0 jusqu'au prochain db-resync-rewards.
+  // Idempotent : CREATE OR REPLACE pour la fonction, DROP IF EXISTS puis
+  // CREATE pour le trigger. Pas de backfill ici — db-resync-rewards tourne
+  // juste après dans le postdeploy et recale les caches déjà dérivés.
+  {
+    label: "sync_contribution_reward() (fonction)",
+    sql: `
+      CREATE OR REPLACE FUNCTION sync_contribution_reward() RETURNS trigger AS $$
+      BEGIN
+        IF TG_OP = 'DELETE' THEN
+          IF OLD.contribution_id IS NOT NULL THEN
+            UPDATE contributions
+            SET reward = COALESCE(
+              (SELECT SUM(points) FROM reward_entries WHERE contribution_id = OLD.contribution_id), 0
+            )
+            WHERE uuid = OLD.contribution_id;
+          END IF;
+          RETURN OLD;
+        END IF;
+
+        IF NEW.contribution_id IS NOT NULL THEN
+          UPDATE contributions
+          SET reward = COALESCE(
+            (SELECT SUM(points) FROM reward_entries WHERE contribution_id = NEW.contribution_id), 0
+          )
+          WHERE uuid = NEW.contribution_id;
+        END IF;
+
+        IF TG_OP = 'UPDATE' AND OLD.contribution_id IS DISTINCT FROM NEW.contribution_id
+           AND OLD.contribution_id IS NOT NULL THEN
+          UPDATE contributions
+          SET reward = COALESCE(
+            (SELECT SUM(points) FROM reward_entries WHERE contribution_id = OLD.contribution_id), 0
+          )
+          WHERE uuid = OLD.contribution_id;
+        END IF;
+
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql`,
+  },
+  {
+    label: "trg_sync_contribution_reward (suppression avant recréation)",
+    sql: `DROP TRIGGER IF EXISTS trg_sync_contribution_reward ON reward_entries`,
+  },
+  {
+    label: "trg_sync_contribution_reward",
+    sql: `
+      CREATE TRIGGER trg_sync_contribution_reward
+      AFTER INSERT OR UPDATE OR DELETE ON reward_entries
+      FOR EACH ROW
+      EXECUTE FUNCTION sync_contribution_reward()`,
   },
 ];
 

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindWithChallenge, mockDelete, mockJwtVerify } = vi.hoisted(() => ({
+const { mockFindWithChallenge, mockDelete, mockVerifyRequestToken } = vi.hoisted(() => ({
   mockFindWithChallenge: vi.fn(),
   mockDelete: vi.fn(),
-  mockJwtVerify: vi.fn(),
+  mockVerifyRequestToken: vi.fn(),
 }));
 
 vi.mock('../../../../../../../packages/database-service/repositories', () => ({
@@ -14,8 +14,11 @@ vi.mock('../../../../../../../packages/database-service/repositories', () => ({
   },
 }));
 
-vi.mock('jose', () => ({
-  jwtVerify: mockJwtVerify,
+// Comme le vrai helper : `null` sans cookie access_token ; la doublure décide du reste
+// (`null` = jeton refusé, dont `sb_anon` et les refresh tokens).
+vi.mock('@/lib/auth', () => ({
+  verifyRequestToken: (req: NextRequest) =>
+    req.cookies.get('access_token') ? mockVerifyRequestToken(req) : Promise.resolve(null),
 }));
 
 import { GET, DELETE } from './route';
@@ -39,7 +42,7 @@ function deleteRun(withCookie = true) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockJwtVerify.mockResolvedValue({ payload: { userId: 'admin-1', role: 'admin' } });
+  mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin' });
 });
 
 describe('GET /api/evaluation-runs/[id]', () => {
@@ -50,14 +53,14 @@ describe('GET /api/evaluation-runs/[id]', () => {
   });
 
   it('returns 401 when the token fails verification', async () => {
-    mockJwtVerify.mockRejectedValue(new Error('bad token'));
+    mockVerifyRequestToken.mockResolvedValue(null);
     const res = await getRun();
     expect(res.status).toBe(401);
     expect(mockFindWithChallenge).not.toHaveBeenCalled();
   });
 
   it('returns 403 when the caller is not an admin', async () => {
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'user-1', role: 'contributor' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'user-1', role: 'contributor' });
     const res = await getRun();
     expect(res.status).toBe(403);
     expect(mockFindWithChallenge).not.toHaveBeenCalled();
@@ -95,7 +98,7 @@ describe('DELETE /api/evaluation-runs/[id]', () => {
   });
 
   it('returns 403 when the caller is not an admin', async () => {
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'user-1', role: 'contributor' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'user-1', role: 'contributor' });
     const res = await deleteRun();
     expect(res.status).toBe(403);
     expect(mockDelete).not.toHaveBeenCalled();

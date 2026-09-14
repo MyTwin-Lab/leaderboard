@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const {
-  mockJwtVerify,
+  mockVerifyRequestToken,
   mockFindByChallengeWithRepo,
   mockFindByChallengeAndRepo,
   mockUpdateWorkspace,
@@ -17,7 +17,7 @@ const {
   mockChallengeFindById,
   mockBestMetricValue,
 } = vi.hoisted(() => ({
-  mockJwtVerify: vi.fn(),
+  mockVerifyRequestToken: vi.fn(),
   mockFindByChallengeWithRepo: vi.fn(),
   mockFindByChallengeAndRepo: vi.fn(),
   mockUpdateWorkspace: vi.fn(),
@@ -33,7 +33,12 @@ const {
   mockBestMetricValue: vi.fn(),
 }));
 
-vi.mock('jose', () => ({ jwtVerify: mockJwtVerify }));
+// Comme le vrai helper : `null` sans cookie access_token ; la doublure décide du reste
+// (`null` = jeton refusé, dont `sb_anon` et les refresh tokens).
+vi.mock('@/lib/auth', () => ({
+  verifyRequestToken: (req: NextRequest) =>
+    req.cookies.get('access_token') ? mockVerifyRequestToken(req) : Promise.resolve(null),
+}));
 
 vi.mock('../../../../../../../../packages/database-service/repositories', () => ({
   ChallengeRepoRepository: class {
@@ -97,7 +102,7 @@ function patchWorkspace(body: unknown, withSession = true) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockJwtVerify.mockResolvedValue({ payload: { userId: USER_ID, role: 'contributor' } });
+  mockVerifyRequestToken.mockResolvedValue({ userId: USER_ID, role: 'contributor' });
   mockFindByChallengeWithRepo.mockResolvedValue([]);
   mockFindByIds.mockResolvedValue([]);
   mockTeamFindByChallenge.mockResolvedValue([{ challenge_id: CHALLENGE_ID, user_id: USER_ID }]);

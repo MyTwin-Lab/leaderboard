@@ -46,6 +46,13 @@ export async function GET(
     // attempt.file_bytes path below stays as a fallback; no pre-challenge-014
     // rows exist, but it costs nothing to keep.
     if (attempt.reference_case_claim_id) {
+      // Purge de conservation passée : input_bytes a été vidé sur le cas de
+      // référence. 410 plutôt qu'un 200 à corps vide — vérifié avant de
+      // charger le moindre blob.
+      const purgeState = await caseClaimRepo.findPurgeState(attempt.reference_case_claim_id);
+      if (!purgeState || purgeState.case_purged_at) {
+        return NextResponse.json({ error: 'File not available (purged or missing)' }, { status: 410 });
+      }
       const claim = await caseClaimRepo.findById(attempt.reference_case_claim_id);
       if (!claim) return NextResponse.json({ error: 'File not available (purged or missing)' }, { status: 410 });
       const referenceCase = await referenceCaseRepo.findInputById(claim.reference_case_id);

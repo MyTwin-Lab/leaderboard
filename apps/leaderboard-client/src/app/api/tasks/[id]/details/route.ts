@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TaskRepository, ChallengeTeamRepository } from '../../../../../../../../packages/database-service/repositories';
 import { resolveWorkspaceOwner } from '../../../../../../../../packages/services/challenge/group';
 import { verifyRequestToken } from '@/lib/auth';
+import { canReadTask } from '../../taskAccess';
 
 const taskRepo = new TaskRepository();
 const challengeTeamRepo = new ChallengeTeamRepository();
@@ -14,7 +15,10 @@ export async function GET(
   try {
     const { id: taskId } = await params;
     const task = await taskRepo.findById(taskId);
-    if (!task) {
+    const session = await verifyRequestToken(request);
+    // Tâche personnelle illisible : même 404 qu'une tâche absente. Les
+    // sous-tâches partagent le scope du parent, ce contrôle les couvre.
+    if (!task || !(await canReadTask(task, session))) {
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
@@ -27,7 +31,6 @@ export async function GET(
     // savoir si elle peut éditer : en groupe la tâche appartient au porteur,
     // pas au membre qui l'ouvre, et comparer à son propre id la verrouillerait
     // alors que l'API l'autorise. `null` pour un visiteur anonyme.
-    const session = await verifyRequestToken(request);
     const boardOwnerId = session
       ? await resolveWorkspaceOwner(task.challenge_id, session.userId, { challengeTeamRepo })
       : null;

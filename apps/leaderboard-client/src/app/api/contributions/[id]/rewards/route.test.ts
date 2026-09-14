@@ -89,6 +89,37 @@ describe('GET /api/contributions/[id]/rewards', () => {
     expect(body.entries[0].label).toBe('Great teamwork');
   });
 
+  // La route est publique : `meta` porte l'extrait Slack et la justification
+  // rédigée par le LLM sur la personne, rien de cela ne doit sortir.
+  it('never returns the ledger meta, excerpt and rationale included', async () => {
+    mockFindByContribution.mockResolvedValue([
+      {
+        rule_key: 'slack_signal',
+        points: 5,
+        source_user_id: null,
+        meta: {
+          signal_label: 'Great teamwork',
+          excerpt: 'EXTRAIT-SLACK-PRIVE on se voit demain',
+          rationale: 'JUSTIFICATION-LLM sur la personne',
+          agentScore: 0.42,
+        },
+        created_at: new Date(),
+      },
+    ]);
+
+    const res = await getRewards();
+    const raw = await res.text();
+    const body = JSON.parse(raw);
+
+    expect(res.status).toBe(200);
+    expect('meta' in body.entries[0]).toBe(false);
+    expect(raw).not.toContain('EXTRAIT-SLACK-PRIVE');
+    expect(raw).not.toContain('JUSTIFICATION-LLM');
+    expect(raw).not.toContain('agentScore');
+    // Le libellé du signal reste la seule part de `meta` exposée.
+    expect(body.entries[0].label).toBe('Great teamwork');
+  });
+
   it('falls back to the raw rule_key when there is no known label', async () => {
     mockFindByContribution.mockResolvedValue([
       { rule_key: 'mystery_rule', points: 5, source_user_id: null, meta: null, created_at: new Date() },

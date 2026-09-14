@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EvaluationRunsRepository } from '../../../../../../packages/database-service/repositories';
-import { jwtVerify } from 'jose';
+import { verifyRequestToken } from '@/lib/auth';
 
 const runsRepo = new EvaluationRunsRepository();
 
+// Helper partagé : une signature valide ne suffit pas (voir lib/sessionClaims.ts).
 async function getSession(request: NextRequest): Promise<{ userId: string; role: string } | null> {
-  const token = request.cookies.get('access_token')?.value;
-  if (!token) return null;
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    return { userId: payload.userId as string, role: payload.role as string };
-  } catch {
-    return null;
-  }
+  const payload = await verifyRequestToken(request);
+  return payload ? { userId: payload.userId, role: payload.role } : null;
 }
 
 // GET /api/evaluation-runs?challengeId=&status=&page=

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindWithChallenge, mockJwtVerify, mockRunSyncEvaluation } = vi.hoisted(() => ({
+const { mockFindWithChallenge, mockVerifyRequestToken, mockRunSyncEvaluation } = vi.hoisted(() => ({
   mockFindWithChallenge: vi.fn(),
-  mockJwtVerify: vi.fn(),
+  mockVerifyRequestToken: vi.fn(),
   mockRunSyncEvaluation: vi.fn(),
 }));
 
@@ -13,8 +13,11 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   },
 }));
 
-vi.mock('jose', () => ({
-  jwtVerify: mockJwtVerify,
+// Comme le vrai helper : `null` sans cookie access_token ; la doublure décide du reste
+// (`null` = jeton refusé, dont `sb_anon` et les refresh tokens).
+vi.mock('@/lib/auth', () => ({
+  verifyRequestToken: (req: NextRequest) =>
+    req.cookies.get('access_token') ? mockVerifyRequestToken(req) : Promise.resolve(null),
 }));
 
 vi.mock('../../../../../../../../packages/services/challenge/challenge.service', () => ({
@@ -37,26 +40,26 @@ function postRetry(withCookie = true) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockJwtVerify.mockResolvedValue({ payload: { userId: 'admin-1', role: 'admin' } });
+  mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin' });
 });
 
 describe('POST /api/evaluation-runs/[id]/retry', () => {
   it('returns 401 when there is no access_token cookie', async () => {
     const res = await postRetry(false);
     expect(res.status).toBe(401);
-    expect(mockJwtVerify).not.toHaveBeenCalled();
+    expect(mockVerifyRequestToken).not.toHaveBeenCalled();
     expect(mockFindWithChallenge).not.toHaveBeenCalled();
   });
 
   it('returns 401 when the token fails verification', async () => {
-    mockJwtVerify.mockRejectedValue(new Error('bad token'));
+    mockVerifyRequestToken.mockResolvedValue(null);
     const res = await postRetry();
     expect(res.status).toBe(401);
     expect(mockFindWithChallenge).not.toHaveBeenCalled();
   });
 
   it('returns 403 when the session role is not admin', async () => {
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'u1', role: 'contributor' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'u1', role: 'contributor' });
     const res = await postRetry();
     expect(res.status).toBe(403);
     expect(mockFindWithChallenge).not.toHaveBeenCalled();

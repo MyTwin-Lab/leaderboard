@@ -144,6 +144,27 @@ export const users = pgTable("users", {
   googleUserIdIdx: uniqueIndex("idx_users_google_user_id").on(table.google_user_id),
 }));
 
+// --- ROLE_CHANGES ---
+// Journal d'audit des rôles. Une row par changement effectif, écrite dans la
+// même transaction que l'UPDATE de users.role (UserRepository.updateRole) :
+// aucun changement de rôle ne peut exister sans sa trace. `medical_pro` est la
+// frontière de confiance des challenges de validation, d'où l'exigence.
+//
+// `old_role` NULL = rôle attribué à la création du compte par un admin.
+// `changed_by` SET NULL : l'auteur peut être supprimé, la trace reste.
+export const role_changes = pgTable("role_changes", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  old_role: varchar("old_role", { length: 100 }),
+  new_role: varchar("new_role", { length: 100 }).notNull(),
+  changed_by: uuid("changed_by").references(() => users.uuid, { onDelete: "set null" }),
+  // Justification libre (qualification déclarée, cf. CGU §6).
+  note: text("note"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userCreatedIdx: index("idx_role_changes_user_created").on(table.user_id, table.created_at),
+}));
+
 // --- CONTRIBUTIONS ---
 export const contributions = pgTable("contributions", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
@@ -260,6 +281,9 @@ export const validation_reference_cases = pgTable("validation_reference_cases", 
   expected_output_filename: varchar("expected_output_filename", { length: 255 }),
   expected_output_content_type: varchar("expected_output_content_type", { length: 255 }).notNull(),
   created_at: timestamp("created_at").defaultNow(),
+  // Posé quand les octets ci-dessus sont purgés (rétention de 12 mois après
+  // la fin du challenge, politique de confidentialité §4.2). NULL = intact.
+  purged_at: timestamp("purged_at"),
 }, (table) => ({
   challengeIdIdx: index("idx_validation_reference_cases_challenge_id").on(table.validation_challenge_id),
 }));
@@ -287,6 +311,9 @@ export const validation_case_claims = pgTable("validation_case_claims", {
   // anti-confirmation-bias enforcement point (see ReferenceCaseService).
   revealed_at: timestamp("revealed_at"),
   created_at: timestamp("created_at").defaultNow(),
+  // Posé quand response_bytes est purgé (même rétention que les cas de
+  // référence). NULL = intact.
+  purged_at: timestamp("purged_at"),
 }, (table) => ({
   contributionIdx: index("idx_validation_case_claims_contribution_id").on(table.contribution_id),
   validatorIdx: index("idx_validation_case_claims_validator_id").on(table.validator_user_id),
@@ -309,9 +336,10 @@ export const validation_case_claims = pgTable("validation_case_claims", {
 // destructive migration; those routes fall back to the claim/case when
 // reference_case_claim_id is set.
 //
-// purgeContentForChallenge (validationAttempt.repo.ts) still exists but is no
-// longer wired to challenge archival (see SPEC 4.4) — no retention policy has
-// been decided yet, so nothing purges these columns automatically anymore.
+// Aucune purge ne vise ces colonnes : l'ancienne purgeContentForChallenge a été
+// supprimée. La rétention (L9) s'applique aux octets portés par
+// validation_case_claims et validation_reference_cases (colonne purged_at),
+// et les routes validation-runs répondent 410 une fois ces octets purgés.
 export const validation_attempts = pgTable("validation_attempts", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   validation_challenge_id: uuid("validation_challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
@@ -332,8 +360,8 @@ export const validation_attempts = pgTable("validation_attempts", {
   response_bytes: bytea("response_bytes"),
   response_content_type: varchar("response_content_type", { length: 255 }),
   response_status: integer("response_status"),
-  // Set once the file/response bytes above are purged. No longer set by any
-  // automatic path as of challenge-014 — see the table-level comment above.
+  // Colonne héritée : plus aucun chemin ne la renseigne depuis la suppression
+  // de purgeContentForChallenge — voir le commentaire de la table ci-dessus.
   purged_at: timestamp("purged_at"),
   // Which claim (case + live response + observation) this verdict was cast
   // from — null only for pre-challenge-014 rows, none of which exist yet.
@@ -443,7 +471,10 @@ export const compute_requests = pgTable("compute_requests", {
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   requested_at: timestamp("requested_at").defaultNow().notNull(),
   decided_at: timestamp("decided_at"),
-  decided_by: uuid("decided_by").references(() => users.uuid),
+  // SET NULL : supprimer le compte d'un admin ne doit pas être bloqué par ses
+  // décisions passées. Même règle pour tous les *_by ci-dessous (voir
+  // scripts/db-apply-schema.ts, qui réécrit les contraintes en production).
+  decided_by: uuid("decided_by").references(() => users.uuid, { onDelete: "set null" }),
   approved_at: timestamp("approved_at"),
   // Fixed at approval time (approved_at + 24h) — not extended by anything.
   expires_at: timestamp("expires_at"),
@@ -516,7 +547,7 @@ export const evaluation_runs = pgTable('evaluation_runs', {
   finishedAt: timestamp('finished_at'),
   errorCode: varchar('error_code', { length: 100 }),
   errorMessage: text('error_message'),
-  createdBy: uuid('created_by').references(() => users.uuid),
+  createdBy: uuid('created_by').references(() => users.uuid, { onDelete: 'set null' }),
   meta: json('meta') // { contributionCount, durationMs, evaluatorVersion }
 }, (table) => ({
   challengeIdIdx: index('idx_evaluation_runs_challenge_id').on(table.challengeId),
@@ -555,7 +586,7 @@ export const evaluation_grids = pgTable('evaluation_grids', {
   created_at: timestamp('created_at').defaultNow(),
   updated_at: timestamp('updated_at').defaultNow(),
   published_at: timestamp('published_at'),
-  created_by: uuid('created_by').references(() => users.uuid),
+  created_by: uuid('created_by').references(() => users.uuid, { onDelete: 'set null' }),
 }, (table) => ({
   statusIdx: index('idx_evaluation_grids_status').on(table.status),
   updatedAtIdx: index('idx_evaluation_grids_updated_at').on(table.updated_at),
@@ -824,41 +855,41 @@ export const app_settings = pgTable("app_settings", {
   theme_key: varchar("theme_key", { length: 64 }).notNull().default("default"),
   primary_color: varchar("primary_color", { length: 7 }),   // custom hex e.g. "#0af7c1"
   background_color: varchar("background_color", { length: 7 }), // custom hex e.g. "#0a0a0a"
-  theme_mode: varchar("theme_mode", { length: 10 }).notNull().default("dark"), // "dark" | "light"
+  theme_mode: varchar("theme_mode", { length: 10 }).notNull().default("light"), // "dark" | "light"
   updated_at: timestamp("updated_at").defaultNow(),
-  updated_by: uuid("updated_by").references(() => users.uuid),
+  updated_by: uuid("updated_by").references(() => users.uuid, { onDelete: "set null" }),
   // GitHub OAuth connection
   github_token_enc: text("github_token_enc"),
   github_token_iv: varchar("github_token_iv", { length: 64 }),
   github_org: varchar("github_org", { length: 255 }),
   github_connected_at: timestamp("github_connected_at"),
-  github_connected_by: uuid("github_connected_by").references(() => users.uuid),
+  github_connected_by: uuid("github_connected_by").references(() => users.uuid, { onDelete: "set null" }),
   // Kaggle API key connection
   kaggle_username: varchar("kaggle_username", { length: 255 }),
   kaggle_key_enc: text("kaggle_key_enc"),
   kaggle_key_iv: varchar("kaggle_key_iv", { length: 64 }),
   kaggle_connected_at: timestamp("kaggle_connected_at"),
-  kaggle_connected_by: uuid("kaggle_connected_by").references(() => users.uuid),
+  kaggle_connected_by: uuid("kaggle_connected_by").references(() => users.uuid, { onDelete: "set null" }),
   // OpenAI API key connection
   openai_key_enc: text("openai_key_enc"),
   openai_key_iv: varchar("openai_key_iv", { length: 64 }),
   openai_connected_at: timestamp("openai_connected_at"),
-  openai_connected_by: uuid("openai_connected_by").references(() => users.uuid),
+  openai_connected_by: uuid("openai_connected_by").references(() => users.uuid, { onDelete: "set null" }),
   // Slack bot token connection
   slack_token_enc: text("slack_token_enc"),
   slack_token_iv: varchar("slack_token_iv", { length: 64 }),
   slack_team_name: varchar("slack_team_name", { length: 255 }),
   slack_connected_at: timestamp("slack_connected_at"),
-  slack_connected_by: uuid("slack_connected_by").references(() => users.uuid),
-  modules_meetings_enabled: boolean("modules_meetings_enabled").notNull().default(true),
-  modules_onboarding_enabled: boolean("modules_onboarding_enabled").notNull().default(true),
+  slack_connected_by: uuid("slack_connected_by").references(() => users.uuid, { onDelete: "set null" }),
+  modules_meetings_enabled: boolean("modules_meetings_enabled").notNull().default(false),
+  modules_onboarding_enabled: boolean("modules_onboarding_enabled").notNull().default(false),
   // Scaleway GPU compute connection
   scaleway_secret_key_enc: text("scaleway_secret_key_enc"),
   scaleway_secret_key_iv: varchar("scaleway_secret_key_iv", { length: 64 }),
   scaleway_project_id: varchar("scaleway_project_id", { length: 64 }),
   scaleway_zone: varchar("scaleway_zone", { length: 32 }),
   scaleway_connected_at: timestamp("scaleway_connected_at"),
-  scaleway_connected_by: uuid("scaleway_connected_by").references(() => users.uuid),
+  scaleway_connected_by: uuid("scaleway_connected_by").references(() => users.uuid, { onDelete: "set null" }),
   scaleway_disconnect_requested_at: timestamp("scaleway_disconnect_requested_at"),
   // Digest — voir docs/input/spec-digest.md. Désactivé par défaut : une feature
   // d'admin ne s'active pas seule sur les instances existantes.
@@ -1096,7 +1127,8 @@ export const sync_meetings = pgTable("sync_meetings", {
   conference_id: varchar("conference_id", { length: 255 }),
   conference_record_id: varchar("conference_record_id", { length: 255 }),
   status: varchar("status", { length: 50 }).notNull().default("scheduled"),
-  created_by: uuid("created_by").notNull().references(() => users.uuid),
+  // Nullable et SET NULL : le meeting survit à la suppression de son créateur.
+  created_by: uuid("created_by").references(() => users.uuid, { onDelete: "set null" }),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -1128,7 +1160,8 @@ export const meeting_analyses = pgTable("meeting_analyses", {
   summary: text("summary"),
   decisions: json("decisions").$type<any[]>(),
   actions: json("actions").$type<any[]>(),
-  contribution_signals: json("contribution_signals").$type<any[]>(),
+  // Plus de contribution_signals (poids individuels par participant) : la
+  // colonne est supprimée par scripts/db-apply-schema.ts (SPEC challenge 008, §9).
   status: varchar("status", { length: 50 }).notNull().default("pending"),
   processed_at: timestamp("processed_at"),
   error_message: text("error_message"),
@@ -1249,3 +1282,6 @@ export const db = drizzle(pool, {
     validation_step_feedbacks,
   },
 });
+
+/** Le `tx` reçu par `db.transaction(async (tx) => …)`, pour les helpers qui écrivent dans la transaction de l'appelant. */
+export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];

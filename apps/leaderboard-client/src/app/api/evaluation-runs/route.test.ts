@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindAll, mockJwtVerify } = vi.hoisted(() => ({
+const { mockFindAll, mockVerifyRequestToken } = vi.hoisted(() => ({
   mockFindAll: vi.fn(),
-  mockJwtVerify: vi.fn(),
+  mockVerifyRequestToken: vi.fn(),
 }));
 
 vi.mock('../../../../../../packages/database-service/repositories', () => ({
@@ -12,8 +12,11 @@ vi.mock('../../../../../../packages/database-service/repositories', () => ({
   },
 }));
 
-vi.mock('jose', () => ({
-  jwtVerify: mockJwtVerify,
+// Comme le vrai helper : `null` sans cookie access_token ; la doublure décide du reste
+// (`null` = jeton refusé, dont `sb_anon` et les refresh tokens).
+vi.mock('@/lib/auth', () => ({
+  verifyRequestToken: (req: NextRequest) =>
+    req.cookies.get('access_token') ? mockVerifyRequestToken(req) : Promise.resolve(null),
 }));
 
 import { GET } from './route';
@@ -27,7 +30,7 @@ function getRuns(query = '', withCookie = true) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockJwtVerify.mockResolvedValue({ payload: { userId: 'admin-1', role: 'admin' } });
+  mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin' });
 });
 
 describe('GET /api/evaluation-runs', () => {
@@ -38,14 +41,14 @@ describe('GET /api/evaluation-runs', () => {
   });
 
   it('returns 401 when the token fails verification', async () => {
-    mockJwtVerify.mockRejectedValue(new Error('bad token'));
+    mockVerifyRequestToken.mockResolvedValue(null);
     const res = await getRuns();
     expect(res.status).toBe(401);
     expect(mockFindAll).not.toHaveBeenCalled();
   });
 
   it('returns 403 when the session role is not admin', async () => {
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'u1', role: 'contributor' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'u1', role: 'contributor' });
     const res = await getRuns();
     expect(res.status).toBe(403);
     expect(mockFindAll).not.toHaveBeenCalled();

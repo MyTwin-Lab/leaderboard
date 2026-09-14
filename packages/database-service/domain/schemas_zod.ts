@@ -245,6 +245,12 @@ export const computeRequestSchema = z.object({
   updated_at: z.coerce.date().nullable(),
 });
 
+/**
+ * Rôles acceptés en écriture par l'API. `userSchema.role` reste une chaîne
+ * libre : il valide aussi des rows historiques qu'on ne veut pas rejeter.
+ */
+export const userRoleSchema = z.enum(['admin', 'contributor', 'viewer', 'medical_pro']);
+
 export const userSchema = z.object({
   uuid: z.string().uuid(),
   role: z.string(),
@@ -382,7 +388,8 @@ export const syncMeetingSchema = z.object({
   conference_id: z.string().optional(),
   conference_record_id: z.string().optional(),
   status: syncMeetingStatusSchema,
-  created_by: z.string().uuid(),
+  // null une fois le créateur supprimé (FK en SET NULL).
+  created_by: z.string().uuid().nullable(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
 });
@@ -410,21 +417,12 @@ export const actionSchema = z.object({
   priority: z.enum(['high', 'medium', 'low']).optional(),
 });
 
-export const contributionSignalSchema = z.object({
-  user_id: z.string().optional(),
-  display_name: z.string(),
-  signal_type: z.enum(['coordination', 'technical_leadership', 'problem_solving', 'knowledge_sharing']),
-  weight: z.number().min(0).max(1),
-  description: z.string().optional(),
-});
-
 export const meetingAnalysisSchema = z.object({
   uuid: z.string().uuid(),
   sync_meeting_id: z.string().uuid(),
   summary: z.string().optional(),
   decisions: z.array(decisionSchema).optional(),
   actions: z.array(actionSchema).optional(),
-  contribution_signals: z.array(contributionSignalSchema).optional(),
   status: meetingAnalysisStatusSchema,
   processed_at: z.coerce.date().optional(),
   error_message: z.string().optional(),

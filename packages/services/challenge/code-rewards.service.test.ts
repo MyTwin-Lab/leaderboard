@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { CodeRewardsService, PROJECT_CONTRIBUTION_TYPE, resolveWorkspaceTarget } from "./code-rewards.service.js";
 import type { Challenge, ChallengeTeam, Contribution, Task, RewardEntry, ChallengeRepo } from "../../database-service/domain/entities.js";
+import { EVALUATION_STALE_AFTER_MS, isEvaluationRunning } from "../../database-service/repositories/contribution.repo.js";
 
 const CH = "ch-1", ALICE = "alice";
 
@@ -45,6 +46,7 @@ function makeDeps(opts: {
   const contributions: Contribution[] = [...(opts.contributions ?? [])];
   const created: Contribution[] = [];
   const updates: Array<{ uuid: string; patch: Record<string, unknown> }> = [];
+  const claims: Array<{ uuid: string; patch: Record<string, unknown> }> = [];
   const written: unknown[][] = [];
   const shares: unknown[][] = [];
   const challengeUpdates: Array<Record<string, unknown>> = [];
@@ -71,9 +73,21 @@ function makeDeps(opts: {
     taskRepo: { findPersonalTasks: vi.fn(async () => opts.tasks ?? [makeTask("done")]) },
     contributionRepo: {
       findByChallenge: vi.fn(async () => [...contributions, ...created]),
-      create: vi.fn(async (c: Omit<Contribution, "uuid">) => {
+      // Même triplet (challenge, user, type) que findContribution.
+      createIfAbsent: vi.fn(async (c: Omit<Contribution, "uuid" | "created_at">) => {
+        const existing = [...contributions, ...created].find(r =>
+          r.challenge_id === c.challenge_id && r.user_id === c.user_id && r.type === c.type);
+        if (existing) return { contribution: existing, created: false };
         const row = { ...c, uuid: `contrib-${created.length + 1}` } as Contribution;
-        created.push(row); return row;
+        created.push(row); return { contribution: row, created: true };
+      }),
+      // Rejoue la garde SQL : prenable, sauf un `running` récent.
+      claimEvaluation: vi.fn(async (uuid: string, patch: { artifact_url?: string | null } = {}) => {
+        const row = [...contributions, ...created].find(c => c.uuid === uuid);
+        if (!row || isEvaluationRunning(row)) return null;
+        Object.assign(row, { evaluation_status: "running", submitted_at: new Date() });
+        claims.push({ uuid, patch });
+        return row;
       }),
       update: vi.fn(async (uuid: string, patch: Record<string, unknown>) => {
         updates.push({ uuid, patch });
@@ -97,7 +111,17 @@ function makeDeps(opts: {
       return { score10: opts.score10 ?? 8, evaluation: { globalScore: 7.2, scores: [] } };
     }),
   };
-  return { deps, written, shares, updates, created, challengeUpdates };
+  return { deps, written, shares, updates, created, claims, challengeUpdates };
+}
+
+const EVENT = { challengeId: CH, userId: ALICE };
+
+function projectRow(over: Partial<Contribution> = {}): Contribution {
+  return {
+    uuid: "c-1", title: "Project delivery", type: PROJECT_CONTRIBUTION_TYPE, reward: 0,
+    user_id: ALICE, challenge_id: CH, evaluation_status: "done", submitted_at: new Date(),
+    ...over,
+  } as Contribution;
 }
 
 describe("canEvaluate", () => {
@@ -157,15 +181,16 @@ describe("evaluate", () => {
     const { deps, written, updates } = makeDeps({ score10: 8 });
     await new CodeRewardsService(deps).evaluate({ challengeId: CH, userId: ALICE });
 
-    expect(deps.contributionRepo.create).toHaveBeenCalledOnce();
+    expect(deps.contributionRepo.createIfAbsent).toHaveBeenCalledOnce();
     const drafts = written[0] as Array<{ rule_key: string; points: number }>;
     expect(drafts.map(d => [d.rule_key, d.points])).toEqual([
       ["code_fixed", 50],
       ["code_quality", 120],
     ]);
     // Premier run : le statut running est posé À LA CRÉATION de la
-    // contribution (pas via update) ; seul le passage à done est un update.
-    expect(deps.contributionRepo.create).toHaveBeenCalledWith(
+    // contribution (ni claim ni update) ; seul le passage à done est un update.
+    expect(deps.contributionRepo.claimEvaluation).not.toHaveBeenCalled();
+    expect(deps.contributionRepo.createIfAbsent).toHaveBeenCalledWith(
       expect.objectContaining({ evaluation_status: "running" })
     );
     const statuses = updates.map(u => u.patch.evaluation_status).filter(Boolean);
@@ -235,7 +260,7 @@ describe("evaluate", () => {
     expect(deps.runAgent).not.toHaveBeenCalled();
     expect(written).toHaveLength(0);
     expect(updates).toHaveLength(0);
-    expect(deps.contributionRepo.create).not.toHaveBeenCalled();
+    expect(deps.contributionRepo.createIfAbsent).not.toHaveBeenCalled();
   });
 
   it("github mode with an unparseable workspace_url falls back to challenge_repos", async () => {
@@ -251,6 +276,71 @@ describe("evaluate", () => {
     expect(deps.runAgent).toHaveBeenCalledWith(
       expect.objectContaining({ slug: "org/repo" })
     );
+  });
+});
+
+describe("claim / run", () => {
+  it("claims an existing contribution through the compare-and-set, without running the agent", async () => {
+    const { deps, claims } = makeDeps({ contributions: [projectRow()] });
+
+    expect(await new CodeRewardsService(deps).claim(EVENT)).toEqual({ ok: true });
+
+    expect(claims).toEqual([{ uuid: "c-1", patch: { artifact_url: makeParticipation().workspace_url } }]);
+    expect(deps.contributionRepo.createIfAbsent).not.toHaveBeenCalled();
+    expect(deps.runAgent).not.toHaveBeenCalled();
+  });
+
+  it("a second claim while the first run is in flight gets already_running", async () => {
+    const { deps } = makeDeps({ contributions: [projectRow()] });
+    const svc = new CodeRewardsService(deps);
+
+    expect(await svc.claim(EVENT)).toEqual({ ok: true });
+    expect(await svc.claim(EVENT)).toEqual({ ok: false, reason: "already_running" });
+  });
+
+  it("first run: a second claim finds the freshly created running row", async () => {
+    const { deps, created } = makeDeps();
+    const svc = new CodeRewardsService(deps);
+
+    expect(await svc.claim(EVENT)).toEqual({ ok: true });
+    expect(await svc.claim(EVENT)).toEqual({ ok: false, reason: "already_running" });
+    expect(created).toHaveLength(1);
+  });
+
+  it("first run: falls back to the compare-and-set when a concurrent call created the row", async () => {
+    const { deps } = makeDeps();
+    const raced = projectRow({ evaluation_status: "running" });
+    deps.contributionRepo.createIfAbsent.mockResolvedValueOnce({ contribution: raced, created: false });
+
+    expect(await new CodeRewardsService(deps).claim(EVENT)).toEqual({ ok: false, reason: "already_running" });
+    expect(deps.contributionRepo.claimEvaluation).toHaveBeenCalledWith("c-1", expect.anything());
+  });
+
+  it("reclaims a running status left behind by a crashed process", async () => {
+    const stale = new Date(Date.now() - EVALUATION_STALE_AFTER_MS - 60_000);
+    const { deps } = makeDeps({ contributions: [projectRow({ evaluation_status: "running", submitted_at: stale })] });
+    const svc = new CodeRewardsService(deps);
+
+    expect(await svc.canEvaluate(CH, ALICE)).toEqual({ ok: true });
+    expect(await svc.claim(EVENT)).toEqual({ ok: true });
+  });
+
+  it("refuses a workspace that resolves to no repository, without writing", async () => {
+    const { deps } = makeDeps({ participation: { workspace_url: undefined } });
+
+    expect(await new CodeRewardsService(deps).claim(EVENT)).toEqual({ ok: false, reason: "workspace_not_ready" });
+    expect(deps.contributionRepo.createIfAbsent).not.toHaveBeenCalled();
+    expect(deps.contributionRepo.claimEvaluation).not.toHaveBeenCalled();
+  });
+
+  it("run does nothing unless a claim put the contribution in running", async () => {
+    const { deps, updates, written } = makeDeps({ contributions: [projectRow()] });
+
+    await new CodeRewardsService(deps).run(EVENT);
+
+    expect(deps.runAgent).not.toHaveBeenCalled();
+    expect(updates).toHaveLength(0);
+    expect(written).toHaveLength(0);
   });
 });
 

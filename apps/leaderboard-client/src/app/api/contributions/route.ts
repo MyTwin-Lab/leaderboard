@@ -1,12 +1,23 @@
 import { NextResponse } from 'next/server';
 import { ContributionRepository } from '../../../../../../packages/database-service/repositories';
 import type { Contribution } from '../../../../../../packages/database-service/domain/entities';
+import { getSessionUser } from '@/lib/auth';
 
 const contributionRepo = new ContributionRepository();
 
-// GET /api/contributions - Liste toutes les contributions
+// GET /api/contributions - Liste toutes les contributions (admin uniquement)
 export async function GET() {
   try {
+    // Chaque ligne porte l'évaluation IA privée de son auteur : seul l'admin
+    // lit cette liste. Le rôle vient de la base, pas du JWT.
+    const session = await getSessionUser();
+    if (!session) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (session.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const contributions = await contributionRepo.findAll();
     return NextResponse.json(contributions);
   } catch (error) {

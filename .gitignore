@@ -29,8 +29,8 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Package locks des sous-packages (garder celui de la racine)
-apps/**/package-lock.json
+# Package locks des sous-packages (garder celui de la racine et celui de l'app,
+# que le build installe avec `npm ci`)
 packages/**/package-lock.json
 
 # Divers

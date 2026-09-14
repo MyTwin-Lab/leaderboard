@@ -10,6 +10,7 @@ Admins can pick a predefined color theme for the whole app (e.g. Blue, Purple, G
 
 - `PATCH /api/admin/theme` — admin-only, sets `theme_key` (and optionally custom `primary_color` / `background_color` hex overrides, and `theme_mode`: `dark` or `light`).
 - There is no per-user override — one theme for the whole instance.
+- A fresh instance starts on the **MyTwin** preset in light mode: accent `#0d9488`, background `#f8fafc`.
 
 ---
 
@@ -78,7 +79,7 @@ Unlike the four integrations above, this one has **no `.env` fallback** — if n
 
 ## Modules: feature toggles
 
-Two optional UI features can be turned off instance-wide from the **Modules** tab, without touching any code or env var:
+Two optional UI features can be turned on or off instance-wide from the **Modules** tab, without touching any code or env var. Both are **off on a fresh instance** — an admin opts in.
 
 | Toggle | Effect when off |
 |--------|------------------|

@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const {
-  mockEncryptToken, mockUpdateGithubConnection, mockVerifyRequestToken, mockFetch,
+  mockEncryptToken, mockUpdateGithubConnection, mockGetSessionUser, mockFetch,
 } = vi.hoisted(() => ({
   mockEncryptToken: vi.fn(),
   mockUpdateGithubConnection: vi.fn(),
-  mockVerifyRequestToken: vi.fn(),
+  mockGetSessionUser: vi.fn(),
   mockFetch: vi.fn(),
 }));
 
@@ -20,7 +20,7 @@ vi.mock('../../../../../../../packages/database-service/repositories/index.js', 
   },
 }));
 
-vi.mock('@/lib/auth', () => ({ verifyRequestToken: mockVerifyRequestToken }));
+vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
 
 vi.mock('../../../../../../../packages/config/index.js', () => ({
   config: {
@@ -57,7 +57,7 @@ function jsonResponse(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin', email: 'a@b.com' });
+  mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin', fullName: 'Ada', githubUsername: '', email: '' });
   mockEncryptToken.mockReturnValue({ enc: 'enc-data', iv: 'iv-data' });
   mockUpdateGithubConnection.mockResolvedValue(undefined);
 });
@@ -153,19 +153,26 @@ describe('GET /api/github-oauth/callback', () => {
     });
   });
 
-  it('persists an empty connected_by when there is no valid session', async () => {
-    mockVerifyRequestToken.mockResolvedValue(null);
-    mockFetch
-      .mockResolvedValueOnce(jsonResponse({ access_token: 'gh-token' }))
-      .mockResolvedValueOnce(jsonResponse([
-        { state: 'active', role: 'admin', organization: { login: 'AOrg' } },
-      ]));
+  // docs/temp.md, L2 : le jeton d'organisation ne s'enregistre que pour un admin.
+  it('refuses without exchanging the code when there is no session', async () => {
+    mockGetSessionUser.mockResolvedValue(null);
 
-    await getCallback();
+    const res = await getCallback();
 
-    expect(mockUpdateGithubConnection).toHaveBeenCalledWith(
-      expect.objectContaining({ github_connected_by: '' })
-    );
+    expect(res.headers.get('location')).toContain('github_error=not_admin');
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockUpdateGithubConnection).not.toHaveBeenCalled();
+    expect(res.cookies.get('gh_oauth_state')?.value).toBe('');
+  });
+
+  it('refuses a user whose role in the database is not admin', async () => {
+    mockGetSessionUser.mockResolvedValue({ id: 'user-1', role: 'contributor', fullName: 'Bob', githubUsername: '', email: '' });
+
+    const res = await getCallback();
+
+    expect(res.headers.get('location')).toContain('github_error=not_admin');
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockUpdateGithubConnection).not.toHaveBeenCalled();
   });
 
   it('always deletes the gh_oauth_state cookie on redirect', async () => {

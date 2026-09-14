@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { Plus } from "lucide-react";
+import { ArrowIcon } from "@/components/home/ArrowIcon";
 import { fetchJson } from "@/lib/fetchJson";
 import { formatCP } from "@/lib/formatters";
 import { TabPills } from "@/components/ui/TabPills";
@@ -51,12 +53,12 @@ const PILLS: { key: SandboxStatusFilter; label: string }[] = [
 /**
  * Le listing public des propositions.
  *
- * Rendu par `app/sandbox/page.tsx`, qui est un composant serveur sans autre
- * rôle que de le monter : tout se lit ici, côté client, parce que la page est
- * publique et que l'état du visiteur (sa star, ses propositions) doit rester
- * hors du cache de rendu serveur.
+ * Rendu par `app/sandbox/page.tsx`. Tout se lit ici, côté client, parce que
+ * l'état du visiteur (sa star, ses propositions) dépend de sa session — sauf
+ * pour un visiteur sans aucun cookie (`knownAnonymous`), à qui la page serveur
+ * pré-remplit le listing pour qu'il arrive dans le HTML.
  */
-export function SandboxExplorer() {
+export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: boolean }) {
   const queryClient = useQueryClient();
 
   const [query, setQuery] = useState("");
@@ -81,7 +83,11 @@ export function SandboxExplorer() {
     queryFn: () => fetchJson("/api/contributors/me"),
     staleTime: 5 * 60_000,
     retry: false,
+    enabled: !knownAnonymous,
   });
+  // Une requête désactivée reste `isPending` : c'est cette valeur qui dit si
+  // la session est connue.
+  const sessionKnown = knownAnonymous || !meQuery.isPending;
 
   // Attendu délibérément : le listing ne part qu'une fois le refresh joué,
   // sinon il se lirait avec le jeton expiré que `meQuery` est en train de
@@ -89,7 +95,7 @@ export function SandboxExplorer() {
   const listQuery = useQuery({
     queryKey: ["sandboxes"],
     queryFn: () => fetchJson("/api/sandboxes") as Promise<SandboxListResponse>,
-    enabled: !meQuery.isPending,
+    enabled: sessionKnown,
   });
 
   const me = meQuery.data?.user ?? null;
@@ -151,7 +157,7 @@ export function SandboxExplorer() {
     setStatus("mine");
   };
 
-  const loading = listQuery.isPending || meQuery.isPending;
+  const loading = listQuery.isPending || !sessionKnown;
 
   return (
     <>
@@ -172,6 +178,15 @@ export function SandboxExplorer() {
               Anyone can propose an open challenge in the health domain. The community stars what it
               wants built, and the best ideas get promoted into official challenges.
             </p>
+            {/* L'entrée vers la landing du Lab : la navbar garde « Sandbox » sur ce
+                listing, c'est donc ici que se lit « à quoi sert tout ça ». */}
+            <Link
+              href="/about"
+              className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:gap-2"
+            >
+              How MyTwin Lab works
+              <ArrowIcon />
+            </Link>
           </div>
 
           <div className="hidden flex-wrap gap-2.5 sm:flex">

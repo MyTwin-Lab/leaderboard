@@ -21,12 +21,15 @@ export class AppSettingsRepository {
   async get(): Promise<AppSettings> {
     const [row] = await db.select().from(app_settings).where(eq(app_settings.id, 1));
     if (row) return toDomainAppSettings(row);
-    // Auto-initialize singleton if missing
-    const [inserted] = await db
+    // Singleton absent (base vierge) : plusieurs lectures simultanées arrivent
+    // ici ensemble. ON CONFLICT DO NOTHING laisse gagner la première sans lever
+    // `duplicate key app_settings_pkey` chez les autres, qui relisent la ligne.
+    await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: "default", theme_mode: "dark" })
-      .returning();
-    return toDomainAppSettings(inserted);
+      .values({ id: 1, theme_key: "default", theme_mode: "light" })
+      .onConflictDoNothing({ target: app_settings.id });
+    const [created] = await db.select().from(app_settings).where(eq(app_settings.id, 1));
+    return toDomainAppSettings(created);
   }
 
   async update(patch: AppSettingsUpdate, updated_by?: string): Promise<AppSettings> {
@@ -47,7 +50,7 @@ export class AppSettingsRepository {
 
     const [upserted] = await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: "default", theme_mode: "dark", ...set })
+      .values({ id: 1, theme_key: "default", theme_mode: "light", ...set })
       .onConflictDoUpdate({ target: app_settings.id, set })
       .returning();
     return toDomainAppSettings(upserted);
@@ -69,7 +72,7 @@ export class AppSettingsRepository {
     };
     await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: "default", theme_mode: "dark", ...set })
+      .values({ id: 1, theme_key: "default", theme_mode: "light", ...set })
       .onConflictDoUpdate({ target: app_settings.id, set });
   }
 
@@ -103,7 +106,7 @@ export class AppSettingsRepository {
     };
     await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .values({ id: 1, theme_key: 'default', theme_mode: 'light', ...set })
       .onConflictDoUpdate({ target: app_settings.id, set });
   }
 
@@ -121,7 +124,7 @@ export class AppSettingsRepository {
     };
     await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .values({ id: 1, theme_key: 'default', theme_mode: 'light', ...set })
       .onConflictDoUpdate({ target: app_settings.id, set });
   }
 
@@ -154,7 +157,7 @@ export class AppSettingsRepository {
     };
     await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .values({ id: 1, theme_key: 'default', theme_mode: 'light', ...set })
       .onConflictDoUpdate({ target: app_settings.id, set });
   }
 
@@ -206,7 +209,7 @@ export class AppSettingsRepository {
     };
     await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .values({ id: 1, theme_key: 'default', theme_mode: 'light', ...set })
       .onConflictDoUpdate({ target: app_settings.id, set });
   }
 

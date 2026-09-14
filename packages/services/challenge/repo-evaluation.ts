@@ -64,7 +64,7 @@ export interface RepoEvaluationInput {
 /** Isole les accès réseau (GitHub, OpenAI) et disque — remplacés par des doublures en test. */
 export interface RepoEvaluationDeps {
   createConnector: (repo: Repo, options?: { branch?: string }) => Promise<ExternalConnector | null>;
-  snapshotService: Pick<SnapshotService, "buildAggregatedSnapshot" | "prepareSnapshot">;
+  snapshotService: Pick<SnapshotService, "buildAggregatedSnapshot" | "prepareSnapshot" | "cleanup">;
   loadGrid: (slug: string) => Promise<EvaluationGridTemplate | DetailedEvaluationGridTemplate>;
   evaluator: Pick<OpenAIAgentEvaluator, "evaluate">;
 }
@@ -138,26 +138,32 @@ export async function evaluateGithubRepo(
     if (!aggregated) throw new Error(`[repo-evaluation] Unable to build snapshot for ${slug}`);
     const prepared = await snapshotService.prepareSnapshot(aggregated);
 
-    const grid = await loadGrid(gridSlug);
-    const evalContext: EvaluateContext = { snapshot: prepared as SnapshotInfo, grid };
+    // Le workspace contient le code du dépôt évalué : il est supprimé dès la
+    // fin de l'évaluation, qu'elle réussisse ou lève.
+    try {
+      const grid = await loadGrid(gridSlug);
+      const evalContext: EvaluateContext = { snapshot: prepared as SnapshotInfo, grid };
 
-    const evaluation = await evaluator.evaluate(
-      hasPriorEvaluation,
-      {
-        title: subject.title,
-        type: subject.type,
-        description: subject.description,
-        challenge_id: subject.challengeId,
-        userId: subject.userId,
-        commitShas: shas,
-      },
-      evalContext,
-    );
+      const evaluation = await evaluator.evaluate(
+        hasPriorEvaluation,
+        {
+          title: subject.title,
+          type: subject.type,
+          description: subject.description,
+          challenge_id: subject.challengeId,
+          userId: subject.userId,
+          commitShas: shas,
+        },
+        evalContext,
+      );
 
-    return {
-      score10: toScore10(evaluation.globalScore),
-      evaluation: { scores: evaluation.scores, globalScore: evaluation.globalScore },
-    };
+      return {
+        score10: toScore10(evaluation.globalScore),
+        evaluation: { scores: evaluation.scores, globalScore: evaluation.globalScore },
+      };
+    } finally {
+      await snapshotService.cleanup(prepared);
+    }
   } finally {
     await connector.disconnect?.();
   }

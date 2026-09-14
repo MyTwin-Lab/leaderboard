@@ -1,11 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockGetSessionUser, mockIsManagerOfChallenge, mockChallengeFindById, mockAttemptFindById } = vi.hoisted(() => ({
+const {
+  mockGetSessionUser,
+  mockIsManagerOfChallenge,
+  mockChallengeFindById,
+  mockAttemptFindById,
+  mockClaimFindById,
+  mockFindPurgeState,
+} = vi.hoisted(() => ({
   mockGetSessionUser: vi.fn(),
   mockIsManagerOfChallenge: vi.fn(),
   mockChallengeFindById: vi.fn(),
   mockAttemptFindById: vi.fn(),
+  mockClaimFindById: vi.fn(),
+  mockFindPurgeState: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
@@ -14,7 +23,7 @@ vi.mock('@/lib/server/managerAuth', () => ({ isManagerOfChallenge: mockIsManager
 vi.mock('../../../../../../../../../../packages/database-service/repositories', () => ({
   ChallengeRepository: class { findById = mockChallengeFindById; },
   ValidationAttemptRepository: class { findById = mockAttemptFindById; },
-  CaseClaimRepository: class { findById = vi.fn(); },
+  CaseClaimRepository: class { findById = mockClaimFindById; findPurgeState = mockFindPurgeState; },
 }));
 
 import { GET } from './route';
@@ -88,6 +97,54 @@ describe('GET /api/challenges/[id]/validation-runs/[attemptId]/response', () => 
     const res = await callGet();
 
     expect(res.headers.get('x-validation-status')).toBeNull();
+  });
+
+  describe('claim-backed run (reference_case_claim_id set)', () => {
+    const CLAIM_ID = 'claim-1';
+
+    beforeEach(() => {
+      mockGetSessionUser.mockResolvedValue({ id: 'u1', role: 'admin' });
+      mockAttemptFindById.mockResolvedValue({
+        validation_challenge_id: CHALLENGE_ID,
+        reference_case_claim_id: CLAIM_ID,
+        response_bytes: null,
+      });
+    });
+
+    it('returns 410 without loading the blob once the claim bytes were purged', async () => {
+      mockFindPurgeState.mockResolvedValue({
+        validator_user_id: 'v1',
+        claim_purged_at: new Date('2026-01-01'),
+        case_purged_at: new Date('2026-01-01'),
+      });
+
+      const res = await callGet();
+
+      expect(res.status).toBe(410);
+      expect(mockFindPurgeState).toHaveBeenCalledWith(CLAIM_ID);
+      expect(mockClaimFindById).not.toHaveBeenCalled();
+    });
+
+    it('returns 410 when the claim no longer exists', async () => {
+      mockFindPurgeState.mockResolvedValue(null);
+      expect((await callGet()).status).toBe(410);
+      expect(mockClaimFindById).not.toHaveBeenCalled();
+    });
+
+    it('streams the claim response bytes when not purged', async () => {
+      mockFindPurgeState.mockResolvedValue({ validator_user_id: 'v1', claim_purged_at: null, case_purged_at: null });
+      mockClaimFindById.mockResolvedValue({
+        response_bytes: Buffer.from('ok'),
+        response_content_type: 'text/plain',
+        response_status: 200,
+      });
+
+      const res = await callGet();
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('x-validation-status')).toBe('200');
+      expect(Buffer.from(await res.arrayBuffer()).toString()).toBe('ok');
+    });
   });
 
   it('never renders a validated endpoint response inline, even if it claims to be an image/svg+xml', async () => {

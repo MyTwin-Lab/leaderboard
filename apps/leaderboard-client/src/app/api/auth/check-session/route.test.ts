@@ -35,6 +35,23 @@ describe('GET /api/auth/check-session', () => {
     expect(mockFindById).not.toHaveBeenCalled();
   });
 
+  it('returns 400 without querying when userId is not a UUID', async () => {
+    const res = await getCheckSession('undefined');
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ valid: false });
+    expect(mockFindById).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 when the lookup fails', async () => {
+    mockFindById.mockRejectedValue(new Error('connection refused'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await getCheckSession(USER_ID);
+
+    expect(res.status).toBe(503);
+  });
+
   it('returns valid: true when the account still exists', async () => {
     mockFindById.mockResolvedValue({ uuid: USER_ID, full_name: 'Ada Lovelace' });
 

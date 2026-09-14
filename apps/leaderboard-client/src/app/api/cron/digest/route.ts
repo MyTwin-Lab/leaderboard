@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runDigestCron } from '../../../../../../../packages/services/digest/cron-digest.js';
+import { isCronAuthorized } from '@/lib/server/cronAuth';
+import { runRetentionPurges } from './retention';
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!isCronAuthorized(request)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Les purges passent avant le digest : `runDigestCron` s'arrête tôt quand
+    // le digest est désactivé ou pas dû, et une erreur de génération ne doit
+    // pas repousser d'un jour une purge promise par la politique de
+    // confidentialité. Chaque purge absorbe ses propres erreurs.
+    const retention = await runRetentionPurges();
 
     const result = await runDigestCron();
 
@@ -16,6 +21,7 @@ export async function GET(request: NextRequest) {
       success: true,
       timestamp: new Date().toISOString(),
       ...result,
+      retention,
     });
   } catch (error) {
     console.error('[Cron] Error in digest:', error);

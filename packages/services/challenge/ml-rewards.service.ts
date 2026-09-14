@@ -328,22 +328,27 @@ export class MlRewardsService {
         modifiedFiles: content.modifiedFiles,
       } as SnapshotInfo);
 
-      const grid = await EvaluationGridRegistry.getGridAsync(gridSlug);
-      const evalContext: EvaluateContext = { snapshot: prepared, grid };
+      // Le workspace contient l'artefact évalué : supprimé quoi qu'il arrive.
+      try {
+        const grid = await EvaluationGridRegistry.getGridAsync(gridSlug);
+        const evalContext: EvaluateContext = { snapshot: prepared, grid };
 
-      const evaluation = await this.evaluator.evaluate(false, {
-        title: contribution.title,
-        type: gridSlug,
-        description: contribution.description,
-        challenge_id: challenge.uuid,
-        userId: contribution.user_id,
-        commitShas: [content.commitSha],
-      }, evalContext);
+        const evaluation = await this.evaluator.evaluate(false, {
+          title: contribution.title,
+          type: gridSlug,
+          description: contribution.description,
+          challenge_id: challenge.uuid,
+          userId: contribution.user_id,
+          commitShas: [content.commitSha],
+        }, evalContext);
 
-      await this.deps.contributionRepo.update(contribution.uuid, { evaluation });
+        await this.deps.contributionRepo.update(contribution.uuid, { evaluation });
 
-      // globalScore est sur 0–9 (scores 0–9 × poids sommant à ~1).
-      return Math.min(1, Math.max(0, evaluation.globalScore / 9));
+        // globalScore est sur 0–9 (scores 0–9 × poids sommant à ~1).
+        return Math.min(1, Math.max(0, evaluation.globalScore / 9));
+      } finally {
+        await this.snapshotService.cleanup(prepared);
+      }
     } finally {
       await connector.disconnect?.();
     }

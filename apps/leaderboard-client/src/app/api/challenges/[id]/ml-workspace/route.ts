@@ -12,7 +12,7 @@ import { parseMlRewardRules } from '../../../../../../../../packages/database-se
 import { ML_ROLE_RULE } from '../../../../../../../../packages/services/challenge/mlRoles';
 import { normalizeArtifactUrl } from '../../../../../../../../packages/services/challenge/artifactUrl';
 import { resolveWorkspaceOwner } from '../../../../../../../../packages/services/challenge/group';
-import { jwtVerify } from 'jose';
+import { verifyRequestToken } from '@/lib/auth';
 
 /** Roles closed once the challenge's metric block threshold is reached. */
 const BLOCKABLE_ROLES: ChallengeRepoRole[] = ['dataset', 'model', 'model_code'];
@@ -37,16 +37,10 @@ const challengeTeamRepo = new ChallengeTeamRepository();
 const challengeRepo = new ChallengeRepository();
 const rewardRepo = new RewardEntryRepository();
 
+// Helper partagé : une signature valide ne suffit pas (voir lib/sessionClaims.ts).
 async function getSession(request: NextRequest) {
-  const token = request.cookies.get('access_token')?.value;
-  if (!token) return null;
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    return { userId: payload.userId as string, role: payload.role as string };
-  } catch {
-    return null;
-  }
+  const payload = await verifyRequestToken(request);
+  return payload ? { userId: payload.userId, role: payload.role } : null;
 }
 
 // GET /api/challenges/[id]/ml-workspace
