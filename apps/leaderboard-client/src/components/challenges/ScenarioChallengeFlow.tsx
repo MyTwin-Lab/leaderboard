@@ -60,23 +60,38 @@ export function ScenarioChallengeFlow({ challengeId }: { challengeId: string }) 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState<TargetItem | null>(null);
+  const [error, setError] = useState('');
 
   const fetchData = useCallback(async () => {
-    const [targetsRes, stepsRes] = await Promise.all([
-      fetch(`/api/challenges/${challengeId}/validation-targets`),
-      fetch(`/api/challenges/${challengeId}/validation-scenario-steps`),
-    ]);
-    if (targetsRes.ok) {
-      const d = await targetsRes.json();
-      setTargets(d.targets ?? []);
-      setPool(d.pool ?? null);
-      setCurrentUserId(d.currentUserId ?? null);
+    setError('');
+    try {
+      const [targetsRes, stepsRes] = await Promise.all([
+        fetch(`/api/challenges/${challengeId}/validation-targets`),
+        fetch(`/api/challenges/${challengeId}/validation-scenario-steps`),
+      ]);
+      // 401 is not "nothing exposed" — say so explicitly rather than falling
+      // through to the empty state, which would read as "nothing to validate".
+      if (targetsRes.status === 401) {
+        setError('Sign in to see the applications waiting for validation.');
+      } else if (!targetsRes.ok) {
+        setError('Could not load the applications');
+      } else {
+        const d = await targetsRes.json();
+        setTargets(d.targets ?? []);
+        setPool(d.pool ?? null);
+        setCurrentUserId(d.currentUserId ?? null);
+      }
+      if (stepsRes.ok) {
+        const d = await stepsRes.json();
+        setSteps(d.steps ?? []);
+      }
+    } catch {
+      // fetch() rejects (network failure, CORS, abort) rather than resolving
+      // ok:false — without this, loading would never clear.
+      setError('Could not load the applications');
+    } finally {
+      setLoading(false);
     }
-    if (stepsRes.ok) {
-      const d = await stepsRes.json();
-      setSteps(d.steps ?? []);
-    }
-    setLoading(false);
   }, [challengeId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -99,15 +114,24 @@ export function ScenarioChallengeFlow({ challengeId }: { challengeId: string }) 
 
   if (targets.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center">
-        <MonitorSmartphone className="h-7 w-7 text-white/15" />
-        <p className="text-xs text-white/25">No application exposed for validation yet</p>
+      <div className="space-y-4">
+        {error ? (
+          <p className="rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs text-red-400">{error}</p>
+        ) : (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center">
+            <MonitorSmartphone className="h-7 w-7 text-white/15" />
+            <p className="text-xs text-white/25">No application exposed for validation yet</p>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-4 animate-fade-up">
+      {error && (
+        <p className="rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs text-red-400">{error}</p>
+      )}
       {pool && pool.pool > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-brandCP/[0.22] bg-white/[0.02] px-5 py-4">
           <div className="space-y-0.5">
