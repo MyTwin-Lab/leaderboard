@@ -87,6 +87,9 @@ Tasks only exist for `type: 'code'` challenges — `ml` challenges never have ta
 | `validation_reference_cases` | Ground-truth cases authored by a `medical_pro`: `input_bytes` / `input_filename` / `input_content_type` and `expected_output_bytes` / `expected_output_filename` / `expected_output_content_type` (`bytea`), plus `author_user_id`. Exactly `required_validations` cases per challenge, enforced in `ReferenceCaseService`. The expected output is only ever SELECTed by `ReferenceCaseRepository.findExpectedOutputById` — the single enforcement point for "never leaked before reveal". |
 | `validation_case_claims` | A reviewer claiming one case on one target. The row only ever appears already carrying the live endpoint response (`response_bytes`, `response_content_type`, `response_status`) — claim and test are one gesture, so there is no abandoned-claim state. Also `observation` / `observed_at` (written before any reveal) and `revealed_at`. Unique on (reference_case, contribution). |
 | `validation_attempts` | One verdict per validator per target. Columns: `uuid`, `validation_challenge_id`, `contribution_id`, `validator_user_id`, `verdict` (`works` / `broken`), `description` (required), `reference_case_claim_id` (which claim it was cast from). The legacy `file_bytes` / `response_bytes` columns are left in place but null on new rows — the evidence lives on the claim and the case. |
+| `validation_scenario_steps` | The ordered walkthrough of a scenario-mode validation challenge (source challenge is `code`). Columns: `uuid`, `validation_challenge_id`, `position` (dense, 0-based — a reorder renumbers every sibling), `title`, `instructions`. Shared by every exposed application; frozen once any walkthrough exists. |
+| `validation_scenario_runs` | One validator's pass over one application. Columns: `uuid`, `validation_challenge_id`, `contribution_id`, `validator_user_id`, `global_feedback`, `completed_at` (`NULL` = resumable draft). Unique on (challenge, contribution, validator) — that index is what makes `cp_per_validation` paid once under concurrent requests. Hangs off the challenge and the contribution, **not** off `validation_targets`, so un-exposing a target never destroys paid-for feedback. |
+| `validation_step_feedbacks` | One row per (walkthrough, step), upserted as the validator moves through the scenario. Columns: `uuid`, `run_id`, `step_id`, `result` (`passed` / `failed` / `blocked`), `comment` (user experience), `medical_comment` (`medical_pro` only — alongside `comment`, never instead of it). Unique on (run, step). |
 | `evaluation_grids` | Scoring grid templates. Columns: `id`, `name`, `type`, `version`, `is_active` |
 | `evaluation_grid_categories` | Categories within a grid (e.g. "Architecture", "Security"). Includes `weight`. |
 | `evaluation_grid_subcriteria` | Detailed criteria within a category with scoring guides. |
@@ -164,6 +167,10 @@ validation_case_claims >── users (validator)
 challenges ──< validation_attempts >── contributions
 validation_attempts >── validation_case_claims (reference_case_claim_id)
 validation_attempts >── users
+challenges ──< validation_scenario_steps
+challenges ──< validation_scenario_runs >── contributions
+validation_scenario_runs >── users
+validation_scenario_runs ──< validation_step_feedbacks >── validation_scenario_steps
 challenges ──< compute_requests >── users
 challenges ──< evaluation_runs
 evaluation_runs ──< evaluation_run_contributions
