@@ -824,7 +824,7 @@ export const app_settings = pgTable("app_settings", {
   theme_key: varchar("theme_key", { length: 64 }).notNull().default("default"),
   primary_color: varchar("primary_color", { length: 7 }),   // custom hex e.g. "#0af7c1"
   background_color: varchar("background_color", { length: 7 }), // custom hex e.g. "#0a0a0a"
-  theme_mode: varchar("theme_mode", { length: 10 }).notNull().default("dark"), // "dark" | "light"
+  theme_mode: varchar("theme_mode", { length: 10 }).notNull().default("light"), // "dark" | "light"
   updated_at: timestamp("updated_at").defaultNow(),
   updated_by: uuid("updated_by").references(() => users.uuid),
   // GitHub OAuth connection
@@ -850,8 +850,8 @@ export const app_settings = pgTable("app_settings", {
   slack_team_name: varchar("slack_team_name", { length: 255 }),
   slack_connected_at: timestamp("slack_connected_at"),
   slack_connected_by: uuid("slack_connected_by").references(() => users.uuid),
-  modules_meetings_enabled: boolean("modules_meetings_enabled").notNull().default(true),
-  modules_onboarding_enabled: boolean("modules_onboarding_enabled").notNull().default(true),
+  modules_meetings_enabled: boolean("modules_meetings_enabled").notNull().default(false),
+  modules_onboarding_enabled: boolean("modules_onboarding_enabled").notNull().default(false),
   // Scaleway GPU compute connection
   scaleway_secret_key_enc: text("scaleway_secret_key_enc"),
   scaleway_secret_key_iv: varchar("scaleway_secret_key_iv", { length: 64 }),

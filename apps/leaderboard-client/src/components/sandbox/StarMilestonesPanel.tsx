@@ -101,10 +101,6 @@ export function StarMilestonesPanel({ tiers, starCount, paidThresholds }: StarMi
           </div>
         </>
       )}
-
-      <span className="text-[11px] leading-relaxed text-white/25">
-        Paid once per milestone, out of pool. Unstarring never claws back a paid milestone.
-      </span>
     </div>
   );
 }

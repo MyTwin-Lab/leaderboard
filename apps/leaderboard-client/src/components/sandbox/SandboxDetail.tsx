@@ -242,13 +242,6 @@ export function SandboxDetail({
               <Markdown source={sandbox.why} variant="prose" />
             </section>
           )}
-
-          {/* Dit une fois, ici : c'est la question que pose tout lecteur qui
-              voudrait aider, et la réponse est structurelle, pas un détail. */}
-          <p className="border-l-2 border-brandCP/35 pl-3.5 text-sm leading-relaxed text-white/45">
-            Only the author works on a sandbox - the community interacts through stars.
-            Collaboration starts once it becomes an official challenge.
-          </p>
         </div>
 
         <div className="flex min-w-0 flex-col gap-3.5">

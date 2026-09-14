@@ -24,7 +24,7 @@ export class AppSettingsRepository {
     // Auto-initialize singleton if missing
     const [inserted] = await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: "default", theme_mode: "dark" })
+      .values({ id: 1, theme_key: "default", theme_mode: "light" })
       .returning();
     return toDomainAppSettings(inserted);
   }
@@ -47,7 +47,7 @@ export class AppSettingsRepository {
 
     const [upserted] = await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: "default", theme_mode: "dark", ...set })
+      .values({ id: 1, theme_key: "default", theme_mode: "light", ...set })
       .onConflictDoUpdate({ target: app_settings.id, set })
       .returning();
     return toDomainAppSettings(upserted);
@@ -69,7 +69,7 @@ export class AppSettingsRepository {
     };
     await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: "default", theme_mode: "dark", ...set })
+      .values({ id: 1, theme_key: "default", theme_mode: "light", ...set })
       .onConflictDoUpdate({ target: app_settings.id, set });
   }
 
@@ -103,7 +103,7 @@ export class AppSettingsRepository {
     };
     await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .values({ id: 1, theme_key: 'default', theme_mode: 'light', ...set })
       .onConflictDoUpdate({ target: app_settings.id, set });
   }
 
@@ -121,7 +121,7 @@ export class AppSettingsRepository {
     };
     await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .values({ id: 1, theme_key: 'default', theme_mode: 'light', ...set })
       .onConflictDoUpdate({ target: app_settings.id, set });
   }
 
@@ -154,7 +154,7 @@ export class AppSettingsRepository {
     };
     await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .values({ id: 1, theme_key: 'default', theme_mode: 'light', ...set })
       .onConflictDoUpdate({ target: app_settings.id, set });
   }
 
@@ -206,7 +206,7 @@ export class AppSettingsRepository {
     };
     await db
       .insert(app_settings)
-      .values({ id: 1, theme_key: 'default', theme_mode: 'dark', ...set })
+      .values({ id: 1, theme_key: 'default', theme_mode: 'light', ...set })
       .onConflictDoUpdate({ target: app_settings.id, set });
   }
 
