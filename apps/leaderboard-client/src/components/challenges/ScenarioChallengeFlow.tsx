@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, Coins, ListOrdered, Loader2, MonitorSmartphone } from 'lucide-react';
+import { ArrowRight, Coins, ListOrdered, MonitorSmartphone } from 'lucide-react';
 import { ScenarioWalkthroughScreen } from './ScenarioWalkthroughScreen';
 
 interface TargetItem {
