@@ -7,6 +7,7 @@
     "init:macos": "./scripts/macos/init.sh",
     "init:windows": "scripts\\windows\\init.bat",
     "build": "npm install && cd apps/leaderboard-client && npm install && npm run build",
+    "scalingo-postbuild": "rm -rf apps/leaderboard-client/.next/cache",
     "start:dev": "cd apps/leaderboard-client && npm run dev",
     "dev": "npm run start:dev",
     "populate-db": "tsx db_data/seed.ts",
