@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { Plus } from "lucide-react";
+import { ArrowIcon } from "@/components/home/ArrowIcon";
 import { fetchJson } from "@/lib/fetchJson";
 import { formatCP } from "@/lib/formatters";
 import { TabPills } from "@/components/ui/TabPills";
@@ -172,6 +174,15 @@ export function SandboxExplorer() {
               Anyone can propose an open challenge in the health domain. The community stars what it
               wants built, and the best ideas get promoted into official challenges.
             </p>
+            {/* L'entrée vers la landing du Lab : la navbar garde « Sandbox » sur ce
+                listing, c'est donc ici que se lit « à quoi sert tout ça ». */}
+            <Link
+              href="/about"
+              className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:gap-2"
+            >
+              How MyTwin Lab works
+              <ArrowIcon />
+            </Link>
           </div>
 
           <div className="hidden flex-wrap gap-2.5 sm:flex">

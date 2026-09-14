@@ -86,6 +86,20 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             <GoogleMark />
             Continue with Google
           </a>
+
+          {/* Les CGU font de la connexion le moment de leur acceptation : il
+              faut donc qu'elles soient sous les yeux à cet instant précis. */}
+          <p className="text-center text-xs leading-relaxed text-white/40">
+            By continuing, you agree to the{" "}
+            <a href="/terms-of-use" className="text-white/60 underline underline-offset-2 hover:text-brandCP">
+              Terms of Use
+            </a>{" "}
+            and acknowledge the{" "}
+            <a href="/privacy-policy" className="text-white/60 underline underline-offset-2 hover:text-brandCP">
+              Privacy Policy
+            </a>
+            .
+          </p>
         </div>
 
         <div className="mt-5 text-center">

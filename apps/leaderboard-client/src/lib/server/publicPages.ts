@@ -1,6 +1,7 @@
 import "server-only";
 
 import { repositories } from "@/lib/db";
+import { isPubliclyVisible } from "@/lib/public/challengeVisibility";
 import type { ProjectWithChallenges, TrendingChallenge } from "@/lib/types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -202,4 +203,22 @@ export async function fetchTrendingChallenges(limit: number): Promise<TrendingCh
     .sort((a, b) => (b.index ?? 0) - (a.index ?? 0))
     .slice(0, limit)
     .map(toTrending);
+}
+
+export type LabChallenge = { id: string; title: string; type: string; description: string | null };
+
+/**
+ * Les challenges que la landing du Lab met en vitrine : ceux qu'un anonyme peut
+ * ouvrir, les actifs d'abord, puis les plus récents (`index` est un serial).
+ * Une seule lecture, sans activité ni équipes — la page ne montre qu'un lien.
+ */
+export async function fetchLabChallenges(limit: number): Promise<LabChallenge[]> {
+  const challenges = await repositories.challenge.findAll();
+
+  return challenges
+    .filter(isPubliclyVisible)
+    .sort((a, b) =>
+      Number(b.status === "active") - Number(a.status === "active") || (b.index ?? 0) - (a.index ?? 0))
+    .slice(0, limit)
+    .map((c) => ({ id: c.uuid, title: c.title, type: c.type, description: c.description ?? null }));
 }
