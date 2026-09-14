@@ -36,6 +36,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`admin-settings.md`](./admin-settings.md) | Instance-wide theme, GitHub/Kaggle/Slack connections, and module toggles |
 | [`digest.md`](./digest.md) | Periodic, frozen snapshots of platform activity, browsable by admins |
 | [`sandbox.md`](./sandbox.md) | Contributor-proposed open challenges, community stars, and promotion into official challenges |
+| [`seo.md`](./seo.md) | What search engines may index, the MyTwin Lab entity linked to mytwin.care, the `/about` landing and legal pages |
 
 ## Dev & ops
 
