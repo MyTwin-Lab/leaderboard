@@ -28,10 +28,19 @@ export function firstUnansweredIndex(steps: WalkthroughStepView[]): number {
  * Pourquoi « Finish » est désactivé, ou null s'il ne l'est pas.
  *
  * Le bouton dit *pourquoi* : « 2 steps still have no result » plutôt qu'un
- * bouton gris muet. Les étapes manquantes passent avant le retour global —
- * c'est le trou le plus coûteux à combler, autant l'annoncer en premier.
+ * bouton gris muet. Un enregistrement raté passe avant tout le reste : une
+ * étape répondue mais jamais parvenue au serveur est le trou le moins
+ * récupérable — la relire ne le révèle pas, le texte est toujours là à
+ * l'écran. Les étapes manquantes passent ensuite, avant le retour global —
+ * c'est le trou le plus coûteux à combler parmi ce qui reste.
  */
-export function finishBlocker(steps: WalkthroughStepView[], globalFeedback: string): string | null {
+export function finishBlocker(
+  steps: WalkthroughStepView[],
+  globalFeedback: string,
+  unsavedCount: number
+): string | null {
+  if (unsavedCount === 1) return '1 step could not be saved — retry before finishing';
+  if (unsavedCount > 1) return `${unsavedCount} steps could not be saved — retry before finishing`;
   const missing = steps.filter(s => s.result === null).length;
   if (missing === 1) return '1 step still has no result';
   if (missing > 1) return `${missing} steps still have no result`;
@@ -43,7 +52,8 @@ export function finishBlocker(steps: WalkthroughStepView[], globalFeedback: stri
 export function finishHint(
   steps: WalkthroughStepView[],
   globalFeedback: string,
-  cpPerValidation: number
+  cpPerValidation: number,
+  unsavedCount: number
 ): string {
-  return finishBlocker(steps, globalFeedback) ?? `Pays ${cpPerValidation} CP from the remaining pool`;
+  return finishBlocker(steps, globalFeedback, unsavedCount) ?? `Pays ${cpPerValidation} CP from the remaining pool`;
 }

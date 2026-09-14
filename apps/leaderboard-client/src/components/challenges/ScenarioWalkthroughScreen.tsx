@@ -49,6 +49,11 @@ export function ScenarioWalkthroughScreen({
   const [saving, setSaving] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [missingStepIds, setMissingStepIds] = useState<string[]>([]);
+  // Étapes dont le dernier PUT n'a pas abouti : le texte reste affiché tel
+  // quel (on ne revient jamais dessus), mais Finish doit rester bloqué tant
+  // que le serveur ne l'a pas confirmé — sinon on paie sur la foi d'un
+  // commentaire qui n'a jamais quitté le navigateur.
+  const [unsavedStepIds, setUnsavedStepIds] = useState<string[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -79,11 +84,17 @@ export function ScenarioWalkthroughScreen({
         // Reprendre sur la première étape sans résultat, pas sur l'étape 1.
         setCurrent(firstUnansweredIndex(run.steps ?? []));
 
-        if (targetsRes.ok) {
-          const d = await targetsRes.json();
-          if (cancelled) return;
-          setCpPerValidation(d.pool?.cpPerValidation ?? 0);
-        }
+        // Le taux de CP est un à-côté facultatif : s'il échoue à se lire, la
+        // walkthrough a quand même bien ouvert. Son propre try/catch l'empêche
+        // de remonter dans le `error` partagé avec l'ouverture elle-même —
+        // sinon un JSON invalide ici afficherait "Could not open this
+        // walkthrough" alors que l'écran fonctionne très bien.
+        try {
+          if (targetsRes.ok) {
+            const d = await targetsRes.json();
+            if (!cancelled) setCpPerValidation(d.pool?.cpPerValidation ?? 0);
+          }
+        } catch { /* cpPerValidation reste à sa valeur par défaut */ }
       } catch {
         // fetch() rejette (panne réseau, CORS, abort) plutôt que de résoudre
         // ok:false — sans ce filet l'écran resterait bloqué sur le squelette.
@@ -97,8 +108,15 @@ export function ScenarioWalkthroughScreen({
 
   const isReadOnly = !!completedAt;
   const step = steps[current];
-  const blocker = finishBlocker(steps, globalFeedback);
+  const blocker = finishBlocker(steps, globalFeedback, unsavedStepIds.length);
   const answeredCount = steps.filter(s => s.result !== null).length;
+
+  // Une reprise déjà terminée n'a pas de cpAwarded — ce champ ne vient que de
+  // la réponse de /complete, pas de la lecture initiale. On retombe alors sur
+  // le taux nominal du challenge : c'est une approximation, pas le montant
+  // exact enregistré pour cette walkthrough — les deux ne diffèrent que si le
+  // pool était presque épuisé au moment de la finir.
+  const displayedCp = cpAwarded ?? (isReadOnly ? cpPerValidation : null);
 
   const saveStep = useCallback(async (patch: Partial<WalkthroughStepView>) => {
     if (!runId || !step || isReadOnly) return;
@@ -127,11 +145,22 @@ export function ScenarioWalkthroughScreen({
         const state = await res.json();
         setSteps(state.steps ?? []);
         setMissingStepIds([]);
+        // Confirmé par le serveur : ce n'est plus un texte tapé qui ne lui
+        // est jamais parvenu.
+        setUnsavedStepIds(prev => prev.filter(id => id !== step.stepId));
       } else {
         const d = await res.json().catch(() => ({}));
         setError(d.error || 'Could not save this step');
+        // La saisie reste affichée telle quelle — on ne l'efface jamais —
+        // mais Finish doit rester bloqué tant qu'elle n'a pas atteint le
+        // serveur, sinon on paie sur la foi de ce que l'écran montre plutôt
+        // que de ce qui est réellement enregistré.
+        setUnsavedStepIds(prev => (prev.includes(step.stepId) ? prev : [...prev, step.stepId]));
       }
-    } catch { setError('Network error'); }
+    } catch {
+      setError('Network error');
+      setUnsavedStepIds(prev => (prev.includes(step.stepId) ? prev : [...prev, step.stepId]));
+    }
     finally { setSaving(false); }
   }, [challengeId, runId, step, isReadOnly]);
 
@@ -183,7 +212,7 @@ export function ScenarioWalkthroughScreen({
         }`}
       >
         {isReadOnly
-          ? `Walkthrough completed${cpAwarded !== null ? ` — ${cpAwarded} CP` : ''}`
+          ? `Walkthrough completed${displayedCp !== null ? ` — ${displayedCp} CP` : ''}`
           : 'Draft · saved as you go'}
       </span>
     </div>
@@ -244,6 +273,7 @@ export function ScenarioWalkthroughScreen({
   }
 
   const isLast = current === steps.length - 1;
+  const stepUnsaved = !!step && unsavedStepIds.includes(step.stepId);
 
   return (
     <div className="space-y-4 animate-fade-up">
@@ -293,19 +323,25 @@ export function ScenarioWalkthroughScreen({
           </div>
 
           {/* La barre : où on en est, et ce qu'il reste — sans mettre un seul
-              contenu d'étape à l'écran. Un clic saute à l'étape. */}
+              contenu d'étape à l'écran. Un clic saute à l'étape. Un contour
+              ambre signale une étape dont le dernier enregistrement a échoué,
+              en plus (pas à la place) de sa couleur de résultat. */}
           <div className="flex gap-1.5">
             {steps.map((s, i) => {
               const meta = s.result ? RESULT_META[s.result] : null;
               const isMissing = missingStepIds.includes(s.stepId);
+              const isUnsaved = unsavedStepIds.includes(s.stepId);
               return (
                 <button
                   key={s.stepId}
                   onClick={() => setCurrent(i)}
-                  aria-label={`Go to step ${i + 1}: ${s.title}`}
+                  aria-label={`Go to step ${i + 1}: ${s.title}${isUnsaved ? ' — could not be saved' : ''}`}
+                  title={isUnsaved ? 'Could not be saved — open this step to retry' : undefined}
                   className={`h-1.5 flex-1 rounded-full transition-all ${
                     meta ? meta.strong : isMissing ? 'bg-red-500/50' : 'bg-white/10'
-                  } ${i === current ? 'ring-2 ring-brandCP/40' : ''}`}
+                  } ${i === current ? 'ring-2 ring-brandCP/40' : ''} ${
+                    isUnsaved ? 'outline outline-2 outline-amber-400/70 outline-offset-1' : ''
+                  }`}
                 />
               );
             })}
@@ -328,6 +364,12 @@ export function ScenarioWalkthroughScreen({
                   )}
                 </div>
               </div>
+
+              {stepUnsaved && (
+                <p className="rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-400">
+                  This step could not be saved — mark a result or edit the comment again to retry. Your text has not been lost.
+                </p>
+              )}
 
               <div className="flex flex-wrap gap-2">
                 {SCENARIO_RESULTS.map(r => {
@@ -419,7 +461,7 @@ export function ScenarioWalkthroughScreen({
                   <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-bold">+{cpPerValidation} CP</span>
                 </button>
                 <span className={`text-xs ${blocker ? 'text-amber-400/80' : ''}`} style={blocker ? undefined : { color: fgAt(0.35) }}>
-                  {finishHint(steps, globalFeedback, cpPerValidation)}
+                  {finishHint(steps, globalFeedback, cpPerValidation, unsavedStepIds.length)}
                 </span>
               </div>
             </div>

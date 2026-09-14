@@ -39,32 +39,48 @@ describe('firstUnansweredIndex', () => {
 
 describe('finishBlocker', () => {
   it('names the number of unanswered steps, in the singular when there is one', () => {
-    expect(finishBlocker(steps('passed', null, 'failed'), 'Solid.')).toBe('1 step still has no result');
+    expect(finishBlocker(steps('passed', null, 'failed'), 'Solid.', 0)).toBe('1 step still has no result');
   });
 
   it('names them in the plural', () => {
-    expect(finishBlocker(steps(null, null, 'passed'), 'Solid.')).toBe('2 steps still have no result');
+    expect(finishBlocker(steps(null, null, 'passed'), 'Solid.', 0)).toBe('2 steps still have no result');
   });
 
   it('reports unanswered steps before the missing feedback — fix the bigger gap first', () => {
-    expect(finishBlocker(steps('passed', null), '')).toBe('1 step still has no result');
+    expect(finishBlocker(steps('passed', null), '', 0)).toBe('1 step still has no result');
   });
 
   it('reports the missing overall feedback once every step is answered', () => {
-    expect(finishBlocker(steps('passed', 'failed'), '   ')).toBe('The overall feedback is required');
+    expect(finishBlocker(steps('passed', 'failed'), '   ', 0)).toBe('The overall feedback is required');
   });
 
   it('returns null when the walkthrough is ready to finish', () => {
-    expect(finishBlocker(steps('passed', 'failed'), 'Usable end to end.')).toBeNull();
+    expect(finishBlocker(steps('passed', 'failed'), 'Usable end to end.', 0)).toBeNull();
+  });
+
+  it('reports a single unsaved step, in the singular', () => {
+    expect(finishBlocker(steps('passed', 'passed'), 'Solid.', 1)).toBe('1 step could not be saved — retry before finishing');
+  });
+
+  it('reports several unsaved steps, in the plural', () => {
+    expect(finishBlocker(steps('passed', 'passed'), 'Solid.', 3)).toBe('3 steps could not be saved — retry before finishing');
+  });
+
+  it('reports unsaved steps before unanswered steps and missing feedback — the least recoverable gap first', () => {
+    expect(finishBlocker(steps(null, null), '', 1)).toBe('1 step could not be saved — retry before finishing');
   });
 });
 
 describe('finishHint', () => {
   it('says what the walkthrough pays once it is ready', () => {
-    expect(finishHint(steps('passed'), 'Usable.', 200)).toBe('Pays 200 CP from the remaining pool');
+    expect(finishHint(steps('passed'), 'Usable.', 200, 0)).toBe('Pays 200 CP from the remaining pool');
   });
 
   it('otherwise states exactly why the button is disabled', () => {
-    expect(finishHint(steps('passed', null), 'Usable.', 200)).toBe('1 step still has no result');
+    expect(finishHint(steps('passed', null), 'Usable.', 200, 0)).toBe('1 step still has no result');
+  });
+
+  it('reports an unsaved step even once everything else is in order', () => {
+    expect(finishHint(steps('passed'), 'Usable.', 200, 1)).toBe('1 step could not be saved — retry before finishing');
   });
 });
