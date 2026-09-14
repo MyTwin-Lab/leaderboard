@@ -58,6 +58,15 @@ export async function GET(
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
     }
 
+    // Le type du challenge source, d'où les deux coquilles de page déduisent
+    // le mode de validation (cas de référence vs scénario). Dérivé et non
+    // stocké : une colonne `validation_mode` serait une seconde source de
+    // vérité capable de dériver de la première. Une requête de plus seulement
+    // pour un challenge qui en a un.
+    const sourceChallenge = challenge.source_challenge_id
+      ? await challengeRepo.findById(challenge.source_challenge_id)
+      : null;
+
     const [team, tasks, meetings, repos, contributions, participants] = await Promise.all([
       challengeTeamRepo.findTeamMembers(id),
       taskRepo.findByChallenge(id),
@@ -103,6 +112,7 @@ export async function GET(
       participants: safeParticipants,
       my_workspace_owner_id: myWorkspaceOwnerId,
       contribution_members: contributionMembers,
+      source_challenge_type: sourceChallenge?.type ?? null,
     };
     return NextResponse.json(session ? payload : toPublicOverview(payload));
   } catch (error) {

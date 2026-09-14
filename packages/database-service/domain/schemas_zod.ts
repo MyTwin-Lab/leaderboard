@@ -191,6 +191,35 @@ export const validationAttemptSchema = z.object({
   reference_case_claim_id: z.string().uuid().nullable(),
 });
 
+export const validationScenarioStepSchema = z.object({
+  uuid: z.string().uuid(),
+  validation_challenge_id: z.string().uuid(),
+  position: z.number().int().nonnegative().default(0),
+  title: z.string().min(1).max(255),
+  instructions: z.string().nullable(),
+  created_at: z.coerce.date(),
+});
+
+export const validationScenarioRunSchema = z.object({
+  uuid: z.string().uuid(),
+  validation_challenge_id: z.string().uuid(),
+  contribution_id: z.string().uuid(),
+  validator_user_id: z.string().uuid(),
+  global_feedback: z.string().nullable(),
+  completed_at: z.coerce.date().nullable(),
+  created_at: z.coerce.date(),
+});
+
+export const validationStepFeedbackSchema = z.object({
+  uuid: z.string().uuid(),
+  run_id: z.string().uuid(),
+  step_id: z.string().uuid(),
+  result: z.enum(['passed', 'failed', 'blocked']),
+  comment: z.string().nullable(),
+  medical_comment: z.string().nullable(),
+  created_at: z.coerce.date(),
+});
+
 export const computeRequestSchema = z.object({
   uuid: z.string().uuid(),
   challenge_id: z.string().uuid(),

@@ -13,9 +13,11 @@ import {
 } from 'lucide-react';
 import { CreateChallengeDrawer } from '@/components/admin/CreateChallengeDrawer';
 import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
+import { ScenarioStepsEditor } from '@/components/admin/ScenarioStepsEditor';
 import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
 import { ReferenceCasesOverviewPanel } from '@/components/admin/ReferenceCasesOverviewPanel';
 import { ValidationRunsPanel } from '@/components/admin/ValidationRunsPanel';
+import { ScenarioWalkthroughsPanel } from '@/components/admin/ScenarioWalkthroughsPanel';
 import { ComputeRequestsPanel } from '@/components/challenges/ComputeRequestsPanel';
 import type { MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
@@ -435,6 +437,8 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
       participants: Participant[];
       /** (contribution, user) des contributions de groupe. */
       contribution_members: Array<{ contribution_id: string; user_id: string }>;
+      /** Type du challenge source — d'où se déduit le mode de validation. */
+      source_challenge_type: string | null;
     }>,
     enabled: !!challengeId,
   });
@@ -540,6 +544,8 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
 
   const isML = challenge.type === 'ml';
   const isValidation = challenge.type === 'validation';
+  // Le mode se lit sur le type du challenge source, comme partout ailleurs.
+  const isScenarioValidation = isValidation && overviewQuery.data?.source_challenge_type === 'code';
   // A closed challenge is a record: its rules and dates decided points that
   // have already been awarded, so editing them would rewrite history.
   const isOpen = !['completed', 'archived'].includes(status);
@@ -575,18 +581,22 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
       panel: <TabOverview challenge={challenge} team={team} contributions={contributions} contributionMembers={contributionMembers} />,
     },
     {
-      label: 'Targets',
+      label: isScenarioValidation ? 'Scenario' : 'Targets',
       panel: (
         <div className="space-y-6">
           <ValidationTargetsEditor challengeId={challengeId} open />
-          <ReferenceCasesOverviewPanel challengeId={challengeId} open />
+          {isScenarioValidation
+            ? <ScenarioStepsEditor challengeId={challengeId} open />
+            : <ReferenceCasesOverviewPanel challengeId={challengeId} open />}
           <ValidationRewardsPanel challengeId={challengeId} open />
         </div>
       ),
     },
     {
-      label: 'Runs',
-      panel: <ValidationRunsPanel challengeId={challengeId} open />,
+      label: isScenarioValidation ? 'Walkthroughs' : 'Runs',
+      panel: isScenarioValidation
+        ? <ScenarioWalkthroughsPanel challengeId={challengeId} open />
+        : <ValidationRunsPanel challengeId={challengeId} open />,
     },
   ] : [
     {

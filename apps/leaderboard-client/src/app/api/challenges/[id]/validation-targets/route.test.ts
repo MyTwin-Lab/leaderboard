@@ -8,6 +8,7 @@ const {
   mockAttemptFindByChallengeAndValidator, mockAttemptFindByChallengeAndContribution,
   mockRewardSumByChallenge, mockUserFindByIds, mockAssertPublicHttpUrl,
   mockCaseClaimFindByValidatorAndTarget,
+  mockScenarioRunFindByChallenge, mockScenarioRunFindByChallengeAndValidator,
 } = vi.hoisted(() => ({
   mockGetSessionUser: vi.fn(),
   mockIsManagerOfChallenge: vi.fn(),
@@ -24,6 +25,8 @@ const {
   mockUserFindByIds: vi.fn(),
   mockAssertPublicHttpUrl: vi.fn(),
   mockCaseClaimFindByValidatorAndTarget: vi.fn(),
+  mockScenarioRunFindByChallenge: vi.fn(),
+  mockScenarioRunFindByChallengeAndValidator: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
@@ -59,6 +62,10 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   CaseClaimRepository: class {
     findByValidatorAndTarget = mockCaseClaimFindByValidatorAndTarget;
   },
+  ScenarioRunRepository: class {
+    findByChallenge = mockScenarioRunFindByChallenge;
+    findByChallengeAndValidator = mockScenarioRunFindByChallengeAndValidator;
+  },
 }));
 
 import { GET, POST } from './route';
@@ -88,7 +95,9 @@ const VALIDATION_CHALLENGE = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetSessionUser.mockResolvedValue(null);
-  mockChallengeFindById.mockResolvedValue(VALIDATION_CHALLENGE);
+  mockChallengeFindById.mockImplementation(async (id: string) =>
+    id === CHALLENGE_ID ? VALIDATION_CHALLENGE : { uuid: 'ml-challenge-1', type: 'ml' }
+  );
   mockContributionFindByChallenge.mockResolvedValue([]);
   mockTargetFindByChallenge.mockResolvedValue([]);
   mockTargetFindByChallengeAndContribution.mockResolvedValue(null);
@@ -98,6 +107,8 @@ beforeEach(() => {
   mockUserFindByIds.mockResolvedValue([]);
   mockAssertPublicHttpUrl.mockResolvedValue(undefined);
   mockCaseClaimFindByValidatorAndTarget.mockResolvedValue([]);
+  mockScenarioRunFindByChallenge.mockResolvedValue([]);
+  mockScenarioRunFindByChallengeAndValidator.mockResolvedValue([]);
 });
 
 describe('GET /api/challenges/[id]/validation-targets', () => {
@@ -191,6 +202,18 @@ describe('GET /api/challenges/[id]/validation-targets', () => {
     // Non-manager, anonymous viewer: no worksCount/brokenCount leak.
     expect(target.worksCount).toBeUndefined();
     expect(target.brokenCount).toBeUndefined();
+  });
+
+  it('never discloses the contributor endpoint URL in reference-case mode — only the server-side proxy ever calls it', async () => {
+    mockTargetFindByChallenge.mockResolvedValue([
+      { uuid: 't1', contribution_id: 'c1', outcome: 'pending', resolved_at: null },
+    ]);
+    mockContributionFindById.mockResolvedValue({ uuid: 'c1', user_id: 'u1', live_endpoint_url: 'https://model.example.com/predict' });
+
+    const res = await getTargets();
+    const body = await res.json();
+
+    expect(body.targets[0].endpointUrl).toBeUndefined();
   });
 
   it('exposes worksCount/brokenCount and alreadyValidatedByMe to the manager', async () => {
@@ -364,5 +387,158 @@ describe('POST /api/challenges/[id]/validation-targets', () => {
     const res = await postTarget({ contribution_id: CONTRIBUTION_ID, live_endpoint_url: LIVE_URL });
 
     expect(res.status).toBe(500);
+  });
+});
+
+describe('scenario mode (source challenge is a code challenge)', () => {
+  const CODE_SOURCE_ID = 'code-challenge-1';
+  const SCENARIO_CHALLENGE = {
+    uuid: CHALLENGE_ID, type: 'validation', contribution_points_reward: 12000,
+    cp_per_validation: 200, required_validations: null, source_challenge_id: CODE_SOURCE_ID,
+  };
+
+  beforeEach(() => {
+    mockChallengeFindById.mockImplementation(async (id: string) =>
+      id === CHALLENGE_ID ? SCENARIO_CHALLENGE : { uuid: CODE_SOURCE_ID, type: 'code' }
+    );
+    mockGetSessionUser.mockResolvedValue({ id: 'validator-1', role: 'contributor' });
+    mockIsManagerOfChallenge.mockResolvedValue(false);
+    mockRewardSumByChallenge.mockResolvedValue(2600);
+    mockUserFindByIds.mockResolvedValue([]);
+  });
+
+  it('publishes the derived mode so the client picks the right flow', async () => {
+    mockTargetFindByChallenge.mockResolvedValue([]);
+
+    const body = await (await getTargets()).json();
+
+    expect(body.mode).toBe('scenario');
+  });
+
+  it('lists the source challenge project contributions as eligible, not its api_packaging ones', async () => {
+    mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
+    mockContributionFindByChallenge.mockResolvedValue([
+      { uuid: 'proj-1', type: 'project', user_id: 'alice' },
+      { uuid: 'pack-1', type: 'api_packaging', user_id: 'bob' },
+    ]);
+    mockTargetFindByChallenge.mockResolvedValue([]);
+    mockUserFindByIds.mockResolvedValue([{ uuid: 'alice', full_name: 'Alice' }]);
+
+    const body = await (await getTargets('?eligible=true')).json();
+
+    expect(body.eligible).toHaveLength(1);
+    expect(body.eligible[0].contributionId).toBe('proj-1');
+  });
+
+  it('publishes each exposed application endpoint — the validator browser is what loads it', async () => {
+    mockTargetFindByChallenge.mockResolvedValue([
+      { uuid: 'target-1', contribution_id: CONTRIBUTION_ID, outcome: 'pending', resolved_at: null },
+    ]);
+    mockContributionFindById.mockResolvedValue({
+      uuid: CONTRIBUTION_ID, user_id: 'alice', type: 'project',
+      live_endpoint_url: 'https://val-a.patient-record.mytwin.dev',
+    });
+
+    const body = await (await getTargets()).json();
+
+    expect(body.targets[0].endpointUrl).toBe('https://val-a.patient-record.mytwin.dev');
+  });
+
+  it('reports my own draft walkthrough so the client can offer Resume instead of Start', async () => {
+    mockTargetFindByChallenge.mockResolvedValue([
+      { uuid: 'target-1', contribution_id: CONTRIBUTION_ID, outcome: 'pending', resolved_at: null },
+    ]);
+    mockContributionFindById.mockResolvedValue({ uuid: CONTRIBUTION_ID, user_id: 'alice', type: 'project' });
+    mockScenarioRunFindByChallengeAndValidator.mockResolvedValue([
+      { uuid: 'run-1', contribution_id: CONTRIBUTION_ID, completed_at: null },
+    ]);
+    mockScenarioRunFindByChallenge.mockResolvedValue([
+      { uuid: 'run-1', contribution_id: CONTRIBUTION_ID, completed_at: null },
+      { uuid: 'run-2', contribution_id: CONTRIBUTION_ID, completed_at: new Date('2026-09-10') },
+    ]);
+
+    const body = await (await getTargets()).json();
+
+    expect(body.targets[0].myWalkthrough).toEqual({ runId: 'run-1', completedAt: null });
+    expect(body.targets[0].walkthroughCount).toBe(2);
+  });
+
+  it('returns null myWalkthrough when I have never started', async () => {
+    mockTargetFindByChallenge.mockResolvedValue([
+      { uuid: 'target-1', contribution_id: CONTRIBUTION_ID, outcome: 'pending', resolved_at: null },
+    ]);
+    mockContributionFindById.mockResolvedValue({ uuid: CONTRIBUTION_ID, user_id: 'alice', type: 'project' });
+
+    const body = await (await getTargets()).json();
+
+    expect(body.targets[0].myWalkthrough).toBeNull();
+  });
+
+  it('never queries reference-case claims in scenario mode', async () => {
+    mockTargetFindByChallenge.mockResolvedValue([
+      { uuid: 'target-1', contribution_id: CONTRIBUTION_ID, outcome: 'pending', resolved_at: null },
+    ]);
+    mockContributionFindById.mockResolvedValue({ uuid: CONTRIBUTION_ID, user_id: 'alice', type: 'project' });
+
+    await getTargets();
+
+    // Il n'y a pas de cas de référence en mode scénario : interroger la table
+    // serait une requête par cible pour un résultat toujours vide.
+    expect(mockCaseClaimFindByValidatorAndTarget).not.toHaveBeenCalled();
+  });
+
+  it('exposes a project contribution and records its URL', async () => {
+    mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
+    mockContributionFindById.mockResolvedValue({
+      uuid: CONTRIBUTION_ID, challenge_id: CODE_SOURCE_ID, type: 'project', user_id: 'alice',
+    });
+    mockTargetFindByChallengeAndContribution.mockResolvedValue(null);
+    mockAssertPublicHttpUrl.mockResolvedValue(undefined);
+    mockTargetCreate.mockResolvedValue({ uuid: 'target-1' });
+
+    const res = await postTarget({
+      contribution_id: CONTRIBUTION_ID,
+      live_endpoint_url: 'https://val-a.patient-record.mytwin.dev',
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockContributionUpdate).toHaveBeenCalledWith(CONTRIBUTION_ID, {
+      live_endpoint_url: 'https://val-a.patient-record.mytwin.dev',
+    });
+  });
+
+  it('refuses to expose an api_packaging contribution when the source is a code challenge', async () => {
+    mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
+    mockContributionFindById.mockResolvedValue({
+      uuid: CONTRIBUTION_ID, challenge_id: CODE_SOURCE_ID, type: 'api_packaging', user_id: 'alice',
+    });
+
+    const res = await postTarget({
+      contribution_id: CONTRIBUTION_ID,
+      live_endpoint_url: 'https://val-a.patient-record.mytwin.dev',
+    });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('still SSRF-guards the URL at exposure time', async () => {
+    // Le garde ne protège plus un appel serveur — il n'y en a plus — mais il
+    // empêche de stocker un `javascript:` qu'on rendrait ensuite en lien, et
+    // il attrape une adresse privée pendant que l'admin regarde encore le
+    // formulaire.
+    mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
+    mockContributionFindById.mockResolvedValue({
+      uuid: CONTRIBUTION_ID, challenge_id: CODE_SOURCE_ID, type: 'project', user_id: 'alice',
+    });
+    mockTargetFindByChallengeAndContribution.mockResolvedValue(null);
+    mockAssertPublicHttpUrl.mockRejectedValue(new Error('private address'));
+
+    const res = await postTarget({
+      contribution_id: CONTRIBUTION_ID,
+      live_endpoint_url: 'http://192.168.0.10',
+    });
+
+    expect(res.status).toBe(400);
+    expect(mockTargetCreate).not.toHaveBeenCalled();
   });
 });

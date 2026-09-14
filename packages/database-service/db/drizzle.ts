@@ -344,6 +344,93 @@ export const validation_attempts = pgTable("validation_attempts", {
   uniqueAttemptIdx: uniqueIndex("idx_validation_attempts_unique").on(table.validation_challenge_id, table.contribution_id, table.validator_user_id),
 }));
 
+// --- VALIDATION_SCENARIO_STEPS ---
+// The ordered walkthrough a validator performs on every application exposed
+// on a scenario-mode validation challenge (source challenge is `code`).
+//
+// Never called a "task": `tasks` already means the personal kanban of a code
+// challenge, and both live in the same app.
+//
+// Shared by every target on the challenge — all contributors built against
+// the same brief, so they face the same walkthrough. Frozen (no insert, no
+// update, no delete) the moment the first validation_scenario_runs row
+// exists; that freeze is what keeps validation_step_feedbacks.step_id from
+// ever dangling, and what keeps walkthroughs comparable to each other.
+export const validation_scenario_steps = pgTable("validation_scenario_steps", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  validation_challenge_id: uuid("validation_challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  // Dense and 0-based. ScenarioStepsService renumbers every sibling on a
+  // reorder rather than shuffling one row's value, so positions never
+  // collide and never leave gaps.
+  position: integer("position").default(0).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  instructions: text("instructions"),
+  // Not in the design doc's column list — it is the tiebreaker `position`
+  // alone can't give two steps added in the same reorder-free session,
+  // exactly as validation_targets orders on (position, created_at).
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  challengeIdIdx: index("idx_validation_scenario_steps_challenge_id").on(table.validation_challenge_id, table.position),
+}));
+
+// --- VALIDATION_SCENARIO_RUNS ---
+// One validator's pass over one application. `completed_at IS NULL` is a
+// draft: a validator who closes the tab at step 4 of 7 comes back to exactly
+// what they had filled in. There is no reservation step, so there is no
+// abandoned-walkthrough state to clean up.
+//
+// The unique index does the same job idx_validation_attempts_unique does:
+// one walkthrough per (validator, application), so cp_per_validation is paid
+// once — enforced by the database rather than an application-level check, so
+// concurrent requests race safely.
+//
+// Deliberately hangs off `challenges` and `contributions`, NOT off
+// validation_targets: un-exposing a target must not silently destroy feedback
+// that has already been paid for.
+export const validation_scenario_runs = pgTable("validation_scenario_runs", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  validation_challenge_id: uuid("validation_challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  // The application walked — a `project` contribution of the source code challenge.
+  contribution_id: uuid("contribution_id").references(() => contributions.uuid, { onDelete: "cascade" }).notNull(),
+  validator_user_id: uuid("validator_user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  // Required at completion, enforced at the API layer (zod) and in the
+  // service; nullable here because a draft doesn't have one yet.
+  global_feedback: text("global_feedback"),
+  completed_at: timestamp("completed_at"),
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  challengeIdIdx: index("idx_validation_scenario_runs_challenge_id").on(table.validation_challenge_id),
+  validatorIdx: index("idx_validation_scenario_runs_validator_id").on(table.validator_user_id),
+  uniqueRunIdx: uniqueIndex("idx_validation_scenario_runs_unique").on(table.validation_challenge_id, table.contribution_id, table.validator_user_id),
+}));
+
+// --- VALIDATION_STEP_FEEDBACKS ---
+// One row per (walkthrough, step). Upserted on the unique index as the
+// validator moves through the scenario, so navigating between steps never
+// loses anything and closing the tab loses nothing either.
+//
+// `medical_comment` is a column rather than a row-per-lens because there are
+// exactly two lenses. A third one (security, accessibility) would justify
+// splitting into rows with a discriminator; two does not.
+export const validation_step_feedbacks = pgTable("validation_step_feedbacks", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  run_id: uuid("run_id").references(() => validation_scenario_runs.uuid, { onDelete: "cascade" }).notNull(),
+  step_id: uuid("step_id").references(() => validation_scenario_steps.uuid, { onDelete: "cascade" }).notNull(),
+  // 'passed' | 'failed' | 'blocked'. Not nullable: a row exists only once the
+  // validator has answered. Already a vote — it simply isn't counted in this
+  // iteration (no quorum, no majority).
+  result: varchar("result", { length: 10 }).notNull(),
+  // The user-experience comment, open to every validator.
+  comment: text("comment"),
+  // The clinical reading, writable only by a medical_pro — alongside
+  // `comment`, never instead of it.
+  medical_comment: text("medical_comment"),
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  runIdIdx: index("idx_validation_step_feedbacks_run_id").on(table.run_id),
+  uniqueFeedbackIdx: uniqueIndex("idx_validation_step_feedbacks_unique").on(table.run_id, table.step_id),
+}));
+
 // --- COMPUTE REQUESTS (Scaleway GPU) ---
 // One row per (challenge, contributor) request for a temporary GPU instance —
 // the unique index is what actually enforces "one request per ML challenge"
@@ -1157,5 +1244,8 @@ export const db = drizzle(pool, {
     app_settings,
     compute_requests,
     digests,
+    validation_scenario_steps,
+    validation_scenario_runs,
+    validation_step_feedbacks,
   },
 });

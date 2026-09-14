@@ -8,7 +8,8 @@ import {
   CaseClaimRepository,
 } from "../../database-service/repositories/index.js";
 import type { RewardEntryDraft } from "../../database-service/repositories/index.js";
-import type { Challenge, Contribution, ValidationAttempt } from "../../database-service/domain/entities.js";
+import type { Challenge, ValidationAttempt } from "../../database-service/domain/entities.js";
+import { findOrCreateValidatorContribution } from "./validatorContribution.js";
 
 /** The submission isn't exposed on this validation challenge, or has no endpoint — a 4xx-shaped problem. */
 export class ValidationTargetError extends Error {}
@@ -231,7 +232,7 @@ export class ValidationChallengeService {
       if (grant <= 0) continue;
       remaining -= grant;
 
-      const validatorContribution = await this.findOrCreateValidatorContribution(challenge, v.validator_user_id);
+      const validatorContribution = await findOrCreateValidatorContribution(this.deps, challenge, v.validator_user_id);
       entries.push({
         challenge_id: challenge.uuid,
         user_id: v.validator_user_id,
@@ -252,21 +253,5 @@ export class ValidationChallengeService {
   private async remainingPool(challenge: Challenge): Promise<number> {
     const distributed = await this.deps.rewardRepo.sumByChallenge(challenge.uuid);
     return Math.max(0, challenge.contribution_points_reward - distributed);
-  }
-
-  private async findOrCreateValidatorContribution(challenge: Challenge, userId: string): Promise<Contribution> {
-    const all = await this.deps.contributionRepo.findByChallenge(challenge.uuid);
-    const existing = all.find(c => c.type === "validation" && c.user_id === userId);
-    if (existing) return existing;
-    return this.deps.contributionRepo.create({
-      title: "Validations performed",
-      type: "validation",
-      description: `Validations on ${challenge.title}`,
-      reward: 0,
-      user_id: userId,
-      challenge_id: challenge.uuid,
-      submitted_at: new Date(),
-      evaluation_status: "done",
-    });
   }
 }

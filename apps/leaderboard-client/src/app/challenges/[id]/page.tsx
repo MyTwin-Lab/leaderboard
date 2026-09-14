@@ -13,6 +13,7 @@ import type { TeamMember } from '@/lib/types';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
 import { MLChallengeFlow } from '@/components/challenges/MLChallengeFlow';
 import { ValidationChallengeFlow } from '@/components/challenges/ValidationChallengeFlow';
+import { ScenarioChallengeFlow } from '@/components/challenges/ScenarioChallengeFlow';
 import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseAuthorPanel';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { ChallengeBrief, type GroupInvite } from '@/components/challenges/ChallengeBrief';
@@ -173,6 +174,8 @@ export default function ChallengeDetailPage() {
       participants: CodeParticipation[];
       /** Porteur du workspace du visiteur : lui-même en solo, le créateur du groupe sinon. */
       my_workspace_owner_id: string | null;
+      /** Type du challenge source — d'où se déduit le mode de validation. */
+      source_challenge_type: string | null;
     }>,
     enabled: !!challengeId,
     // Désactivé globalement dans providers.tsx, réactivé ici : un board de
@@ -261,6 +264,8 @@ export default function ChallengeDetailPage() {
 
   const isML = challenge?.type === 'ml' || repoTypes.some(t => ML_REPO_TYPES.includes(t));
   const isValidation = challenge?.type === 'validation';
+  // Le mode se lit sur le type du challenge source, publié par /overview.
+  const isScenarioValidation = isValidation && overviewQuery.data?.source_challenge_type === 'code';
 
   // Silent refresh after a board mutation — no skeleton flash.
   const reloadBoard = async () => {
@@ -607,8 +612,10 @@ export default function ChallengeDetailPage() {
         )}
         tabs={isValidation ? [
         {
-          label: 'Validate',
-          panel: (
+          label: isScenarioValidation ? 'Walkthrough' : 'Validate',
+          panel: isScenarioValidation ? (
+            <ScenarioChallengeFlow challengeId={challengeId} />
+          ) : (
             <div className="space-y-4">
               <ReferenceCaseAuthorPanel challengeId={challengeId} />
               <ValidationChallengeFlow challengeId={challengeId} />

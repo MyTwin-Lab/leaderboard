@@ -33,6 +33,9 @@ import {
   validation_attempts,
   validation_reference_cases,
   validation_case_claims,
+  validation_scenario_steps,
+  validation_scenario_runs,
+  validation_step_feedbacks,
   compute_requests,
   digests,
   sandboxes,
@@ -56,6 +59,10 @@ import type {
   ValidationAttempt,
   ValidationReferenceCase,
   ValidationCaseClaim,
+  ValidationScenarioStep,
+  ValidationScenarioRun,
+  ValidationStepFeedback,
+  ScenarioStepResult,
   ComputeRequest,
   User,
   Contribution,
@@ -830,6 +837,81 @@ export function toDbValidationAttempt(
     response_content_type: entity.response_content_type ?? null,
     response_status: entity.response_status ?? null,
     reference_case_claim_id: entity.reference_case_claim_id ?? null,
+  };
+}
+
+type DbValidationScenarioStep = InferSelectModel<typeof validation_scenario_steps>;
+type DbValidationScenarioRun = InferSelectModel<typeof validation_scenario_runs>;
+type DbValidationStepFeedback = InferSelectModel<typeof validation_step_feedbacks>;
+
+export function toDomainValidationScenarioStep(row: DbValidationScenarioStep): ValidationScenarioStep {
+  return {
+    uuid: row.uuid,
+    validation_challenge_id: row.validation_challenge_id,
+    position: row.position ?? 0,
+    title: row.title,
+    instructions: row.instructions ?? null,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbValidationScenarioStep(
+  entity: Omit<ValidationScenarioStep, "uuid" | "created_at">
+): typeof validation_scenario_steps.$inferInsert {
+  return {
+    validation_challenge_id: entity.validation_challenge_id,
+    position: entity.position ?? 0,
+    title: entity.title,
+    instructions: entity.instructions ?? null,
+  };
+}
+
+export function toDomainValidationScenarioRun(row: DbValidationScenarioRun): ValidationScenarioRun {
+  return {
+    uuid: row.uuid,
+    validation_challenge_id: row.validation_challenge_id,
+    contribution_id: row.contribution_id,
+    validator_user_id: row.validator_user_id,
+    global_feedback: row.global_feedback ?? null,
+    completed_at: row.completed_at ? new Date(row.completed_at) : null,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+// global_feedback et completed_at ne sont volontairement pas dans le insert :
+// une run naît brouillon, et seul `complete()` les écrit — en une update
+// gardée sur `completed_at IS NULL`, qui est le vrai garde-fou anti-double-paiement.
+export function toDbValidationScenarioRun(
+  entity: Omit<ValidationScenarioRun, "uuid" | "created_at" | "global_feedback" | "completed_at">
+): typeof validation_scenario_runs.$inferInsert {
+  return {
+    validation_challenge_id: entity.validation_challenge_id,
+    contribution_id: entity.contribution_id,
+    validator_user_id: entity.validator_user_id,
+  };
+}
+
+export function toDomainValidationStepFeedback(row: DbValidationStepFeedback): ValidationStepFeedback {
+  return {
+    uuid: row.uuid,
+    run_id: row.run_id,
+    step_id: row.step_id,
+    result: row.result as ScenarioStepResult,
+    comment: row.comment ?? null,
+    medical_comment: row.medical_comment ?? null,
+    created_at: new Date(row.created_at ?? Date.now()),
+  };
+}
+
+export function toDbValidationStepFeedback(
+  entity: Omit<ValidationStepFeedback, "uuid" | "created_at">
+): typeof validation_step_feedbacks.$inferInsert {
+  return {
+    run_id: entity.run_id,
+    step_id: entity.step_id,
+    result: entity.result,
+    comment: entity.comment ?? null,
+    medical_comment: entity.medical_comment ?? null,
   };
 }
 

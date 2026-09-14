@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockGetSessionUser, mockIsManagerOfChallenge, mockFindById, mockFindByChallengeAndContribution, mockDelete } = vi.hoisted(() => ({
+const {
+  mockGetSessionUser, mockIsManagerOfChallenge, mockFindById, mockFindByChallengeAndContribution, mockDelete,
+  mockScenarioRunFindByChallenge,
+} = vi.hoisted(() => ({
   mockGetSessionUser: vi.fn(),
   mockIsManagerOfChallenge: vi.fn(),
   mockFindById: vi.fn(),
   mockFindByChallengeAndContribution: vi.fn(),
   mockDelete: vi.fn(),
+  mockScenarioRunFindByChallenge: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
@@ -19,6 +23,9 @@ vi.mock('../../../../../../../../../packages/database-service/repositories', () 
   },
   ValidationAttemptRepository: class {
     findByChallengeAndContribution = mockFindByChallengeAndContribution;
+  },
+  ScenarioRunRepository: class {
+    findByChallenge = mockScenarioRunFindByChallenge;
   },
 }));
 
@@ -38,6 +45,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
   mockFindByChallengeAndContribution.mockResolvedValue([]);
+  mockScenarioRunFindByChallenge.mockResolvedValue([]);
   mockDelete.mockResolvedValue(undefined);
 });
 
@@ -97,6 +105,36 @@ describe('DELETE /api/challenges/[id]/validation-targets/[targetId]', () => {
 
     expect(res.status).toBe(200);
     expect(body).toEqual({ success: true });
+    expect(mockDelete).toHaveBeenCalledWith(TARGET_ID);
+  });
+
+  it('returns 409 when the target already has walkthroughs (scenario mode, where votes is always 0)', async () => {
+    mockFindById.mockResolvedValue({ uuid: TARGET_ID, validation_challenge_id: CHALLENGE_ID, contribution_id: 'c1' });
+    mockFindByChallengeAndContribution.mockResolvedValue([]);
+    mockScenarioRunFindByChallenge.mockResolvedValue([
+      { uuid: 'run-1', contribution_id: 'c1' },
+      { uuid: 'run-2', contribution_id: 'c1' },
+      { uuid: 'run-3', contribution_id: 'someone-else' },
+    ]);
+
+    const res = await deleteTarget();
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body.error).toMatch(/2 walkthrough/);
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it('deletes the target when other contributions on the challenge have walkthroughs but this one does not', async () => {
+    mockFindById.mockResolvedValue({ uuid: TARGET_ID, validation_challenge_id: CHALLENGE_ID, contribution_id: 'c1' });
+    mockFindByChallengeAndContribution.mockResolvedValue([]);
+    mockScenarioRunFindByChallenge.mockResolvedValue([
+      { uuid: 'run-1', contribution_id: 'someone-else' },
+    ]);
+
+    const res = await deleteTarget();
+
+    expect(res.status).toBe(200);
     expect(mockDelete).toHaveBeenCalledWith(TARGET_ID);
   });
 

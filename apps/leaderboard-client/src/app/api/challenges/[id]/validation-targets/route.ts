@@ -8,10 +8,12 @@ import {
   RewardEntryRepository,
   UserRepository,
   CaseClaimRepository,
+  ScenarioRunRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { assertPublicHttpUrl } from '../../../../../../../../packages/services/challenge/ssrf-guard';
+import { validationModeFor, TARGET_CONTRIBUTION_TYPE } from '../../../../../../../../packages/services/challenge/validation-mode';
 
 const challengeRepo = new ChallengeRepository();
 const contributionRepo = new ContributionRepository();
@@ -20,6 +22,7 @@ const attemptRepo = new ValidationAttemptRepository();
 const rewardRepo = new RewardEntryRepository();
 const userRepo = new UserRepository();
 const caseClaimRepo = new CaseClaimRepository();
+const scenarioRunRepo = new ScenarioRunRepository();
 
 async function authorize(challengeId: string) {
   const user = await getSessionUser();
@@ -30,6 +33,18 @@ async function authorize(challengeId: string) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
   }
   return { user };
+}
+
+/**
+ * Le mode d'un challenge de validation, déduit du type de son challenge
+ * source. Une requête de plus par appel, assumée : c'est le prix de ne pas
+ * stocker une seconde source de vérité qui pourrait dériver.
+ */
+async function resolveMode(challenge: { source_challenge_id?: string | null }) {
+  const source = challenge.source_challenge_id
+    ? await challengeRepo.findById(challenge.source_challenge_id)
+    : null;
+  return validationModeFor(source?.type);
 }
 
 // GET /api/challenges/[id]/validation-targets
@@ -48,6 +63,8 @@ export async function GET(
       return NextResponse.json({ error: 'Not a validation challenge' }, { status: 400 });
     }
 
+    const mode = await resolveMode(challenge);
+
     if (req.nextUrl.searchParams.get('eligible') === 'true') {
       const auth = await authorize(challengeId);
       if ('error' in auth) return auth.error;
@@ -58,9 +75,13 @@ export async function GET(
       const existingTargets = await targetRepo.findByChallenge(challengeId);
       const targetedContributionIds = new Set(existingTargets.map(t => t.contribution_id));
 
-      const eligible = sourceContribs.filter(
-        c => c.type === 'api_packaging' && !targetedContributionIds.has(c.uuid)
-      );
+      // `api_packaging` quand la source est un challenge ML, `project` quand
+      // c'est un challenge code : dans les deux cas, le livrable que l'équipe
+      // a déployé et qu'un validateur va éprouver.
+      const eligibleType = mode ? TARGET_CONTRIBUTION_TYPE[mode] : null;
+      const eligible = eligibleType
+        ? sourceContribs.filter(c => c.type === eligibleType && !targetedContributionIds.has(c.uuid))
+        : [];
       const users = await userRepo.findByIds([...new Set(eligible.map(c => c.user_id))]);
       const usersById = new Map(users.map(u => [u.uuid, u]));
 
@@ -84,23 +105,37 @@ export async function GET(
     const submittersById = new Map(submitters.map(u => [u.uuid, u]));
 
     const session = await getSessionUser();
-    const myAttempts = session
-      ? await attemptRepo.findByChallengeAndValidator(challengeId, session.id)
-      : [];
-    const validatedContributionIds = new Set(myAttempts.map(a => a.contribution_id));
-
     const isManager = session
       ? session.role === 'admin' || (await isManagerOfChallenge(session.id, challengeId))
       : false;
 
-    const attemptsByTarget = await Promise.all(
-      targets.map(t => attemptRepo.findByChallengeAndContribution(challengeId, t.contribution_id))
-    );
+    const isScenario = mode === 'scenario';
+
+    // Mode scénario : pas de verdict, pas de cas de référence, donc aucune des
+    // requêtes du flux ML. Deux lectures suffisent — toutes les runs du
+    // challenge (le compte par application) et les miennes (mon état).
+    const [allRuns, myRuns] = isScenario
+      ? await Promise.all([
+          scenarioRunRepo.findByChallenge(challengeId),
+          session ? scenarioRunRepo.findByChallengeAndValidator(challengeId, session.id) : Promise.resolve([]),
+        ])
+      : [[], []];
+
+    const myAttempts = !isScenario && session
+      ? await attemptRepo.findByChallengeAndValidator(challengeId, session.id)
+      : [];
+    const validatedContributionIds = new Set(myAttempts.map(a => a.contribution_id));
+
+    const attemptsByTarget = isScenario
+      ? targets.map(() => [])
+      : await Promise.all(
+          targets.map(t => attemptRepo.findByChallengeAndContribution(challengeId, t.contribution_id))
+        );
 
     // The requester's own unfinished claims per target — lets the client
     // resume an interrupted observe/reveal/vote sequence instead of
     // re-offering the case pick list and losing that in-progress work.
-    const myOpenClaimsByTarget = session
+    const myOpenClaimsByTarget = !isScenario && session
       ? await Promise.all(
           targets.map(async t => {
             const claims = await caseClaimRepo.findByValidatorAndTarget(session.id, t.contribution_id);
@@ -115,6 +150,7 @@ export async function GET(
 
     return NextResponse.json({
       currentUserId: session?.id ?? null,
+      mode,
       pool: {
         pool,
         distributed,
@@ -128,6 +164,7 @@ export async function GET(
         const attempts = attemptsByTarget[i];
         const worksCount = attempts.filter(a => a.verdict === 'works').length;
         const brokenCount = attempts.length - worksCount;
+        const myRun = myRuns.find(r => r.contribution_id === t.contribution_id) ?? null;
         return {
           id: t.uuid,
           contributionId: t.contribution_id,
@@ -139,10 +176,19 @@ export async function GET(
           outcome: t.outcome,
           resolvedAt: t.resolved_at,
           myOpenClaims: myOpenClaimsByTarget[i],
-          // Only the manager sees the live split before resolution — everyone
-          // else gets a blind participation count, so their own verdict is an
-          // independent judgment, not a reaction to the running tally.
-          ...(isManager ? { worksCount, brokenCount } : {}),
+          ...(isScenario ? {
+            // Le navigateur du validateur est ce qui charge l'application en
+            // mode scénario, donc l'URL doit sortir jusqu'au client — elle a
+            // déjà passé assertPublicHttpUrl à l'exposition. En mode
+            // référence le proxy serveur est seul à appeler l'endpoint ;
+            // cette URL n'a jamais eu à quitter le serveur et ne le doit pas.
+            endpointUrl: c?.live_endpoint_url ?? null,
+            walkthroughCount: allRuns.filter(r => r.contribution_id === t.contribution_id).length,
+            myWalkthrough: myRun ? { runId: myRun.uuid, completedAt: myRun.completed_at } : null,
+          } : {}),
+          // Le manager est le seul à voir le partage works/broken avant
+          // résolution — et il n'existe pas en mode scénario.
+          ...(isManager && !isScenario ? { worksCount, brokenCount } : {}),
         };
       }),
     });
@@ -178,13 +224,25 @@ export async function POST(
     const body = await req.json();
     const { contribution_id, live_endpoint_url } = addTargetSchema.parse(body);
 
+    const mode = await resolveMode(challenge);
+    if (!mode) {
+      return NextResponse.json(
+        { error: 'This validation challenge has no ML or Code source challenge' },
+        { status: 400 }
+      );
+    }
+    const expectedType = TARGET_CONTRIBUTION_TYPE[mode];
+
     const contribution = await contributionRepo.findById(contribution_id);
     if (
       !contribution ||
       contribution.challenge_id !== challenge.source_challenge_id ||
-      contribution.type !== 'api_packaging'
+      contribution.type !== expectedType
     ) {
-      return NextResponse.json({ error: 'Contribution is not an eligible api_packaging submission' }, { status: 400 });
+      return NextResponse.json(
+        { error: `Contribution is not an eligible ${expectedType} submission` },
+        { status: 400 }
+      );
     }
 
     const existing = await targetRepo.findByChallengeAndContribution(challengeId, contribution_id);

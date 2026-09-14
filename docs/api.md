@@ -112,7 +112,7 @@ All request bodies are JSON unless noted (a few validation routes take `multipar
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| `GET` | `/api/challenges/:id/validation-targets` | Exposed targets + pool state. `?eligible=true` lists `api_packaging` submissions not yet exposed. | Public (`eligible` = admin/manager) |
+| `GET` | `/api/challenges/:id/validation-targets` | Exposed targets + pool state. `?eligible=true` lists the source challenge's `api_packaging` (ML source) or `project` (Code source) contributions not yet exposed. | Public (`eligible` = admin/manager) |
 | `POST` | `/api/challenges/:id/validation-targets` | Expose a submission and record its deployed endpoint URL. | Admin or manager |
 | `DELETE` | `/api/challenges/:id/validation-targets/:targetId` | Remove a target (409 once verdicts exist). | Admin or manager |
 | `GET` | `/api/challenges/:id/validation-targets/:targetId/claimable-cases` | Reference cases still claimable on this target, plus the caller's unfinished claims. | `medical_pro` |
@@ -128,6 +128,14 @@ All request bodies are JSON unless noted (a few validation routes take `multipar
 | `GET` | `/api/challenges/:id/validation-runs/:attemptId/file` | The exact input bytes for one run. | Admin or manager |
 | `GET` | `/api/challenges/:id/validation-runs/:attemptId/response` | The exact endpoint response for one run. | Admin or manager |
 | `GET` | `/api/challenges/:id/validation-rewards` | Pool state + per-validator breakdown. | Admin or manager |
+| `GET` | `/api/challenges/:id/validation-scenario-steps` | The scenario, in order, plus `frozen`. It is the protocol, not a secret — nothing is hidden from the validator in scenario mode. | Any signed-in user |
+| `POST` | `/api/challenges/:id/validation-scenario-steps` | Append a step. 409 once any walkthrough exists. | Admin or manager |
+| `PATCH` | `/api/challenges/:id/validation-scenario-steps/:stepId` | Retitle, re-instruct or reorder a step (a reorder renumbers every sibling). 409 once any walkthrough exists. | Admin or manager |
+| `DELETE` | `/api/challenges/:id/validation-scenario-steps/:stepId` | Delete a step and renumber the rest. 409 once any walkthrough exists. | Admin or manager |
+| `POST` | `/api/challenges/:id/validation-scenario-runs` | Open **or resume** a walkthrough on one application — idempotent, returns the full state. 403 on your own (or your group's) application. | Any signed-in user |
+| `GET` | `/api/challenges/:id/validation-scenario-runs` | Every walkthrough on the challenge: per application, who walked it, each step result, the comments, the medical opinions and the overall feedback. | Admin or manager |
+| `PUT` | `/api/challenges/:id/validation-scenario-runs/:runId/steps/:stepId` | Save one step: `result` (`passed`/`failed`/`blocked`), `comment`, `medical_comment`. The body is the step panel's full state. 403 on `medical_comment` from a non-`medical_pro`. | The walkthrough's owner |
+| `POST` | `/api/challenges/:id/validation-scenario-runs/:runId/complete` | Close the walkthrough and pay `cp_per_validation`, clamped to the pool. 400 with `missingStepIds` while a step has no result. | The walkthrough's owner |
 
 ---
 

@@ -52,6 +52,7 @@ export interface EditableChallenge {
   reward_rules?: MlRewardRules | CodeRewardRules | null;
   source_challenge_id?: string | null;
   cp_per_validation?: number | null;
+  required_validations?: number | null;
   compute_enabled?: boolean | null;
   workspace_mode?: 'provided_repo' | 'own_repo' | null;
 }
@@ -133,7 +134,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [sourceChallengeId, setSourceChallengeId] = useState('');
   const [cpPerValidation, setCpPerValidation] = useState(5);
   const [requiredValidations, setRequiredValidations] = useState(3);
-  const [mlChallenges, setMlChallenges] = useState<{ id: string; title: string }[]>([]);
+  const [sourceChallenges, setSourceChallenges] = useState<{ id: string; title: string; type: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -196,6 +197,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       }
       setSourceChallengeId(challenge.source_challenge_id ?? '');
       setCpPerValidation(challenge.cp_per_validation ?? 5);
+      setRequiredValidations(challenge.required_validations ?? 3);
       setComputeEnabled(challenge.compute_enabled ?? false);
     } else if (promotion) {
       setTitle(promotion.title);
@@ -246,12 +248,16 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   // validation challenge — editing never touches this field (locked).
   useEffect(() => {
     // Sert seulement au sélecteur de challenge source d'un challenge de
-    // validation — inaccessible en édition comme en promotion.
+    // validation — inaccessible en édition comme en promotion. `ml` et `code`
+    // sont tous deux adossables : le type retenu décide du mode (cas de
+    // référence vs scénario), qui n'est jamais stocké.
     if (!open || typeLocked) return;
     fetch('/api/challenges')
       .then(r => r.ok ? r.json() : [])
-      .then((all: any[]) => setMlChallenges(
-        (Array.isArray(all) ? all : []).filter(c => c.type === 'ml').map(c => ({ id: c.uuid, title: c.title }))
+      .then((all: any[]) => setSourceChallenges(
+        (Array.isArray(all) ? all : [])
+          .filter(c => c.type === 'ml' || c.type === 'code')
+          .map(c => ({ id: c.uuid, title: c.title, type: c.type }))
       ))
       .catch(() => {});
   }, [open, typeLocked]);
@@ -324,7 +330,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       return;
     }
     if (type === 'validation' && !isEdit && !sourceChallengeId) {
-      setError('Pick the ML challenge this validation challenge tests.');
+      setError('Pick the source challenge this validation challenge tests.');
       return;
     }
 
@@ -389,7 +395,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                     github_repo: type === 'code' && workspaceMode === 'provided_repo' && githubRepo.trim() ? githubRepo.trim() : undefined,
                     source_challenge_id: type === 'validation' ? sourceChallengeId : undefined,
                     cp_per_validation: type === 'validation' ? cpPerValidation : undefined,
-                    required_validations: type === 'validation' ? requiredValidations : undefined,
+                    required_validations: type === 'validation' && !isScenarioMode ? requiredValidations : undefined,
                     api_packaging_enabled: type === 'ml' ? apiPackagingEnabled : undefined,
                   }
           ),
@@ -451,6 +457,17 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   };
 
   const projectOptions = projects.map(p => ({ value: p.id, label: p.name }));
+
+  // En création, le mode se lit sur le type du challenge source sélectionné.
+  // En édition la liste des sources n'est jamais chargée (typeLocked), mais
+  // `required_validations` porte la même information : l'API la force à null
+  // pour une source `code`, où rien ne se résout et où il n'y a pas de quorum.
+  // `== null` couvre aussi `undefined` — un strict `===` manquerait un
+  // challenge dont le champ est simplement absent.
+  const sourceChallenge = sourceChallenges.find(c => c.id === sourceChallengeId);
+  const isScenarioMode = isEdit
+    ? challenge?.required_validations == null
+    : sourceChallenge?.type === 'code';
 
   return (
     <>
@@ -734,18 +751,24 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
           {/* ── Validation: source challenge (creation only, locked after) ── */}
           {type === 'validation' && (
-            <Field icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Source ML challenge">
+            <Field icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Source challenge">
               {isEdit ? (
-                <LockedValue text={mlChallenges.find(c => c.id === sourceChallengeId)?.title ?? 'ML challenge'} />
+                <LockedValue text={sourceChallenges.find(c => c.id === sourceChallengeId)?.title ?? 'Source challenge'} />
               ) : (
                 <>
                   <SelectDropdown
-                    options={mlChallenges.map(c => ({ value: c.id, label: c.title }))}
+                    options={sourceChallenges.map(c => ({
+                      value: c.id,
+                      label: `${c.title} · ${c.type === 'ml' ? 'ML' : 'Code'}`,
+                    }))}
                     value={sourceChallengeId}
                     onChange={setSourceChallengeId}
                   />
                   <p className="text-[11px] mt-1.5" style={{ color: fgAt(0.25) }}>
-                    Only ML challenges without a validation challenge yet will actually save - the API rejects duplicates.
+                    {isScenarioMode
+                      ? 'A Code challenge: validators walk a scenario through each deployed application.'
+                      : 'An ML challenge: validators test each endpoint against a ground-truth reference case.'}
+                    {' '}Only challenges without a validation challenge yet will actually save - the API rejects duplicates.
                   </p>
                 </>
               )}
@@ -770,8 +793,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             </Field>
           )}
 
-          {/* ── Validation: required validations (locked after creation) ── */}
-          {type === 'validation' && (
+          {/* ── Validation: required validations (ML source only — no quorum in scenario mode) ── */}
+          {type === 'validation' && !isScenarioMode && (
             <Field icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Required validations">
               {isEdit ? (
                 <LockedValue text={`${requiredValidations} validators must agree`} />

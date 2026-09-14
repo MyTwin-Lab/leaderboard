@@ -40,19 +40,36 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
   const [sourceChallengeId, setSourceChallengeId] = useState((challenge as any)?.source_challenge_id ?? '');
   const [cpPerValidation, setCpPerValidation] = useState((challenge as any)?.cp_per_validation ?? 5);
   const [requiredValidations, setRequiredValidations] = useState((challenge as any)?.required_validations ?? 3);
-  const [mlChallenges, setMlChallenges] = useState<{ id: string; title: string }[]>([]);
+  const [sourceChallenges, setSourceChallenges] = useState<{ id: string; title: string; type: string }[]>([]);
 
   // Only needed to populate the source-challenge picker when creating a new
   // validation challenge — editing never touches this field (locked).
   useEffect(() => {
+    // Sert seulement au sélecteur de challenge source d'un challenge de
+    // validation — inaccessible en édition. `ml` et `code` sont tous deux
+    // adossables : le type retenu décide du mode (cas de référence vs
+    // scénario), qui n'est jamais stocké.
     if (challenge?.uuid) return;
     fetch('/api/challenges')
       .then(res => res.ok ? res.json() : [])
-      .then((all: any[]) => setMlChallenges(
-        (Array.isArray(all) ? all : []).filter(c => c.type === 'ml').map(c => ({ id: c.uuid, title: c.title }))
+      .then((all: any[]) => setSourceChallenges(
+        (Array.isArray(all) ? all : [])
+          .filter(c => c.type === 'ml' || c.type === 'code')
+          .map(c => ({ id: c.uuid, title: c.title, type: c.type }))
       ))
       .catch(() => {});
   }, [challenge?.uuid]);
+
+  // En création, le mode se lit sur le type du challenge source sélectionné.
+  // En édition la liste des sources n'est jamais chargée (fetch sauté ci-
+  // dessus), mais `required_validations` porte la même information : l'API
+  // la force à null pour une source `code`, où rien ne se résout et où il
+  // n'y a pas de quorum. `== null` couvre aussi `undefined` — un strict
+  // `===` manquerait un challenge dont le champ est simplement absent.
+  const sourceChallenge = sourceChallenges.find(c => c.id === sourceChallengeId);
+  const isScenarioMode = challenge?.uuid
+    ? challenge?.required_validations == null
+    : sourceChallenge?.type === 'code';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +83,11 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       ...(formData.type === 'ml' ? { reward_rules: rewardRules } : {}),
       compute_enabled: formData.type === 'ml' ? computeEnabled : false,
       ...(formData.type === 'validation' && !challenge?.uuid
-        ? { source_challenge_id: sourceChallengeId, cp_per_validation: cpPerValidation, required_validations: requiredValidations }
+        ? {
+            source_challenge_id: sourceChallengeId,
+            cp_per_validation: cpPerValidation,
+            ...(isScenarioMode ? {} : { required_validations: requiredValidations }),
+          }
         : {}),
       ...(formData.type === 'ml' && !challenge?.uuid
         ? { api_packaging_enabled: apiPackagingEnabled }
@@ -196,23 +217,30 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
         )}
 
         {formData.type === 'validation' && (
-          <FormField label="Source ML challenge" required>
+          <FormField label="Source challenge" required>
             {challenge?.uuid ? (
               <p className="text-sm" style={{ color: 'var(--foreground)' }}>
-                {mlChallenges.find(c => c.id === sourceChallengeId)?.title ?? 'ML challenge (locked)'}
+                {sourceChallenges.find(c => c.id === sourceChallengeId)?.title ?? 'Source challenge (locked)'}
               </p>
             ) : (
-              <select
-                required
-                value={sourceChallengeId}
-                onChange={e => setSourceChallengeId(e.target.value)}
-                className={selectClass}
-              >
-                <option value="">Select an ML challenge</option>
-                {mlChallenges.map(c => (
-                  <option key={c.id} value={c.id}>{c.title}</option>
-                ))}
-              </select>
+              <>
+                <select
+                  required
+                  value={sourceChallengeId}
+                  onChange={e => setSourceChallengeId(e.target.value)}
+                  className={selectClass}
+                >
+                  <option value="">Select a source challenge</option>
+                  {sourceChallenges.map(c => (
+                    <option key={c.id} value={c.id}>{c.title} · {c.type === 'ml' ? 'ML' : 'Code'}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  {isScenarioMode
+                    ? 'A Code challenge: validators walk a scenario through each deployed application.'
+                    : 'An ML challenge: validators test each endpoint against a ground-truth reference case.'}
+                </p>
+              </>
             )}
           </FormField>
         )}
@@ -234,7 +262,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
           </FormField>
         )}
 
-        {formData.type === 'validation' && (
+        {formData.type === 'validation' && !isScenarioMode && (
           <FormField label="Required validations" required>
             {challenge?.uuid ? (
               <p className="text-sm" style={{ color: 'var(--foreground)' }}>{requiredValidations} validators must agree</p>
