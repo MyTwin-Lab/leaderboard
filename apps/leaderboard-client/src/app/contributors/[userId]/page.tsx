@@ -7,17 +7,20 @@ import { ContributionDashboard } from "@/components/contributor/ContributionDash
 import { ContributorTabs } from "@/components/contributor/ContributorTabs";
 import { SandboxRewardsList } from "@/components/contributor/SandboxRewardsList";
 import { fetchContributorProfile } from "@/lib/server/leaderboard";
+import type { Metadata } from "next";
 import { getSessionUser } from "@/lib/auth";
-
-export const metadata = {
-  title: "Contributor",
-};
+import { contributorMetadata } from "@/lib/server/seo";
 
 interface ContributorPageProps {
   params: Promise<{
     userId: string;
   }>;
   searchParams?: Promise<{ tab?: string }>;
+}
+
+export async function generateMetadata({ params }: ContributorPageProps): Promise<Metadata> {
+  const { userId } = await params;
+  return contributorMetadata(userId);
 }
 
 export default async function ContributorPage({ params, searchParams }: ContributorPageProps) {

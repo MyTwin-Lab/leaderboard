@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   title: "Sign in",
   description:
     "Sign in with Google so your contributions can be tracked, evaluated and rewarded in CP.",
+  // Une page de passage, jamais une destination de recherche.
+  robots: { index: false, follow: false },
 };
 
 interface SignInPageProps {

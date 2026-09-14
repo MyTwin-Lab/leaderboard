@@ -2,12 +2,15 @@ import { fetchHomeOverview } from "@/lib/server/home";
 import { HomeHero } from "@/components/home/HomeHero";
 import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
 import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
+import { DEFAULT_DESCRIPTION, pageMetadata } from "@/lib/seo";
 
 // HomeStatsCard ("The Lab, right now") is temporarily hidden from the home
 // page — component kept in place, just not rendered here. HomeHero takes
 // the full width in its place.
 
 export const dynamic = "force-dynamic";
+
+export const metadata = pageMetadata({ description: DEFAULT_DESCRIPTION, path: "/" });
 
 export default async function HomePage() {
   // Single aggregated read — see fetchHomeOverview() for why this replaces

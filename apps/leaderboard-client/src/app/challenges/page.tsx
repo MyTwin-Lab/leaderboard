@@ -3,12 +3,15 @@ import { SandboxCTA } from "@/components/sandbox/SandboxCTA";
 import { fetchProjectsWithChallenges } from "@/lib/server/publicPages";
 import { getSessionUser } from "@/lib/auth";
 import { repositories } from "@/lib/db";
+import { pageMetadata } from "@/lib/seo";
 //import { FiltersBar } from "@/components/leaderboard/FiltersBar";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: "Challenges",
-  description: "Découvrez les projets en cours et les challenges ouverts du Lab",
-};
+  description:
+    "Open projects and challenges at MyTwin Lab: join one, contribute code or models, and earn contribution points (CP).",
+  path: "/challenges",
+});
 
 export default async function PublicChallengesPage() {
   const session = await getSessionUser();

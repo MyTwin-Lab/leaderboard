@@ -1,7 +1,11 @@
-export const metadata = {
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
   title: "About MyTwin Lab",
-  description: "A global movement to reinvent health. Together.",
-};
+  description:
+    "MyTwin Lab is a global movement to reinvent health: an open community building the most advanced digital twin of the human body, together.",
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (

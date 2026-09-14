@@ -4,7 +4,18 @@ import path from "path";
 const nextConfig: NextConfig = {
   // Config turbopack vide pour permettre l'utilisation de --webpack
   turbopack: {},
-  
+
+  // Les réponses de l'API n'ont rien à faire dans un index. Un en-tête plutôt
+  // qu'un Disallow dans robots.txt : voir app/robots.ts.
+  async headers() {
+    return [
+      {
+        source: "/api/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+      },
+    ];
+  },
+
   // Configuration webpack pour résoudre les imports du monorepo
   webpack: (config, { isServer }) => {
     // Résoudre les alias pour les packages

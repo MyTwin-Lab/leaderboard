@@ -11,6 +11,7 @@ import { fetchOnboardingProgress } from "@/lib/server/onboarding";
 import { AppSettingsRepository } from "@packages/database-service/repositories";
 import { THEMES, DEFAULT_THEME_KEY, isValidThemeKey } from "@/lib/themes";
 import { resolveTheme } from "@/lib/color-utils";
+import { DEFAULT_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/seo";
 
 import "./globals.css";
 
@@ -25,13 +26,31 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Base des URL relatives (canonical, og:url, og:image) : sans elle, les
+  // aperçus de lien reçoivent des chemins qu'ils ne savent pas résoudre.
+  metadataBase: new URL(siteUrl()),
   // `template` habille le titre des pages enfants, `default` sert à celles qui
   // n'en déclarent pas : le nom de l'app reste dans l'onglet partout.
   title: {
-    default: "MyTwin Leaderboard",
-    template: "%s - MyTwin Leaderboard",
+    default: SITE_NAME,
+    template: `%s - ${SITE_NAME}`,
   },
-  description: "Visualisez le classement des contributeurs du Lab",
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
+  // Pas de `canonical` ici : hérité, il désignerait chaque page comme un
+  // doublon de l'accueil. Chaque page publique pose le sien (lib/seo.ts).
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_US",
+    title: SITE_NAME,
+    description: DEFAULT_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: DEFAULT_DESCRIPTION,
+  },
 };
 
 const appSettingsRepo = new AppSettingsRepository();
@@ -71,7 +90,7 @@ export default async function RootLayout({
   } as React.CSSProperties;
 
   return (
-    <html lang="fr" style={themeVars} data-mode={settings.theme_mode}>
+    <html lang="en" style={themeVars} data-mode={settings.theme_mode}>
       <head />
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Providers>

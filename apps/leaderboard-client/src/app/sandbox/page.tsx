@@ -1,10 +1,12 @@
 import { SandboxExplorer } from "@/components/sandbox/SandboxExplorer";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: "Sandbox",
   description:
     "Community proposals in the health domain - star what you want built, and see the best ones promoted into official challenges.",
-};
+  path: "/sandbox",
+});
 
 /**
  * Le listing des propositions — **page publique**.
