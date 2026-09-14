@@ -29,11 +29,21 @@ describe('isPublicPage', () => {
 });
 
 describe('isPublicApiRoute', () => {
-  it('opens exactly the four read routes', () => {
+  it('opens exactly the five read routes', () => {
     expect(isPublicApiRoute('/api/challenges/abc/overview')).toBe(true);
     expect(isPublicApiRoute('/api/challenges/abc/repo-activity')).toBe(true);
     expect(isPublicApiRoute('/api/challenges/abc/ml-rewards')).toBe(true);
     expect(isPublicApiRoute('/api/challenges/abc/brief')).toBe(true);
+    expect(isPublicApiRoute('/api/contributions/abc/rewards')).toBe(true);
+  });
+
+  // Le détail des récompenses est public, pas le reste de /api/contributions :
+  // la liste et la contribution elle-même portent l'évaluation IA.
+  it('keeps the contributions list and detail closed', () => {
+    expect(isPublicApiRoute('/api/contributions')).toBe(false);
+    expect(isPublicApiRoute('/api/contributions/abc')).toBe(false);
+    expect(isPublicApiRoute('/api/contributions/challenge/abc')).toBe(false);
+    expect(isPublicApiRoute('/api/contributions/abc/rewards/extra')).toBe(false);
   });
 
   // Le brief est public, le tiroir qui le contient ne l'est pas : c'est toute

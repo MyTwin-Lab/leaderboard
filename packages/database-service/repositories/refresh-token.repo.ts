@@ -1,5 +1,5 @@
 import { db, refresh_tokens } from "../db/drizzle.js";
-import { eq, lt } from "drizzle-orm";
+import { and, eq, gt, lt } from "drizzle-orm";
 import { toDomainRefreshToken, toDbRefreshToken } from "../db/mappers.js";
 import type { RefreshToken } from "../domain/entities.js";
 import { refreshTokenSchema } from "../domain/schemas_zod.js";
@@ -39,6 +39,18 @@ export class RefreshTokenRepository {
       .where(eq(refresh_tokens.token_hash, tokenHash));
     
     return row ? toDomainRefreshToken(row) : null;
+  }
+
+  /**
+   * Ramener l'expiration d'un token à `until`, sans jamais la prolonger.
+   * Sert à la rotation : le token consommé reste accepté quelques secondes
+   * pour les refresh concurrents, puis toute réutilisation est détectée.
+   */
+  async shortenExpiry(tokenHash: string, until: Date): Promise<void> {
+    await db
+      .update(refresh_tokens)
+      .set({ expires_at: until })
+      .where(and(eq(refresh_tokens.token_hash, tokenHash), gt(refresh_tokens.expires_at, until)));
   }
 
   /**

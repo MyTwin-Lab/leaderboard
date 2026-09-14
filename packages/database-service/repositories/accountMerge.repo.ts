@@ -4,8 +4,12 @@ import {
   projects,
   challenge_teams,
   contributions,
+  contribution_members,
   reward_entries,
   validation_attempts,
+  validation_case_claims,
+  validation_reference_cases,
+  validation_scenario_runs,
   compute_requests,
   tasks,
   evaluation_runs,
@@ -18,8 +22,9 @@ import {
   sandboxes,
   sandbox_stars,
   sandbox_rewards,
+  notifications,
 } from "../db/drizzle";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { toDomainUser } from "../db/mappers";
 import type { User } from "../domain/entities";
 
@@ -31,13 +36,136 @@ const ONBOARDING_STEPS = [
   "joined_meeting",
 ] as const;
 
+type TeamRow = typeof challenge_teams.$inferSelect;
+type TeamFields = Pick<TeamRow, "workspace_provider" | "workspace_ref" | "workspace_url" | "workspace_status" | "group_id">;
+
+/** Même ordre de préférence que la déduplication de db-apply-schema.ts : la row qui porte un workspace gagne. */
+function workspaceRank(row: TeamRow): number {
+  return (row.workspace_ref ? 2 : 0) + (row.workspace_url ? 1 : 0);
+}
+
+export interface ChallengeTeamMergePlan {
+  /** Challenges où le compte absorbé a une row alors que le placeholder en a déjà une : sa row saute. */
+  dropGoogleChallengeIds: string[];
+  /** Champs à reporter sur la row conservée du placeholder. */
+  patches: Array<{ challenge_id: string; set: TeamFields }>;
+}
+
+/**
+ * challenge_teams porte un index unique (challenge_id, user_id) : si les deux
+ * comptes participent au même challenge, un simple UPDATE de user_id le viole.
+ *
+ * On garde la row du placeholder, mais on y reporte le workspace de celle du
+ * compte absorbé quand c'est elle qui en porte un — sinon le groupe perdrait
+ * sa branche. Le workspace est pris en bloc sur une seule row, jamais champ
+ * par champ : mélanger le ref de l'une et l'URL de l'autre pointerait nulle
+ * part. Le group_id suit la même row, avec repli sur l'autre.
+ */
+export function planChallengeTeamMerge(placeholderRows: TeamRow[], googleRows: TeamRow[]): ChallengeTeamMergePlan {
+  const plan: ChallengeTeamMergePlan = { dropGoogleChallengeIds: [], patches: [] };
+
+  for (const g of googleRows) {
+    if (!g.challenge_id) continue;
+    const p = placeholderRows.find((row) => row.challenge_id === g.challenge_id);
+    if (!p) continue;
+
+    plan.dropGoogleChallengeIds.push(g.challenge_id);
+
+    const winner = workspaceRank(g) > workspaceRank(p) ? g : p;
+    const loser = winner === g ? p : g;
+    const set: TeamFields = {
+      workspace_provider: winner.workspace_provider,
+      workspace_ref: winner.workspace_ref,
+      workspace_url: winner.workspace_url,
+      workspace_status: winner.workspace_status,
+      group_id: winner.group_id ?? loser.group_id,
+    };
+    const unchanged = (Object.keys(set) as Array<keyof TeamFields>).every((key) => set[key] === p[key]);
+    if (!unchanged) plan.patches.push({ challenge_id: g.challenge_id, set });
+  }
+
+  return plan;
+}
+
+export interface MemberShareMergePlan {
+  /** Contributions où les deux comptes ont une part : celle du compte absorbé saute… */
+  dropGoogleContributionIds: string[];
+  /** …après avoir été ajoutée à celle du placeholder. */
+  sums: Array<{ contribution_id: string; share_cp: number }>;
+}
+
+/**
+ * contribution_members a pour PK (contribution_id, user_id). Deux parts sur
+ * la même contribution fusionnent en une, par somme : Σ share_cp ne bouge
+ * pas, donc l'invariant lu par le leaderboard tient.
+ */
+export function planMemberShareMerge(
+  placeholderRows: Array<{ contribution_id: string; share_cp: number }>,
+  googleRows: Array<{ contribution_id: string; share_cp: number }>
+): MemberShareMergePlan {
+  const plan: MemberShareMergePlan = { dropGoogleContributionIds: [], sums: [] };
+  for (const g of googleRows) {
+    const p = placeholderRows.find((row) => row.contribution_id === g.contribution_id);
+    if (!p) continue;
+    plan.dropGoogleContributionIds.push(g.contribution_id);
+    plan.sums.push({ contribution_id: g.contribution_id, share_cp: p.share_cp + g.share_cp });
+  }
+  return plan;
+}
+
+/**
+ * Doublons sur une clé d'unicité qui inclut le compte : pour chaque clé
+ * présente des deux côtés, une seule row survit — celle du placeholder, sauf
+ * si `preferGoogle` dit le contraire. Une clé `null` n'entre en conflit avec
+ * rien (index partiels).
+ */
+export function planKeyedDedupe<T>(
+  placeholderRows: T[],
+  googleRows: T[],
+  keyOf: (row: T) => string | null,
+  preferGoogle: (googleRow: T, placeholderRow: T) => boolean = () => false
+): { dropPlaceholder: T[]; dropGoogle: T[] } {
+  const byKey = new Map<string, T>();
+  for (const p of placeholderRows) {
+    const key = keyOf(p);
+    if (key !== null) byKey.set(key, p);
+  }
+
+  const result = { dropPlaceholder: [] as T[], dropGoogle: [] as T[] };
+  for (const g of googleRows) {
+    const key = keyOf(g);
+    const p = key === null ? undefined : byKey.get(key);
+    if (!p) continue;
+    if (preferGoogle(g, p)) result.dropPlaceholder.push(p);
+    else result.dropGoogle.push(g);
+  }
+  return result;
+}
+
 export class AccountMergeRepository {
   /**
    * Fusionne `googleAccountId` (compte fraîchement créé par un premier login
    * Google) dans `placeholderId` (contributeur du seed sans Google associé).
-   * Transfère l'identité Google, réassigne tout ce qui référence le compte
-   * Google (y compris les FK en RESTRICT qui bloqueraient sinon sa suppression),
-   * puis le supprime. `placeholderId` garde son full_name/role/points.
+   * Transfère l'identité Google, puis réassigne au placeholder les tables qui
+   * référencent le compte Google, avant de supprimer celui-ci.
+   * `placeholderId` garde son full_name/role/points.
+   *
+   * Réassigné : projets, participations (challenge_teams), contributions et
+   * parts de groupe (contribution_members), ledgers (reward_entries,
+   * sandbox_rewards), validations (attempts, claims, cas de référence,
+   * walkthroughs), demandes GPU, tâches, runs et grilles d'évaluation,
+   * documents, meetings, réglages, sandboxes et stars, notifications,
+   * onboarding. Là où une clé d'unicité inclut le compte, les doublons sont
+   * résolus avant l'UPDATE (voir les fonctions plan* ci-dessus).
+   *
+   * Non réassigné, volontairement : refresh_tokens (partent en cascade, le
+   * compte Google se reconnecte) et role_changes (l'historique du compte
+   * absorbé n'a pas de sens sur le placeholder).
+   *
+   * Limite connue : compute_requests est unique par (challenge, user) et
+   * n'est pas dédoublonné — une demande peut porter une instance GPU active,
+   * qu'on ne supprime pas en silence. Si les deux comptes en ont une sur le
+   * même challenge, la fusion échoue et la transaction n'écrit rien.
    */
   async merge(placeholderId: string, googleAccountId: string): Promise<User> {
     return db.transaction(async (tx) => {
@@ -53,11 +181,106 @@ export class AccountMergeRepository {
       const p = placeholderId;
 
       await tx.update(projects).set({ manager_id: p }).where(eq(projects.manager_id, g));
+
+      // challenge_teams — index unique (challenge_id, user_id).
+      const teamPlan = planChallengeTeamMerge(
+        await tx.select().from(challenge_teams).where(eq(challenge_teams.user_id, p)),
+        await tx.select().from(challenge_teams).where(eq(challenge_teams.user_id, g))
+      );
+      if (teamPlan.dropGoogleChallengeIds.length > 0) {
+        await tx.delete(challenge_teams).where(
+          and(eq(challenge_teams.user_id, g), inArray(challenge_teams.challenge_id, teamPlan.dropGoogleChallengeIds))
+        );
+      }
+      for (const patch of teamPlan.patches) {
+        await tx
+          .update(challenge_teams)
+          .set(patch.set)
+          .where(and(eq(challenge_teams.user_id, p), eq(challenge_teams.challenge_id, patch.challenge_id)));
+      }
       await tx.update(challenge_teams).set({ user_id: p }).where(eq(challenge_teams.user_id, g));
+
       await tx.update(contributions).set({ user_id: p }).where(eq(contributions.user_id, g));
+
+      // contribution_members — PK (contribution_id, user_id). Sans cette
+      // réassignation, les parts du compte absorbé partaient en cascade.
+      const sharePlan = planMemberShareMerge(
+        await tx
+          .select({ contribution_id: contribution_members.contribution_id, share_cp: contribution_members.share_cp })
+          .from(contribution_members)
+          .where(eq(contribution_members.user_id, p)),
+        await tx
+          .select({ contribution_id: contribution_members.contribution_id, share_cp: contribution_members.share_cp })
+          .from(contribution_members)
+          .where(eq(contribution_members.user_id, g))
+      );
+      for (const sum of sharePlan.sums) {
+        await tx
+          .update(contribution_members)
+          .set({ share_cp: sum.share_cp })
+          .where(and(eq(contribution_members.user_id, p), eq(contribution_members.contribution_id, sum.contribution_id)));
+      }
+      if (sharePlan.dropGoogleContributionIds.length > 0) {
+        await tx.delete(contribution_members).where(
+          and(
+            eq(contribution_members.user_id, g),
+            inArray(contribution_members.contribution_id, sharePlan.dropGoogleContributionIds)
+          )
+        );
+      }
+      await tx.update(contribution_members).set({ user_id: p }).where(eq(contribution_members.user_id, g));
+
       await tx.update(reward_entries).set({ user_id: p }).where(eq(reward_entries.user_id, g));
       await tx.update(reward_entries).set({ source_user_id: p }).where(eq(reward_entries.source_user_id, g));
+
+      // validation_attempts — index unique (challenge, contribution, validateur).
+      // Deux verdicts de la même personne sur la même cible : celui du
+      // placeholder reste, l'autre compterait double dans la résolution.
+      const attemptKey = (a: { validation_challenge_id: string; contribution_id: string }) =>
+        `${a.validation_challenge_id}::${a.contribution_id}`;
+      const attemptColumns = {
+        uuid: validation_attempts.uuid,
+        validation_challenge_id: validation_attempts.validation_challenge_id,
+        contribution_id: validation_attempts.contribution_id,
+      };
+      const attemptDedupe = planKeyedDedupe(
+        await tx.select(attemptColumns).from(validation_attempts).where(eq(validation_attempts.validator_user_id, p)),
+        await tx.select(attemptColumns).from(validation_attempts).where(eq(validation_attempts.validator_user_id, g)),
+        attemptKey
+      );
+      if (attemptDedupe.dropGoogle.length > 0) {
+        await tx.delete(validation_attempts).where(
+          inArray(validation_attempts.uuid, attemptDedupe.dropGoogle.map((a) => a.uuid))
+        );
+      }
       await tx.update(validation_attempts).set({ validator_user_id: p }).where(eq(validation_attempts.validator_user_id, g));
+
+      // Claims et cas de référence : aucune unicité par compte.
+      await tx.update(validation_case_claims).set({ validator_user_id: p }).where(eq(validation_case_claims.validator_user_id, g));
+      await tx.update(validation_reference_cases).set({ author_user_id: p }).where(eq(validation_reference_cases.author_user_id, g));
+
+      // validation_scenario_runs — index unique (challenge, contribution,
+      // validateur). Une walkthrough terminée l'emporte sur un brouillon ; à
+      // égalité, celle du placeholder. Les feedbacks de la perdante partent
+      // en cascade avec elle.
+      const runColumns = {
+        uuid: validation_scenario_runs.uuid,
+        validation_challenge_id: validation_scenario_runs.validation_challenge_id,
+        contribution_id: validation_scenario_runs.contribution_id,
+        completed_at: validation_scenario_runs.completed_at,
+      };
+      const runDedupe = planKeyedDedupe(
+        await tx.select(runColumns).from(validation_scenario_runs).where(eq(validation_scenario_runs.validator_user_id, p)),
+        await tx.select(runColumns).from(validation_scenario_runs).where(eq(validation_scenario_runs.validator_user_id, g)),
+        attemptKey,
+        (googleRun, placeholderRun) => googleRun.completed_at !== null && placeholderRun.completed_at === null
+      );
+      const runsToDrop = [...runDedupe.dropPlaceholder, ...runDedupe.dropGoogle].map((r) => r.uuid);
+      if (runsToDrop.length > 0) {
+        await tx.delete(validation_scenario_runs).where(inArray(validation_scenario_runs.uuid, runsToDrop));
+      }
+      await tx.update(validation_scenario_runs).set({ validator_user_id: p }).where(eq(validation_scenario_runs.validator_user_id, g));
+
       await tx.update(compute_requests).set({ user_id: p }).where(eq(compute_requests.user_id, g));
       await tx.update(compute_requests).set({ decided_by: p }).where(eq(compute_requests.decided_by, g));
       await tx.update(tasks).set({ user_id: p }).where(eq(tasks.user_id, g));
@@ -72,6 +295,27 @@ export class AccountMergeRepository {
       await tx.update(app_settings).set({ openai_connected_by: p }).where(eq(app_settings.openai_connected_by, g));
       await tx.update(app_settings).set({ slack_connected_by: p }).where(eq(app_settings.slack_connected_by, g));
       await tx.update(app_settings).set({ scaleway_connected_by: p }).where(eq(app_settings.scaleway_connected_by, g));
+
+      // notifications — index unique partiel (user_id, type, dedupe_key) :
+      // la même invitation reçue par les deux comptes n'en fait plus qu'une.
+      const notificationColumns = { uuid: notifications.uuid, type: notifications.type, dedupe_key: notifications.dedupe_key };
+      const notificationDedupe = planKeyedDedupe(
+        await tx
+          .select(notificationColumns)
+          .from(notifications)
+          .where(and(eq(notifications.user_id, p), isNotNull(notifications.dedupe_key))),
+        await tx
+          .select(notificationColumns)
+          .from(notifications)
+          .where(and(eq(notifications.user_id, g), isNotNull(notifications.dedupe_key))),
+        (n) => (n.dedupe_key ? `${n.type}::${n.dedupe_key}` : null)
+      );
+      if (notificationDedupe.dropGoogle.length > 0) {
+        await tx.delete(notifications).where(
+          inArray(notifications.uuid, notificationDedupe.dropGoogle.map((n) => n.uuid))
+        );
+      }
+      await tx.update(notifications).set({ user_id: p }).where(eq(notifications.user_id, g));
 
       // Sandbox — sans ces réassignations, le ON DELETE CASCADE sur `users`
       // effacerait purement et simplement les propositions du compte absorbé,

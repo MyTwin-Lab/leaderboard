@@ -7,7 +7,7 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
         {
           repo_id: 'repo-1',
           repo_type: 'github',
-          external_repo_id: 'owner/repo',
+          repo_external_id: 'owner/repo',
           title: 'Test Repo',
           type: 'github',
         },

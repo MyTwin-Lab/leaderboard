@@ -6,6 +6,8 @@ const { mockFindAll, mockCreate } = vi.hoisted(() => ({
   mockCreate: vi.fn(),
 }));
 
+vi.mock('@/lib/auth', () => ({ getSessionUser: vi.fn() }));
+
 vi.mock('../../../../../../packages/database-service/repositories', () => ({
   UserRepository: class {
     findAll = mockFindAll;
@@ -14,6 +16,9 @@ vi.mock('../../../../../../packages/database-service/repositories', () => ({
 }));
 
 import { GET, POST } from './route';
+import { getSessionUser } from '@/lib/auth';
+
+const mockGetSessionUser = getSessionUser as ReturnType<typeof vi.fn>;
 
 function postUsers(body: unknown) {
   const req = new NextRequest('http://localhost/api/users', {
@@ -26,10 +31,29 @@ function postUsers(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
 });
 
 describe('GET /api/users', () => {
-  it('returns the list of users', async () => {
+  it('returns 401 without a session', async () => {
+    mockGetSessionUser.mockResolvedValue(null);
+
+    const res = await GET();
+
+    expect(res.status).toBe(401);
+    expect(mockFindAll).not.toHaveBeenCalled();
+  });
+
+  it.each(['contributor', 'viewer', 'medical_pro'])('returns 403 for a %s session', async (role) => {
+    mockGetSessionUser.mockResolvedValue({ id: 'u1', role });
+
+    const res = await GET();
+
+    expect(res.status).toBe(403);
+    expect(mockFindAll).not.toHaveBeenCalled();
+  });
+
+  it('returns the list of users to an admin', async () => {
     const users = [
       { uuid: '1', full_name: 'Ada Lovelace', role: 'contributor' },
       { uuid: '2', full_name: 'Alan Turing', role: 'admin' },
@@ -54,7 +78,25 @@ describe('GET /api/users', () => {
 });
 
 describe('POST /api/users', () => {
-  it('creates a user and returns it with a 201 status', async () => {
+  it('returns 401 without a session', async () => {
+    mockGetSessionUser.mockResolvedValue(null);
+
+    const res = await postUsers({ full_name: 'Ada', role: 'contributor' });
+
+    expect(res.status).toBe(401);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it.each(['contributor', 'viewer', 'medical_pro'])('returns 403 for a %s session', async (role) => {
+    mockGetSessionUser.mockResolvedValue({ id: 'u1', role });
+
+    const res = await postUsers({ full_name: 'Ada', role: 'contributor' });
+
+    expect(res.status).toBe(403);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('creates a user, audits the initial role, and returns it with a 201 status', async () => {
     const validated = {
       github_username: 'ada',
       full_name: 'Ada Lovelace',
@@ -67,7 +109,7 @@ describe('POST /api/users', () => {
     const res = await postUsers(validated);
 
     expect(res.status).toBe(201);
-    expect(mockCreate).toHaveBeenCalledWith(validated);
+    expect(mockCreate).toHaveBeenCalledWith(validated, { changedBy: 'admin-1' });
     expect(await res.json()).toEqual(created);
   });
 
@@ -78,13 +120,23 @@ describe('POST /api/users', () => {
     const res = await postUsers({ full_name: 'Grace Hopper', role: 'admin' });
 
     expect(res.status).toBe(201);
-    expect(mockCreate).toHaveBeenCalledWith({
-      github_username: undefined,
-      full_name: 'Grace Hopper',
-      email: undefined,
-      role: 'admin',
-    });
+    expect(mockCreate).toHaveBeenCalledWith(
+      {
+        github_username: undefined,
+        full_name: 'Grace Hopper',
+        email: undefined,
+        role: 'admin',
+      },
+      { changedBy: 'admin-1' }
+    );
     expect(await res.json()).toEqual(created);
+  });
+
+  it('rejects a role outside the known list', async () => {
+    const res = await postUsers({ full_name: 'Ada', role: 'superadmin' });
+
+    expect(res.status).toBe(400);
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('returns 400 on an invalid body (Zod) and does not call the repository', async () => {

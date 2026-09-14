@@ -33,6 +33,12 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Purge de conservation passée (12 mois après la fermeture du challenge) :
+    // les octets ont été vidés, on le dit plutôt que de servir un fichier vide.
+    if (referenceCase.purged_at) {
+      return NextResponse.json({ error: 'Input no longer available (purged after the retention period)' }, { status: 410 });
+    }
+
     return new NextResponse(new Uint8Array(referenceCase.input_bytes), {
       status: 200,
       headers: buildSafeFileHeaders(referenceCase.input_content_type, referenceCase.input_filename),

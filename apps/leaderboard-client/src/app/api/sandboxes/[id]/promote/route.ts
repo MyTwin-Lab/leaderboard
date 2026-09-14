@@ -3,7 +3,7 @@ import { z } from "zod";
 import { SandboxPromotionService } from "../../../../../../../../packages/services/sandbox";
 import { parseMlRewardRules } from "../../../../../../../../packages/database-service/domain/mlRewardRules";
 import { parseCodeRewardRules } from "../../../../../../../../packages/database-service/domain/codeRewardRules";
-import { verifyRequestToken } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 import { sandboxErrorResponse } from "@/lib/server/sandboxErrors";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +52,8 @@ const promoteSchema = z.object({
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await verifyRequestToken(request);
+    // Rôle relu en base : le JWT garde l'ancien rôle jusqu'à son expiration.
+    const session = await getSessionUser();
     if (!session) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     if (session.role !== "admin") {
       return NextResponse.json({ error: "Only an admin can promote a sandbox" }, { status: 403 });
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const { challenge } = await service.promote({
       sandboxId: id,
-      actor: { userId: session.userId, role: session.role },
+      actor: { userId: session.id, role: session.role },
       input: { ...parsed.data, reward_rules: rewardRules },
     });
 

@@ -2,23 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TaskRepository, ChallengeRepository, ChallengeTeamRepository } from '../../../../../../../packages/database-service/repositories';
 import { repositories } from '@/lib/db';
 import { resolveWorkspaceOwner } from '../../../../../../../packages/services/challenge/group';
-import { jwtVerify } from 'jose';
+import { verifyRequestToken } from '@/lib/auth';
+import { canReadTask } from '../taskAccess';
 import { z } from 'zod';
 
 const taskRepo = new TaskRepository();
 const challengeRepo = new ChallengeRepository();
 const challengeTeamRepo = new ChallengeTeamRepository();
 
+// Helper partagé : une signature valide ne suffit pas (voir lib/sessionClaims.ts).
 async function getSession(request: NextRequest) {
-  const token = request.cookies.get('access_token')?.value;
-  if (!token) return null;
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    return { userId: payload.userId as string, role: payload.role as string };
-  } catch {
-    return null;
-  }
+  const payload = await verifyRequestToken(request);
+  return payload ? { userId: payload.userId, role: payload.role } : null;
 }
 
 async function isChallengeManager(session: { userId: string; role: string }, challengeProjectId: string) {
@@ -76,7 +71,8 @@ export async function GET(
     const { id } = await params;
     const task = await taskRepo.findById(id);
 
-    if (!task) {
+    // Tâche personnelle illisible : même 404 qu'une tâche absente.
+    if (!task || !(await canReadTask(task, await getSession(request)))) {
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }

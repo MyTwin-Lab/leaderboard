@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockFindAll, mockCreate } = vi.hoisted(() => ({
+const { mockFindAll, mockCreate, mockGetSessionUser } = vi.hoisted(() => ({
   mockFindAll: vi.fn(),
   mockCreate: vi.fn(),
+  mockGetSessionUser: vi.fn(),
 }));
 
 vi.mock('../../../../../../packages/database-service/repositories', () => ({
@@ -11,6 +12,11 @@ vi.mock('../../../../../../packages/database-service/repositories', () => ({
     create = mockCreate;
   },
 }));
+
+vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
+
+const ADMIN = { id: 'admin-1', role: 'admin', fullName: 'Admin', githubUsername: '', email: 'a@b.com' };
+const CONTRIBUTOR = { id: 'u1', role: 'contributor', fullName: 'Ada', githubUsername: '', email: 'u@b.com' };
 
 import { GET, POST } from './route';
 
@@ -36,17 +42,39 @@ function validBody(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetSessionUser.mockResolvedValue(ADMIN);
 });
 
 describe('GET /api/contributions', () => {
-  it('returns all contributions', async () => {
-    const contributions = [{ uuid: 'c1', title: 'A' }];
+  it('returns 401 without a session', async () => {
+    mockGetSessionUser.mockResolvedValue(null);
+
+    const res = await GET();
+
+    expect(res.status).toBe(401);
+    expect(mockFindAll).not.toHaveBeenCalled();
+  });
+
+  // Chaque ligne porte l'évaluation IA privée de son auteur.
+  it('returns 403 for a contributor', async () => {
+    mockGetSessionUser.mockResolvedValue(CONTRIBUTOR);
+
+    const res = await GET();
+
+    expect(res.status).toBe(403);
+    expect(mockFindAll).not.toHaveBeenCalled();
+  });
+
+  it('returns all contributions, evaluation included, to an admin', async () => {
+    const contributions = [{ uuid: 'c1', title: 'A', evaluation: { globalScore: 82 } }];
     mockFindAll.mockResolvedValue(contributions);
 
     const res = await GET();
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(contributions);
+    const body = await res.json();
+    expect(body).toEqual(contributions);
+    expect(body[0].evaluation).toEqual({ globalScore: 82 });
   });
 
   it('returns 500 when the repository throws', async () => {

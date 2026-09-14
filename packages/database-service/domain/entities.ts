@@ -213,6 +213,7 @@ export interface ValidationReferenceCase {
   expected_output_filename: string | null;
   expected_output_content_type: string;
   created_at: Date;
+  purged_at?: Date | null;               // non-null une fois les octets purgés
 }
 
 /**
@@ -232,6 +233,7 @@ export interface ValidationCaseClaim {
   observed_at: Date | null;
   revealed_at: Date | null;        // non-null seulement après observed_at
   created_at: Date;
+  purged_at?: Date | null;         // non-null une fois response_bytes purgé
 }
 
 /** Un verdict (works/broken) rendu par un medical_pro sur une cible donnée. */
@@ -319,6 +321,25 @@ export interface ComputeRequest {
   access_token_iv: string | null;
   access_token_revealed_at: Date | null;
   updated_at: Date | null;
+}
+
+/**
+ * Les rôles réellement utilisés (proxy.ts, components/admin/UserList.tsx,
+ * seeds). La colonne reste un varchar : cette liste borne ce que l'API
+ * accepte en écriture, elle ne réinterprète pas les rows existantes.
+ */
+export const USER_ROLES = ['admin', 'contributor', 'viewer', 'medical_pro'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+/** Trace d'un changement de rôle — voir la table role_changes. */
+export interface RoleChange {
+  uuid: string;
+  user_id: string;
+  old_role: string | null;  // null = rôle attribué à la création
+  new_role: string;
+  changed_by: string | null; // null si l'auteur a été supprimé depuis
+  note: string | null;
+  created_at: Date;
 }
 
 export interface User {
@@ -483,7 +504,7 @@ export interface SyncMeeting {
   conference_id?: string;
   conference_record_id?: string;
   status: SyncMeetingStatus;
-  created_by: string;
+  created_by: string | null; // null si le créateur a été supprimé
   created_at: Date;
   updated_at: Date;
 }
@@ -511,21 +532,12 @@ export interface Action {
   priority?: 'high' | 'medium' | 'low';
 }
 
-export interface ContributionSignal {
-  user_id?: string;
-  display_name: string;
-  signal_type: 'coordination' | 'technical_leadership' | 'problem_solving' | 'knowledge_sharing';
-  weight: number;
-  description?: string;
-}
-
 export interface MeetingAnalysis {
   uuid: string;
   sync_meeting_id: string;
   summary?: string;
   decisions?: Decision[];
   actions?: Action[];
-  contribution_signals?: ContributionSignal[];
   status: MeetingAnalysisStatus;
   processed_at?: Date;
   error_message?: string;

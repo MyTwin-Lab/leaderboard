@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { encryptToken } from '../../../../../../../packages/config/kaggleCredentials.js';
 import { AppSettingsRepository } from '../../../../../../../packages/database-service/repositories/index.js';
-import { verifyRequestToken } from '@/lib/auth';
+import { getSessionUser } from '@/lib/auth';
 
 const appSettingsRepo = new AppSettingsRepository();
 
 // POST /api/kaggle/connection — save Kaggle credentials
 export async function POST(request: NextRequest) {
-  const payload = await verifyRequestToken(request);
-  if (!payload || payload.role !== 'admin') {
+  // Rôle relu en base, pas celui du JWT : une rétrogradation prend effet tout de suite.
+  const session = await getSessionUser();
+  if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
       kaggle_username: username,
       kaggle_key_enc: enc,
       kaggle_key_iv: iv,
-      kaggle_connected_by: payload.userId,
+      kaggle_connected_by: session.id,
     });
   } catch {
     return NextResponse.json({ error: 'Failed to save credentials' }, { status: 500 });
@@ -60,9 +61,10 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/kaggle/connection — remove Kaggle credentials
-export async function DELETE(request: NextRequest) {
-  const payload = await verifyRequestToken(request);
-  if (!payload || payload.role !== 'admin') {
+export async function DELETE(_request: NextRequest) {
+  // Rôle relu en base, pas celui du JWT : une rétrogradation prend effet tout de suite.
+  const session = await getSessionUser();
+  if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

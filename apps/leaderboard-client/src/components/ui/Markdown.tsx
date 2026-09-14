@@ -104,8 +104,22 @@ function inlineRender(text: string): React.ReactNode {
   return parts.length === 1 ? parts[0] : <>{parts}</>;
 }
 
-export function renderMarkdown(md: string, variant: MarkdownVariant = 'compact'): React.ReactNode[] {
+/**
+ * `headingOffset` décale la balise des titres (`# X` → `<h2>` avec 1, plafonné
+ * à `<h6>`). Utile quand la page porte déjà son propre `<h1>` : un second
+ * brouille la structure lue par les moteurs. Le style, lui, reste celui du
+ * niveau écrit dans la source — l'apparence ne change pas.
+ */
+export function renderMarkdown(
+  md: string,
+  variant: MarkdownVariant = 'compact',
+  headingOffset = 0,
+): React.ReactNode[] {
   const s = STYLES[variant];
+  const heading = (level: 1 | 2 | 3, key: number, text: string) => {
+    const Tag = `h${Math.min(6, level + headingOffset)}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+    return <Tag key={key} className={s[`h${level}`]}>{inlineRender(text)}</Tag>;
+  };
   const lines = md.split('\n');
   const nodes: React.ReactNode[] = [];
   let i = 0;
@@ -136,15 +150,15 @@ export function renderMarkdown(md: string, variant: MarkdownVariant = 'compact')
     const h1 = line.match(/^#\s+(.*)/);
 
     if (h1) {
-      nodes.push(<h1 key={i} className={s.h1}>{inlineRender(h1[1])}</h1>);
+      nodes.push(heading(1, i, h1[1]));
       i++; continue;
     }
     if (h2) {
-      nodes.push(<h2 key={i} className={s.h2}>{inlineRender(h2[1])}</h2>);
+      nodes.push(heading(2, i, h2[1]));
       i++; continue;
     }
     if (h3) {
-      nodes.push(<h3 key={i} className={s.h3}>{inlineRender(h3[1])}</h3>);
+      nodes.push(heading(3, i, h3[1]));
       i++; continue;
     }
 
@@ -204,6 +218,13 @@ export function renderMarkdown(md: string, variant: MarkdownVariant = 'compact')
   return nodes;
 }
 
-export function Markdown({ source, variant = 'compact' }: { source: string; variant?: MarkdownVariant }) {
-  return <>{renderMarkdown(source, variant)}</>;
+export function Markdown({
+  source, variant = 'compact', headingOffset = 0,
+}: {
+  source: string;
+  variant?: MarkdownVariant;
+  /** Décale la balise des titres, voir renderMarkdown. 0 par défaut. */
+  headingOffset?: number;
+}) {
+  return <>{renderMarkdown(source, variant, headingOffset)}</>;
 }

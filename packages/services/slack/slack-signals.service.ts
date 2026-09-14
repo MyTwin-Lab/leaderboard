@@ -90,31 +90,58 @@ export class SlackSignalsService {
           .map((m) => [m.email!.toLowerCase(), m])
       );
 
+      // Seuls les participants sont retenus. Pour les autres, rien n'est gardé :
+      // ni nom ni email dans les logs (politique §4.4 — l'email ne sert qu'à la
+      // correspondance), seulement leur identifiant Slack, opaque.
       const authorIds = [...new Set(items.map((i) => String(i.metadata!.user)))];
-      const authors = new Map<string, { user_id: string | null; name: string }>();
-      const unresolved: string[] = [];
+      const participantsBySlackId = new Map<string, { user_id: string; name: string }>();
+      const unresolvedSlackIds: string[] = [];
       for (const slackUserId of authorIds) {
         const profile = await connector.resolveUserProfile(slackUserId);
         const member = profile.email ? membersByEmail.get(profile.email.toLowerCase()) : undefined;
-        authors.set(slackUserId, {
-          user_id: member?.uuid ?? null,
-          name: member?.full_name ?? profile.name ?? slackUserId,
-        });
-        if (!member) unresolved.push(`${profile.name ?? slackUserId} (${profile.email ?? 'no email'})`);
+        if (member) {
+          participantsBySlackId.set(slackUserId, {
+            user_id: member.uuid,
+            name: member.full_name ?? profile.name ?? slackUserId,
+          });
+        } else {
+          unresolvedSlackIds.push(slackUserId);
+        }
       }
-      if (unresolved.length > 0) {
-        console.warn(`[SlackSignals] Challenge ${challengeId}: unresolved authors: ${unresolved.join(', ')}`);
+      if (unresolvedSlackIds.length > 0) {
+        console.warn(
+          `[SlackSignals] Challenge ${challengeId}: ${unresolvedSlackIds.length} unresolved author(s) ` +
+          `(Slack ids: ${unresolvedSlackIds.join(', ')})`
+        );
       }
 
-      const messages: SlackSignalMessage[] = items.map((item) => {
-        const author = authors.get(String(item.metadata!.user))!;
-        return {
-          ts: String(item.metadata!.ts),
-          author_user_id: author.user_id,
-          author_name: author.name,
-          text: String(item.metadata!.text),
-        };
-      });
+      // Le curseur se calcule sur la liste NON filtrée : les messages de
+      // non-participants ont bien été lus, ils ne doivent pas revenir au run
+      // suivant. `items` est trié du plus ancien au plus récent.
+      const lastTs = String(items[items.length - 1].metadata!.ts);
+
+      // Seuls les messages de participants partent au LLM : ceux des autres ne
+      // peuvent de toute façon rien rapporter (détections filtrées par user_id).
+      const messages: SlackSignalMessage[] = items
+        .filter((item) => participantsBySlackId.has(String(item.metadata!.user)))
+        .map((item) => {
+          const author = participantsBySlackId.get(String(item.metadata!.user))!;
+          return {
+            ts: String(item.metadata!.ts),
+            author_user_id: author.user_id,
+            author_name: author.name,
+            text: String(item.metadata!.text),
+          };
+        });
+
+      if (messages.length === 0) {
+        await this.configRepo.updateCursor(challengeId, {
+          last_ts: lastTs,
+          last_run_at: new Date(),
+          last_error: null,
+        });
+        return { challengeId, status: 'no_new_messages', messageCount: 0 };
+      }
 
       const project = challenge.project_id
         ? await this.projectRepo.findById(challenge.project_id)
@@ -205,8 +232,8 @@ export class SlackSignalsService {
         awardedCount = inserted.length;
       }
 
-      // Le curseur n'avance que jusqu'au dernier message effectivement analysé.
-      const lastTs = messages[messages.length - 1].ts;
+      // Le curseur avance jusqu'au dernier message lu (participant ou non) :
+      // au-delà de MAX_MESSAGES_PER_RUN, le reste attend le run suivant.
       await this.configRepo.updateCursor(challengeId, {
         last_ts: lastTs,
         last_run_at: new Date(),

@@ -64,7 +64,9 @@ export async function GET(
               : RULE_LABEL[e.rule_key] ?? e.rule_key,
           points: e.points,
           counterparty: e.source_user_id ? nameById[e.source_user_id] ?? null : null,
-          meta: e.meta ?? null,
+          // Pas de `meta` : il porte l'extrait Slack et la justification du LLM
+          // (ou l'agentScore ML), et cette route est publique — voir
+          // lib/routeVisibility.ts. Le libellé ci-dessus en est la seule part lisible.
           createdAt: e.created_at.toISOString(),
         })),
     });

@@ -67,18 +67,19 @@ function makeDeps(opts: { commits?: number; evaluation?: any } = {}) {
     commitShas: shas,
     modifiedFiles: [],
   }));
-  const prepareSnapshot = vi.fn(async (s: any) => s);
+  const prepareSnapshot = vi.fn(async (s: any) => ({ ...s, workspacePath: "/tmp/eval_agent-test" }));
+  const cleanup = vi.fn(async (_s: any) => {});
   const loadGrid = vi.fn(async (slug: string) => ({ type: slug, criteriaTemplate: [], instructions: "" }));
   const createConnector = vi.fn(async () => connector);
 
   const deps = {
     createConnector,
-    snapshotService: { buildAggregatedSnapshot, prepareSnapshot },
+    snapshotService: { buildAggregatedSnapshot, prepareSnapshot, cleanup },
     loadGrid,
     evaluator: { evaluate },
   } as unknown as RepoEvaluationDeps;
 
-  return { deps, connector, evaluate, loadGrid, buildAggregatedSnapshot, createConnector };
+  return { deps, connector, evaluate, loadGrid, buildAggregatedSnapshot, createConnector, cleanup };
 }
 
 const INPUT = {
@@ -143,6 +144,23 @@ describe("evaluateGithubRepo", () => {
 
     await expect(evaluateGithubRepo(INPUT, deps)).rejects.toThrow("boom");
     expect(connector.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it("supprime le workspace du snapshot après l'évaluation", async () => {
+    const { deps, cleanup } = makeDeps();
+
+    await evaluateGithubRepo(INPUT, deps);
+
+    expect(cleanup).toHaveBeenCalledTimes(1);
+    expect(cleanup.mock.calls[0][0]).toMatchObject({ workspacePath: "/tmp/eval_agent-test" });
+  });
+
+  it("supprime le workspace même quand l'agent lève", async () => {
+    const { deps, cleanup } = makeDeps();
+    (deps.evaluator.evaluate as any).mockRejectedValueOnce(new Error("boom"));
+
+    await expect(evaluateGithubRepo(INPUT, deps)).rejects.toThrow("boom");
+    expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
   it("échoue quand aucun connecteur ne peut être créé", async () => {

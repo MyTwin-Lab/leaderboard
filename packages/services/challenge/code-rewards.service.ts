@@ -8,6 +8,7 @@ import {
   RewardEntryRepository,
   TaskRepository,
 } from "../../database-service/repositories/index.js";
+import { isEvaluationRunning } from "../../database-service/repositories/contribution.repo.js";
 import { splitShares } from "../../evaluator/share.js";
 import { getGroupContext, type GroupContext } from "./group.js";
 import type { Challenge, ChallengeTeam, Contribution } from "../../database-service/domain/entities.js";
@@ -58,13 +59,21 @@ export function resolveWorkspaceTarget(
   return null;
 }
 
+interface EvaluationPlan {
+  challenge: Challenge;
+  rules: NonNullable<ReturnType<typeof parseCodeRewardRules>>;
+  group: GroupContext;
+  participation: ChallengeTeam;
+  target: { slug: string; branch?: string };
+}
+
 export interface CodeRewardsDeps {
   challengeRepo: Pick<ChallengeRepository, "findById" | "update">;
   /** `findByChallenge` sert la résolution du groupe (voir group.ts). */
   challengeTeamRepo: Pick<ChallengeTeamRepository, "findByChallengeAndUser" | "findByChallenge">;
   challengeRepoRepo: Pick<ChallengeRepoRepository, "findByChallengeWithRepo">;
   taskRepo: Pick<TaskRepository, "findPersonalTasks">;
-  contributionRepo: Pick<ContributionRepository, "findByChallenge" | "create" | "update">;
+  contributionRepo: Pick<ContributionRepository, "findByChallenge" | "createIfAbsent" | "claimEvaluation" | "update">;
   rewardRepo: Pick<RewardEntryRepository, "findByUserAndChallenge" | "sumByChallenge" | "createManyAndSyncRewards">;
   contributionMemberRepo: Pick<ContributionMemberRepository, "addShares">;
   /** Isole l'accès réseau (GitHub + OpenAI) — remplacé par un fake en test. */
@@ -147,59 +156,39 @@ export class CodeRewardsService {
     if (tasks.some(t => t.status !== "done")) return { ok: false, reason: "tasks_not_done" };
 
     const contribution = await this.findContribution(challengeId, ownerId);
-    if (contribution?.evaluation_status === "running") return { ok: false, reason: "already_running" };
+    // Même règle que la garde SQL de `claimEvaluation` : un `running` orphelin
+    // (process mort en plein run) ne bloque plus le bouton passé le délai.
+    if (contribution && isEvaluationRunning(contribution)) return { ok: false, reason: "already_running" };
 
     return { ok: true };
   }
 
-  /** Fire-and-forget : l'appel agent dure des dizaines de secondes, le statut vit sur la contribution. */
-  scheduleEvaluation(event: CodeEvaluationEvent): void {
-    this.evaluate(event).catch((error) => {
-      console.error(`[CodeRewardsService] Evaluation failed for ${event.userId} on ${event.challengeId}:`, error);
-    });
-  }
-
-  async evaluate(event: CodeEvaluationEvent): Promise<void> {
+  /**
+   * Prise du run — attendue par la route **avant** son 202.
+   *
+   * La bascule vers `running` est un compare-and-set en base
+   * (`ContributionRepository.claimEvaluation`), et non plus une relecture
+   * suivie d'une écriture inconditionnelle dans le run planifié : de deux
+   * lancements concurrents, un seul obtient la ligne, l'autre reçoit
+   * `already_running` et la route répond 409 sans rien planifier. Un `running`
+   * plus vieux que `EVALUATION_STALE_AFTER_MS` (process mort en plein run)
+   * redevient prenable.
+   *
+   * Premier run : la contribution n'existe pas encore, `createIfAbsent` la
+   * crée directement `running` sous verrou. Si un appel concurrent l'a créée
+   * entre notre lecture et le verrou, on retombe sur le compare-and-set, qui
+   * tranche.
+   */
+  async claim(event: CodeEvaluationEvent): Promise<{ ok: boolean; reason?: CannotEvaluateReason }> {
     const { challengeId, userId } = event;
 
-    const challenge = await this.deps.challengeRepo.findById(challengeId);
-    if (!challenge || challenge.type !== "code") return;
-    const rules = parseCodeRewardRules(challenge.reward_rules);
-    if (!rules) {
-      console.warn(`[CodeRewardsService] Challenge ${challengeId} has no code reward rules — skipping`);
-      return;
-    }
+    const plan = await this.plan(challengeId, userId);
+    if (typeof plan === "string") return { ok: false, reason: plan };
+    const { challenge, participation, group: { ownerId } } = plan;
 
-    // Un membre de groupe déclenche l'évaluation du workspace du porteur : un
-    // groupe a un board, une branche et une contribution, pas un par membre.
-    const group = await this.loadGroup(challengeId, userId);
-    const { ownerId } = group;
-
-    const participation = await this.deps.challengeTeamRepo.findByChallengeAndUser(challengeId, ownerId);
-    if (!participation) return;
-    const target = await this.resolveTarget(challenge, participation);
-    if (!target) {
-      console.warn(`[CodeRewardsService] No resolvable workspace for ${ownerId} on ${challengeId}`);
-      return;
-    }
-
-    // Upsert de la contribution projet, statut pending → running. Re-fetch
-    // juste avant l'upsert (et non seulement dans canEvaluate) pour fermer la
-    // fenêtre où deux appels concurrents du même utilisateur passeraient tous
-    // les deux la précondition avant que l'un des deux ne pose "running".
     let contribution = await this.findContribution(challengeId, ownerId);
-    if (contribution?.evaluation_status === "running") {
-      console.log(`[CodeRewardsService] Evaluation already running for ${ownerId} on ${challengeId} — skipping`);
-      return;
-    }
-    if (contribution) {
-      contribution = await this.deps.contributionRepo.update(contribution.uuid, {
-        artifact_url: participation.workspace_url,
-        evaluation_status: "running",
-        submitted_at: new Date(),
-      });
-    } else {
-      contribution = await this.deps.contributionRepo.create({
+    if (!contribution) {
+      const result = await this.deps.contributionRepo.createIfAbsent({
         title: PROJECT_CONTRIBUTION_TITLE,
         type: PROJECT_CONTRIBUTION_TYPE,
         description: `Global delivery for "${challenge.title}"`,
@@ -210,6 +199,57 @@ export class CodeRewardsService {
         evaluation_status: "running",
         submitted_at: new Date(),
       });
+      if (result.created) return { ok: true };
+      contribution = result.contribution;
+    }
+
+    const claimed = await this.deps.contributionRepo.claimEvaluation(contribution.uuid, {
+      artifact_url: participation.workspace_url,
+    });
+    if (!claimed) {
+      console.log(`[CodeRewardsService] Evaluation already running for ${ownerId} on ${challengeId} — skipping`);
+      return { ok: false, reason: "already_running" };
+    }
+    return { ok: true };
+  }
+
+  /**
+   * Fire-and-forget : l'appel agent dure des dizaines de secondes, le statut
+   * vit sur la contribution. À n'appeler qu'après un `claim` réussi.
+   */
+  scheduleRun(event: CodeEvaluationEvent): void {
+    this.run(event).catch((error) => {
+      console.error(`[CodeRewardsService] Evaluation failed for ${event.userId} on ${event.challengeId}:`, error);
+    });
+  }
+
+  /** `claim` puis `run` d'un seul tenant, pour un appelant qui peut attendre. */
+  async evaluate(event: CodeEvaluationEvent): Promise<void> {
+    const { ok } = await this.claim(event);
+    if (!ok) return;
+    await this.run(event);
+  }
+
+  /**
+   * Le run lui-même. Rien ne transite depuis `claim` (la route a répondu
+   * entre-temps) : le plan est rétabli ici, et une contribution qui n'est pas
+   * `running` veut dire qu'aucun run n'a été pris — on ne fait rien.
+   */
+  async run(event: CodeEvaluationEvent): Promise<void> {
+    const { challengeId, userId } = event;
+
+    // Le plan tenait au claim, quelques millisecondes plus tôt. S'il ne tient
+    // plus, la contribution reste `running` et redevient prenable passé
+    // EVALUATION_STALE_AFTER_MS.
+    const plan = await this.plan(challengeId, userId);
+    if (typeof plan === "string") return;
+    const { challenge, rules, group, target } = plan;
+    const { ownerId } = group;
+
+    const contribution = await this.findContribution(challengeId, ownerId);
+    if (!contribution || contribution.evaluation_status !== "running") {
+      console.log(`[CodeRewardsService] No claimed run for ${ownerId} on ${challengeId} — skipping`);
+      return;
     }
 
     try {
@@ -287,6 +327,35 @@ export class CodeRewardsService {
     await this.deps.contributionMemberRepo.addShares(
       [...shares].map(([user_id, share_cp]) => ({ contribution_id: contributionId, user_id, share_cp }))
     );
+  }
+
+  /**
+   * Ce que `claim` et `run` établissent chacun de leur côté : le challenge,
+   * ses règles, le groupe et le workspace à évaluer. Une chaîne est la raison
+   * pour laquelle il n'y a rien à évaluer.
+   */
+  private async plan(challengeId: string, userId: string): Promise<EvaluationPlan | CannotEvaluateReason> {
+    const challenge = await this.deps.challengeRepo.findById(challengeId);
+    if (!challenge || challenge.type !== "code") return "not_code_challenge";
+    const rules = parseCodeRewardRules(challenge.reward_rules);
+    if (!rules) {
+      console.warn(`[CodeRewardsService] Challenge ${challengeId} has no code reward rules — skipping`);
+      return "no_rules";
+    }
+
+    // Un membre de groupe déclenche l'évaluation du workspace du porteur : un
+    // groupe a un board, une branche et une contribution, pas un par membre.
+    const group = await this.loadGroup(challengeId, userId);
+
+    const participation = await this.deps.challengeTeamRepo.findByChallengeAndUser(challengeId, group.ownerId);
+    if (!participation) return "not_participant";
+    const target = await this.resolveTarget(challenge, participation);
+    if (!target) {
+      console.warn(`[CodeRewardsService] No resolvable workspace for ${group.ownerId} on ${challengeId}`);
+      return "workspace_not_ready";
+    }
+
+    return { challenge, rules, group, participation, target };
   }
 
   private async findContribution(challengeId: string, userId: string): Promise<Contribution | undefined> {

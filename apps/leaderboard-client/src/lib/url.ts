@@ -12,7 +12,19 @@ import type { NextRequest } from 'next/server';
  * rejects would be a bug either way.
  */
 export function safeInternalPath(raw: string | null | undefined): string {
-  return raw && /^\/[a-zA-Z0-9\-_\/]*$/.test(raw) ? raw : '/';
+  // `(?!\/)` : sans lui, `//1311768467/x` passait (docs/temp.md, M3).
+  return typeof raw === 'string' && /^\/(?!\/)[a-zA-Z0-9\-_\/]*$/.test(raw) ? raw : '/';
+}
+
+/**
+ * Origine des appels HTTP internes (proxy.ts → /api/auth/*).
+ *
+ * Jamais dérivée de la requête : `X-Forwarded-Host` est fourni par le client,
+ * et le proxy y POSTe le refresh token (docs/temp.md, L5). getBaseUrl reste
+ * réservé aux redirections vues par l'utilisateur.
+ */
+export function getInternalBaseUrl(): string {
+  return process.env.INTERNAL_APP_URL ?? `http://127.0.0.1:${process.env.PORT ?? 3000}`;
 }
 
 /**

@@ -2,15 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const {
-  mockVerifyRequestToken, mockEncryptToken, mockUpdateKaggleConnection, mockClearKaggleConnection,
+  mockGetSessionUser, mockEncryptToken, mockUpdateKaggleConnection, mockClearKaggleConnection,
 } = vi.hoisted(() => ({
-  mockVerifyRequestToken: vi.fn(),
+  mockGetSessionUser: vi.fn(),
   mockEncryptToken: vi.fn(),
   mockUpdateKaggleConnection: vi.fn(),
   mockClearKaggleConnection: vi.fn(),
 }));
 
-vi.mock('@/lib/auth', () => ({ verifyRequestToken: mockVerifyRequestToken }));
+vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
 
 vi.mock('../../../../../../../packages/config/kaggleCredentials.js', () => ({
   encryptToken: mockEncryptToken,
@@ -53,7 +53,7 @@ function deleteConnection() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin', email: 'a@b.com' });
+  mockGetSessionUser.mockResolvedValue({ id:'admin-1', role: 'admin', email: 'a@b.com' });
   mockFetch.mockResolvedValue({ ok: true });
   mockEncryptToken.mockReturnValue({ enc: 'enc-value', iv: 'iv-value' });
   mockUpdateKaggleConnection.mockResolvedValue(undefined);
@@ -62,7 +62,7 @@ beforeEach(() => {
 
 describe('POST /api/kaggle/connection', () => {
   it('returns 401 when not authenticated', async () => {
-    mockVerifyRequestToken.mockResolvedValue(null);
+    mockGetSessionUser.mockResolvedValue(null);
 
     const res = await postConnection({ username: 'ada', api_key: 'k1' });
 
@@ -71,7 +71,7 @@ describe('POST /api/kaggle/connection', () => {
   });
 
   it('returns 401 when authenticated but not admin', async () => {
-    mockVerifyRequestToken.mockResolvedValue({ userId: 'u1', role: 'contributor', email: 'a@b.com' });
+    mockGetSessionUser.mockResolvedValue({ id:'u1', role: 'contributor', email: 'a@b.com' });
 
     const res = await postConnection({ username: 'ada', api_key: 'k1' });
 
@@ -137,7 +137,7 @@ describe('POST /api/kaggle/connection', () => {
 
 describe('DELETE /api/kaggle/connection', () => {
   it('returns 401 when not authenticated', async () => {
-    mockVerifyRequestToken.mockResolvedValue(null);
+    mockGetSessionUser.mockResolvedValue(null);
 
     const res = await deleteConnection();
 
@@ -146,7 +146,7 @@ describe('DELETE /api/kaggle/connection', () => {
   });
 
   it('returns 401 when not admin', async () => {
-    mockVerifyRequestToken.mockResolvedValue({ userId: 'u1', role: 'contributor', email: 'a@b.com' });
+    mockGetSessionUser.mockResolvedValue({ id:'u1', role: 'contributor', email: 'a@b.com' });
 
     const res = await deleteConnection();
 

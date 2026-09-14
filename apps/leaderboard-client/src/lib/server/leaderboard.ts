@@ -47,7 +47,9 @@ export async function fetchLeaderboard(
   });
 
   return {
-    entries: rankEntries(aggregated),
+    // Les comptes à 0 CP restent hors du payload : filtrer côté client
+    // laissait nom, GitHub et bio de tous les inscrits dans le RSC.
+    entries: rankEntries(aggregated.filter((a) => a.totalCP > 0)),
     filters: {
       projects: buildProjectFilters(projects),
     },

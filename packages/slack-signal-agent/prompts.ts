@@ -9,13 +9,12 @@ export function buildDetectionPrompt(context: SlackSignalContext): string {
     .map(s => `- "${s.label}" (signal_id: ${s.signal_id}, reward: ${s.reward_cp} CP)\n  Definition: ${s.description || 'No written definition provided.'}`)
     .join('\n');
 
+  // Défense en profondeur : le service ne transmet déjà que les messages de
+  // participants, mais un message sans author_user_id ne doit jamais atteindre
+  // le LLM, ni par son texte ni par le nom de son auteur (politique §4.4).
   const messagesList = context.messages
-    .map(m => {
-      const author = m.author_user_id
-        ? `${m.author_name} (user_id: ${m.author_user_id})`
-        : `${m.author_name} (not a participant)`;
-      return `[ts: ${m.ts}] ${author}: ${m.text}`;
-    })
+    .filter(m => m.author_user_id)
+    .map(m => `[ts: ${m.ts}] ${m.author_name} (user_id: ${m.author_user_id}): ${m.text}`)
     .join('\n');
 
   return `You are an AI assistant analyzing Slack messages for MyTwin Lab's contribution leaderboard.
@@ -41,7 +40,7 @@ Review each message and detect occurrences of the contribution signals defined a
 **Important rules:**
 - Be conservative: only report a detection when the message clearly matches the signal definition. When in doubt, do not report.
 - A single message may match several different signals, but a given (signal, message, user) pair must be reported at most once.
-- Only attribute detections to challenge participants: ignore messages from authors marked "(not a participant)".
+- Only attribute detections to the challenge participants listed above, using the user_id shown next to each message.
 - Use exactly the signal_id, user_id and ts values provided above — never invent identifiers.
 - If no signal is detected, return an empty detections array.
 

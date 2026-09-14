@@ -1,22 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskRepository, ChallengeRepository } from '../../../../../../../../packages/database-service/repositories';
-import { jwtVerify } from 'jose';
+import { verifyRequestToken } from '@/lib/auth';
 
 const taskRepo = new TaskRepository();
 const challengeRepo = new ChallengeRepository();
 
-// Extraire l'userId du token JWT
+// Extraire l'userId du token JWT, via le helper partagé : une signature valide
+// ne suffit pas (voir lib/sessionClaims.ts).
 async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
-  const token = request.cookies.get('access_token')?.value;
-  if (!token) return null;
-
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    return payload.userId as string;
-  } catch {
-    return null;
-  }
+  const payload = await verifyRequestToken(request);
+  return payload?.userId ?? null;
 }
 
 // GET /api/contributors/me/tasks - Récupérer les tâches assignées à l'utilisateur connecté

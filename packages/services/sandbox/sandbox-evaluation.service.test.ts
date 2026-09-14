@@ -7,6 +7,7 @@ import type { Sandbox } from "../../database-service/domain/entities.js";
 
 const SB = "sb-1";
 const ALICE = "alice";
+const EVENT = { sandboxId: SB, userId: ALICE };
 
 function makeSandbox(over: Partial<Sandbox> = {}): Sandbox {
   return {
@@ -33,25 +34,30 @@ function makeSandbox(over: Partial<Sandbox> = {}): Sandbox {
 }
 
 /**
- * Les repositories de reward sont montés dans les dépendances **exprès** : ils
- * n'y ont rien à faire, et le test vérifie qu'aucune de leurs méthodes n'est
- * appelée. Une évaluation formative ne paie pas de CP.
+ * Le repository est à état : `setEvaluationStatus` rejoue le compare-and-set
+ * (`expectedFrom`) sur le sandbox courant, pour que claim puis run voient ce
+ * que la base leur montrerait.
+ *
+ * Les repositories de reward sont montés **exprès** : ils n'y ont rien à
+ * faire, et le test vérifie qu'aucune de leurs méthodes n'est appelée. Une
+ * évaluation formative ne paie pas de CP.
  */
-function makeDeps(opts: { sandbox?: Partial<Sandbox> | null; statuses?: Array<Partial<Sandbox> | null>; claim?: boolean; fails?: boolean } = {}) {
-  const statusReads = [...(opts.statuses ?? [])];
+function makeDeps(opts: { sandbox?: Partial<Sandbox> | null; claim?: boolean; fails?: boolean } = {}) {
+  let current: Sandbox | null = opts.sandbox === null ? null : makeSandbox(opts.sandbox ?? {});
   const stored: Array<{ evaluation: unknown; status: string }> = [];
   const transitions: Array<{ status: string; expectedFrom?: unknown }> = [];
 
-  let call = 0;
   const sandboxRepo = {
-    findById: vi.fn(async () => {
-      const override = call++ === 0 || statusReads.length === 0 ? opts.sandbox : statusReads.shift();
-      if (override === null) return null;
-      return makeSandbox(override ?? {});
-    }),
+    findById: vi.fn(async () => (current ? { ...current } : null)),
     setEvaluationStatus: vi.fn(async (_uuid: string, status: string, o?: { expectedFrom?: unknown }) => {
       transitions.push({ status, expectedFrom: o?.expectedFrom });
-      return opts.claim === false && status === "running" ? false : true;
+      if (!current) return false;
+      // `claim: false` simule un autre appel qui a basculé le statut entre la
+      // lecture et le compare-and-set.
+      if (status === "running" && opts.claim === false) return false;
+      if (o?.expectedFrom !== undefined && current.evaluation_status !== o.expectedFrom) return false;
+      current = { ...current, evaluation_status: status as Sandbox["evaluation_status"] };
+      return true;
     }),
     storeEvaluation: vi.fn(async (_uuid: string, evaluation: unknown, status = "done") => {
       stored.push({ evaluation, status });
@@ -145,11 +151,89 @@ describe("SandboxEvaluationService.canEvaluate", () => {
   });
 });
 
+describe("SandboxEvaluationService.claim", () => {
+  it("bascule en running par compare-and-set, sans lancer l'agent", async () => {
+    const { service, transitions, evaluateRepo } = makeDeps();
+
+    expect(await service.claim(EVENT)).toEqual({ ok: true });
+
+    expect(transitions).toEqual([{ status: "running", expectedFrom: null }]);
+    expect(evaluateRepo).not.toHaveBeenCalled();
+  });
+
+  it("un second claim pendant le run reçoit already_running", async () => {
+    const { service, transitions } = makeDeps();
+
+    expect(await service.claim(EVENT)).toEqual({ ok: true });
+    expect(await service.claim(EVENT)).toEqual({ ok: false, reason: "already_running" });
+
+    expect(transitions).toHaveLength(1);
+  });
+
+  it("reprend depuis le dernier statut connu", async () => {
+    const { service, transitions } = makeDeps({ sandbox: { evaluation_status: "done" } });
+
+    expect(await service.claim(EVENT)).toEqual({ ok: true });
+    expect(transitions).toEqual([{ status: "running", expectedFrom: "done" }]);
+  });
+
+  it("répond already_running quand un autre appel a pris la main entre la lecture et la bascule", async () => {
+    const { service, transitions } = makeDeps({ claim: false });
+
+    expect(await service.claim(EVENT)).toEqual({ ok: false, reason: "already_running" });
+    // La bascule a été tentée, le compare-and-set l'a refusée.
+    expect(transitions).toEqual([{ status: "running", expectedFrom: null }]);
+  });
+
+  it.each([
+    [{ sandbox: null }, ALICE, "not_found"],
+    [{}, "bob", "not_author"],
+    [{ sandbox: { repo_url: "https://gitlab.com/acme/widget" } }, ALICE, "invalid_repo"],
+    [{ sandbox: { evaluation_status: "pending" as const } }, ALICE, "already_running"],
+  ] as const)("refuse sans rien écrire (%#)", async (opts, userId, reason) => {
+    const { service, transitions } = makeDeps(opts as any);
+
+    expect(await service.claim({ sandboxId: SB, userId })).toEqual({ ok: false, reason });
+    expect(transitions).toHaveLength(0);
+  });
+});
+
+describe("SandboxEvaluationService.run", () => {
+  it("n'évalue rien sans claim préalable", async () => {
+    const { service, evaluateRepo, transitions } = makeDeps();
+
+    await service.run(EVENT);
+
+    expect(evaluateRepo).not.toHaveBeenCalled();
+    expect(transitions).toHaveLength(0);
+  });
+
+  it("n'évalue rien pour qui n'est pas l'auteur", async () => {
+    const { service, evaluateRepo, transitions } = makeDeps({ sandbox: { evaluation_status: "running" } });
+
+    await service.run({ sandboxId: SB, userId: "bob" });
+
+    expect(evaluateRepo).not.toHaveBeenCalled();
+    expect(transitions).toHaveLength(0);
+  });
+
+  it("passe à failed si l'URL du repo n'est plus exploitable", async () => {
+    const { service, evaluateRepo, transitions } = makeDeps({
+      sandbox: { evaluation_status: "running", repo_url: "https://gitlab.com/acme/widget" },
+    });
+
+    await expect(service.run(EVENT)).rejects.toThrow("Unparseable repo URL");
+
+    expect(evaluateRepo).not.toHaveBeenCalled();
+    expect(transitions).toEqual([{ status: "failed", expectedFrom: undefined }]);
+  });
+});
+
 describe("SandboxEvaluationService.evaluate", () => {
   it("passe à running puis stocke le résultat en done", async () => {
     const { service, evaluateRepo, transitions, stored, rewardRepo, contributionRepo } = makeDeps();
 
-    await service.evaluate({ sandboxId: SB, userId: ALICE });
+    await service.evaluate(EVENT);
 
     expect(transitions).toEqual([{ status: "running", expectedFrom: null }]);
     expect(stored).toEqual([{ evaluation: { globalScore: 7.2, scores: [] }, status: "done" }]);
@@ -174,7 +258,7 @@ describe("SandboxEvaluationService.evaluate", () => {
       sandbox: { type: "ml", dataset_urls: ["https://kaggle.com/d/one"] },
     });
 
-    await service.evaluate({ sandboxId: SB, userId: ALICE });
+    await service.evaluate(EVENT);
 
     const input = (evaluateRepo.mock.calls[0] as unknown as any[])[0];
     expect(input.gridSlug).toBe("code");
@@ -185,7 +269,7 @@ describe("SandboxEvaluationService.evaluate", () => {
   it("passe à failed et relaie l'erreur quand l'agent lève", async () => {
     const { service, transitions, stored } = makeDeps({ fails: true });
 
-    await expect(service.evaluate({ sandboxId: SB, userId: ALICE })).rejects.toThrow("agent down");
+    await expect(service.evaluate(EVENT)).rejects.toThrow("agent down");
 
     expect(transitions).toEqual([
       { status: "running", expectedFrom: null },
@@ -199,19 +283,17 @@ describe("SandboxEvaluationService.evaluate", () => {
       sandbox: { evaluation_status: "running" },
     });
 
-    await service.evaluate({ sandboxId: SB, userId: ALICE });
+    await service.evaluate(EVENT);
 
     expect(evaluateRepo).not.toHaveBeenCalled();
     expect(transitions).toHaveLength(0);
   });
 
-  it("ignore un run dont un autre appel a pris la main entre les deux lectures", async () => {
-    const { service, evaluateRepo, transitions } = makeDeps({ claim: false });
+  it("ignore un run dont un autre appel a pris la main", async () => {
+    const { service, evaluateRepo } = makeDeps({ claim: false });
 
-    await service.evaluate({ sandboxId: SB, userId: ALICE });
+    await service.evaluate(EVENT);
 
-    // La bascule a été tentée, le compare-and-set l'a refusée.
-    expect(transitions).toEqual([{ status: "running", expectedFrom: null }]);
     expect(evaluateRepo).not.toHaveBeenCalled();
   });
 
@@ -222,18 +304,5 @@ describe("SandboxEvaluationService.evaluate", () => {
 
     expect(evaluateRepo).not.toHaveBeenCalled();
     expect(transitions).toHaveLength(0);
-  });
-
-  it("relit le statut juste avant la bascule", async () => {
-    // Première lecture : rien en cours. Seconde : un autre run a démarré.
-    const { service, evaluateRepo, transitions, sandboxRepo } = makeDeps({
-      statuses: [{ evaluation_status: "running" }],
-    });
-
-    await service.evaluate({ sandboxId: SB, userId: ALICE });
-
-    expect(sandboxRepo.findById).toHaveBeenCalledTimes(2);
-    expect(transitions).toHaveLength(0);
-    expect(evaluateRepo).not.toHaveBeenCalled();
   });
 });

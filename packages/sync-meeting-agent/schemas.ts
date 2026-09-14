@@ -13,16 +13,12 @@ export const ActionSchema = z.object({
   priority: z.enum(['high', 'medium', 'low']).optional(),
 });
 
-export const ContributionSignalSchema = z.object({
-  display_name: z.string(),
-  signal_type: z.enum(['coordination', 'technical_leadership', 'problem_solving', 'knowledge_sharing']),
-  weight: z.number().min(0).max(1),
-  description: z.string().optional(),
-});
-
+// Pas de poids ni de signal par participant : la SPEC du challenge 008 (§9)
+// exclut toute utilisation à des fins d'évaluation individuelle. Un
+// `contribution_signals` renvoyé malgré tout par le modèle est retiré par
+// `parse` (clés inconnues ignorées).
 export const MeetingAnalysisResultSchema = z.object({
   summary: z.string(),
   decisions: z.array(DecisionSchema),
   actions: z.array(ActionSchema),
-  contribution_signals: z.array(ContributionSignalSchema),
 });

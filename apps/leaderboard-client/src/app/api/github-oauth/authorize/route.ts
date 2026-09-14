@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { verifyAdmin } from '@/lib/auth';
+import { oauthStateCookieOptions } from '@/lib/sessionCookie';
 import { config } from '../../../../../../../packages/config/index.js';
 
 export async function GET(request: NextRequest) {
@@ -23,11 +24,7 @@ export async function GET(request: NextRequest) {
   githubUrl.searchParams.set('state', state);
 
   const response = NextResponse.redirect(githubUrl.toString());
-  response.cookies.set('gh_oauth_state', state, {
-    httpOnly: true,
-    maxAge: 600,
-    sameSite: 'lax',
-    path: '/',
-  });
+  // httpOnly, lax, 600 s, et `secure` en prod (docs/temp.md, L2).
+  response.cookies.set('gh_oauth_state', state, oauthStateCookieOptions());
   return response;
 }

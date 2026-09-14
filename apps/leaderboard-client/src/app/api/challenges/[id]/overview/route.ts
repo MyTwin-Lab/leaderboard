@@ -6,11 +6,12 @@ import {
   ChallengeRepoRepository,
   ContributionRepository,
   ContributionMemberRepository,
+  SyncMeetingRepository,
 } from '../../../../../../../../packages/database-service/repositories';
-import { SyncMeetingService } from '../../../../../../../../packages/services/sync-meeting/sync-meeting.service.js';
 import { verifyRequestToken } from '@/lib/auth';
+import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { isPubliclyVisible } from '@/lib/public/challengeVisibility';
-import { toPublicOverview } from '@/lib/public/overview';
+import { toPublicOverview, toSignedInOverview } from '@/lib/public/overview';
 import { groupContextFrom, pickGroupOwner } from '../../../../../../../../packages/services/challenge/group';
 
 const challengeRepo = new ChallengeRepository();
@@ -19,6 +20,10 @@ const taskRepo = new TaskRepository();
 const challengeRepoRepo = new ChallengeRepoRepository();
 const contributionRepo = new ContributionRepository();
 const contributionMemberRepo = new ContributionMemberRepository();
+// Le repository et non SyncMeetingService : le service instancie les clients
+// Google Calendar/Meet dans son constructeur, qui lèvent sans compte de service
+// configuré — et toute la page challenge tombait en 500 avec eux.
+const syncMeetingRepo = new SyncMeetingRepository();
 
 // GET /api/challenges/[id]/overview
 //
@@ -29,12 +34,11 @@ const contributionMemberRepo = new ContributionMemberRepository();
 // react-query key, so navigating between them reuses the cache instead of
 // re-fetching.
 //
-// Each field is the same raw shape its former standalone endpoint returned
-// (/team, /tasks?include=assignees, /sync-meetings, /repos,
-// /contributions/challenge/[id]) — callers map fields client-side exactly as
-// before, nothing changed there. `participants` is the raw
-// ChallengeTeam[] (workspace fields included) — the personal-board UI
-// (tasks 11/13) reads workspace status per contributor from it.
+// La réponse dépend du visiteur, jamais de la page : `toPublicOverview` sans
+// session, `toSignedInOverview` sinon (voir lib/public/overview.ts pour ce que
+// voit un membre, un non-membre, un manager ou un admin). La vue manager n'est
+// ouverte qu'aux admins et managers, qui reçoivent tasks, participants et
+// meetings entiers.
 //
 // repo-activity is intentionally NOT included: it calls external connectors
 // (GitHub/Kaggle) and can be slow or flaky, so it stays its own request and
@@ -70,7 +74,8 @@ export async function GET(
     const [team, tasks, meetings, repos, contributions, participants] = await Promise.all([
       challengeTeamRepo.findTeamMembers(id),
       taskRepo.findByChallenge(id),
-      new SyncMeetingService().getMeetingsByChallengeId(id),
+      // `toPublicOverview` les écarte de toute façon : inutile de les lire.
+      session ? syncMeetingRepo.findByChallengeId(id) : Promise.resolve([]),
       challengeRepoRepo.findByChallengeWithRepo(id),
       contributionRepo.findByChallenge(id),
       challengeTeamRepo.findByChallenge(id),
@@ -114,7 +119,22 @@ export async function GET(
       contribution_members: contributionMembers,
       source_challenge_type: sourceChallenge?.type ?? null,
     };
-    return NextResponse.json(session ? payload : toPublicOverview(payload));
+
+    // Sans session : la vitrine publique, y compris pour le prérendu SSR
+    // (lib/server/publicSsr.ts), qui appelle cette route sans cookie.
+    if (!session) {
+      return NextResponse.json(toPublicOverview(payload));
+    }
+
+    const isAdmin = session.role === 'admin';
+    const privileged = isAdmin || (await isManagerOfChallenge(session.userId, id));
+    return NextResponse.json(toSignedInOverview(payload, {
+      userId: session.userId,
+      role: session.role,
+      workspaceOwnerId: myWorkspaceOwnerId,
+      isMember: participants.some(p => p.user_id === session.userId),
+      privileged,
+    }));
   } catch (error) {
     console.error('Error fetching challenge overview:', error);
     return NextResponse.json({ error: 'Failed to fetch challenge overview' }, { status: 500 });

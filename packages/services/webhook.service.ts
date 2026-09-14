@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { ChallengeService } from "./challenge.service.js";
+import { SnapshotService } from "./challenge/snapshot.service.js";
 import { RepoRepository, ChallengeRepository, ChallengeRepoRepository, ContributionRepository } from "../database-service/repositories/index.js";
 import type { Challenge, User } from "../database-service/domain/entities.js";
 import { OpenAIAgentEvaluator } from "../evaluator/evaluator.js";
@@ -59,12 +60,14 @@ export interface PRData {
  */
 export class WebhookService {
   private challengeService: ChallengeService;
+  private snapshotService: SnapshotService;
   private repoRepo: RepoRepository;
   private challengeRepo: ChallengeRepository;
   private challengeRepoRepo: ChallengeRepoRepository;
 
   constructor() {
     this.challengeService = new ChallengeService();
+    this.snapshotService = new SnapshotService();
     this.repoRepo = new RepoRepository();
     this.challengeRepo = new ChallengeRepository();
     this.challengeRepoRepo = new ChallengeRepoRepository();
@@ -334,7 +337,7 @@ export class WebhookService {
       }
 
       const grid = EvaluationGridRegistry.getGrid(contribution.type);
-      const preparedSnapshot = await this.challengeService.prepareSnapshot(aggregatedSnapshot);
+      const preparedSnapshot = await this.snapshotService.prepareSnapshot(aggregatedSnapshot);
       const isUpdate = 'evaluation' in contribution && !!contribution.evaluation;
       
       try {
@@ -348,6 +351,9 @@ export class WebhookService {
         evaluations.push(evaluation);
       } catch (error: any) {
         console.error(`[WebhookService] Error evaluating contribution ${contribution.title}:`, error.message);
+      } finally {
+        // Le workspace contient le code évalué : supprimé à chaque contribution.
+        await this.snapshotService.cleanup(preparedSnapshot);
       }
     }
 

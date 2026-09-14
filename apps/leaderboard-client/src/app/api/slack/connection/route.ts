@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { encryptToken } from '../../../../../../../packages/config/slackCredentials.js';
 import { AppSettingsRepository } from '../../../../../../../packages/database-service/repositories/index.js';
-import { verifyRequestToken } from '@/lib/auth';
+import { getSessionUser } from '@/lib/auth';
 
 const appSettingsRepo = new AppSettingsRepository();
 
 // POST /api/slack/connection — save Slack bot token
 export async function POST(request: NextRequest) {
-  const payload = await verifyRequestToken(request);
-  if (!payload || payload.role !== 'admin') {
+  // Rôle relu en base, pas celui du JWT : une rétrogradation prend effet tout de suite.
+  const session = await getSessionUser();
+  if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
       slack_token_enc: enc,
       slack_token_iv: iv,
       slack_team_name: teamName,
-      slack_connected_by: payload.userId,
+      slack_connected_by: session.id,
     });
   } catch (error) {
     console.error('Failed to save Slack credentials:', error);
@@ -58,9 +59,10 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/slack/connection — remove Slack bot token
-export async function DELETE(request: NextRequest) {
-  const payload = await verifyRequestToken(request);
-  if (!payload || payload.role !== 'admin') {
+export async function DELETE(_request: NextRequest) {
+  // Rôle relu en base, pas celui du JWT : une rétrogradation prend effet tout de suite.
+  const session = await getSessionUser();
+  if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

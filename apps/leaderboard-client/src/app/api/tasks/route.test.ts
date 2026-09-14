@@ -2,14 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const {
-  mockJwtVerify,
+  mockVerifyRequestToken,
   mockFindPersonalTasks, mockFindTemplateTasks, mockFindByChallenge, mockCreate, mockFindById,
   mockChallengeFindById,
   mockFindByChallengeAndUser,
   mockTeamFindByChallenge,
   mockProjectFindById,
+  mockCanAccessChallengeInternals,
 } = vi.hoisted(() => ({
-  mockJwtVerify: vi.fn(),
+  mockVerifyRequestToken: vi.fn(),
   mockFindPersonalTasks: vi.fn(),
   mockFindTemplateTasks: vi.fn(),
   mockFindByChallenge: vi.fn(),
@@ -19,9 +20,19 @@ const {
   mockFindByChallengeAndUser: vi.fn(),
   mockTeamFindByChallenge: vi.fn(),
   mockProjectFindById: vi.fn(),
+  mockCanAccessChallengeInternals: vi.fn(),
 }));
 
-vi.mock('jose', () => ({ jwtVerify: mockJwtVerify }));
+vi.mock('@/lib/server/managerAuth', () => ({
+  canAccessChallengeInternals: mockCanAccessChallengeInternals,
+}));
+
+// Comme le vrai helper : `null` sans cookie access_token ; la doublure décide du reste
+// (`null` = jeton refusé, dont `sb_anon` et les refresh tokens).
+vi.mock('@/lib/auth', () => ({
+  verifyRequestToken: (req: NextRequest) =>
+    req.cookies.get('access_token') ? mockVerifyRequestToken(req) : Promise.resolve(null),
+}));
 
 vi.mock('../../../../../../packages/database-service/repositories', () => ({
   TaskRepository: class {
@@ -87,8 +98,48 @@ beforeEach(() => {
   mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', project_id: 'project-1' });
   mockFindByChallengeAndUser.mockResolvedValue({ uuid: 'membership-1' });
   mockProjectFindById.mockResolvedValue({ uuid: 'project-1', manager_id: 'manager-1' });
-  mockJwtVerify.mockResolvedValue({ payload: { userId: 'alice', role: 'contributor' } });
+  mockVerifyRequestToken.mockResolvedValue({ userId: 'alice', role: 'contributor' });
   mockTeamFindByChallenge.mockResolvedValue([]); // personne en groupe
+  mockCanAccessChallengeInternals.mockResolvedValue(false);
+});
+
+describe('GET /api/tasks?scope=all — personal boards', () => {
+  const ALL = [
+    { uuid: 'template-1', user_id: null, title: 'Template' },
+    { uuid: 'alice-1', user_id: 'alice', title: 'Alice plan' },
+    { uuid: 'bob-1', user_id: 'bob', title: 'Bob private plan' },
+  ];
+
+  beforeEach(() => {
+    mockFindByChallenge.mockResolvedValue(ALL);
+  });
+
+  it('serves every board to someone with access to the challenge internals', async () => {
+    mockCanAccessChallengeInternals.mockResolvedValue(true);
+
+    const res = await getTasks(`?challenge_id=${CHALLENGE_ID}&scope=all`, 'valid-token');
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(ALL);
+    expect(mockCanAccessChallengeInternals).toHaveBeenCalledWith({ id: 'alice', role: 'contributor' }, CHALLENGE_ID);
+  });
+
+  it('keeps only templates and the caller\'s own tasks for an outsider', async () => {
+    const res = await getTasks(`?challenge_id=${CHALLENGE_ID}&scope=all`, 'valid-token');
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.map((t: { uuid: string }) => t.uuid)).toEqual(['template-1', 'alice-1']);
+    expect(JSON.stringify(body)).not.toContain('Bob private plan');
+  });
+
+  it('keeps only templates without a session', async () => {
+    const res = await getTasks(`?challenge_id=${CHALLENGE_ID}&scope=all`);
+    const body = await res.json();
+
+    expect(body.map((t: { uuid: string }) => t.uuid)).toEqual(['template-1']);
+    expect(mockCanAccessChallengeInternals).not.toHaveBeenCalled();
+  });
 });
 
 describe('GET /api/tasks', () => {
@@ -158,7 +209,7 @@ describe('POST /api/tasks', () => {
   });
 
   it('creates a template task for an admin with user_id null', async () => {
-    mockJwtVerify.mockResolvedValue({ payload: { userId: 'admin-1', role: 'admin' } });
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin' });
 
     const res = await postTask({ ...validBody, template: true }, 'valid-token');
 

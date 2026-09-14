@@ -1,6 +1,6 @@
 import { db } from "../db/drizzle";
 import { validation_attempts } from "../db/drizzle";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { toDomainValidationAttempt, toDbValidationAttempt } from "../db/mappers";
 import type { ValidationAttempt } from "../domain/entities";
 import { validationAttemptSchema } from "../domain/schemas_zod";
@@ -132,28 +132,11 @@ export class ValidationAttemptRepository {
     }
   }
 
-  /**
-   * Archive-triggered purge: nulls the file/response blobs for every attempt
-   * on this validation challenge, keeping verdict/description/metadata intact
-   * for the CP audit trail. Idempotent via the purged_at guard.
-   */
-  async purgeContentForChallenge(validationChallengeId: string): Promise<void> {
-    await db
-      .update(validation_attempts)
-      .set({
-        file_bytes: null,
-        file_filename: null,
-        file_content_type: null,
-        response_bytes: null,
-        response_content_type: null,
-        response_status: null,
-        purged_at: new Date(),
-      })
-      .where(
-        and(
-          eq(validation_attempts.validation_challenge_id, validationChallengeId),
-          isNull(validation_attempts.purged_at)
-        )
-      );
-  }
+  // Pas de purge ici. L'ancienne `purgeContentForChallenge` n'avait plus aucun
+  // appelant, et n'aurait rien purgé d'utile : depuis challenge-014 les blobs
+  // de `validation_attempts` restent NULL sur toute nouvelle ligne, les vraies
+  // pièces vivent sur `validation_case_claims.response_bytes` et
+  // `validation_reference_cases.input_bytes`/`expected_output_bytes`. La purge
+  // de conservation (12 mois après la fermeture) est portée par ces deux
+  // repositories et appelée par le cron quotidien `/api/cron/digest`.
 }

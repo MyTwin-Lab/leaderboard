@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
+import { verifyRequestToken } from '@/lib/auth';
 
+// Helper partagé : une signature valide ne suffit pas (voir lib/sessionClaims.ts).
 async function getSession(request: NextRequest) {
-  const token = request.cookies.get('access_token')?.value;
-  if (!token) return null;
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    return { userId: payload.userId as string, role: payload.role as string };
-  } catch { return null; }
+  const payload = await verifyRequestToken(request);
+  return payload ? { userId: payload.userId, role: payload.role } : null;
+}
+
+function refusal(reason: string | undefined) {
+  const status = reason === 'already_running' ? 409 : 400;
+  return NextResponse.json({ error: 'Cannot start evaluation', reason }, { status });
 }
 
 // POST /api/challenges/[id]/project-evaluation
@@ -28,12 +29,16 @@ export async function POST(
     );
     const service = new CodeRewardsService();
     const check = await service.canEvaluate(challengeId, session.userId);
-    if (!check.ok) {
-      const status = check.reason === 'already_running' ? 409 : 400;
-      return NextResponse.json({ error: 'Cannot start evaluation', reason: check.reason }, { status });
-    }
+    if (!check.ok) return refusal(check.reason);
 
-    service.scheduleEvaluation({ challengeId, userId: session.userId });
+    // Le passage à `running` est un compare-and-set attendu ici, avant le
+    // 202 : un second lancement concurrent reçoit 409 au lieu de planifier un
+    // second run (et un second appel LLM).
+    const event = { challengeId, userId: session.userId };
+    const claim = await service.claim(event);
+    if (!claim.ok) return refusal(claim.reason);
+
+    service.scheduleRun(event);
     return NextResponse.json({ scheduled: true }, { status: 202 });
   } catch (error) {
     console.error('Error starting project evaluation:', error);

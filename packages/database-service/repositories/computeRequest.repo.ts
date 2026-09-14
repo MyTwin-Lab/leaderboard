@@ -133,17 +133,38 @@ export class ComputeRequestRepository {
       .where(eq(compute_requests.uuid, uuid));
   }
 
+  /**
+   * Le jeton Jupyter chiffré est effacé avec la bascule : une instance en
+   * échec n'a plus de jeton utile, et le garder ne ferait qu'allonger la
+   * conservation d'un secret. Un retry en pose un neuf
+   * (updateProvisioningStarted).
+   */
   async updateFailed(uuid: string, errorMessage: string): Promise<void> {
     await db
       .update(compute_requests)
-      .set({ status: "failed", failed_at: new Date(), error_message: errorMessage, updated_at: new Date() })
+      .set({
+        status: "failed",
+        failed_at: new Date(),
+        error_message: errorMessage,
+        access_token_enc: null,
+        access_token_iv: null,
+        updated_at: new Date(),
+      })
       .where(eq(compute_requests.uuid, uuid));
   }
 
+  /** Même règle qu'updateFailed : une instance expirée ne garde pas son jeton. */
   async updateExpired(uuid: string, reason: ComputeRequestExpireReason): Promise<void> {
     await db
       .update(compute_requests)
-      .set({ status: "expired", expired_at: new Date(), expire_reason: reason, updated_at: new Date() })
+      .set({
+        status: "expired",
+        expired_at: new Date(),
+        expire_reason: reason,
+        access_token_enc: null,
+        access_token_iv: null,
+        updated_at: new Date(),
+      })
       .where(eq(compute_requests.uuid, uuid));
   }
 
@@ -163,12 +184,22 @@ export class ComputeRequestRepository {
     return rows.map(toDomainComputeRequest);
   }
 
-  /** Ready requests whose 24h window has elapsed — swept by the expiration cron. */
+  /**
+   * Active requests (approved/provisioning/ready) whose 24h window has
+   * elapsed — swept by the expiration cron. Not just 'ready': an instance
+   * stuck in provisioning, or an approval whose provisioning never started,
+   * must not outlive its window either.
+   */
   async findExpiredPending(now: Date): Promise<ComputeRequest[]> {
     const rows = await db
       .select(REQUEST_SUMMARY_COLUMNS)
       .from(compute_requests)
-      .where(and(eq(compute_requests.status, "ready"), lte(compute_requests.expires_at, now)));
+      .where(
+        and(
+          inArray(compute_requests.status, ACTIVE_STATUSES as unknown as string[]),
+          lte(compute_requests.expires_at, now)
+        )
+      );
     return rows.map(toDomainComputeRequest);
   }
 

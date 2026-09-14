@@ -2,15 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const {
-  mockVerifyRequestToken, mockEncryptToken, mockUpdateOpenAIConnection, mockClearOpenAIConnection,
+  mockGetSessionUser, mockEncryptToken, mockUpdateOpenAIConnection, mockClearOpenAIConnection,
 } = vi.hoisted(() => ({
-  mockVerifyRequestToken: vi.fn(),
+  mockGetSessionUser: vi.fn(),
   mockEncryptToken: vi.fn(),
   mockUpdateOpenAIConnection: vi.fn(),
   mockClearOpenAIConnection: vi.fn(),
 }));
 
-vi.mock('@/lib/auth', () => ({ verifyRequestToken: mockVerifyRequestToken }));
+vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
 
 vi.mock('../../../../../../../packages/config/openaiCredentials.js', () => ({
   encryptToken: mockEncryptToken,
@@ -53,7 +53,7 @@ const fetchMock = vi.fn();
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal('fetch', fetchMock);
-  mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin', email: 'a@b.com' });
+  mockGetSessionUser.mockResolvedValue({ id:'admin-1', role: 'admin', email: 'a@b.com' });
   mockEncryptToken.mockReturnValue({ enc: 'enc-value', iv: 'iv-value' });
   fetchMock.mockResolvedValue({ ok: true });
 });
@@ -80,7 +80,7 @@ describe('POST /api/openai/connection', () => {
   });
 
   it('returns 401 when not authenticated', async () => {
-    mockVerifyRequestToken.mockResolvedValue(null);
+    mockGetSessionUser.mockResolvedValue(null);
 
     const res = await postConnection({ api_key: 'sk-valid' });
 
@@ -89,7 +89,7 @@ describe('POST /api/openai/connection', () => {
   });
 
   it('returns 401 for a non-admin', async () => {
-    mockVerifyRequestToken.mockResolvedValue({ userId: 'u1', role: 'contributor', email: 'a@b.com' });
+    mockGetSessionUser.mockResolvedValue({ id:'u1', role: 'contributor', email: 'a@b.com' });
 
     const res = await postConnection({ api_key: 'sk-valid' });
 
@@ -151,7 +151,7 @@ describe('DELETE /api/openai/connection', () => {
   });
 
   it('returns 401 when not authenticated', async () => {
-    mockVerifyRequestToken.mockResolvedValue(null);
+    mockGetSessionUser.mockResolvedValue(null);
 
     const res = await deleteConnection();
 
@@ -160,7 +160,7 @@ describe('DELETE /api/openai/connection', () => {
   });
 
   it('returns 401 for a non-admin', async () => {
-    mockVerifyRequestToken.mockResolvedValue({ userId: 'u1', role: 'contributor', email: 'a@b.com' });
+    mockGetSessionUser.mockResolvedValue({ id:'u1', role: 'contributor', email: 'a@b.com' });
 
     const res = await deleteConnection();
 

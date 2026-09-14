@@ -12,7 +12,6 @@ interface RewardEntry {
   label: string;
   points: number;
   counterparty: string | null;
-  meta: Record<string, unknown> | null;
   createdAt: string;
 }
 

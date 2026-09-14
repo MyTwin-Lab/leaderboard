@@ -30,6 +30,7 @@ export { ScenarioRunRepository } from "./scenarioRun.repo.js";
 export { StepFeedbackRepository } from "./stepFeedback.repo.js";
 export { ComputeRequestRepository } from "./computeRequest.repo.js";
 export { AccountMergeRepository } from "./accountMerge.repo.js";
+export { RoleChangeRepository } from "./roleChange.repo.js";
 export { DigestRepository } from "./digest.repo.js";
 export { SandboxRepository } from "./sandbox.repo.js";
 export { SandboxStarRepository } from "./sandboxStar.repo.js";

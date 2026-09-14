@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserRepository } from '../../../../../../../packages/database-service/repositories';
+import { isUuid } from '@/lib/sessionClaims';
 
 const userRepo = new UserRepository();
 
@@ -8,12 +9,20 @@ const userRepo = new UserRepository();
  * directement) pour vérifier qu'un userId encore valide au sens du JWT existe
  * toujours en base — couvre les comptes fusionnés (accountMerge.repo.ts
  * supprime le compte Google absorbé) et les suppressions de compte classiques.
+ *
+ * Le proxy laisse passer sur 5xx et refuse sur 4xx : un userId malformé doit
+ * donc répondre 400, jamais faire planter la requête Postgres en 500.
  */
 export async function GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get('userId');
-  if (!userId) {
+  if (!isUuid(userId)) {
     return NextResponse.json({ valid: false }, { status: 400 });
   }
-  const user = await userRepo.findById(userId);
-  return NextResponse.json({ valid: !!user });
+  try {
+    const user = await userRepo.findById(userId);
+    return NextResponse.json({ valid: !!user });
+  } catch (error) {
+    console.error('check-session error:', error);
+    return NextResponse.json({ error: 'Session check unavailable' }, { status: 503 });
+  }
 }

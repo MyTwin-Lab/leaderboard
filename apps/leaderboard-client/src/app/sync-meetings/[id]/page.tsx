@@ -32,14 +32,12 @@ interface SyncMeeting {
   end_time: string;
   meet_link?: string;
   status: string;
-  created_by: string;
+  created_by: string | null;
 }
 
 interface MeetingParticipant {
   uuid: string;
-  sync_meeting_id: string;
   user_id?: string;
-  google_user_id: string;
   display_name: string;
 }
 
@@ -56,20 +54,11 @@ interface Action {
   priority?: 'high' | 'medium' | 'low';
 }
 
-interface ContributionSignal {
-  user_id?: string;
-  display_name: string;
-  signal_type: 'coordination' | 'technical_leadership' | 'problem_solving' | 'knowledge_sharing';
-  weight: number;
-  description?: string;
-}
-
+// Pas de signaux ni de poids par participant : SPEC du challenge 008, §9.
 interface MeetingAnalysis {
-  uuid: string;
   summary?: string;
   decisions?: Decision[];
   actions?: Action[];
-  contribution_signals?: ContributionSignal[];
   status: 'pending' | 'processing' | 'completed' | 'failed';
   error_message?: string;
 }
@@ -91,13 +80,6 @@ const ANALYSIS_STATUS_LABELS: Record<string, string> = {
   processing: 'Processing…',
   completed: 'Completed',
   failed: 'Failed',
-};
-
-const SIGNAL_TYPE_LABELS: Record<string, string> = {
-  coordination: 'Coordination',
-  technical_leadership: 'Technical Leadership',
-  problem_solving: 'Problem Solving',
-  knowledge_sharing: 'Knowledge Sharing',
 };
 
 function getPriorityStyle(priority?: string): string {
@@ -398,50 +380,9 @@ export default function SyncMeetingDetailPage() {
                     </div>
                   )}
 
-                  {/* Contribution Signals */}
-                  {analysis.contribution_signals && analysis.contribution_signals.length > 0 && (
-                    <div className="rounded-2xl bg-white/5 border border-white/10 p-4 sm:p-5">
-                      <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                        <Users className="h-4 w-4 text-brandCP" />
-                        Contribution Signals
-                        <span className="text-white/50 text-xs font-normal">({analysis.contribution_signals.length})</span>
-                      </h3>
-                      <div className="space-y-2">
-                        {analysis.contribution_signals.map((s, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brandCP text-[10px] font-semibold text-slate-900 shrink-0">
-                              {s.display_name
-                                .split(' ')
-                                .map((part) => part[0])
-                                .slice(0, 2)
-                                .join('')
-                                .toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm text-white font-medium">{s.display_name}</span>
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/60">
-                                  {SIGNAL_TYPE_LABELS[s.signal_type] || s.signal_type}
-                                </span>
-                              </div>
-                              {s.description && (
-                                <p className="text-xs text-white/60 mt-0.5 truncate">{s.description}</p>
-                              )}
-                            </div>
-                            <div className="shrink-0 text-right">
-                              <div className="text-base font-semibold text-brandCP">{s.weight}</div>
-                              <div className="text-[10px] text-white/40">weight</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Empty details state */}
                   {(!analysis.decisions || analysis.decisions.length === 0) &&
-                   (!analysis.actions || analysis.actions.length === 0) &&
-                   (!analysis.contribution_signals || analysis.contribution_signals.length === 0) && (
+                   (!analysis.actions || analysis.actions.length === 0) && (
                     <div className="rounded-2xl bg-white/5 border border-white/10 p-6 text-center">
                       <p className="text-xs text-white/50 sm:text-sm">No details available</p>
                     </div>

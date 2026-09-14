@@ -31,6 +31,20 @@ export const IP_HASH_RETENTION_DAYS = 30;
 export const FALLBACK_CLIENT_IP = "127.0.0.1";
 
 /**
+ * Nombre de proxys de confiance devant l'app, par défaut 1 : le routeur de la
+ * plateforme, qui **ajoute** à `x-forwarded-for` l'adresse qu'il voit. Réglable
+ * par `TRUSTED_PROXY_HOPS` si un CDN s'intercale un jour (il faudrait alors 2).
+ */
+export const DEFAULT_TRUSTED_PROXY_HOPS = 1;
+
+/** Lit `TRUSTED_PROXY_HOPS` ; toute valeur absente, non entière ou < 1 retombe sur le défaut. */
+export function trustedProxyHops(raw: string | undefined = process.env.TRUSTED_PROXY_HOPS): number {
+  if (raw === undefined || !/^\s*\d+\s*$/.test(raw)) return DEFAULT_TRUSTED_PROXY_HOPS;
+  const hops = Number.parseInt(raw, 10);
+  return hops >= 1 ? hops : DEFAULT_TRUSTED_PROXY_HOPS;
+}
+
+/**
  * Préfixe du message HMAC. Il domaine le haché : le même secret utilisé
  * ailleurs ne peut pas produire une valeur qui se confonde avec un haché d'IP.
  */
@@ -40,8 +54,9 @@ const IP_HASH_PREFIX = "sandbox-ip:";
  * HMAC-SHA256(secret, "sandbox-ip:" + ip), en hexadécimal — 64 caractères,
  * exactement la largeur de `sandbox_stars.ip_hash`.
  *
- * Le secret est celui des JWT de session : pas de nouvelle variable
- * d'environnement à gérer. Une rotation du secret invalide les hachés
+ * Le secret n'est jamais le secret des JWT lui-même : l'appelant passe une clé
+ * dérivée par usage (`clientIp.ts`), pour qu'une même clé ne serve pas à
+ * signer des sessions et à hacher des IP. Une rotation invalide les hachés
  * existants, ce qui est indolore vu la rétention de 30 jours — les hachés
  * anciens ne servent plus au débit, seulement à l'audit.
  */
@@ -69,19 +84,28 @@ function readHeader(headers: HeaderSource, name: string): string | null {
 /**
  * L'IP du client telle que la voit le reverse proxy.
  *
- * `x-forwarded-for` est une liste `client, proxy1, proxy2` : le premier élément
- * est le client, les suivants sont les intermédiaires. On prend donc le
- * premier, jamais le dernier.
+ * `x-forwarded-for` est une liste `client, proxy1, proxy2` où chaque proxy
+ * **ajoute** l'adresse qu'il voit. Seules les entrées de droite, écrites par
+ * nos propres proxys, sont fiables : tout ce qui est à gauche a pu être posé
+ * par le client lui-même. Prendre le premier élément laissait donc un visiteur
+ * sans cookie changer d'IP à chaque requête et contourner le plafond horaire —
+ * or les paliers d'étoiles rapportent des CP.
  *
- * Cette valeur est falsifiable par un client qui poserait l'en-tête lui-même —
- * c'est acceptable ici précisément parce qu'elle ne sert qu'au débit : la
- * contourner ne donne pas une star de plus qu'un simple changement de cookie.
+ * On prend `list[list.length - hops]` : avec un seul proxy de confiance,
+ * la dernière entrée. Si la liste est plus courte que `hops`, on borne à la
+ * première entrée plutôt que de lire hors du tableau.
  */
-export function pickClientIp(headers: HeaderSource): string {
+export function pickClientIp(headers: HeaderSource, hops: number = trustedProxyHops()): string {
   const forwarded = readHeader(headers, "x-forwarded-for");
   if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
+    const list = forwarded
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+    if (list.length > 0) {
+      const safeHops = Number.isInteger(hops) && hops >= 1 ? hops : DEFAULT_TRUSTED_PROXY_HOPS;
+      return list[Math.max(0, list.length - safeHops)];
+    }
   }
   const real = readHeader(headers, "x-real-ip")?.trim();
   if (real) return real;

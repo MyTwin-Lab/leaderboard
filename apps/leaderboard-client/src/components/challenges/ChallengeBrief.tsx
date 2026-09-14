@@ -52,7 +52,9 @@ export function ChallengeBrief({
 
       {/* Colonne de lecture : la largeur du texte prime sur celle de la page. */}
       <div className="mx-auto w-full max-w-[760px]">
-        <Markdown source={content} variant="prose" />
+        {/* La page challenge a déjà son <h1> (le titre) : un brief qui commence
+            par `# Titre` en produirait un second. */}
+        <Markdown source={content} variant="prose" headingOffset={1} />
       </div>
 
       <div className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-3 pt-2">

@@ -1,6 +1,7 @@
 import { db } from "../db/drizzle";
-import { validation_case_claims } from "../db/drizzle";
-import { eq, and, isNull } from "drizzle-orm";
+import { validation_case_claims, validation_reference_cases } from "../db/drizzle";
+import { eq, and, isNull, inArray, sql } from "drizzle-orm";
+import { closedValidationChallengeIds } from "./referenceCase.repo";
 import { toDomainValidationCaseClaim, toDbValidationCaseClaim } from "../db/mappers";
 import type { ValidationCaseClaim } from "../domain/entities";
 import { validationCaseClaimSchema } from "../domain/schemas_zod";
@@ -106,5 +107,61 @@ export class CaseClaimRepository {
       .where(and(eq(validation_case_claims.uuid, uuid), isNull(validation_case_claims.revealed_at)))
       .returning();
     return row ? toDomainValidationCaseClaim(row) : null;
+  }
+
+  /**
+   * État de purge d'un claim et de son cas de référence, sans charger aucun
+   * blob — pour que les routes d'octets répondent 410 après la purge de
+   * conservation. Lu en colonnes brutes, hors mapper, pour ne pas dépendre de
+   * la forme de l'entité. `null` si le claim n'existe pas.
+   */
+  async findPurgeState(uuid: string): Promise<{
+    validator_user_id: string;
+    claim_purged_at: Date | null;
+    case_purged_at: Date | null;
+  } | null> {
+    const [row] = await db
+      .select({
+        validator_user_id: validation_case_claims.validator_user_id,
+        claim_purged_at: validation_case_claims.purged_at,
+        case_purged_at: validation_reference_cases.purged_at,
+      })
+      .from(validation_case_claims)
+      .innerJoin(
+        validation_reference_cases,
+        eq(validation_reference_cases.uuid, validation_case_claims.reference_case_id)
+      )
+      .where(eq(validation_case_claims.uuid, uuid));
+    return row ?? null;
+  }
+
+  /**
+   * Purge de conservation, pendant de
+   * `ReferenceCaseRepository.purgeBytesForChallengesClosedBefore` : vide
+   * `response_bytes` (`''::bytea`, colonne NOT NULL) et pose `purged_at` sur
+   * les claims des challenges de validation fermés avant `closedBefore`.
+   *
+   * L'observation, le statut HTTP et les dates restent : la trace d'audit du
+   * verdict tient sans la pièce. Idempotente par la garde `purged_at IS NULL`.
+   */
+  async purgeBytesForChallengesClosedBefore(closedBefore: Date): Promise<number> {
+    const casesOfClosedChallenges = db
+      .select({ uuid: validation_reference_cases.uuid })
+      .from(validation_reference_cases)
+      .where(
+        inArray(validation_reference_cases.validation_challenge_id, closedValidationChallengeIds(closedBefore))
+      );
+
+    const purged = await db
+      .update(validation_case_claims)
+      .set({ response_bytes: sql`''::bytea`, purged_at: new Date() })
+      .where(
+        and(
+          isNull(validation_case_claims.purged_at),
+          inArray(validation_case_claims.reference_case_id, casesOfClosedChallenges)
+        )
+      )
+      .returning({ uuid: validation_case_claims.uuid });
+    return purged.length;
   }
 }

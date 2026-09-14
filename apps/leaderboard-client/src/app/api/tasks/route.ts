@@ -2,23 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TaskRepository, ChallengeRepository, ChallengeTeamRepository } from '../../../../../../packages/database-service/repositories';
 import { repositories } from '@/lib/db';
 import { resolveWorkspaceOwner } from '../../../../../../packages/services/challenge/group';
-import { jwtVerify } from 'jose';
+import { verifyRequestToken } from '@/lib/auth';
+import { canAccessChallengeInternals } from '@/lib/server/managerAuth';
 import { z } from 'zod';
 
 const taskRepo = new TaskRepository();
 const challengeRepo = new ChallengeRepository();
 const challengeTeamRepo = new ChallengeTeamRepository();
 
+// Helper partagé : une signature valide ne suffit pas (voir lib/sessionClaims.ts).
 async function getSession(request: NextRequest) {
-  const token = request.cookies.get('access_token')?.value;
-  if (!token) return null;
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    return { userId: payload.userId as string, role: payload.role as string };
-  } catch {
-    return null;
-  }
+  const payload = await verifyRequestToken(request);
+  return payload ? { userId: payload.userId, role: payload.role } : null;
 }
 
 async function isChallengeManager(session: { userId: string; role: string }, challengeProjectId: string) {
@@ -57,7 +52,15 @@ export async function GET(request: NextRequest) {
     if (scope === 'template') {
       return NextResponse.json(await taskRepo.findTemplateTasks(challengeId));
     }
-    return NextResponse.json(await taskRepo.findByChallenge(challengeId));
+    // scope=all : les boards personnels de tout le challenge ne sont servis
+    // qu'à qui accède à ses internes. Les autres reçoivent les templates et
+    // leurs propres tâches.
+    const session = await getSession(request);
+    const tasks = await taskRepo.findByChallenge(challengeId);
+    if (session && await canAccessChallengeInternals({ id: session.userId, role: session.role }, challengeId)) {
+      return NextResponse.json(tasks);
+    }
+    return NextResponse.json(tasks.filter(t => !t.user_id || t.user_id === session?.userId));
   } catch (error) {
     console.error('Error fetching tasks:', error);
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });

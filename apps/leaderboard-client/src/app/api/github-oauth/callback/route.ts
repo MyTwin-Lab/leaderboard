@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { encryptToken } from '../../../../../../../packages/config/githubToken.js';
 import { AppSettingsRepository } from '../../../../../../../packages/database-service/repositories/index.js';
-import { verifyRequestToken } from '@/lib/auth';
+import { getSessionUser } from '@/lib/auth';
 import { config } from '../../../../../../../packages/config/index.js';
 
 const appSettingsRepo = new AppSettingsRepository();
@@ -12,6 +12,15 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const state = searchParams.get('state');
+
+  // Le jeton GitHub de toute l'organisation est enregistré ici : la route
+  // exige un admin, rôle relu en base et non depuis le JWT (docs/temp.md, L2).
+  const sessionUser = await getSessionUser();
+  if (!sessionUser || sessionUser.role !== 'admin') {
+    const res = NextResponse.redirect(new URL(`${ERROR_BASE}not_admin`, request.url));
+    res.cookies.delete('gh_oauth_state');
+    return res;
+  }
 
   // Verify CSRF state
   const storedState = request.cookies.get('gh_oauth_state')?.value;
@@ -70,9 +79,7 @@ export async function GET(request: NextRequest) {
     return res;
   }
 
-  // Get current admin user ID from their session token
-  const payload = await verifyRequestToken(request);
-  const connectedBy = payload?.userId ?? '';
+  const connectedBy = sessionUser.id;
 
   // Encrypt and persist
   try {

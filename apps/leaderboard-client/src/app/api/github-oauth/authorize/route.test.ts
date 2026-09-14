@@ -64,4 +64,14 @@ describe('GET /api/github-oauth/authorize', () => {
     expect(setCookie).toContain('gh_oauth_state=');
     expect(setCookie).toMatch(/HttpOnly/i);
   });
+
+  it('marks the state cookie secure in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    mockVerifyAdmin.mockResolvedValue({ userId: 'admin-1', role: 'admin' });
+
+    const res = await getAuthorize();
+
+    expect(res.cookies.get('gh_oauth_state')).toMatchObject({ secure: true, httpOnly: true, sameSite: 'lax', maxAge: 600 });
+    vi.unstubAllEnvs();
+  });
 });

@@ -3,12 +3,17 @@ import { NextRequest } from 'next/server';
 
 const {
   MockClaimNotFoundError, MockForbiddenClaimAccessError, MockObservationRequiredError,
-  mockRevealExpectedOutput,
+  mockRevealExpectedOutput, mockFindPurgeState,
 } = vi.hoisted(() => ({
   MockClaimNotFoundError: class extends Error {},
   MockForbiddenClaimAccessError: class extends Error {},
   MockObservationRequiredError: class extends Error {},
   mockRevealExpectedOutput: vi.fn(),
+  mockFindPurgeState: vi.fn(),
+}));
+
+vi.mock('../../../../../../../../../../packages/database-service/repositories', () => ({
+  CaseClaimRepository: class { findPurgeState = mockFindPurgeState; },
 }));
 
 vi.mock('@/lib/auth', () => ({ getSessionUser: vi.fn() }));
@@ -41,6 +46,7 @@ function call() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'medical_pro' });
+  mockFindPurgeState.mockResolvedValue({ validator_user_id: 'bob', claim_purged_at: null, case_purged_at: null });
 });
 
 describe('POST /api/challenges/[id]/validation-case-claims/[claimId]/reveal', () => {
@@ -81,5 +87,18 @@ describe('POST /api/challenges/[id]/validation-case-claims/[claimId]/reveal', ()
   it('maps ObservationRequiredError to 400 — reveal-before-observation is rejected here too, not just at the service layer', async () => {
     mockRevealExpectedOutput.mockRejectedValue(new MockObservationRequiredError('observe first'));
     expect((await call()).status).toBe(400);
+  });
+
+  it('returns 410 to the claim owner once the retention purge has run', async () => {
+    mockFindPurgeState.mockResolvedValue({ validator_user_id: 'bob', claim_purged_at: new Date(), case_purged_at: new Date() });
+    const res = await call();
+    expect(res.status).toBe(410);
+    expect(mockRevealExpectedOutput).not.toHaveBeenCalled();
+  });
+
+  it('does not reveal the purge to someone else — the service answers instead', async () => {
+    mockFindPurgeState.mockResolvedValue({ validator_user_id: 'carol', claim_purged_at: new Date(), case_purged_at: new Date() });
+    mockRevealExpectedOutput.mockRejectedValue(new MockForbiddenClaimAccessError('not yours'));
+    expect((await call()).status).toBe(403);
   });
 });

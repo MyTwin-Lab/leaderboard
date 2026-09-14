@@ -25,7 +25,6 @@ export interface MeetingAnalysisResult {
   summary: string;
   decisions: Decision[];
   actions: Action[];
-  contribution_signals: ContributionSignal[];
 }
 
 export interface Decision {
@@ -39,12 +38,4 @@ export interface Action {
   assignee?: string;
   deadline?: string;
   priority?: 'high' | 'medium' | 'low';
-}
-
-export interface ContributionSignal {
-  user_id?: string;
-  display_name: string;
-  signal_type: 'coordination' | 'technical_leadership' | 'problem_solving' | 'knowledge_sharing';
-  weight: number;
-  description?: string;
 }

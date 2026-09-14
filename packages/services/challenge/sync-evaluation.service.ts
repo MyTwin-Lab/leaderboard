@@ -148,6 +148,9 @@ export class SyncEvaluationService {
         evaluations.push(evaluation);
       } catch (error) {
         console.error(`[SyncEvaluationService] Error evaluating ${contribution.title}:`, error);
+      } finally {
+        // Le workspace contient le code évalué : supprimé à chaque contribution.
+        await this.snapshotService.cleanup(preparedSnapshot);
       }
     }
 

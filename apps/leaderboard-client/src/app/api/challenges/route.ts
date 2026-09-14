@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
+import { verifyRequestToken } from '@/lib/auth';
 import {
   ChallengeRepository,
   RepoRepository,
@@ -46,16 +46,10 @@ export async function GET(request: NextRequest) {
   try {
     const managedParam = request.nextUrl.searchParams.get('managed');
     if (managedParam === 'true') {
-      const token = request.cookies.get('access_token')?.value;
-      if (!token) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-      let userId: string;
-      try {
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-        const { payload } = await jwtVerify(token, secret);
-        userId = payload.userId as string;
-      } catch {
-        return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-      }
+      // Helper partagé : une signature valide ne suffit pas (voir lib/sessionClaims.ts).
+      const session = await verifyRequestToken(request);
+      if (!session) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      const userId = session.userId;
       const managedProjects = await repositories.project.findByManagerId(userId);
       const projectIds = new Set(managedProjects.map(p => p.uuid));
       const all = await challengeRepo.findAll();
@@ -76,18 +70,9 @@ export async function GET(request: NextRequest) {
 // POST /api/challenges - Créer un nouveau challenge
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get('access_token')?.value;
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    let userId: string;
-    let userRole: string;
-    try {
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-      const { payload } = await jwtVerify(token, secret);
-      userId = payload.userId as string;
-      userRole = payload.role as string;
-    } catch {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const session = await verifyRequestToken(request);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { userId, role: userRole } = session;
 
     const body = await request.json();
     const validated = createChallengeSchema.parse(body);

@@ -9,11 +9,16 @@ import {
   DuplicateClaimError,
   EndpointCallError,
 } from '../../../../../../../../../../packages/services/challenge/reference-case.service';
-import { ValidationTargetRepository } from '../../../../../../../../../../packages/database-service/repositories';
+import {
+  ValidationTargetRepository,
+  ReferenceCaseRepository,
+} from '../../../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
+import { buildSafeFileHeaders } from '@/lib/server/safeFileHeaders';
 
 const service = new ReferenceCaseService();
 const targetRepo = new ValidationTargetRepository();
+const caseRepo = new ReferenceCaseRepository();
 
 const claimSchema = z.object({
   reference_case_id: z.string().uuid(),
@@ -45,6 +50,12 @@ export async function POST(
       return NextResponse.json({ error: 'Target not found' }, { status: 404 });
     }
 
+    // Un cas purgé n'a plus d'octets d'entrée : l'envoyer à l'endpoint
+    // testerait un fichier vide. 410, comme les routes d'octets.
+    if (await caseRepo.isPurged(reference_case_id)) {
+      return NextResponse.json({ error: 'Reference case no longer available (purged after the retention period)' }, { status: 410 });
+    }
+
     const { claim, liveResponse } = await service.claimCase({
       validationChallengeId: challengeId,
       contributionId: target.contribution_id,
@@ -52,13 +63,16 @@ export async function POST(
       validatorUserId: user.id,
     });
 
+    // La réponse vient d'un endpoint tiers : son Content-Type n'est jamais
+    // recopié tel quel. buildSafeFileHeaders normalise le type, pose nosniff
+    // et force le téléchargement de tout ce qui n'est pas une image sûre.
+    const headers = buildSafeFileHeaders(liveResponse.contentType, 'response') as Record<string, string>;
+    headers['X-Validation-Status'] = String(liveResponse.status);
+    headers['X-Claim-Id'] = claim.uuid;
+
     return new NextResponse(new Uint8Array(liveResponse.body), {
       status: 200,
-      headers: {
-        'Content-Type': liveResponse.contentType,
-        'X-Validation-Status': String(liveResponse.status),
-        'X-Claim-Id': claim.uuid,
-      },
+      headers,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

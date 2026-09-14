@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SyncMeetingService } from '../../../../../../../packages/services/sync-meeting/sync-meeting.service.js';
-import { verifyRequestToken, verifyAdmin } from '@/lib/auth';
+import { verifyAdmin, getSessionUser } from '@/lib/auth';
+import { loadAccessibleMeeting, toMeetingView } from '../meetingAccess';
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const payload = await verifyRequestToken(request);
-    if (!payload) {
+    const user = await getSessionUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
-    const syncMeetingService = new SyncMeetingService();
-    const meeting = await syncMeetingService.getMeetingById(id);
-
+    // 404 aussi quand l'accès est refusé : l'existence du meeting ne fuit pas.
+    const meeting = await loadAccessibleMeeting(id, user);
     if (!meeting) {
       return NextResponse.json({ error: 'Meeting not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ meeting });
+    return NextResponse.json({ meeting: toMeetingView(meeting) });
   } catch (error) {
     console.error('[SyncMeetings] GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch meeting' }, { status: 500 });

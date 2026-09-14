@@ -62,7 +62,6 @@ All request bodies are JSON unless noted (a few validation routes take `multipar
 | `DELETE` | `/api/challenges/:id` | Delete a challenge (also terminates any GPU instance it owns). | Admin |
 | `GET` | `/api/challenges/:id/overview` | **Aggregated read** — challenge, team, tasks, meetings, repos, contributions, participants in one response. Backs both the public detail page and the manage view. Anonymous callers get a reduced, allowlisted payload (`lib/public/overview.ts`). | Public |
 | `POST` | `/api/challenges/:id/close` | Close a challenge — flips the status only, nothing is computed. | Admin |
-| `GET` | `/api/challenges/:id/context` | Full evaluation context (commits, notes). Legacy — belongs to the retired challenge-level pipeline. | Admin |
 | `POST` | `/api/challenges/:id/sync` | Legacy challenge-level evaluation sync. Superseded by per-contributor project evaluation. | Admin |
 | `POST` | `/api/challenges/:id/join` | Join a challenge — creates the participation, copies the task template, provisions the personal branch. Optional body: `{ mode: 'group' }` creates a group and returns its invite token, `{ group: <uuid> }` joins one (no board copy, no provisioning). | Contributor+ |
 | `GET` | `/api/challenges/:id/group/:token` | Who holds an invited group and whether it can still be joined. Answers only on an exact token, lists nothing. | Contributor+ |

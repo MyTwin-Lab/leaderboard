@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runSlackSignalsCron } from '../../../../../../../packages/services/slack/cron-slack-signals.js';
+import { isCronAuthorized } from '@/lib/server/cronAuth';
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!isCronAuthorized(request)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

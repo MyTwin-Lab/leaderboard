@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindByChallenge } = vi.hoisted(() => ({
+const { mockFindByChallenge, mockGetSessionUser } = vi.hoisted(() => ({
   mockFindByChallenge: vi.fn(),
+  mockGetSessionUser: vi.fn(),
 }));
 
 vi.mock('../../../../../../../../packages/database-service/repositories', () => ({
@@ -10,6 +11,8 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
     findByChallenge = mockFindByChallenge;
   },
 }));
+
+vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
 
 import { GET } from './route';
 
@@ -23,9 +26,39 @@ function getContributions() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockFindByChallenge.mockResolvedValue([]);
+  mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
 });
 
 describe('GET /api/contributions/challenge/[id]', () => {
+  it('returns 401 without a session', async () => {
+    mockGetSessionUser.mockResolvedValue(null);
+
+    const res = await getContributions();
+
+    expect(res.status).toBe(401);
+    expect(mockFindByChallenge).not.toHaveBeenCalled();
+  });
+
+  // Les lignes portent l'évaluation IA privée de chaque auteur.
+  it('returns 403 for a contributor', async () => {
+    mockGetSessionUser.mockResolvedValue({ id: 'u1', role: 'contributor' });
+
+    const res = await getContributions();
+
+    expect(res.status).toBe(403);
+    expect(mockFindByChallenge).not.toHaveBeenCalled();
+  });
+
+  it('returns the full rows, evaluation included, to an admin', async () => {
+    mockFindByChallenge.mockResolvedValue([{ uuid: 'c1', reward: 10, evaluation: { globalScore: 82 } }]);
+
+    const res = await getContributions();
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body[0].evaluation).toEqual({ globalScore: 82 });
+  });
+
   it('returns an empty list when the challenge has no contributions', async () => {
     const res = await getContributions();
     const body = await res.json();

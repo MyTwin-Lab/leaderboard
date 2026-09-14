@@ -608,7 +608,9 @@ export default function ChallengeDetailClient({ knownAnonymous = false }: { know
       {/* ── Tabs ─────────────────────────────────────────── */}
       {!isAnonymous && !showBrief && (
       <ContributorTabs
-        extra={meetingsEnabled && (
+        // Membres et admins seulement : l'overview ne sert le lien Meet qu'à
+        // eux, un non-membre verrait des réunions qu'il ne peut pas rejoindre.
+        extra={meetingsEnabled && (isMember || isAdmin) && (
           <MeetingsSection
             meetings={meetings}
             upcomingMeetings={upcomingMeetings}

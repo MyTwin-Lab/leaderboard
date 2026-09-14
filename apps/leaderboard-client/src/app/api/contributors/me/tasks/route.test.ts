@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindByUser, mockFindById, mockJwtVerify } = vi.hoisted(() => ({
+const { mockFindByUser, mockFindById, mockVerifyRequestToken } = vi.hoisted(() => ({
   mockFindByUser: vi.fn(),
   mockFindById: vi.fn(),
-  mockJwtVerify: vi.fn(),
+  mockVerifyRequestToken: vi.fn(),
 }));
 
 vi.mock('../../../../../../../../packages/database-service/repositories', () => ({
@@ -16,7 +16,12 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   },
 }));
 
-vi.mock('jose', () => ({ jwtVerify: mockJwtVerify }));
+// Comme le vrai helper : `null` sans cookie access_token ; la doublure décide du reste
+// (`null` = jeton refusé, dont `sb_anon` et les refresh tokens).
+vi.mock('@/lib/auth', () => ({
+  verifyRequestToken: (req: NextRequest) =>
+    req.cookies.get('access_token') ? mockVerifyRequestToken(req) : Promise.resolve(null),
+}));
 
 import { GET } from './route';
 
@@ -30,7 +35,7 @@ function getTasks(token?: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.JWT_SECRET = 'test-secret';
-  mockJwtVerify.mockResolvedValue({ payload: { userId: 'user-1' } });
+  mockVerifyRequestToken.mockResolvedValue({ userId: 'user-1' });
 });
 
 describe('GET /api/contributors/me/tasks', () => {
@@ -42,7 +47,7 @@ describe('GET /api/contributors/me/tasks', () => {
   });
 
   it('returns 401 when the token fails verification', async () => {
-    mockJwtVerify.mockRejectedValue(new Error('bad token'));
+    mockVerifyRequestToken.mockResolvedValue(null);
 
     const res = await getTasks('bad-token');
 
