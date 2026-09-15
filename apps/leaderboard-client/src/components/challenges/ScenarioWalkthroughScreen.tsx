@@ -321,7 +321,7 @@ export function ScenarioWalkthroughScreen({
               <a
                 href={endpointUrl}
                 target="_blank"
-                rel="noreferrer noopener"
+                rel="ugc noreferrer noopener"
                 className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-xs font-semibold transition-colors hover:border-white/20"
                 style={{ color: fgAt(0.7) }}
               >

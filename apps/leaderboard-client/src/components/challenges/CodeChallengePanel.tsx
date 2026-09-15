@@ -129,7 +129,7 @@ export function CodeChallengePanel({
             <span className="text-xs text-white/45">Your branch</span>
             {myParticipation?.workspace_status === 'ready' && myParticipation.workspace_url ? (
               <>
-                <a href={myParticipation.workspace_url} target="_blank" rel="noopener noreferrer"
+                <a href={myParticipation.workspace_url} target="_blank" rel="ugc noopener noreferrer"
                    className="inline-flex min-w-0 items-center gap-1.5 truncate font-mono text-[13px] font-semibold text-brandCP hover:underline">
                   {myParticipation.workspace_ref?.replace('refs/heads/', '')}
                   <ExternalLink className="h-3 w-3 shrink-0" />

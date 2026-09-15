@@ -42,13 +42,16 @@ function shortUrl(url: string): string {
   return url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
 }
 
-/** Une pastille cliquable vers une ressource externe du sandbox. */
+/**
+ * Une pastille cliquable vers une ressource externe du sandbox. Adresse saisie
+ * par l'auteur : `ugc`, pour ne pas transmettre l'autorité du site.
+ */
 function LinkChip({ href, icon: Icon }: { href: string; icon: typeof GitBranch }) {
   return (
     <a
       href={href}
       target="_blank"
-      rel="noopener noreferrer"
+      rel="ugc noopener noreferrer"
       className="inline-flex max-w-full items-center gap-2 truncate rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 font-mono text-xs text-white/70 transition-colors hover:border-brandCP/40 hover:text-white"
     >
       <Icon className="h-3.5 w-3.5 shrink-0 text-brandCP" />
@@ -216,7 +219,7 @@ export function SandboxDetail({
           {sandbox.context && (
             <section className="flex flex-col gap-2">
               <h2 className="text-xl font-semibold tracking-tight text-white">Context</h2>
-              <Markdown source={sandbox.context} variant="prose" />
+              <Markdown source={sandbox.context} variant="prose" userContent />
             </section>
           )}
 
@@ -239,7 +242,7 @@ export function SandboxDetail({
           {sandbox.why && (
             <section className="flex flex-col gap-2">
               <h2 className="text-xl font-semibold tracking-tight text-white">Why it matters</h2>
-              <Markdown source={sandbox.why} variant="prose" />
+              <Markdown source={sandbox.why} variant="prose" userContent />
             </section>
           )}
         </div>

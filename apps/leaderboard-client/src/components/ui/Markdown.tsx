@@ -56,7 +56,7 @@ const STYLES: Record<MarkdownVariant, VariantStyles> = {
   },
 };
 
-function inlineRender(text: string): React.ReactNode {
+function inlineRender(text: string, linkRel: string): React.ReactNode {
   // Process inline: bold, italic, inline-code, links
   const parts: React.ReactNode[] = [];
   let rest = text;
@@ -91,7 +91,7 @@ function inlineRender(text: string): React.ReactNode {
       const linkText = token.match(/\[([^\]]+)\]/)?.[1] ?? '';
       const linkHref = token.match(/\(([^)]+)\)/)?.[1] ?? '';
       parts.push(
-        <a key={key++} href={linkHref} target="_blank" rel="noopener noreferrer"
+        <a key={key++} href={linkHref} target="_blank" rel={linkRel}
           className="text-brandCP underline underline-offset-2 hover:text-brandCP/70">
           {linkText}
         </a>
@@ -109,16 +109,24 @@ function inlineRender(text: string): React.ReactNode {
  * à `<h6>`). Utile quand la page porte déjà son propre `<h1>` : un second
  * brouille la structure lue par les moteurs. Le style, lui, reste celui du
  * niveau écrit dans la source — l'apparence ne change pas.
+ *
+ * `userContent` marque les liens `rel="ugc"` : un texte saisi par un
+ * contributeur (un sandbox) ne doit pas transmettre l'autorité du site aux
+ * adresses qu'il cite. Les documents rédigés par un admin gardent des liens
+ * suivis.
  */
 export function renderMarkdown(
   md: string,
   variant: MarkdownVariant = 'compact',
   headingOffset = 0,
+  userContent = false,
 ): React.ReactNode[] {
   const s = STYLES[variant];
+  const linkRel = userContent ? 'ugc noopener noreferrer' : 'noopener noreferrer';
+  const inline = (text: string) => inlineRender(text, linkRel);
   const heading = (level: 1 | 2 | 3, key: number, text: string) => {
     const Tag = `h${Math.min(6, level + headingOffset)}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-    return <Tag key={key} className={s[`h${level}`]}>{inlineRender(text)}</Tag>;
+    return <Tag key={key} className={s[`h${level}`]}>{inline(text)}</Tag>;
   };
   const lines = md.split('\n');
   const nodes: React.ReactNode[] = [];
@@ -172,7 +180,7 @@ export function renderMarkdown(
     if (line.startsWith('> ')) {
       nodes.push(
         <blockquote key={i} className={s.blockquote}>
-          {inlineRender(line.slice(2))}
+          {inline(line.slice(2))}
         </blockquote>
       );
       i++; continue;
@@ -184,7 +192,7 @@ export function renderMarkdown(
       const items: React.ReactNode[] = [];
       while (i < lines.length && lines[i].match(/^[-*]\s+(.*)/)) {
         const m = lines[i].match(/^[-*]\s+(.*)/)!;
-        items.push(<li key={i} className={s.li}><span className={s.bullet} /><span>{inlineRender(m[1])}</span></li>);
+        items.push(<li key={i} className={s.li}><span className={s.bullet} /><span>{inline(m[1])}</span></li>);
         i++;
       }
       nodes.push(<ul key={`ul-${i}`} className={s.ul}>{items}</ul>);
@@ -198,7 +206,7 @@ export function renderMarkdown(
       let idx = 1;
       while (i < lines.length && lines[i].match(/^\d+\.\s+(.*)/)) {
         const m = lines[i].match(/^\d+\.\s+(.*)/)!;
-        items.push(<li key={i} className={s.li}><span className={s.marker}>{idx++}.</span><span>{inlineRender(m[1])}</span></li>);
+        items.push(<li key={i} className={s.li}><span className={s.marker}>{idx++}.</span><span>{inline(m[1])}</span></li>);
         i++;
       }
       nodes.push(<ol key={`ol-${i}`} className={s.ol}>{items}</ol>);
@@ -211,7 +219,7 @@ export function renderMarkdown(
     }
 
     // Normal paragraph
-    nodes.push(<p key={i} className={s.p}>{inlineRender(line)}</p>);
+    nodes.push(<p key={i} className={s.p}>{inline(line)}</p>);
     i++;
   }
 
@@ -219,12 +227,14 @@ export function renderMarkdown(
 }
 
 export function Markdown({
-  source, variant = 'compact', headingOffset = 0,
+  source, variant = 'compact', headingOffset = 0, userContent = false,
 }: {
   source: string;
   variant?: MarkdownVariant;
   /** Décale la balise des titres, voir renderMarkdown. 0 par défaut. */
   headingOffset?: number;
+  /** Texte saisi par un contributeur : liens en `rel="ugc"`, voir renderMarkdown. */
+  userContent?: boolean;
 }) {
-  return <>{renderMarkdown(source, variant, headingOffset)}</>;
+  return <>{renderMarkdown(source, variant, headingOffset, userContent)}</>;
 }

@@ -532,7 +532,7 @@ function RepoSubmission({
           <a
             href={myUrl}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="ugc noopener noreferrer"
             className="text-xs text-green-400 underline hover:text-green-300 truncate max-w-xs flex items-center gap-1"
           >
             {myUrl}

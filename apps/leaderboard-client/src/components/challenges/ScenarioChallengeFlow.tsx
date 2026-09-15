@@ -178,7 +178,7 @@ export function ScenarioChallengeFlow({ challengeId }: { challengeId: string }) 
                   <a
                     href={t.endpointUrl}
                     target="_blank"
-                    rel="noreferrer noopener"
+                    rel="ugc noreferrer noopener"
                     className="block truncate font-mono text-xs text-brandCP/70 hover:text-brandCP"
                   >
                     {t.endpointUrl}

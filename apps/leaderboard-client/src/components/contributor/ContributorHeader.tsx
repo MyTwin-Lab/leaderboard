@@ -71,7 +71,9 @@ export function ContributorHeader({
                 <a
                   href={`https://github.com/${githubUsername}`}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  // Identifiant saisi par le contributeur : `ugc`, pour ne pas
+                  // transmettre l'autorité du site.
+                  rel="ugc noopener noreferrer"
                   className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/8 px-2.5 py-1 text-xs text-white/50 transition-all duration-200 hover:scale-[1.04] hover:bg-white/15 hover:text-white/80"
                 >
                   <GitHubIcon className="h-3 w-3" />
