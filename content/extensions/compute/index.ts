@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ExtensionDefinition } from "../../../packages/registry/platform.js";
+import type { ActionAccess, ExtensionDefinition } from "../../../packages/registry/platform.js";
 import { extensionConfigOf, type FlowConfigSource } from "../../../packages/capabilities/flow-config.js";
 
 export const COMPUTE_EXTENSION_KEY = "compute";
@@ -18,6 +18,12 @@ export function computeEnabledFor(challenge: FlowConfigSource): boolean {
   return extensionConfigOf(challenge, COMPUTE_EXTENSION_KEY)?.enabled === true;
 }
 
+/** Trancher les demandes : un admin, ou le manager du challenge. */
+const DECIDERS: ActionAccess = { roles: ["admin"], manager: true };
+
+// Import à la demande : déclarer l'extension ne charge ni le service ni Scaleway.
+const load = () => import("./actions.js");
+
 /**
  * Extension puissance de calcul — demandes d'instances GPU Scaleway, décidées
  * par le manager et expirées au bout de leur fenêtre
@@ -29,4 +35,13 @@ export const computeExtension: ExtensionDefinition = {
   key: COMPUTE_EXTENSION_KEY,
   appliesTo: ["ml"],
   config: { schema: computeConfigSchema, editableKeys: ["enabled"] },
+  // Le service vérifie qu'un contributeur peut demander (extension activée,
+  // Scaleway connecté, pas de demande en cours).
+  actions: [
+    { path: "request", method: "GET", access: {}, handle: async (ctx) => (await load()).ownRequest(ctx) },
+    { path: "request", method: "POST", access: {}, handle: async (ctx) => (await load()).requestCompute(ctx) },
+    { path: "request/reveal-token", method: "POST", access: {}, handle: async (ctx) => (await load()).revealToken(ctx) },
+    { path: "requests", method: "GET", access: DECIDERS, handle: async (ctx) => (await load()).listRequests(ctx) },
+    { path: "requests/:requestId/decision", method: "POST", access: DECIDERS, handle: async (ctx) => (await load()).decide(ctx) },
+  ],
 };

@@ -1,3 +1,4 @@
+import type { Challenge } from "../database-service/domain/entities.js";
 import type { FlowDescriptor } from "./flows.js";
 
 /**
@@ -142,6 +143,62 @@ export interface QualificationDeclaration {
   description?: string;
 }
 
+export type ActionMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+/**
+ * Qui peut appeler une action. Une session est toujours exigée. Sans
+ * condition, tout compte connecté passe ; avec des conditions, **une seule**
+ * suffit : `{ roles: ["admin"], manager: true }` se lit « admin ou manager ».
+ *
+ * Ce contrôle est un portail : le handler garde ses vérifications propres
+ * (la propriété d'une ligne, l'état d'une demande…).
+ */
+export interface ActionAccess {
+  roles?: readonly string[];
+  /** Le manager du projet du challenge. */
+  manager?: boolean;
+  /** Un participant du challenge (`challenge_teams`). */
+  member?: boolean;
+  /** La qualification exigée, lue dans la configuration du challenge. `null` : personne. */
+  qualification?: (challenge: Challenge) => string | null;
+}
+
+/** L'appelant d'une action, relu en base par le shell. */
+export interface ActionCaller {
+  id: string;
+  role: string;
+}
+
+/** Les lectures d'autorisation d'un appel, calculées une fois : le portail et le handler les partagent. */
+export interface ActionAccessReader {
+  isAdmin(): boolean;
+  isManager(): Promise<boolean>;
+  isMember(): Promise<boolean>;
+  holds(qualification: string | null | undefined): Promise<boolean>;
+}
+
+export interface ActionContext {
+  request: Request;
+  challenge: Challenge;
+  user: ActionCaller;
+  /** Les segments `:nom` du chemin de l'action. */
+  params: Readonly<Record<string, string>>;
+  access: ActionAccessReader;
+}
+
+/**
+ * Une action d'un flow ou d'une extension, servie par
+ * `/api/challenges/[id]/flow/<path>` ou `/api/challenges/[id]/ext/<clé>/<path>`.
+ */
+export interface ChallengeActionDeclaration {
+  /** `targets`, `targets/:targetId/claim`… sans barre de début ni de fin. */
+  path: string;
+  method: ActionMethod;
+  access: ActionAccess;
+  /** Une `Response` passe telle quelle (un fichier, un statut choisi) ; toute autre valeur part en JSON. */
+  handle(ctx: ActionContext): Promise<unknown>;
+}
+
 interface Declarations {
   ruleKeys?: readonly RuleKeyDeclaration[];
   contributionTypes?: readonly ContributionTypeDeclaration[];
@@ -162,6 +219,7 @@ export interface FlowDefinition extends Declarations {
   deliverables?: readonly DeliverableDeclaration[];
   /** Pour un flow qui éprouve les livrables d'un challenge parent (`source_challenge_id`). */
   requires?: { deliverableCapability: string };
+  actions?: readonly ChallengeActionDeclaration[];
 }
 
 export interface ExtensionDefinition extends Declarations {
@@ -169,6 +227,7 @@ export interface ExtensionDefinition extends Declarations {
   /** Les flows auxquels l'extension s'attache, ou `"*"` pour tous. */
   appliesTo: readonly string[] | "*";
   config?: ExtensionConfigDeclaration;
+  actions?: readonly ChallengeActionDeclaration[];
 }
 
 export interface KitDefinition extends Declarations {
@@ -287,6 +346,24 @@ function checkConfigVersions(flow: FlowDefinition): void {
   }
 }
 
+/**
+ * Deux actions d'un même propriétaire ne peuvent pas répondre au même appel :
+ * `targets/:id` et `targets/:targetId` sont le même chemin.
+ */
+function checkActions(owner: string, actions: readonly ChallengeActionDeclaration[] | undefined): void {
+  const seen = new Set<string>();
+  for (const action of actions ?? []) {
+    if (!action.path || action.path.startsWith("/") || action.path.endsWith("/")) {
+      throw new Error(`[PlatformRegistry] Action path "${action.path}" of ${owner} must not start or end with "/"`);
+    }
+    const signature = `${action.method} ${action.path.replace(/:[^/]+/g, ":")}`;
+    if (seen.has(signature)) {
+      throw new Error(`[PlatformRegistry] Action "${action.method} ${action.path}" is declared twice by ${owner}`);
+    }
+    seen.add(signature);
+  }
+}
+
 export class PlatformRegistry {
   /**
    * Installe une distribution. Tout est vérifié avant que rien ne soit visible :
@@ -313,6 +390,7 @@ export class PlatformRegistry {
     for (const flow of definitions.flows) {
       addUnique(state.flows, "Flow", flow.descriptor.key, flow);
       checkConfigVersions(flow);
+      checkActions(`flow:${flow.descriptor.key}`, flow.actions);
       owners.push({ key: flow.descriptor.key, owner: `flow:${flow.descriptor.key}`, declarations: flow });
     }
     for (const kit of definitions.kits ?? []) {
@@ -330,6 +408,7 @@ export class PlatformRegistry {
           }
         }
       }
+      checkActions(`extension:${extension.key}`, extension.actions);
       owners.push({ key: extension.key, owner: `extension:${extension.key}`, declarations: extension });
     }
     for (const module of definitions.modules ?? []) {

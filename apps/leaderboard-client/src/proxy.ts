@@ -383,9 +383,13 @@ export async function proxy(request: NextRequest) {
       // handler (isManagerOfChallenge).
       const isSyncMeetingCreateRoute = pathname === '/api/sync-meetings' && method === 'POST';
 
+      // Actions des flows et des extensions (challenge 020, L4) : chaque action
+      // déclare qui peut l'appeler, et le dispatcher du core l'applique.
+      const isChallengeActionRoute = /^\/api\/challenges\/[^/]+\/(flow|ext)\//.test(pathname);
+
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isQualifiedValidationRoute && !isScenarioWalkthroughRoute && !isNotificationSelfRoute && !isGroupInviteRoute && !isComputeRequestRoute && !isSyncMeetingCreateRoute) {
+        if (!isChallengeActionRoute && !isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isQualifiedValidationRoute && !isScenarioWalkthroughRoute && !isNotificationSelfRoute && !isGroupInviteRoute && !isComputeRequestRoute && !isSyncMeetingCreateRoute) {
           return respond(NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }
