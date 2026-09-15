@@ -5,7 +5,7 @@ import {
   ExternalItem,
   ConnectorType,
   KaggleModelMetrics,
-} from "../interfaces.js";
+} from "../../../packages/connectors/interfaces.js";
 
 /**
  * Best-effort metric extraction from a Kaggle model version's overview/description field.
@@ -180,14 +180,14 @@ export class KaggleConnector implements ExternalConnector {
 
   // ─── fetchRepoActivity ────────────────────────────────────────────────────
 
-  async fetchRepoActivity(): Promise<import('../interfaces.js').KaggleRepoActivity> {
+  async fetchRepoActivity(): Promise<import('../../../packages/connectors/interfaces.js').KaggleRepoActivity> {
     if (this.subtype === 'kaggle_dataset') {
       return this.fetchDatasetActivity();
     }
     return this.fetchModelActivity();
   }
 
-  private async fetchDatasetActivity(): Promise<import('../interfaces.js').KaggleRepoActivity> {
+  private async fetchDatasetActivity(): Promise<import('../../../packages/connectors/interfaces.js').KaggleRepoActivity> {
     const metadata = await this.kaggleFetch(`/datasets/view/${this.owner}/${this.slug}`);
 
     return {
@@ -202,7 +202,7 @@ export class KaggleConnector implements ExternalConnector {
     };
   }
 
-  private async fetchModelActivity(): Promise<import('../interfaces.js').KaggleRepoActivity> {
+  private async fetchModelActivity(): Promise<import('../../../packages/connectors/interfaces.js').KaggleRepoActivity> {
     // The Kaggle API has no working "list instances" / "list versions" endpoints
     // (both 404 in practice) — `/models/{owner}/{slug}/get` already returns
     // everything available: the model's own description and each instance's
@@ -226,7 +226,7 @@ export class KaggleConnector implements ExternalConnector {
       ...instances.map((inst: any) => [inst.overview, inst.usage].filter(Boolean).join('\n')),
     ].filter(Boolean).join('\n');
 
-    const version: import('../interfaces.js').KaggleModelVersion = {
+    const version: import('../../../packages/connectors/interfaces.js').KaggleModelVersion = {
       versionNumber: instances[0]?.versionNumber ?? 0,
       createdAt: metadata.updateTime ?? metadata.publishTime ?? new Date(0).toISOString(),
       metrics: parseMetrics(combinedText),

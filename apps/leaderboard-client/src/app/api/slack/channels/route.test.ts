@@ -1,20 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockGetSlackToken, mockListChannels, mockFindAll, mockGetSessionUser } = vi.hoisted(() => ({
-  mockGetSlackToken: vi.fn(),
+const { mockCreateConnector, mockListChannels, mockFindAll, mockGetSessionUser } = vi.hoisted(() => ({
+  mockCreateConnector: vi.fn(),
   mockListChannels: vi.fn(),
   mockFindAll: vi.fn(),
   mockGetSessionUser: vi.fn(),
 }));
 
-vi.mock('../../../../../../../packages/config/slackCredentials.js', () => ({
-  getSlackToken: mockGetSlackToken,
-}));
-
-vi.mock('../../../../../../../packages/connectors/implementation/Slack.connector.js', () => ({
-  SlackConnector: class {
-    listChannels = mockListChannels;
-  },
+vi.mock('../../../../../../../packages/connectors/registry.js', () => ({
+  ConnectorRegistry: { createConnector: mockCreateConnector },
 }));
 
 vi.mock('../../../../../../../packages/database-service/repositories/index.js', () => ({
@@ -30,7 +24,7 @@ import { GET } from './route';
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
-  mockGetSlackToken.mockResolvedValue('xoxb-token');
+  mockCreateConnector.mockResolvedValue({ listChannels: mockListChannels });
   mockListChannels.mockResolvedValue([{ id: 'C1', name: 'general' }]);
   mockFindAll.mockResolvedValue([]);
 });
@@ -42,7 +36,7 @@ describe('GET /api/slack/channels', () => {
     const res = await GET();
 
     expect(res.status).toBe(401);
-    expect(mockGetSlackToken).not.toHaveBeenCalled();
+    expect(mockCreateConnector).not.toHaveBeenCalled();
   });
 
   it('returns 403 for a non-admin who does not manage any project', async () => {
@@ -52,14 +46,15 @@ describe('GET /api/slack/channels', () => {
     const res = await GET();
 
     expect(res.status).toBe(403);
-    expect(mockGetSlackToken).not.toHaveBeenCalled();
+    expect(mockCreateConnector).not.toHaveBeenCalled();
   });
 
-  it('returns the channel list for an admin', async () => {
+  it('returns the channel list for an admin, read through the Slack connector', async () => {
     const res = await GET();
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([{ id: 'C1', name: 'general' }]);
+    expect(mockCreateConnector).toHaveBeenCalledWith({ type: 'slack' });
     expect(mockFindAll).not.toHaveBeenCalled();
   });
 
@@ -74,7 +69,7 @@ describe('GET /api/slack/channels', () => {
   });
 
   it('returns 400 when Slack is not connected', async () => {
-    mockGetSlackToken.mockResolvedValue(null);
+    mockCreateConnector.mockResolvedValue(null);
 
     const res = await GET();
 

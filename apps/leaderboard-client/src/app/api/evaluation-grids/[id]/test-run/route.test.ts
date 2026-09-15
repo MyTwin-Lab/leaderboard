@@ -10,9 +10,9 @@ const {
   mockParseGitHubUrl,
   mockResolveGitHubCommitShas,
   mockExtractArtifactRef,
+  mockCreateConnector,
   mockGithubConnect,
   mockGetGithubToken,
-  mockGetKaggleCredentials,
   mockKaggleConnect,
   mockKaggleFetchItems,
   mockKaggleFetchItemContent,
@@ -27,9 +27,9 @@ const {
   mockParseGitHubUrl: vi.fn(),
   mockResolveGitHubCommitShas: vi.fn(),
   mockExtractArtifactRef: vi.fn(),
+  mockCreateConnector: vi.fn(),
   mockGithubConnect: vi.fn(),
   mockGetGithubToken: vi.fn(),
-  mockGetKaggleCredentials: vi.fn(),
   mockKaggleConnect: vi.fn(),
   mockKaggleFetchItems: vi.fn(),
   mockKaggleFetchItemContent: vi.fn(),
@@ -65,26 +65,12 @@ vi.mock('../../../../../../../../packages/services/challenge/artifactUrl.js', ()
   extractArtifactRef: mockExtractArtifactRef,
 }));
 
-vi.mock('../../../../../../../../packages/connectors/implementation/Github.connector.js', () => ({
-  GitHubExternalConnector: class {
-    connect = mockGithubConnect;
-  },
-}));
-
-vi.mock('../../../../../../../../packages/connectors/implementation/Kaggle.connector.js', () => ({
-  KaggleConnector: class {
-    connect = mockKaggleConnect;
-    fetchItems = mockKaggleFetchItems;
-    fetchItemContent = mockKaggleFetchItemContent;
-  },
+vi.mock('../../../../../../../../packages/connectors/registry.js', () => ({
+  ConnectorRegistry: { createConnector: mockCreateConnector },
 }));
 
 vi.mock('../../../../../../../../packages/config/githubToken.js', () => ({
   getGithubToken: mockGetGithubToken,
-}));
-
-vi.mock('../../../../../../../../packages/config/kaggleCredentials.js', () => ({
-  getKaggleCredentials: mockGetKaggleCredentials,
 }));
 
 vi.mock('../../../../../../../../packages/evaluator/evaluator.js', () => ({
@@ -125,6 +111,13 @@ const evaluation = (globalScore: number) => ({
   scores: [{ criterion: 'Correctness', score: globalScore }],
 });
 
+const githubConnector = () => ({ connect: mockGithubConnect });
+const kaggleConnector = () => ({
+  connect: mockKaggleConnect,
+  fetchItems: mockKaggleFetchItems,
+  fetchItemContent: mockKaggleFetchItemContent,
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockVerifyAdmin.mockResolvedValue({ userId: 'admin-1', role: 'admin', email: 'a@b.com' });
@@ -134,6 +127,10 @@ beforeEach(() => {
   mockFsRm.mockResolvedValue(undefined);
   mockEvaluate.mockResolvedValue(evaluation(80));
 
+  mockCreateConnector.mockImplementation(async (repo: { type: string }) =>
+    repo.type === 'github' ? githubConnector() : kaggleConnector()
+  );
+
   mockParseGitHubUrl.mockReturnValue({ owner: 'acme', repo: 'widgets', refType: 'branch', ref: 'main' });
   mockGetGithubToken.mockResolvedValue('gh-token');
   mockGithubConnect.mockResolvedValue(undefined);
@@ -141,7 +138,6 @@ beforeEach(() => {
   mockBuildAggregatedSnapshot.mockResolvedValue({ commitSha: 'sha1', modifiedFiles: [] });
 
   mockExtractArtifactRef.mockReturnValue('acme/widgets');
-  mockGetKaggleCredentials.mockResolvedValue({ username: 'user', apiKey: 'key' });
   mockKaggleConnect.mockResolvedValue(undefined);
   mockKaggleFetchItems.mockResolvedValue([{ id: 'item-1' }]);
   mockKaggleFetchItemContent.mockResolvedValue({ commitSha: 'sha1', modifiedFiles: [] });
@@ -186,6 +182,15 @@ describe('POST /api/evaluation-grids/[id]/test-run', () => {
     const res = await postTestRun(GITHUB_BODY);
 
     expect(res.status).toBe(200);
+    expect(mockCreateConnector).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'github', external_repo_id: 'acme/widgets' }),
+      { branch: 'main', allowAnonymous: true }
+    );
+    expect(mockResolveGitHubCommitShas).toHaveBeenCalledWith(
+      expect.objectContaining({ owner: 'acme', repo: 'widgets' }),
+      expect.objectContaining({ connect: mockGithubConnect }),
+      20
+    );
     expect(mockEvaluate).toHaveBeenCalledTimes(5);
     const body = await res.json();
     expect(body.runs).toHaveLength(5);
@@ -214,7 +219,18 @@ describe('POST /api/evaluation-grids/[id]/test-run', () => {
     const res = await postTestRun(GITHUB_BODY);
 
     expect(res.status).toBe(400);
+    expect(mockCreateConnector).not.toHaveBeenCalled();
     expect(mockGithubConnect).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when no GitHub connector is installed', async () => {
+    mockCreateConnector.mockResolvedValue(null);
+
+    const res = await postTestRun(GITHUB_BODY);
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/GitHub connector/i);
   });
 
   it('returns 400 when no commits are found for the GitHub reference', async () => {
@@ -243,6 +259,9 @@ describe('POST /api/evaluation-grids/[id]/test-run', () => {
     const res = await postTestRun(KAGGLE_BODY);
 
     expect(res.status).toBe(200);
+    expect(mockCreateConnector).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'kaggle_dataset', external_repo_id: 'acme/widgets' })
+    );
     expect(mockKaggleFetchItemContent).toHaveBeenCalledWith('item-1');
     const body = await res.json();
     expect(body.runs).toHaveLength(5);
@@ -257,7 +276,9 @@ describe('POST /api/evaluation-grids/[id]/test-run', () => {
   });
 
   it('returns 400 when no Kaggle credentials are configured', async () => {
-    mockGetKaggleCredentials.mockResolvedValue(null);
+    mockCreateConnector.mockImplementation(async (repo: { type: string }) =>
+      repo.type === 'github' ? githubConnector() : null
+    );
 
     const res = await postTestRun(KAGGLE_BODY);
 

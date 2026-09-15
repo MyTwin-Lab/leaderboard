@@ -5,7 +5,7 @@ import {
   ConnectorAuthConfig,
   ExternalItem,
   ConnectorType,
-} from "../interfaces.js";
+} from "../../../packages/connectors/interfaces.js";
 
 /**
  * Options pour le connecteur GitHub externe
@@ -394,6 +394,29 @@ export class GitHubExternalConnector implements ExternalConnector {
   }
 
   /**
+   * Commits d'une pull request du dépôt, dans l'ordre de l'API, au plus
+   * `maxCommits`. Paginé par 100, le maximum qu'accepte l'API.
+   */
+  async listPullRequestCommits(prNumber: number, maxCommits: number): Promise<string[]> {
+    const shas: string[] = [];
+    let page = 1;
+    while (shas.length < maxCommits) {
+      const { data } = await this.octokit.rest.pulls.listCommits({
+        owner: this.owner,
+        repo: this.repo,
+        pull_number: prNumber,
+        per_page: 100,
+        page,
+      });
+      if (data.length === 0) break;
+      shas.push(...data.map((c) => c.sha));
+      if (data.length < 100) break;
+      page++;
+    }
+    return shas.slice(0, maxCommits);
+  }
+
+  /**
    * Nettoyage (optionnel, rien à faire pour GitHub)
    */
   async disconnect(): Promise<void> {
@@ -405,7 +428,7 @@ export class GitHubExternalConnector implements ExternalConnector {
    * commits, pull requests, PR reviews, and branches.
    * Returns up to 100 items per category, sorted newest first.
    */
-  async fetchRepoActivity(): Promise<import('../interfaces.js').GitHubRepoActivity> {
+  async fetchRepoActivity(): Promise<import('../../../packages/connectors/interfaces.js').GitHubRepoActivity> {
     const [commitsResp, prsResp, branchesResp] = await Promise.all([
       this.octokit.rest.repos.listCommits({
         owner: this.owner,
@@ -428,7 +451,7 @@ export class GitHubExternalConnector implements ExternalConnector {
       }).catch(() => ({ data: [] as any[] })),
     ]);
 
-    const events: import('../interfaces.js').GitHubEvent[] = [];
+    const events: import('../../../packages/connectors/interfaces.js').GitHubEvent[] = [];
 
     // ── Commits ────────────────────────────────────────────────────────────
     for (const c of commitsResp.data) {

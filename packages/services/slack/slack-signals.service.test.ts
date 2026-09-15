@@ -11,7 +11,7 @@ const h = vi.hoisted(() => ({
   projectFindById: vi.fn(),
   rewardFindByChallenge: vi.fn(),
   createManyAndSyncRewards: vi.fn(),
-  getSlackToken: vi.fn(),
+  createConnector: vi.fn(),
   fetchItems: vi.fn(),
   resolveUserProfile: vi.fn(),
   runDetectAgent: vi.fn(),
@@ -35,12 +35,8 @@ vi.mock("../../database-service/repositories/index.js", () => ({
     createManyAndSyncRewards = h.createManyAndSyncRewards;
   },
 }));
-vi.mock("../../config/slackCredentials.js", () => ({ getSlackToken: h.getSlackToken }));
-vi.mock("../../connectors/implementation/Slack.connector.js", () => ({
-  SlackConnector: class {
-    fetchItems = h.fetchItems;
-    resolveUserProfile = h.resolveUserProfile;
-  },
+vi.mock("../../connectors/registry.js", () => ({
+  ConnectorRegistry: { createConnector: h.createConnector },
 }));
 vi.mock("../../slack-signal-agent/index.js", () => ({ runDetectAgent: h.runDetectAgent }));
 
@@ -73,7 +69,10 @@ beforeEach(() => {
   h.signalsFindByChallenge.mockResolvedValue([
     { uuid: "sig-1", label: "Fix", description: "Fixes a bug", reward_cp: 5 },
   ]);
-  h.getSlackToken.mockResolvedValue("xoxb-test");
+  h.createConnector.mockResolvedValue({
+    fetchItems: h.fetchItems,
+    resolveUserProfile: h.resolveUserProfile,
+  });
   h.findTeamMembers.mockResolvedValue([
     { uuid: "user-alice", email: "alice@example.org", full_name: "Alice Martin" },
   ]);

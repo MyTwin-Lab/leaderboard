@@ -23,13 +23,18 @@ export default defineConfig({
     projects: [
       // L'app Next, avec sa propre config (alias `@`, mock server-only).
       "./apps/leaderboard-client",
-      // Le monorepo côté serveur : pas d'alias, Node nu.
+      // Le monorepo côté serveur : pas d'alias, Node nu. Le contenu installé
+      // (connecteurs, flows) et les modules se testent de la même façon.
       {
         test: {
           name: "packages",
           globals: true,
           environment: "node",
-          include: ["packages/**/*.test.{ts,tsx}"],
+          include: [
+            "packages/**/*.test.{ts,tsx}",
+            "content/**/*.test.{ts,tsx}",
+            "modules/**/*.test.{ts,tsx}",
+          ],
         },
       },
     ],

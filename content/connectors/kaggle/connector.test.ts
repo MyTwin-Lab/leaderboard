@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseMetrics } from '../../../../../packages/connectors/implementation/Kaggle.connector.js';
+import { parseMetrics } from './connector.js';
 
 describe('parseMetrics', () => {
   it('returns empty object for empty string', () => {

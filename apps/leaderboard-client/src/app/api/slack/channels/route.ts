@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
-import { getSlackToken } from '../../../../../../../packages/config/slackCredentials.js';
-import { SlackConnector } from '../../../../../../../packages/connectors/implementation/Slack.connector.js';
+import { ConnectorRegistry } from '../../../../../../../packages/connectors/registry.js';
+import type { ExternalConnector } from '../../../../../../../packages/connectors/interfaces.js';
 import { ProjectRepository } from '../../../../../../../packages/database-service/repositories/index.js';
 import { getSessionUser } from '@/lib/auth';
 
 const projectRepo = new ProjectRepository();
+
+/** Un connecteur de discussion capable de lister ses canaux. */
+type ChannelListingConnector = ExternalConnector & {
+  listChannels(): Promise<{ id: string; name: string }[]>;
+};
+
+function canListChannels(connector: ExternalConnector | null): connector is ChannelListingConnector {
+  return !!connector && typeof (connector as Partial<ChannelListingConnector>).listChannels === 'function';
+}
 
 // GET /api/slack/channels — liste des canaux publics accessibles au bot
 // Réservé aux admins et aux managers de projet (config des challenges).
@@ -21,13 +30,14 @@ export async function GET() {
     }
   }
 
-  const token = await getSlackToken();
-  if (!token) {
+  // Sans canal désigné, le connecteur Slack sert à lister ceux du bot. Il
+  // n'est pas construit tant que Slack n'est pas connecté.
+  const connector = await ConnectorRegistry.createConnector({ type: 'slack' });
+  if (!canListChannels(connector)) {
     return NextResponse.json({ error: 'Slack is not connected' }, { status: 400 });
   }
 
   try {
-    const connector = new SlackConnector({ token });
     const channels = await connector.listChannels();
     return NextResponse.json(channels);
   } catch (err) {

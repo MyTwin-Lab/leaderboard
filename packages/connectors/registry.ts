@@ -1,97 +1,116 @@
 import type { Repo } from "../database-service/domain/entities.js";
 import type { ExternalConnector } from "./interfaces.js";
-import { GitHubExternalConnector } from "./implementation/Github.connector.js";
-import { KaggleConnector } from "./implementation/Kaggle.connector.js";
-import { SlackConnector } from "./implementation/Slack.connector.js";
-import { getGithubToken } from "../config/githubToken.js";
-import { getKaggleCredentials } from "../config/kaggleCredentials.js";
-import { getSlackToken } from "../config/slackCredentials.js";
-// Future: import { HuggingFaceConnector } from "./implementation/HuggingFace.connector.js";
 
 /**
  * ConnectorRegistry
  * -----------------
- * Factory pour créer des connecteurs basés sur le type de repo.
- * Utilise les variables d'environnement pour la configuration.
+ * Associe un type de repo (`github`, `kaggle_model`…) au connecteur qui sait
+ * le lire. Le core ne connaît aucune implémentation : chaque connecteur est
+ * une définition enregistrée par la distribution installée
+ * (`apps/leaderboard-client/src/distribution/mytwin.server.ts`), exactement
+ * comme le serait le connecteur d'un client.
+ *
+ * L'état vit sur `globalThis` : Next peut charger ce module plusieurs fois
+ * (instrumentation, bundles de routes), et une distribution installée au
+ * démarrage doit être vue par toutes ces copies.
  */
+
+/**
+ * Ce qu'un connecteur a besoin de savoir du repo à lire : son type, et le plus
+ * souvent `external_repo_id`. Les autres champs d'un `Repo` sont acceptés, pour
+ * que les appelants puissent passer une ligne entière.
+ */
+export type ConnectorRepoRef = Pick<Repo, "type"> & Partial<Omit<Repo, "type">>;
+
+export interface ConnectorCreateOptions {
+  /** Branche à lire, pour les connecteurs de code. */
+  branch?: string;
+  /**
+   * Construit le connecteur sans credentials quand le service l'accepte (dépôt
+   * GitHub public, fortement limité en débit). Par défaut, un connecteur sans
+   * credentials n'est pas construit.
+   */
+  allowAnonymous?: boolean;
+}
+
+export interface ConnectorDefinition {
+  /** Identifiant unique du connecteur. */
+  key: string;
+  /** Types de repo que ce connecteur sait lire. Un type n'appartient qu'à un seul connecteur. */
+  repoTypes: readonly string[];
+  /** `null` quand le connecteur ne peut pas être construit (credentials absents, référence invalide). */
+  create(repo: ConnectorRepoRef, options?: ConnectorCreateOptions): Promise<ExternalConnector | null>;
+}
+
+interface RegistryState {
+  byKey: Map<string, ConnectorDefinition>;
+  byRepoType: Map<string, ConnectorDefinition>;
+}
+
+const STATE_KEY = "__leaderboardConnectorRegistry";
+
+function state(): RegistryState {
+  const holder = globalThis as unknown as Record<string, RegistryState | undefined>;
+  holder[STATE_KEY] ??= { byKey: new Map(), byRepoType: new Map() };
+  return holder[STATE_KEY]!;
+}
+
 export class ConnectorRegistry {
-  // Exposed for tests to swap implementation
-  static GitHubConnectorClass = GitHubExternalConnector;
-  static KaggleConnectorClass = KaggleConnector;
-  static SlackConnectorClass = SlackConnector;
+  /**
+   * Enregistre un connecteur. Une clé ou un type de repo déjà pris lève : deux
+   * connecteurs qui prétendraient lire le même type rendraient le choix
+   * arbitraire, et l'erreur doit apparaître au démarrage, pas à la lecture.
+   */
+  static register(definition: ConnectorDefinition): void {
+    const { byKey, byRepoType } = state();
+    if (byKey.has(definition.key)) {
+      throw new Error(`[ConnectorRegistry] Connector "${definition.key}" is already registered`);
+    }
+    for (const type of definition.repoTypes) {
+      const owner = byRepoType.get(type);
+      if (owner) {
+        throw new Error(`[ConnectorRegistry] Repo type "${type}" is already handled by connector "${owner.key}"`);
+      }
+    }
+    byKey.set(definition.key, definition);
+    for (const type of definition.repoTypes) byRepoType.set(type, definition);
+  }
+
+  static has(key: string): boolean {
+    return state().byKey.has(key);
+  }
+
+  static keys(): string[] {
+    return [...state().byKey.keys()];
+  }
+
+  /** Vide le registre — réservé aux tests. */
+  static clear(): void {
+    const { byKey, byRepoType } = state();
+    byKey.clear();
+    byRepoType.clear();
+  }
 
   /**
-   * Crée un connecteur basé sur le type du repo
-   * @param repo - Repo contenant le type et l'external_repo_id
-   * @param options - Options supplémentaires (ex: branch pour GitHub)
-   * @returns ExternalConnector ou null si le type n'est pas supporté
+   * Crée le connecteur du repo, ou `null` si aucun connecteur installé ne lit
+   * ce type ou si le connecteur ne peut pas être construit.
    */
-  static async createConnector(repo: Repo, options?: { branch?: string }): Promise<ExternalConnector | null> {
-    switch (repo.type) {
-      case 'github': {
-        // Utiliser external_repo_id qui contient "owner/repo"
-        if (!repo.external_repo_id) {
-          console.error(`[ConnectorRegistry] Missing external_repo_id for GitHub repo: ${repo.title}`);
-          return null;
-        }
-
-        const [owner, repoName] = repo.external_repo_id.split('/');
-        if (!owner || !repoName) {
-          console.error(`[ConnectorRegistry] Invalid external_repo_id format for repo: ${repo.title}. Expected "owner/repo", got "${repo.external_repo_id}"`);
-          return null;
-        }
-
-        const token = await getGithubToken();
-        if (!token) {
-          console.error('[ConnectorRegistry] No GitHub token available (DB or .env)');
-          return null;
-        }
-
-        return new this.GitHubConnectorClass({
-          token,
-          owner,
-          repo: repoName,
-          branch: options?.branch,
-        });
+  static async createConnector(
+    repo: ConnectorRepoRef,
+    options?: ConnectorCreateOptions
+  ): Promise<ExternalConnector | null> {
+    const { byKey, byRepoType } = state();
+    const definition = byRepoType.get(repo.type);
+    if (!definition) {
+      if (byKey.size === 0) {
+        console.error(
+          `[ConnectorRegistry] No connector installed: the server distribution was not installed before '${repo.type}' was requested`
+        );
+      } else {
+        console.warn(`[ConnectorRegistry] Unknown repo type '${repo.type}'${repo.title ? ` for repo: ${repo.title}` : ""}`);
       }
-
-      case 'kaggle_dataset':
-      case 'kaggle_model': {
-        if (!repo.external_repo_id) {
-          console.error(`[ConnectorRegistry] Missing external_repo_id for Kaggle repo: ${repo.title}`);
-          return null;
-        }
-
-        const kaggleCreds = await getKaggleCredentials();
-        if (!kaggleCreds) {
-          console.error('[ConnectorRegistry] No Kaggle credentials available (DB or .env)');
-          return null;
-        }
-
-        return new this.KaggleConnectorClass({
-          username: kaggleCreds.username,
-          apiKey: kaggleCreds.apiKey,
-          ref: repo.external_repo_id,
-          subtype: repo.type as 'kaggle_dataset' | 'kaggle_model',
-        });
-      }
-
-      case 'slack': {
-        const slackToken = await getSlackToken();
-        if (!slackToken) {
-          console.error('[ConnectorRegistry] No Slack token available (DB or .env)');
-          return null;
-        }
-
-        return new this.SlackConnectorClass({
-          token: slackToken,
-          channelId: repo.external_repo_id,
-        });
-      }
-
-      default:
-        console.warn(`[ConnectorRegistry] Unknown repo type '${repo.type}' for repo: ${repo.title}`);
-        return null;
+      return null;
     }
+    return definition.create(repo, options);
   }
 }

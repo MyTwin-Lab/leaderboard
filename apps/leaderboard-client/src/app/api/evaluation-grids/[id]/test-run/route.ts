@@ -7,10 +7,8 @@ import { convertGridToEvaluatorFormat } from '../../../../../../../../packages/s
 import { SnapshotService } from '../../../../../../../../packages/services/challenge/snapshot.service.js';
 import { parseGitHubUrl, resolveGitHubCommitShas } from '../../../../../../../../packages/services/challenge/githubUrl.js';
 import { extractArtifactRef } from '../../../../../../../../packages/services/challenge/artifactUrl.js';
-import { GitHubExternalConnector } from '../../../../../../../../packages/connectors/implementation/Github.connector.js';
-import { KaggleConnector } from '../../../../../../../../packages/connectors/implementation/Kaggle.connector.js';
+import { ConnectorRegistry } from '../../../../../../../../packages/connectors/registry.js';
 import { getGithubToken } from '../../../../../../../../packages/config/githubToken.js';
-import { getKaggleCredentials } from '../../../../../../../../packages/config/kaggleCredentials.js';
 import { OpenAIAgentEvaluator } from '../../../../../../../../packages/evaluator/evaluator.js';
 import type { EvaluateContext, SnapshotInfo, Contribution as EvalContribution, Evaluation } from '../../../../../../../../packages/evaluator/types.js';
 
@@ -81,11 +79,18 @@ export async function POST(
       const token = await getGithubToken();
       if (!token) unauthenticatedGithub = true;
       const branch = branchOverride?.trim() || (parsedUrl.refType === 'branch' ? parsedUrl.ref : undefined);
-      const connector = new GitHubExternalConnector({ token: token ?? undefined, owner: parsedUrl.owner, repo: parsedUrl.repo, branch });
+      const slug = `${parsedUrl.owner}/${parsedUrl.repo}`;
+      const connector = await ConnectorRegistry.createConnector(
+        { title: slug, type: 'github', external_repo_id: slug },
+        { branch, allowAnonymous: true }
+      );
+      if (!connector) {
+        return NextResponse.json({ error: 'No GitHub connector is available on this platform.' }, { status: 400 });
+      }
 
       try {
         await connector.connect();
-        const commitShas = await resolveGitHubCommitShas(parsedUrl, connector, token ?? undefined, MAX_GITHUB_COMMITS);
+        const commitShas = await resolveGitHubCommitShas(parsedUrl, connector, MAX_GITHUB_COMMITS);
         if (commitShas.length === 0) {
           return NextResponse.json({ error: 'No commits found for this GitHub reference.' }, { status: 400 });
         }
@@ -101,20 +106,20 @@ export async function POST(
           { status: 400 }
         );
       }
-      derivedTitle = derivedTitle || `${parsedUrl.owner}/${parsedUrl.repo}`;
+      derivedTitle = derivedTitle || slug;
     } else {
       const ref = extractArtifactRef(sourceUrl);
       if (!ref) {
         return NextResponse.json({ error: 'Could not parse this as a Kaggle dataset/model URL.' }, { status: 400 });
       }
-      const credentials = await getKaggleCredentials();
-      if (!credentials) {
+      // Le connecteur Kaggle n'est pas construit sans credentials.
+      const connector = await ConnectorRegistry.createConnector({ title: ref, type: sourceType, external_repo_id: ref });
+      if (!connector) {
         return NextResponse.json(
           { error: 'No Kaggle credentials configured - connect a Kaggle account in Integrations.' },
           { status: 400 }
         );
       }
-      const connector = new KaggleConnector({ ...credentials, ref, subtype: sourceType });
 
       try {
         await connector.connect();

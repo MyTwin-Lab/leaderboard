@@ -3,7 +3,7 @@ import {
   ConnectorAuthConfig,
   ExternalItem,
   ConnectorType,
-} from "../interfaces.js";
+} from "../../../packages/connectors/interfaces.js";
 
 /**
  * Connecteur Slack (bot token).

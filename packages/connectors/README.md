@@ -2,19 +2,24 @@
 
 External data source connectors for the leaderboard. Provides a unified interface for fetching commits, files, metadata and messages from GitHub, Kaggle and Slack.
 
-Used through `ConnectorRegistry` by the code and sandbox evaluations (`services/challenge/repo-evaluation.ts`), the ML rewards (`services/challenge/ml-rewards.service.ts`) and the repo activity route.
+Used through `ConnectorRegistry` by the code and sandbox evaluations (`services/challenge/repo-evaluation.ts`), the ML rewards (`services/challenge/ml-rewards.service.ts`), the Slack signals, the grid test run and the repo activity route.
+
+This package is **core**: it holds the interface and the registry only. The implementations are installed content, in `content/connectors/<key>/`, and the platform distribution (`apps/leaderboard-client/src/distribution/mytwin.server.ts`) registers them at server start. A customer connector follows the same path.
 
 ## Structure
 
 ```
-connectors/
+packages/connectors/
 ├── interfaces.ts              # ExternalConnector interface
-├── registry.ts                # ConnectorRegistry — maps repo types to connectors
-└── implementation/
-    ├── Github.connector.ts    # GitHub connector
-    ├── Kaggle.connector.ts    # Kaggle datasets and models
-    └── Slack.connector.ts     # Slack channel history
+└── registry.ts                # ConnectorRegistry — repo type → registered connector definition
+
+content/connectors/
+├── github/                    # GitHub commits, contents, activity, pull request commits
+├── kaggle/                    # Kaggle datasets and models
+└── slack/                     # Slack channel history and channel list
 ```
+
+Each content connector exposes an `index.ts` with its `ConnectorDefinition` (`key`, `repoTypes`, `create`) and a `connector.ts` with the `ExternalConnector` implementation.
 
 ## The `ExternalConnector` interface
 
