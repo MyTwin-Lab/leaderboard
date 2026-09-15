@@ -2,30 +2,40 @@
 
 import { Octokit } from 'octokit';
 import type { WorkspaceProvider, ProvisionRequest, ProvisionResult, WorkspaceStatus } from '../../../packages/provisioner/src/types.js';
-import { 
-  WorkspaceAlreadyExistsError, 
-  ProviderAuthenticationError, 
+import {
+  WorkspaceAlreadyExistsError,
+  ProviderAuthenticationError,
   ParentResourceNotFoundError,
-  MissingConfigurationError 
+  MissingConfigurationError
 } from '../../../packages/provisioner/src/errors.js';
+import { getGithubToken } from '../../../packages/config/githubToken.js';
 
 /**
- * Provider pour créer des branches GitHub
+ * Provider pour créer des branches GitHub.
+ *
+ * Le token est lu **à chaque appel**, jamais au démarrage : un admin peut
+ * reconnecter GitHub à tout moment. Par défaut, c'est celui de la connexion
+ * GitHub (store des credentials), avec `GITHUB_TOKEN` en repli jusqu'au lot
+ * L7 du challenge 020. Branches et protections sont donc faites au nom de
+ * l'admin qui a connecté GitHub.
  */
 export class GitHubBranchProvider implements WorkspaceProvider {
   readonly type = 'git_branch' as const;
   readonly name = 'GitHub Branch';
-  
-  private octokit: Octokit;
 
-  constructor(token?: string) {
-    const githubToken = token || process.env.GITHUB_TOKEN;
-    
-    if (!githubToken) {
-      throw new MissingConfigurationError('GITHUB_TOKEN');
+  constructor(private readonly resolveToken: () => Promise<string | null> = getGithubToken) {}
+
+  /** Un token est disponible : sans connexion GitHub, le provisioning répond `failed`. */
+  async isAvailable(): Promise<boolean> {
+    return !!(await this.resolveToken());
+  }
+
+  private async client(): Promise<Octokit> {
+    const token = await this.resolveToken();
+    if (!token) {
+      throw new MissingConfigurationError('GitHub connection');
     }
-    
-    this.octokit = new Octokit({ auth: githubToken });
+    return new Octokit({ auth: token });
   }
 
   /**
@@ -33,29 +43,30 @@ export class GitHubBranchProvider implements WorkspaceProvider {
    */
   async provision(request: ProvisionRequest): Promise<ProvisionResult> {
     const { parentRef, name, baseRef = 'main' } = request;
-    
+
     // Extraire owner et repo de parentRef (format: "owner/repo")
     const [owner, repo] = parentRef.split('/');
     if (!owner || !repo) {
       throw new ParentResourceNotFoundError(parentRef);
     }
 
+    const octokit = await this.client();
     const branchName = name;
     const fullRef = `refs/heads/${branchName}`;
 
     try {
       // 1. Vérifier si la branche existe déjà
       try {
-        const existingBranch = await this.octokit.rest.git.getRef({
+        const existingBranch = await octokit.rest.git.getRef({
           owner,
           repo,
           ref: `heads/${branchName}`,
         });
-        
+
         // La branche existe déjà - on log l'erreur mais on retourne ready
         const url = `https://github.com/${owner}/${repo}/tree/${branchName}`;
         console.warn(`[GitHubBranchProvider] Branch already exists: ${branchName}`);
-        
+
         return {
           provider: this.name,
           workspaceType: this.type,
@@ -76,7 +87,7 @@ export class GitHubBranchProvider implements WorkspaceProvider {
       }
 
       // 2. Récupérer le SHA de la branche de base
-      const baseBranchRef = await this.octokit.rest.git.getRef({
+      const baseBranchRef = await octokit.rest.git.getRef({
         owner,
         repo,
         ref: `heads/${baseRef}`,
@@ -84,7 +95,7 @@ export class GitHubBranchProvider implements WorkspaceProvider {
       const baseSha = baseBranchRef.data.object.sha;
 
       // 3. Créer la nouvelle branche
-      const newBranch = await this.octokit.rest.git.createRef({
+      const newBranch = await octokit.rest.git.createRef({
         owner,
         repo,
         ref: fullRef,
@@ -114,14 +125,14 @@ export class GitHubBranchProvider implements WorkspaceProvider {
       if (error.status === 401 || error.status === 403) {
         throw new ProviderAuthenticationError(this.name, error.message);
       }
-      
+
       if (error.status === 404) {
         throw new ParentResourceNotFoundError(`${owner}/${repo} or branch ${baseRef}`);
       }
 
       // Erreur générique
       console.error(`[GitHubBranchProvider] Error creating branch:`, error);
-      
+
       return {
         provider: this.name,
         workspaceType: this.type,
@@ -146,7 +157,8 @@ export class GitHubBranchProvider implements WorkspaceProvider {
     const branchName = ref.replace('refs/heads/', '');
 
     try {
-      await this.octokit.rest.git.getRef({
+      const octokit = await this.client();
+      await octokit.rest.git.getRef({
         owner,
         repo,
         ref: `heads/${branchName}`,
@@ -170,10 +182,11 @@ export class GitHubBranchProvider implements WorkspaceProvider {
       throw new ParentResourceNotFoundError(parentRef);
     }
 
+    const octokit = await this.client();
     const branchName = ref.replace('refs/heads/', '');
 
     try {
-      await this.octokit.rest.repos.updateBranchProtection({
+      await octokit.rest.repos.updateBranchProtection({
         owner,
         repo,
         branch: branchName,
@@ -206,9 +219,10 @@ export class GitHubBranchProvider implements WorkspaceProvider {
       throw new ParentResourceNotFoundError(parentRef);
     }
 
+    const octokit = await this.client();
     const branchName = ref.replace('refs/heads/', '');
 
-    await this.octokit.rest.git.deleteRef({
+    await octokit.rest.git.deleteRef({
       owner,
       repo,
       ref: `heads/${branchName}`,
@@ -217,3 +231,6 @@ export class GitHubBranchProvider implements WorkspaceProvider {
     console.log(`[GitHubBranchProvider] Deleted branch: ${branchName}`);
   }
 }
+
+// Réexporté pour les appelants qui distinguent une branche déjà créée.
+export { WorkspaceAlreadyExistsError };

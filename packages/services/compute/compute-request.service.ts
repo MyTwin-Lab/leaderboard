@@ -6,7 +6,7 @@ import {
 import type { ComputeRequest, ComputeRequestExpireReason } from '../../database-service/domain/entities.js';
 import { encryptToken, decryptToken } from '../../config/githubToken.js';
 import { isScalewayUserFacingConnected } from '../../config/scalewayCredentials.js';
-import { getScalewayProvider } from './scaleway-provider.helper.js';
+import { scalewayProvider } from '../../../content/extensions/compute/scaleway/provider.js';
 import { computeEnabledFor } from '../../../content/extensions/compute/index.js';
 
 export type RequestComputeResult = { request: ComputeRequest } | { error: 'not_ml_challenge' | 'compute_not_enabled' | 'scaleway_not_connected' | 'already_requested' };
@@ -63,7 +63,7 @@ export class ComputeRequestService {
     const request = await this.repo.findById(requestId);
     if (!request) throw new Error('Compute request not found');
 
-    const provider = await getScalewayProvider();
+    const provider = await scalewayProvider();
     if (!provider) {
       await this.repo.updateFailed(requestId, 'Scaleway non connecté — contactez un admin.');
       return;
@@ -106,7 +106,7 @@ export class ComputeRequestService {
 
   /** Pollée par le cron de provisioning — fait avancer provisioning -> ready|failed. */
   async pollProvisioning(): Promise<void> {
-    const provider = await getScalewayProvider();
+    const provider = await scalewayProvider();
     const inProgress = await this.repo.findProvisioningInProgress();
 
     for (const request of inProgress) {
@@ -137,7 +137,7 @@ export class ComputeRequestService {
     const [zone, serverId] = providerRef.split('/');
     const creds = await (await import('../../config/scalewayCredentials.js')).getScalewayCredentials();
     if (!creds) return '';
-    const { ScalewayClient } = await import('../../scaleway/index.js');
+    const { ScalewayClient } = await import('../../../content/extensions/compute/scaleway/index.js');
     const client = new ScalewayClient(creds.secretKey, creds.projectId);
     const { publicIp } = await client.getInstance(zone, serverId);
     return publicIp ? `http://${publicIp}:8888` : '';
@@ -155,7 +155,7 @@ export class ComputeRequestService {
   async sweepExpired(): Promise<void> {
     const now = new Date();
     const expired = await this.repo.findExpiredPending(now);
-    const provider = await getScalewayProvider();
+    const provider = await scalewayProvider();
 
     for (const request of expired) {
       await this.deprovisionThenExpire(request, provider, 'timeout');
@@ -166,7 +166,7 @@ export class ComputeRequestService {
   async terminateForChallenge(challengeId: string, reason: ComputeRequestExpireReason): Promise<void> {
     const active = await this.repo.findActiveForChallenge(challengeId);
     if (active.length === 0) return;
-    const provider = await getScalewayProvider();
+    const provider = await scalewayProvider();
 
     for (const request of active) {
       await this.deprovisionThenExpire(request, provider, reason);
@@ -182,7 +182,7 @@ export class ComputeRequestService {
    */
   private async deprovisionThenExpire(
     request: ComputeRequest,
-    provider: Awaited<ReturnType<typeof getScalewayProvider>>,
+    provider: Awaited<ReturnType<typeof scalewayProvider>>,
     reason: ComputeRequestExpireReason
   ): Promise<boolean> {
     if (request.provider_ref) {

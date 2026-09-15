@@ -59,14 +59,11 @@ export function installServerDistribution(): void {
   // les seeds de la distribution (`mytwin.grids.ts`), insérées au déploiement.
   EvaluationGridRegistry.setDatabaseProvider(new DatabaseGridProvider());
 
-  // Branches perso des challenges code. Le token vient encore de
-  // l'environnement ; il passera par la connexion GitHub, lu à chaque appel
-  // (challenge 020, lot L5).
-  if (process.env.GITHUB_TOKEN) {
-    ProvisionerRegistry.register(new GitHubBranchProvider());
-  } else {
-    console.warn('[distribution] GITHUB_TOKEN not set, GitHub branch provider not available');
-  }
+  // Branches perso des challenges code. Le provider lit le token de la
+  // connexion GitHub à chaque appel (`GITHUB_TOKEN` en repli jusqu'en L7) :
+  // sans connexion, il est installé mais indisponible, et le provisioning
+  // répond `failed`.
+  ProvisionerRegistry.register(new GitHubBranchProvider());
 
   holder[INSTALLED_KEY] = true;
 }

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const h = vi.hoisted(() => ({ client: { testConnection: vi.fn() }, clientArgs: [] as unknown[][] }));
 
-vi.mock("../../../packages/scaleway/index.js", () => ({
+vi.mock("./scaleway/index.js", () => ({
   ScalewayClient: class {
     constructor(...args: unknown[]) {
       h.clientArgs.push(args);

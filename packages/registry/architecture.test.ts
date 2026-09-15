@@ -33,8 +33,6 @@ const UNSORTED_PREFIXES = [
   "packages/services/",
   "packages/slack-signal-agent/",
   "packages/sync-meeting-agent/",
-  "packages/scaleway/",
-  "packages/provisioner/src/providers/",
 ];
 
 /** `fichier -> cible`, en chemins relatifs à la racine. */

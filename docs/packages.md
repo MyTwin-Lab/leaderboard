@@ -132,7 +132,7 @@ Providers:
 - **`github-branch.provider.ts`** — a personal branch per contributor on the challenge's repo, protected so only they can push. Entry point: `provisionContributorWorkspace()`.
 - **`scaleway-gpu.provider.ts`** — a temporary GPU instance (`L4-1-24G` by default) — see [`compute-power.md`](./compute-power.md).
 
-**Key files:** `packages/provisioner/src/index.ts`, `packages/provisioner/src/registry.ts`, `packages/provisioner/src/providers/`
+**Key files:** `packages/provisioner/src/index.ts`, `packages/provisioner/src/registry.ts` (providers are installed by the distribution: `content/workspace-providers/*`, and the Scaleway GPU provider in `content/extensions/compute/scaleway/`)
 
 ---
 
@@ -151,12 +151,12 @@ Output schema (validated with Zod):
 
 ---
 
-## `packages/scaleway`
+## `content/extensions/compute/scaleway`
 
 **Optional** — requires a Scaleway account connected by an admin
 **Purpose:** A thin client for the Scaleway Instances API — create, read, delete a server, and `testConnection()` used to verify credentials at connection time. It carries no ML tooling of its own: the toolchain is expected to already be on the marketplace image.
 
-**Key file:** `packages/scaleway/client.ts` — see [`compute-power.md`](./compute-power.md)
+**Key file:** `content/extensions/compute/scaleway/client.ts` — see [`compute-power.md`](./compute-power.md)
 
 ---
 

@@ -72,8 +72,8 @@ Closing or deleting the challenge also terminates its instances (`expire_reason:
 
 | File | Purpose |
 |------|---------|
-| `packages/scaleway/client.ts` | Thin Scaleway Instances API client (create, get, delete, testConnection) |
-| `packages/provisioner/src/providers/scaleway-gpu.provider.ts` | GPU instance provider (`L4-1-24G` default) |
+| `content/extensions/compute/scaleway/client.ts` | Thin Scaleway Instances API client (create, get, delete, testConnection) |
+| `content/extensions/compute/scaleway/gpu.provider.ts` | GPU instance provider (`L4-1-24G` default) |
 | `packages/services/compute/compute-request.service.ts` | Request → decision → provisioning → reveal → expiry orchestration |
 | `packages/services/compute/cron-check-provisioning.ts` | Polls instances still provisioning |
 | `packages/services/compute/cron-expire-instances.ts` | Terminates expired instances |

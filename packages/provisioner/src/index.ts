@@ -3,6 +3,7 @@
 import type {
   ProvisionResult,
   ChallengeProvisionContext,
+  WorkspaceProvider,
 } from './types.js';
 import { ProvisionerRegistry } from './registry.js';
 import {
@@ -16,6 +17,22 @@ import {
  * qui les apporte (`apps/leaderboard-client/src/distribution/mytwin.server.ts`).
  * Sans provider pour un type de workspace, le provisioning répond `failed`.
  */
+
+/**
+ * Un provider enregistré peut être indisponible (une connexion retirée) : le
+ * provisioning répond alors `failed` au lieu d'échouer chez le fournisseur.
+ */
+async function unavailableResult(
+  provider: WorkspaceProvider,
+  workspaceType: string
+): Promise<ProvisionResult | null> {
+  if (!provider.isAvailable || (await provider.isAvailable())) return null;
+  return {
+    provider: provider.name, workspaceType, ref: '', url: '',
+    status: 'failed',
+    error: `Provider ${provider.name} is not connected`,
+  };
+}
 
 /**
  * Provisionne un workspace pour un challenge
@@ -44,6 +61,8 @@ export async function provisionChallengeWorkspace(
 
   // Récupérer le provider
   const provider = ProvisionerRegistry.getProvider(workspaceType);
+  const unavailable = await unavailableResult(provider, workspaceType);
+  if (unavailable) return unavailable;
 
   // Générer le nom de branche
   const branchName = generateChallengeBranchName(challengeIndex, challengeTitle);
@@ -79,6 +98,10 @@ export async function provisionContributorWorkspace(context: {
   }
 
   const provider = ProvisionerRegistry.getProvider(workspaceType);
+
+  const unavailable = await unavailableResult(provider, workspaceType);
+
+  if (unavailable) return unavailable;
   const baseRef = context.challengeBranchRef
     ? context.challengeBranchRef.replace('refs/heads/', '')
     : 'main';

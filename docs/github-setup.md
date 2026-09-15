@@ -223,7 +223,7 @@ OAuth Connection Flow:
 **Key files:**
 
 - `packages/connectors/implementation/Github.connector.ts` — commit/activity fetching & file content
-- `packages/provisioner/src/providers/github-branch.provider.ts` — branch creation & protection
+- `content/workspace-providers/github-branch/provider.ts` — branch creation & protection, with the token of the GitHub connection read at each call (`GITHUB_TOKEN` as a fallback until challenge 020 L7)
 - `packages/connectors/registry.ts` — connector factory (maps repo type `github` to the connector)
 - `packages/config/githubToken.ts` — token resolution (DB connection, falls back to `.env`)
 - `apps/leaderboard-client/src/app/api/github-oauth/` — OAuth authorize/callback/status/connection routes

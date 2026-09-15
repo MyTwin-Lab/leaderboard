@@ -29,7 +29,7 @@ export const scalewayIntegration: IntegrationDefinition = {
     async connect({ secret_key: secretKey, project_id: projectId, zone }) {
       try {
         // Import à la demande : déclarer l'intégration ne charge pas le client Scaleway.
-        const { ScalewayClient } = await import("../../../packages/scaleway/index.js");
+        const { ScalewayClient } = await import("./scaleway/index.js");
         const ok = await new ScalewayClient(secretKey, projectId).testConnection(zone);
         if (!ok) return { ok: false, error: "Invalid Scaleway credentials or zone" };
       } catch {

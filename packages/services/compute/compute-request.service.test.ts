@@ -31,7 +31,7 @@ vi.mock("../../config/scalewayCredentials.js", () => ({
   isScalewayUserFacingConnected: vi.fn(),
   getScalewayCredentials: vi.fn(),
 }));
-vi.mock("./scaleway-provider.helper.js", () => ({ getScalewayProvider: h.getScalewayProvider }));
+vi.mock("../../../content/extensions/compute/scaleway/provider.js", () => ({ scalewayProvider: h.getScalewayProvider }));
 
 import { ComputeRequestService } from "./compute-request.service.js";
 

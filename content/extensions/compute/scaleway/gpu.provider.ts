@@ -1,9 +1,9 @@
-// packages/provisioner/src/providers/scaleway-gpu.provider.ts
+// content/extensions/compute/scaleway/gpu.provider.ts
 
 import crypto from 'node:crypto';
-import { ScalewayClient } from '../../../scaleway/index.js';
-import type { WorkspaceProvider, ProvisionRequest, ProvisionResult, WorkspaceStatus } from '../types.js';
-import { ProviderAuthenticationError, MissingConfigurationError } from '../errors.js';
+import { ScalewayClient } from './index.js';
+import type { WorkspaceProvider, ProvisionRequest, ProvisionResult, WorkspaceStatus } from '../../../../packages/provisioner/src/types.js';
+import { ProviderAuthenticationError, MissingConfigurationError } from '../../../../packages/provisioner/src/errors.js';
 
 export interface ScalewayGpuCredentials {
   secretKey: string;
@@ -14,11 +14,9 @@ export interface ScalewayGpuCredentials {
 /**
  * Provider pour créer des instances GPU Scaleway (notebooks Jupyter éphémères).
  *
- * Contrairement à GitHubBranchProvider, les credentials viennent de la DB
- * (app_settings), pas d'une variable d'environnement statique lue au
- * démarrage du process — le constructeur les reçoit explicitement, et
- * l'appelant est responsable de reconstruire/ré-enregistrer ce provider à
- * chaque usage (voir packages/services/compute/scaleway-provider.helper.ts).
+ * Les credentials viennent du store des connexions et changent à chaud :
+ * le constructeur les reçoit explicitement, et `./provider.ts` reconstruit
+ * ce provider à chaque usage.
  *
  * protect() n'est pas implémenté : le jeton d'accès one-shot à l'instance
  * n'est pas une restriction "par liste d'utilisateurs" comme la protection

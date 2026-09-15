@@ -157,7 +157,7 @@ leaderboard/
 | AI evaluation (code challenges) | `packages/evaluator/` + `packages/services/challenge/code-rewards.service.ts` |
 | ML challenge rewards | `content/flows/ml/reward.ts` + `packages/services/challenge/` (see [`ml-rewards.md`](./ml-rewards.md)) |
 | Validation challenges | `packages/services/challenge/reference-case.service.ts` + `validation-challenge.service.ts` (see [`validation-challenges.md`](./validation-challenges.md)) |
-| GPU compute | `packages/services/compute/` + `packages/scaleway/` (see [`compute-power.md`](./compute-power.md)) |
+| GPU compute | `packages/services/compute/` + `content/extensions/compute/scaleway/` (see [`compute-power.md`](./compute-power.md)) |
 | Google integrations | `packages/services/google-workspace/` |
 | Meeting analysis | `packages/sync-meeting-agent/` |
 | Slack signals | `packages/services/slack/` + `packages/slack-signal-agent/` |
