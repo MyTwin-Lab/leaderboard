@@ -16,7 +16,11 @@ import {
  *   suggestion du serveur (`x-2`), sans rien demander.
  * - `manual` : l'utilisateur l'a saisi, ou on édite un slug existant. Le titre
  *   n'y touche plus, et un slug pris est signalé, jamais remplacé en silence.
- *   Vider le champ repasse en `auto`.
+ *
+ * Vider le champ ne le rend **pas** au titre : on vide pour réécrire le slug en
+ * entier, et le voir se remplir sous ses doigts rendrait la saisie impossible.
+ * Un champ vide ou trop court bloque simplement l'envoi, avec le slug dérivé du
+ * titre proposé d'un clic.
  */
 
 export type SlugEntity = keyof typeof SLUG_FALLBACK;
@@ -70,6 +74,14 @@ function localCheck(value: string, saved: string | null, fallback: string): Slug
   return { status: 'checking' };
 }
 
+/**
+ * Le champ vidé à la main : invalide, avec un slug à reprendre d'un clic — le
+ * slug enregistré en édition, celui du titre à la création.
+ */
+function emptyCheck(title: string, saved: string | null, fallback: string): SlugCheck {
+  return { status: 'invalid', message: slugProblem('')!, suggestion: saved ?? (derive(title, fallback) || null) };
+}
+
 export function initialSlugFieldState(entity: SlugEntity): SlugFieldState {
   return {
     value: '',
@@ -101,7 +113,10 @@ export function slugFieldReducer(state: SlugFieldState, action: SlugFieldAction)
     }
 
     case 'title': {
-      if (state.mode !== 'auto') return state;
+      if (state.mode !== 'auto') {
+        // Champ vidé : la suggestion suit le titre, la valeur reste vide.
+        return state.value === '' ? { ...state, check: emptyCheck(action.title, state.saved, state.fallback) } : state;
+      }
       const value = derive(action.title, state.fallback);
       // Titre inchangé en substance : garder un éventuel remplacement numéroté.
       if (value === state.value || value === state.replaced) return state;
@@ -109,22 +124,24 @@ export function slugFieldReducer(state: SlugFieldState, action: SlugFieldAction)
     }
 
     case 'input': {
-      const typed = normalizeSlugInput(action.raw);
-      if (!typed) {
-        const value = derive(action.title, state.fallback);
-        return { ...state, value, mode: 'auto', replaced: null, check: localCheck(value, state.saved, state.fallback) };
-      }
-      return { ...state, value: typed, mode: 'manual', replaced: null, check: localCheck(typed, state.saved, state.fallback) };
+      const value = normalizeSlugInput(action.raw);
+      return {
+        ...state,
+        value,
+        mode: 'manual',
+        replaced: null,
+        check: value ? localCheck(value, state.saved, state.fallback) : emptyCheck(action.title, state.saved, state.fallback),
+      };
     }
 
     case 'blur': {
       const value = normalizeSlugInput(state.value, { final: true });
       if (value === state.value) return state;
-      if (!value) {
-        const derived = derive(action.title, state.fallback);
-        return { ...state, value: derived, mode: 'auto', check: localCheck(derived, state.saved, state.fallback) };
-      }
-      return { ...state, value, check: localCheck(value, state.saved, state.fallback) };
+      return {
+        ...state,
+        value,
+        check: value ? localCheck(value, state.saved, state.fallback) : emptyCheck(action.title, state.saved, state.fallback),
+      };
     }
 
     case 'result': {

@@ -67,13 +67,43 @@ describe('slugFieldReducer — creation', () => {
     expect(state.check.status).toBe('checking');
   });
 
-  it('goes back to the title when the field is emptied', () => {
+  it('stays empty when the field is cleared, so the slug can be retyped from scratch', () => {
     const state = run([
-      { type: 'input', raw: 'custom', title: 'Breast Cancer' },
+      { type: 'title', title: 'Breast Cancer' },
       { type: 'input', raw: '', title: 'Breast Cancer' },
+      { type: 'title', title: 'Breast Cancer Detection' },
+      { type: 'blur', title: 'Breast Cancer Detection' },
     ]);
-    expect(state.mode).toBe('auto');
+    expect(state.value).toBe('');
+    expect(state.mode).toBe('manual');
+    // Bloqué, avec le slug du titre (à jour) proposé d'un clic.
+    expect(state.check).toMatchObject({ status: 'invalid', suggestion: 'breast-cancer-detection' });
+    expect(isSlugReady(state)).toBe(false);
+  });
+
+  it('lets the user type a new slug over a cleared one', () => {
+    const state = run([
+      { type: 'title', title: 'Breast Cancer' },
+      { type: 'input', raw: '', title: 'Breast Cancer' },
+      { type: 'input', raw: 'm', title: 'Breast Cancer' },
+      { type: 'input', raw: 'my', title: 'Breast Cancer' },
+    ]);
+    expect(state.value).toBe('my');
+    expect(state.check).toMatchObject({ status: 'invalid' });
+    expect(isSlugReady(state)).toBe(false);
+
+    const longer = slugFieldReducer(state, { type: 'input', raw: 'mykine', title: 'Breast Cancer' });
+    expect(longer.check.status).toBe('checking');
+  });
+
+  it('brings the title-derived slug back only when asked', () => {
+    const state = run([
+      { type: 'title', title: 'Breast Cancer' },
+      { type: 'input', raw: '', title: 'Breast Cancer' },
+      { type: 'applySuggestion' },
+    ]);
     expect(state.value).toBe('breast-cancer');
+    expect(state.check.status).toBe('checking');
   });
 
   it('tolerates a trailing hyphen while typing, and trims it on blur', () => {
@@ -132,6 +162,14 @@ describe('slugFieldReducer — edit', () => {
     const state = slugFieldReducer(editing, { type: 'input', raw: 'breast-cancer', title: 'x' });
     expect(isSlugChanged(state)).toBe(true);
     expect(slugToSubmit(state)).toBe('breast-cancer');
+  });
+
+  it('does not restore the saved slug when the field is cleared, but offers it back', () => {
+    const state = slugFieldReducer(editing, { type: 'input', raw: '', title: 'Renamed title' });
+    expect(state.value).toBe('');
+    expect(isSlugReady(state)).toBe(false);
+    // Le slug enregistré, pas celui du titre modifié.
+    expect(state.check).toMatchObject({ status: 'invalid', suggestion: 'breast-cancer-detection' });
   });
 
   it('is available again, without a request, when set back to the saved slug', () => {
