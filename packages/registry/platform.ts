@@ -324,6 +324,39 @@ export interface EventSubscriptionDeclaration {
   handle(event: PlatformEvent): Promise<void>;
 }
 
+/**
+ * Une quête d'onboarding : accomplie quand survient l'événement déclaré, pour
+ * l'utilisateur que l'événement désigne. Déclarée par son propriétaire (le
+ * flow code pour `validated_task`, le module meetings pour `joined_meeting`…),
+ * enregistrée par le module qui déclare `questRecorder`.
+ */
+export interface QuestDeclaration {
+  /** Clé stable, conservée dans `onboarding_progress`. */
+  key: string;
+  label: string;
+  description?: string;
+  /** Rang d'affichage ; 0 par défaut. */
+  order?: number;
+  event: string;
+  /** L'utilisateur qui accomplit la quête, lu dans l'événement ; `null` : personne. */
+  userOf(event: PlatformEvent): string | null;
+}
+
+/**
+ * Ce qu'un flow accepte comme proposition de la sandbox : les champs de la
+ * proposition (`sandboxes.proposal_fields`) et son évaluation formative.
+ */
+export interface ProposableDeclaration {
+  /** Le schéma des champs de la proposition. */
+  fields: ConfigSchema;
+  /** La source de bundle et la grille de l'évaluation formative, et l'entrée tirée des champs. */
+  evaluation?: {
+    bundleSource: string;
+    grid: string;
+    input(fields: Record<string, unknown>): unknown;
+  };
+}
+
 interface Declarations {
   ruleKeys?: readonly RuleKeyDeclaration[];
   jobs?: readonly JobDeclaration[];
@@ -331,6 +364,7 @@ interface Declarations {
   evaluationHandlers?: readonly EvaluationHandlerDeclaration[];
   events?: readonly EventDeclaration[];
   subscriptions?: readonly EventSubscriptionDeclaration[];
+  quests?: readonly QuestDeclaration[];
 }
 
 export interface FlowDefinition extends Declarations {
@@ -351,6 +385,8 @@ export interface FlowDefinition extends Declarations {
   uses?: FlowUses;
   hooks?: ChallengeHooks;
   actions?: readonly ChallengeActionDeclaration[];
+  /** La sandbox accepte des propositions pour ce flow. */
+  proposable?: ProposableDeclaration;
 }
 
 export interface ExtensionDefinition extends Declarations {
@@ -375,6 +411,8 @@ export interface ModuleDefinition extends Declarations {
   defaultEnabled?: boolean;
   /** Ses réglages (`module_settings.settings`), validés et complétés par le schéma. */
   settings?: { schema: ConfigSchema };
+  /** Le module qui enregistre la progression des quêtes. Un seul par plateforme. */
+  questRecorder?: { record(userId: string, questKey: string, completedAt: Date): Promise<void> };
   /** CP que le module verse hors du ledger des challenges. */
   cpSource?: CpSourceDefinition;
 }
@@ -408,6 +446,7 @@ interface PlatformState {
   /** Par type d'événement. */
   events: Map<string, Owned<EventDeclaration>>;
   subscriptions: Map<string, Owned<EventSubscriptionDeclaration>>;
+  quests: Map<string, Owned<QuestDeclaration>>;
   /** Par clé de propriétaire (`code`, `sandbox`…), telle qu'inscrite dans `evaluation_runs.trigger_type`. */
   evaluationHandlers: Map<string, { owner: string; handlers: Map<string, EvaluationHandlerDeclaration> }>;
 }
@@ -551,6 +590,7 @@ export class PlatformRegistry {
       jobs: new Map(),
       events: new Map(CORE_EVENTS.map((event) => [event.type, { ...event, owner: "core" }])),
       subscriptions: new Map(),
+      quests: new Map(),
       evaluationHandlers: new Map(),
     };
 
@@ -594,7 +634,37 @@ export class PlatformRegistry {
       claim(state.jobs, "Job", owner, declarations.jobs);
       claimEvents(state.events, owner, declarations.events);
       claim(state.subscriptions, "Subscription", owner, declarations.subscriptions);
+      claim(state.quests, "Quest", owner, declarations.quests);
       claimEvaluationHandlers(state.evaluationHandlers, key, owner, declarations.evaluationHandlers);
+    }
+
+    // Chaque quête devient un abonné du module qui enregistre les quêtes :
+    // désactiver ce module arrête toutes les quêtes.
+    const recorders = (definitions.modules ?? []).filter((module) => module.questRecorder);
+    if (recorders.length > 1) {
+      throw new Error(
+        `[PlatformRegistry] Quests are recorded by both module:${recorders[0].key} and module:${recorders[1].key}`
+      );
+    }
+    for (const quest of state.quests.values()) {
+      if (!state.events.has(quest.event)) {
+        throw new Error(
+          `[PlatformRegistry] Quest "${quest.key}" of ${quest.owner} completes on "${quest.event}", which nothing declares`
+        );
+      }
+      const recorder = recorders[0];
+      if (!recorder?.questRecorder) continue;
+      const record = recorder.questRecorder.record;
+      claim(state.subscriptions, "Subscription", `module:${recorder.key}`, [
+        {
+          key: `quests.${quest.key}`,
+          event: quest.event,
+          async handle(event) {
+            const userId = quest.userOf(event);
+            if (userId) await record(userId, quest.key, event.occurredAt);
+          },
+        },
+      ]);
     }
 
     // Un abonné n'écoute qu'un événement que quelqu'un émet.
@@ -698,6 +768,11 @@ export class PlatformRegistry {
   /** Les abonnés de l'outbox, avec leur propriétaire. */
   static subscriptions(): Owned<EventSubscriptionDeclaration>[] {
     return [...current().subscriptions.values()];
+  }
+
+  /** Les quêtes déclarées, dans leur ordre d'affichage. */
+  static quests(): Owned<QuestDeclaration>[] {
+    return [...current().quests.values()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }
 
   /** Le handler d'évaluation `handlerKey` du propriétaire `ownerKey` (flow, extension, kit ou module). */
