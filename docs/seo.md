@@ -10,24 +10,32 @@ The site has two jobs in search: rank its own pages (home, the `/about` landing,
 |---|---|---|
 | `/` | ✅ | brand-first title, `Organization` + `WebSite` JSON-LD |
 | `/about` | ✅ | the Lab landing (institutions + contributors), `AboutPage` JSON-LD |
-| `/challenges`, `/challenges/<id>` | ✅ public ones | `BreadcrumbList` JSON-LD on detail |
-| `/sandbox`, `/sandbox/<id>` | ✅ visible ones | `BreadcrumbList` JSON-LD on detail |
+| `/challenges`, `/challenges/<slug>` | ✅ public ones | `BreadcrumbList` JSON-LD on detail |
+| `/sandbox`, `/sandbox/<slug>` | ✅ visible ones | `BreadcrumbList` JSON-LD on detail |
 | `/leaderboard` | ✅ | |
 | `/terms-of-use`, `/privacy-policy` | ✅ | markdown in `apps/leaderboard-client/content/legal/` |
 | `/contributors/<id>` | ❌ `noindex, follow` | public, but a person's name is not a search result |
 | drafts, validation challenges, archived sandboxes | ❌ `noindex, nofollow` | `unindexedMetadata()` — title not published either |
-| `/admin`, `/signin`, `/contributors/me`, `/challenges/<id>/manage`, `/tasks`, `/sync-meetings`, `/api` | ❌ `X-Robots-Tag: noindex, nofollow` | header set in `next.config.ts` |
+| `/challenges/<uuid>`, `/sandbox/<uuid>`, a former slug | ↪ `308` to the current slug | query kept; see *Pages live at their slug* |
+| a slug that names nothing | ❌ `404` | `notFound()`, not a noindexed `200` |
+| `/admin`, `/signin`, `/contributors/me`, `/challenges/<slug>/manage`, `/tasks`, `/sync-meetings`, `/api` | ❌ `X-Robots-Tag: noindex, nofollow` | header set in `next.config.ts` |
 
 Everything is decided **from an anonymous visitor's point of view**: crawlers never have a session.
 
 Where things live:
 - `src/lib/seo.ts` — `SITE_URL`, `SITE_NAME`, `pageMetadata()`, sitemap builder, JSON-LD builders. Pure, no DB.
 - `src/lib/server/seo.ts` — metadata and JSON-LD that depend on the database (challenge, sandbox, contributor), sitemap data.
+- `src/lib/paths.ts` — every link to a challenge or sandbox page (`challengePath`, `sandboxPath`, the invite and sign-in links). Pure, client-safe.
+- `src/lib/server/pageRefs.ts` — resolves a page's URL segment: current slug, moved (UUID, former slug, capitalised slug) or missing.
+- `packages/database-service/domain/slug.ts` — what a slug may be, `slugify`, collision numbering, the deploy-time backfill plan.
 - `src/app/robots.ts`, `src/app/sitemap.ts`, `src/app/opengraph-image.tsx`.
 - `src/components/layout/Footer.tsx` — site-wide links, including the editorial link to mytwin.care and the legal pages.
 
 ## Gotchas
 
+- **Pages live at their slug; APIs stay on the UUID.** `/challenges/[slug]`, `/challenges/[slug]/manage` and `/sandbox/[slug]` resolve their segment server-side (`resolveChallengeRef` / `resolveSandboxRef`) and hand the client component the UUID, which every `/api/...` call and React Query key still uses. Build a link with `lib/paths.ts`, never by hand — a page served at its UUID costs a redirect, and a canonical that disagrees with the links is a weaker signal.
+- **Every former URL answers a real `308`, query included.** A UUID from before slugs, a slug abandoned by an edit (kept in `challenge_slug_redirects` / `sandbox_slug_redirects`) or a capitalised slug all redirect to the current slug. `?group=<token>` survives, which is what keeps invitation links pasted into Slack working. The redirect is thrown by each **page**, not by the layout: the layout does not know whether it is rendering `/manage`. It is a true HTTP 308, not a client-side meta refresh, because no `loading.tsx` or Suspense boundary sits above these pages — add one and check again with `curl -sI`.
+- **The resolution ignores visibility.** A draft opens at its slug for its manager exactly as it did at its UUID; what an anonymous visitor sees is still decided by the API allowlists and `lib/server/seo.ts`.
 - **The canonical origin is a constant**, `SITE_URL` in `lib/seo.ts`, not `NEXT_PUBLIC_APP_URL`. That variable is inlined at build time: a build made before it was changed on Scalingo served canonicals, sitemap and robots.txt on `*.scalingo.io`, a domain that 301s to mytwinlab.care — a canonical pointing at a redirect, which Google cannot consolidate. `NEXT_PUBLIC_APP_URL` is still the fallback for post-login redirects (`lib/url.ts`).
 - **Only `/admin` is `Disallow`ed.** A `Disallow` blocks crawling, so the engine never reads the page's `noindex`, and a blocked URL linked from elsewhere (the navbar's "Sign in" is on every page) can still be indexed without a description. Private pages stay crawlable and carry the header instead. Listing them in robots.txt would make them *less* safe.
 - **`/api` is not disallowed either.** Challenge and sandbox detail pages are client components that fetch their content from `/api/...`; Googlebot honours robots.txt for those requests while rendering.
@@ -43,6 +51,8 @@ Where things live:
 
 **MyTwin Lab is a child organization of MyTwin, not the same entity.** Its `Organization` node carries `parentOrganization` with `@id` `https://mytwin.care/#organization` — the exact `@id` mytwin.care declares in its own `src/lib/seo.ts`. A `sameAs` to mytwin.care would state that both sites describe one thing. `sameAs` only lists profiles of the Lab that exist (the MyTwin-Lab GitHub organization). The reverse link lives on mytwin.care (`subOrganization` + footer link).
 
+**URLs are slugs, chosen before the detail pages were indexed.** Changing URLs after indexing costs redirects and a consolidation delay; before, nothing. A slug is derived from the title at creation (editable in the form), unique per namespace (a promoted challenge can keep its sandbox's slug), never changed by a title edit, and editable later with the old one kept as a redirect — so an indexed or shared URL never breaks. Admin URLs (`/admin/challenges/<uuid>`) stay on the UUID: private, never indexed.
+
 **One page per query.** `/about` became the Lab landing and absorbed the values of the former manifesto: two pages about "MyTwin Lab" would compete for the same query.
 
 **The landing tells the vision, the legal pages tell the facts.** `/about` presents where the Lab is going — applications connected to the MyTwin Platform, Sandbox projects built together — because that link is what the Lab means to an institution. Two things stay strictly factual on it because health is YMYL: the research-vs-medical-device line and the patient-data rule. No partner is named until one is public. The terms and privacy policy describe what the service actually does.
@@ -56,8 +66,11 @@ curl -s https://mytwinlab.care/robots.txt
 curl -s https://mytwinlab.care/sitemap.xml | grep -o "<loc>[^<]*</loc>"
 curl -s https://mytwinlab.care/about | grep -oE '<(title>[^<]*|link rel="canonical"[^>]*|meta name="(description|robots)"[^>]*)'
 curl -sI https://mytwinlab.care/signin | grep -i x-robots-tag
+# a former URL redirects to the slug, invitation token included
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' "https://mytwinlab.care/challenges/<uuid>?group=<token>"
+curl -s -o /dev/null -w '%{http_code}\n' https://mytwinlab.care/challenges/does-not-exist   # 404
 ```
 
-Search Console: a **Domain** property for `mytwinlab.care`, verified by DNS TXT (survives any web-server change), with `https://mytwinlab.care/sitemap.xml` submitted.
+Search Console: a **Domain** property for `mytwinlab.care`, verified by DNS TXT (survives any web-server change), with `https://mytwinlab.care/sitemap.xml` submitted. Request indexing of a detail page only once its slug is final: renaming it afterwards works (the old slug redirects) but makes Google consolidate two URLs.
 
 Related: [`sandbox.md`](./sandbox.md) · [`deployment.md`](./deployment.md) · [`index.md`](./index.md)

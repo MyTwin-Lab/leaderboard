@@ -56,9 +56,10 @@ All request bodies are JSON unless noted (a few validation routes take `multipar
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | `GET` | `/api/challenges` | List challenges. `?managed=true` instead lists all challenges (drafts included) of projects the caller manages. | Public (managed filter requires auth) |
-| `POST` | `/api/challenges` | Create a challenge. | Admin or project manager |
+| `POST` | `/api/challenges` | Create a challenge. Optional `slug`, derived from the title when omitted; `409 { field: 'slug', suggestion }` when taken. | Admin or project manager |
+| `GET` | `/api/challenges/slug-availability` | `?slug=&exclude=<uuid>` → `{ available, problem, suggestion }`. What the form checks while typing; reserves nothing. | Admin or project manager |
 | `GET` | `/api/challenges/:id` | Get a challenge by ID. | Public |
-| `PUT` | `/api/challenges/:id` | Update a challenge. | Admin or manager of its project |
+| `PUT` | `/api/challenges/:id` | Update a challenge. A changed `slug` keeps the old one as a redirect; `409` when taken. | Admin or manager of its project |
 | `DELETE` | `/api/challenges/:id` | Delete a challenge (also terminates any GPU instance it owns). | Admin |
 | `GET` | `/api/challenges/:id/overview` | **Aggregated read** — challenge, team, tasks, meetings, repos, contributions, participants in one response. Backs both the public detail page and the manage view. Anonymous callers get a reduced, allowlisted payload (`lib/public/overview.ts`). | Public |
 | `POST` | `/api/challenges/:id/close` | Close a challenge — flips the status only, nothing is computed. | Admin |
@@ -234,9 +235,11 @@ Listing and detail are **public** — this is what lets a newsletter link to a s
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | `GET` | `/api/sandboxes` | List sandboxes with star counts, the caller's star state, the configured tiers and the promotion bonus. Archived ones only for their author and admins. | Public |
-| `POST` | `/api/sandboxes` | Create a sandbox. Goes live as `open` immediately. | `admin`, `contributor`, `medical_pro` |
+| `POST` | `/api/sandboxes` | Create a sandbox. Goes live as `open` immediately. Optional `slug`, as for challenges. | `admin`, `contributor`, `medical_pro` |
+| `GET` | `/api/sandboxes/slug-availability` | `?slug=&exclude=<uuid>`, in the sandbox namespace. | `admin`, `contributor`, `medical_pro` |
 | `GET` | `/api/sandboxes/:id` | Detail. The evaluation score is present only for the author and admins. | Public |
-| `PATCH` | `/api/sandboxes/:id` | Edit title, sections, repo, model, datasets. `{ status: 'archived' }` archives it. `type` is immutable. | Author (archive: author or admin) |
+| `PATCH` | `/api/sandboxes/:id` | Edit title, slug, sections, repo, model, datasets. `{ status: 'archived' }` archives it. `type` is immutable. | Author (archive: author or admin) |
+| `POST` | `/api/sandboxes/:id/promote` | Turn the sandbox into a challenge. Optional `slug`, the sandbox's own when omitted and free; `409` when taken. | Admin |
 | `PUT` | `/api/sandboxes/:id/star` | Star. Idempotent, checks the tiers, and issues the anonymous cookie when the request carries none. `403` for the author, `409` if not `open`, `429` past the rate limit. | Public |
 | `DELETE` | `/api/sandboxes/:id/star` | Unstar. Soft delete — never reverses a paid tier. | Public |
 | `PATCH` | `/api/admin/sandbox-settings` | Update the star tiers and the promotion bonus. | Admin |

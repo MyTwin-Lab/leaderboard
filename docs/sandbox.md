@@ -38,6 +38,7 @@ Collaboration is deliberately blocked before promotion. Other contributors canno
 | `user_id` | the author, sole editor |
 | `type` | `code` / `ml`, immutable after creation |
 | `title` | |
+| `slug` | the public URL segment, `/sandbox/<slug>`. Unique among sandboxes, derived from the title at creation, editable by the author; a former slug keeps redirecting (`sandbox_slug_redirects`). See [`seo.md`](./seo.md) |
 | `context`, `goals`, `why` | the three sections of the proposal. `goals` is a `jsonb` string array rather than a markdown list, because each goal is rendered on its own and they are the natural candidates for the challenge's tasks after promotion |
 | `repo_url` | required for both types |
 | `model_url` | `ml` only, optional — a sandbox can start without an artifact |
@@ -194,9 +195,9 @@ The sort control is `TabPills`, the same component as the profile tabs, so its f
 
 **Getting there.** `/challenges` ends with a banner pointing at the Sandbox — the twin of the leaderboard's own, which points at the challenges. One catches whoever is not ranked yet, the other whoever found no challenge that fits.
 
-**Detail** (`/sandbox/:id`) — the three sections of the proposal, the repo and model links, the star toggle, the milestone panel, and for the author the formative evaluation panel. Editing and archiving live here too.
+**Detail** (`/sandbox/:slug`) — the three sections of the proposal, the repo and model links, the star toggle, the milestone panel, and for the author the formative evaluation panel. Editing and archiving live here too.
 
-**Creation** — type first, then the fields that type needs. The "Start from a dev kit / SOON" row is a deliberate placeholder: no logic behind it, it marks where the dev-kit selector will slot in.
+**Creation** — type first, then the fields that type needs. The **Address** field under the title shows the public URL: it follows the title until touched, is checked for availability as it is typed, and in edit mode says that the current address will redirect once changed. The "Start from a dev kit / SOON" row is a deliberate placeholder: no logic behind it, it marks where the dev-kit selector will slot in.
 
 Two things the components must respect:
 
@@ -236,7 +237,7 @@ Nothing is ever written to `reward_entries`, `sandbox_rewards` or `contributions
 
 ## Promotion
 
-An admin turns a convincing proposal into an official challenge. The **type is inherited**, never chosen — a `code` sandbox becomes a code challenge, an `ml` one an ML challenge. Everything else (project, pool, reward rules, dates, compute, brief) is the admin's call, filled in through the usual challenge drawer, pre-filled from the sandbox.
+An admin turns a convincing proposal into an official challenge. The **type is inherited**, never chosen — a `code` sandbox becomes a code challenge, an `ml` one an ML challenge. Everything else (project, pool, reward rules, dates, compute, brief) is the admin's call, filled in through the usual challenge drawer, pre-filled from the sandbox — the address included: the challenge takes the sandbox's slug when it is free among challenges, so `/sandbox/mykine` becomes `/challenges/mykine`.
 
 ### One transaction, guarded on the way in
 

@@ -147,7 +147,7 @@ Points are paid as the **positive delta** against what was already paid for that
 
 ## Admin workflow (typical)
 
-1. **Create a challenge** in the admin panel — set title, description, project, type (`code` or `ml`), reward pool, reward rules, and optionally dates. For `code`, also choose the workspace mode (`provided_repo` requires linking a GitHub repo; `own_repo` doesn't).
+1. **Create a challenge** in the admin panel — set title, address (the slug, derived from the title and editable — see [`seo.md`](./seo.md)), description, project, type (`code` or `ml`), reward pool, reward rules, and optionally dates. For `code`, also choose the workspace mode (`provided_repo` requires linking a GitHub repo; `own_repo` doesn't).
 2. **Link repos** — attach the relevant GitHub repositories (or Kaggle dataset/model repos for an `ml` challenge). Not needed for `own_repo` code challenges.
 3. **Optionally define a template** — a handful of tasks (`user_id NULL`) that every new joiner's board starts from.
 4. **Add team members**, or let contributors self-serve via `POST /api/challenges/:id/join`.
@@ -199,7 +199,7 @@ projects (manager_id → users, optional)
 - `packages/evaluator/code-reward.ts` — `computeCodeAward()`, the pure delta/clamp calculation
 - `packages/provisioner/src/index.ts` — `provisionContributorWorkspace()`, personal branch provisioning
 - `apps/leaderboard-client/src/lib/server/managerAuth.ts` — resolves project-manager authorization
-- `apps/leaderboard-client/src/app/challenges/[id]/manage/` — the manager view (mirrors the admin challenge view)
+- `apps/leaderboard-client/src/app/challenges/[slug]/manage/` — the manager view (mirrors the admin challenge view, which stays at `/admin/challenges/[id]`)
 - `apps/leaderboard-client/src/app/api/challenges/` — includes `join/`, `workspace/`, `project-evaluation/`, `close/`, `overview/` (the aggregated page read), `documents/` (the brief), `ml-rewards/` (pool/breakdown, serves both `ml` and `code` challenges)
 - `apps/leaderboard-client/src/app/api/tasks/`
 - `apps/leaderboard-client/src/lib/challengeBrief.ts` — brief convention and gate

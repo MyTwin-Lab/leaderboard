@@ -208,13 +208,21 @@ Join (single button, its label follows the selection)
                    POST /group/invite × N          one notification each
                    → confirmation screen shows the link
 
-teammate opens /challenges/:id?group=<token>       (from the notification, or
+teammate opens /challenges/:slug?group=<token>     (from the notification, or
                                                     from the link, same URL)
    → GET /group/:token                   holder's name, size, joinable?
    → brief screen, single action "Join <name>'s group"
    → POST /join { group: <token> }       no board copy, no provisioning,
                                           branch reopened to every member
 ```
+
+**The link survives what can happen to it.** Links shared before slugs
+(`/challenges/<uuid>?group=<token>`), and links to a slug renamed since, answer a
+308 to the current slug with the query kept. Notifications written before slugs
+carry only the challenge's UUID and go through the same redirect. A signed-out
+visitor is sent to Google with the token in `from` —
+`safeInternalPath` admits exactly `/challenges/<slug>?group=<uuid>` and no other
+query — so they come back on the invitation screen rather than the bare page.
 
 **Nothing is written until that single click.** The selection is built
 client-side, so the group — and therefore its token — is created at the moment

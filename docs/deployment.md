@@ -120,6 +120,8 @@ The `postdeploy` hook is what keeps the database in step. It deliberately does *
 
 `scripts/db-resync-rewards.ts` then rebuilds the derived caches (`contributions.reward`, `challenges.completion`).
 
+**The postdeploy runs while the previous release still serves traffic** — Scalingo only switches routing once it succeeds, and keeps the old release if it fails. Schema changes must therefore keep the old code working. The slug columns are the case in point: they are added nullable, backfilled under a write lock and set `NOT NULL` in one transaction per table, at the very end of `db-apply-schema`. Between that `NOT NULL` and the routing switch (seconds), the old release cannot create a challenge or a sandbox. If the postdeploy fails *after* it, the old release stays up in that state — roll back with `ALTER TABLE challenges ALTER COLUMN slug DROP NOT NULL` (and the same on `sandboxes`) while you fix the deploy. Before the first deploy of a data migration like this one, take a manual backup from the Scalingo dashboard, and preview what will be written with `npm run db:preview-slugs` through `scalingo db-tunnel`.
+
 ---
 
 ## Environment variables for production

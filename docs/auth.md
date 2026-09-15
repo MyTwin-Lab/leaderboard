@@ -128,7 +128,7 @@ Being the manager of a project's parent grants extra access to that project's ch
 - Approve, reject or retry GPU compute requests
 - Expose validation targets and read every reference case, run and reward on a validation challenge
 
-Managers cannot open `/admin/**`, create or delete challenges, or manage users. They access their challenges through a dedicated `/challenges/[id]/manage` view (separate from the public `/challenges/[id]` page contributors see). See [`challenges-and-tasks.md`](./challenges-and-tasks.md) for how this fits into the challenge workflow.
+Managers cannot open `/admin/**`, create or delete challenges, or manage users. They access their challenges through a dedicated `/challenges/[slug]/manage` view (separate from the public `/challenges/[slug]` page contributors see). See [`challenges-and-tasks.md`](./challenges-and-tasks.md) for how this fits into the challenge workflow.
 
 ---
 
