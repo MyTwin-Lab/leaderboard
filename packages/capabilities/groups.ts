@@ -1,6 +1,6 @@
-import { ChallengeTeamRepository } from "../../database-service/repositories/index.js";
-import type { ChallengeTeam } from "../../database-service/domain/entities.js";
-import { groupContextFrom, pickGroupOwner, type GroupContext } from "./groupPolicy.js";
+import { ChallengeTeamRepository } from "../database-service/repositories/index.js";
+import type { ChallengeTeam } from "../database-service/domain/entities.js";
+import { groupContextFrom, pickGroupOwner, type GroupContext } from "../database-service/domain/groupPolicy.js";
 
 // Réexportés pour que les appelants serveur n'aient qu'un import à connaître.
 export {
@@ -10,7 +10,7 @@ export {
   groupContextFrom,
   pickGroupOwner,
   type GroupContext,
-} from "./groupPolicy.js";
+} from "../database-service/domain/groupPolicy.js";
 
 /**
  * Travail en groupe sur un challenge

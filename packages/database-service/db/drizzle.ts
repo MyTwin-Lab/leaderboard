@@ -136,7 +136,7 @@ export const challenge_teams = pgTable("challenge_teams", {
   workspace_status: varchar("workspace_status", { length: 20 }),     // pending | ready | failed
   // NULL = participation solo. Deux rows du même challenge partageant un
   // group_id forment un groupe : elles se partagent le workspace porté par
-  // celle du créateur. Voir services/challenge/group.ts.
+  // celle du créateur. Voir capabilities/groups.ts.
   group_id: uuid("group_id"),
 }, (table) => ({
   challengeIdIdx: index("idx_challenge_teams_challenge_id").on(table.challenge_id),

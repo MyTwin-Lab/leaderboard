@@ -4,7 +4,7 @@ import {
   ChallengeRepository,
   ChallengeTeamRepository,
 } from '../../../../../../../../packages/database-service/repositories';
-import { resolveWorkspaceOwner } from '../../../../../../../../packages/services/challenge/group';
+import { resolveWorkspaceOwner } from '../../../../../../../../packages/capabilities/groups';
 import { z } from 'zod';
 
 const challengeRepo = new ChallengeRepository();

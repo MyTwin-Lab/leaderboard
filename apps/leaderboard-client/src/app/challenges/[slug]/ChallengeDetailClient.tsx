@@ -22,7 +22,7 @@ import { GroupInviteModal } from '@/components/challenges/GroupInviteModal';
 import { JoinModal } from '@/components/challenges/JoinModal';
 // groupPolicy et non group : ce dernier instancie un repository, donc un
 // client Postgres, qui n'a rien à faire dans le bundle navigateur.
-import { GROUP_MAX_SIZE } from '../../../../../../packages/services/challenge/groupPolicy';
+import { GROUP_MAX_SIZE } from '../../../../../../packages/database-service/domain/groupPolicy';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
 import { type BoardTask } from '@/components/contributor/ContributorTaskBoard';
 import {

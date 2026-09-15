@@ -18,7 +18,7 @@ import {
 } from "../db/mappers";
 import type { User, Contribution, ChallengeTeam, ContributionMember, UserRole } from "../domain/entities";
 import { userSchema } from "../domain/schemas_zod";
-import { pickGroupOwner } from "../../services/challenge/groupPolicy.js";
+import { pickGroupOwner } from "../domain/groupPolicy.js";
 import { buildRoleChange, recordRoleChange } from "./roleChange.repo";
 import { anonymizeUserInDigests } from "./digest.repo";
 
@@ -74,7 +74,7 @@ export class AccountDeletionConflictError extends Error {
  *
  * Pure, pour être testée sans base. Le problème qu'elle résout : dans un
  * groupe, `contributions.user_id`, `reward_entries.user_id`, le board et le
- * workspace sont tous ancrés sur le porteur (voir services/challenge/group.ts).
+ * workspace sont tous ancrés sur le porteur (voir capabilities/groups.ts).
  * Supprimer le porteur les emporterait en cascade, et avec eux les parts de
  * CP de ses co-membres.
  *

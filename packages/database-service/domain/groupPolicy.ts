@@ -1,10 +1,10 @@
-import type { ChallengeTeam } from "../../database-service/domain/entities.js";
+import type { ChallengeTeam } from "./entities.js";
 
 /**
  * Règles de groupe — partie pure
  * ------------------------------
  * Constantes et calculs sans aucune dépendance à la base, pour que l'UI
- * puisse les importer : `group.ts` instancie un repository, donc un client
+ * puisse les importer : `capabilities/groups.ts` instancie un repository, donc un client
  * Postgres, qui n'a rien à faire dans un bundle navigateur.
  *
  * Voir docs/input/spec-groupes-challenge.md §3.

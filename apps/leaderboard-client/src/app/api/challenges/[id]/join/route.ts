@@ -12,7 +12,7 @@ import {
   mapRepoTypeToWorkspaceType,
 } from '../../../../../../../../packages/provisioner/src/index.js';
 import { verifyRequestToken } from '@/lib/auth';
-import { GROUP_MAX_SIZE, pickGroupOwner } from '../../../../../../../../packages/services/challenge/group';
+import { GROUP_MAX_SIZE, pickGroupOwner } from '../../../../../../../../packages/capabilities/groups';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 

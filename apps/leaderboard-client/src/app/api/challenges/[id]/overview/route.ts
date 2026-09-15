@@ -12,7 +12,7 @@ import { verifyRequestToken } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { isPubliclyVisible } from '@/lib/public/challengeVisibility';
 import { toPublicOverview, toSignedInOverview } from '@/lib/public/overview';
-import { groupContextFrom, pickGroupOwner } from '../../../../../../../../packages/services/challenge/group';
+import { groupContextFrom, pickGroupOwner } from '../../../../../../../../packages/capabilities/groups';
 
 const challengeRepo = new ChallengeRepository();
 const challengeTeamRepo = new ChallengeTeamRepository();

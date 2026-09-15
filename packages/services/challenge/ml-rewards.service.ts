@@ -10,8 +10,8 @@ import {
   ContributionRepository,
   RewardEntryRepository,
 } from "../../database-service/repositories/index.js";
-import { splitShares } from "../../evaluator/share.js";
-import { getGroupContext, type GroupContext } from "./group.js";
+import { splitShares } from "../../database-service/domain/share.js";
+import { getGroupContext, type GroupContext } from "../../capabilities/groups.js";
 import type {
   Challenge,
   ChallengeRepoRole,

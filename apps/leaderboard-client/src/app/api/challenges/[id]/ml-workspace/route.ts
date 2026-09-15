@@ -11,7 +11,7 @@ import type { ChallengeRepoRole } from '../../../../../../../../packages/databas
 import { parseMlRewardRules } from '../../../../../../../../packages/database-service/domain/mlRewardRules';
 import { ML_ROLE_RULE } from '../../../../../../../../packages/services/challenge/mlRoles';
 import { normalizeArtifactUrl } from '../../../../../../../../packages/services/challenge/artifactUrl';
-import { resolveWorkspaceOwner } from '../../../../../../../../packages/services/challenge/group';
+import { resolveWorkspaceOwner } from '../../../../../../../../packages/capabilities/groups';
 import { verifyRequestToken } from '@/lib/auth';
 
 /** Roles closed once the challenge's metric block threshold is reached. */

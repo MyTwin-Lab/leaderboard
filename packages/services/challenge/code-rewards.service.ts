@@ -9,8 +9,8 @@ import {
   TaskRepository,
 } from "../../database-service/repositories/index.js";
 import { isEvaluationRunning } from "../../database-service/repositories/contribution.repo.js";
-import { splitShares } from "../../evaluator/share.js";
-import { getGroupContext, type GroupContext } from "./group.js";
+import { splitShares } from "../../database-service/domain/share.js";
+import { getGroupContext, type GroupContext } from "../../capabilities/groups.js";
 import type { Challenge, ChallengeTeam, Contribution } from "../../database-service/domain/entities.js";
 import { parseCodeRewardRules } from "../../database-service/domain/codeRewardRules.js";
 import {

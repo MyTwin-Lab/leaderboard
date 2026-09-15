@@ -6,8 +6,8 @@ import {
   groupMultiplier,
   pickGroupOwner,
   resolveWorkspaceOwner,
-} from "./group.js";
-import type { ChallengeTeam } from "../../database-service/domain/entities.js";
+} from "./groups.js";
+import type { ChallengeTeam } from "../database-service/domain/entities.js";
 
 const CH = "ch-1";
 const ALICE = "aaa-alice";

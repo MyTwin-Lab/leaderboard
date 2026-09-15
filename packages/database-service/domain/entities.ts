@@ -44,7 +44,7 @@ export interface ChallengeTeam {
    * Groupe de travail sur ce challenge. `undefined` = participation solo,
    * comportement inchangé. Les rows d'un même challenge qui le partagent
    * travaillent sur le workspace du créateur du groupe — celui dont la row
-   * porte le `workspace_ref`. Voir services/challenge/group.ts.
+   * porte le `workspace_ref`. Voir capabilities/groups.ts.
    */
   group_id?: string;
 }
