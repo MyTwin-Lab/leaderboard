@@ -7,6 +7,7 @@ import type { Challenge, Sandbox } from "../../../../../packages/database-servic
 import { flowCatalog } from "@/distribution/mytwin.flows";
 import { isPubliclyVisible } from "@/lib/public/challengeVisibility";
 import { canSeeSandbox, sandboxViewer } from "@/lib/server/sandboxAuth";
+import { modules } from "@packages/capabilities/modules";
 import {
   SITE_URL,
   breadcrumbJsonLd,
@@ -125,14 +126,17 @@ export async function contributorMetadata(userId: string): Promise<Metadata> {
 }
 
 export async function fetchSitemap(): Promise<MetadataRoute.Sitemap> {
-  const [challenges, sandboxes] = await Promise.all([
+  // Module sandbox désactivé : ses pages répondent 404, aucune n'est listée.
+  const [challenges, sandboxEnabled] = await Promise.all([
     repositories.challenge.findAll(),
-    repositories.sandbox.findAll(),
+    modules.enabled("sandbox"),
   ]);
+  const sandboxes = sandboxEnabled ? await repositories.sandbox.findAll() : [];
 
   return buildSitemap({
     baseUrl: SITE_URL,
     challenges: challenges.filter(isPubliclyVisible),
+    sandboxEnabled,
     sandboxes: sandboxes.filter((sandbox) => canSeeSandbox(sandbox, ANONYMOUS)),
   });
 }

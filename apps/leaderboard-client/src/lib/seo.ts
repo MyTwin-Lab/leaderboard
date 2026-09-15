@@ -137,6 +137,8 @@ export type SitemapInput = {
   challenges: { slug: string; created_at: Date; closed_at?: Date | null }[];
   /** Déjà filtrés sur ce qu'un visiteur anonyme peut ouvrir. */
   sandboxes: { slug: string; updated_at: Date }[];
+  /** Faux quand le module sandbox est désactivé : `/sandbox` répond alors 404. Vrai par défaut. */
+  sandboxEnabled?: boolean;
 };
 
 /**
@@ -145,14 +147,14 @@ export type SitemapInput = {
  * à faire dans Google), et une URL en `noindex` dans un sitemap dégrade la
  * confiance que Google accorde au fichier entier.
  */
-export function buildSitemap({ baseUrl, challenges, sandboxes }: SitemapInput): MetadataRoute.Sitemap {
+export function buildSitemap({ baseUrl, challenges, sandboxes, sandboxEnabled = true }: SitemapInput): MetadataRoute.Sitemap {
   const url = (path: string) => `${baseUrl}${path}`;
 
   return [
     { url: url("/"), changeFrequency: "daily", priority: 1 },
     { url: url("/about"), changeFrequency: "monthly", priority: 0.9 },
     { url: url("/challenges"), changeFrequency: "daily", priority: 0.9 },
-    { url: url("/sandbox"), changeFrequency: "daily", priority: 0.8 },
+    ...(sandboxEnabled ? [{ url: url("/sandbox"), changeFrequency: "daily" as const, priority: 0.8 }] : []),
     { url: url("/leaderboard"), changeFrequency: "daily", priority: 0.6 },
     { url: url("/terms-of-use"), changeFrequency: "yearly", priority: 0.2 },
     { url: url("/privacy-policy"), changeFrequency: "yearly", priority: 0.2 },
