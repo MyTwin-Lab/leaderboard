@@ -19,6 +19,7 @@ function sandbox(overrides: Partial<Sandbox> = {}): Sandbox {
     user_id: AUTHOR,
     type: "code",
     title: "Triage assistant",
+    slug: "triage-assistant",
     context: "Emergency triage is slow.",
     goals: ["Parse the intake form", "Rank by severity"],
     why: "Nurses lose hours every shift.",

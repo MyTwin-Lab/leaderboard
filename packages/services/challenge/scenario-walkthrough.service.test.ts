@@ -61,7 +61,7 @@ function makeDeps(opts: Opts = {}) {
   let stored: ValidationScenarioRun | null = opts.existingRun ?? null;
 
   const challenge: Challenge = {
-    uuid: VCH, title: "Usability walkthrough", status: "active", type: "validation",
+    uuid: VCH, title: "Usability walkthrough", slug: "usability-walkthrough", status: "active", type: "validation",
     contribution_points_reward: opts.pool ?? 12000, completion: 0, project_id: "proj-1",
     source_challenge_id: opts.sourceType === null ? null : CODE_SOURCE,
     cp_per_validation: opts.cpPerValidation ?? 200,

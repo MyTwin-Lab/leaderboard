@@ -18,7 +18,7 @@ const BOB = user('bbb', 'Bob');
 const CAROL = user('ccc', 'Carol');
 
 const challenge = (over: Partial<Challenge> = {}): Challenge => ({
-  uuid: CH, title: 'Build it', status: 'active', type: 'code',
+  uuid: CH, title: 'Build it', slug: 'build-it', status: 'active', type: 'code',
   description: '', roadmap: '', contribution_points_reward: 1000,
   completion: 0, project_id: 'p-1', ...over,
 });

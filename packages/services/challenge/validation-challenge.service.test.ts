@@ -24,6 +24,7 @@ function makeChallenge(over: Partial<Challenge> = {}): Challenge {
   return {
     uuid: "vch-1",
     title: "Validate the sentiment API",
+    slug: "validate-the-sentiment-api",
     status: "active",
     type: "validation",
     contribution_points_reward: 100,

@@ -31,6 +31,7 @@ function makeSandbox(over: Partial<Sandbox> = {}): Sandbox {
     user_id: AUTHOR,
     type: "code",
     title: "Triage assistant",
+    slug: "triage-assistant",
     context: null,
     goals: [],
     why: null,

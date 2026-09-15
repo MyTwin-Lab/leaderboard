@@ -10,6 +10,7 @@ function baseRow(reward_rules: unknown): DbChallenge {
     uuid: "11111111-1111-1111-1111-111111111111",
     index: 1,
     title: "Test challenge",
+    slug: "test-challenge",
     status: "active",
     type: "code",
     start_date: null,

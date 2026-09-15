@@ -55,6 +55,8 @@ export interface Challenge {
   uuid: string;
   index?: number;
   title: string;
+  /** Segment de l'URL publique (/challenges/<slug>) — voir domain/slug.ts. */
+  slug: string;
   status: string;
   type: string; // 'code' | 'ml' | ...
   start_date?: Date | null;
@@ -598,6 +600,8 @@ export interface Sandbox {
   /** Figé à la création : il a déjà déterminé les champs saisis et la grille. */
   type: SandboxType;
   title: string;
+  /** Segment de l'URL publique (/sandbox/<slug>) — voir domain/slug.ts. */
+  slug: string;
   context: string | null;
   goals: string[];
   why: string | null;

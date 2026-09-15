@@ -21,6 +21,12 @@ import { normalizeArtifactUrl } from "../challenge/artifactUrl.js";
 export interface PromotionInput {
   /** Vide = on garde le titre de la proposition. */
   title?: string | null;
+  /**
+   * Vide = le slug de la proposition, ou son premier dérivé libre côté
+   * challenges. Résolu par `SandboxPromotionService`, qui seul lit la base :
+   * il n'apparaît donc pas dans `PromotedChallengeDraft`.
+   */
+  slug?: string | null;
   status: string;
   start_date?: string | null;
   end_date?: string | null;

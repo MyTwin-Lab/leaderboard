@@ -59,6 +59,7 @@ class FakeDb {
     this.challenges.push({
       uuid: 'ch-1',
       title: 'ML Challenge',
+      slug: 'ml-challenge',
       status: 'active',
       type: 'ml',
       start_date: new Date('2026-01-01'),

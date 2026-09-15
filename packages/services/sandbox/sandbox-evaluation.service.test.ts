@@ -15,6 +15,7 @@ function makeSandbox(over: Partial<Sandbox> = {}): Sandbox {
     user_id: ALICE,
     type: "code",
     title: "Widget",
+    slug: "widget",
     context: "A small widget",
     goals: ["ship it"],
     why: "it matters",

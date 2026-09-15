@@ -12,7 +12,7 @@ function user(uuid: string, full_name: string): User {
 
 function challenge(over: Partial<Challenge> = {}): Challenge {
   return {
-    uuid: CH, title: "Build the API", status: "active", type: "code",
+    uuid: CH, title: "Build the API", slug: "build-the-api", status: "active", type: "code",
     contribution_points_reward: 1000, completion: 0, project_id: "p-1",
     created_at: new Date("2026-09-01T00:00:00Z"),
     ...over,
@@ -40,7 +40,7 @@ function entry(over: Partial<RewardEntry> = {}): RewardEntry {
 
 function sandbox(over: Partial<Sandbox> = {}): Sandbox {
   return {
-    uuid: "sb-1", user_id: ALICE, type: "code", title: "Triage assistant",
+    uuid: "sb-1", user_id: ALICE, type: "code", title: "Triage assistant", slug: "triage-assistant",
     context: null, goals: [], why: null, repo_url: "https://github.com/acme/triage",
     model_url: null, dataset_urls: [], status: "open",
     promoted_challenge_id: null, promoted_at: null,

@@ -43,6 +43,11 @@ export const challenges = pgTable("challenges", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   index: serial("index"),
   title: varchar("title", { length: 255 }).notNull(),
+  // Le segment de l'URL publique : /challenges/<slug>. Règles dans
+  // domain/slug.ts. Distinct du titre : renommer un challenge ne change pas
+  // son adresse, et modifier le slug garde l'ancien en redirection
+  // (challenge_slug_redirects).
+  slug: varchar("slug", { length: 80 }).notNull(),
   status: varchar("status", { length: 100 }).notNull(),
   type: varchar("type", { length: 50 }).default("code"), // 'code' | 'ml' | 'validation'
   start_date: date("start_date"),
@@ -82,6 +87,20 @@ export const challenges = pgTable("challenges", {
 }, (table) => ({
   projectIdIdx: index("idx_challenges_project_id").on(table.project_id),
   statusIdx: index("idx_challenges_status").on(table.status),
+  slugIdx: uniqueIndex("idx_challenges_slug").on(table.slug),
+}));
+
+// --- CHALLENGE_SLUG_REDIRECTS ---
+// Les anciens slugs d'un challenge. Une URL partagée ou indexée sous un slug
+// abandonné redirige (308) vers le slug courant au lieu de tomber en 404.
+// Un slug n'est jamais à la fois courant pour une ligne et redirigé vers une
+// autre : ChallengeRepository.isSlugTaken lit les deux tables.
+export const challenge_slug_redirects = pgTable("challenge_slug_redirects", {
+  slug: varchar("slug", { length: 80 }).primaryKey(),
+  challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  challengeIdIdx: index("idx_challenge_slug_redirects_challenge_id").on(table.challenge_id),
 }));
 
 // --- CHALLENGE_REPOS ---
@@ -946,6 +965,10 @@ export const sandboxes = pgTable("sandboxes", {
   // d'un challenge ML existant, il ne peut pas naître d'une proposition.
   type: varchar("type", { length: 10 }).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
+  // Le segment de l'URL publique : /sandbox/<slug>. Mêmes règles que
+  // challenges.slug, dans un espace de noms séparé : un challenge promu peut
+  // garder le slug de sa proposition.
+  slug: varchar("slug", { length: 80 }).notNull(),
   // Les trois sections de la proposition, telles que la page détail les rend.
   // `context` et `why` sont du markdown libre ; `goals` est un tableau d'items
   // courts plutôt qu'une liste markdown, parce qu'ils sont rendus un par un et
@@ -979,6 +1002,17 @@ export const sandboxes = pgTable("sandboxes", {
 }, (table) => ({
   userIdIdx: index("idx_sandboxes_user_id").on(table.user_id),
   statusIdx: index("idx_sandboxes_status").on(table.status),
+  slugIdx: uniqueIndex("idx_sandboxes_slug").on(table.slug),
+}));
+
+// --- SANDBOX_SLUG_REDIRECTS ---
+// Les anciens slugs d'un sandbox — voir challenge_slug_redirects.
+export const sandbox_slug_redirects = pgTable("sandbox_slug_redirects", {
+  slug: varchar("slug", { length: 80 }).primaryKey(),
+  sandbox_id: uuid("sandbox_id").references(() => sandboxes.uuid, { onDelete: "cascade" }).notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  sandboxIdIdx: index("idx_sandbox_slug_redirects_sandbox_id").on(table.sandbox_id),
 }));
 
 // --- SANDBOX_STARS ---

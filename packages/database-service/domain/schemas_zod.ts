@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { mlRewardRulesSchema } from "./mlRewardRules.js";
 import { codeRewardRulesSchema } from "./codeRewardRules.js";
+import { slugProblem } from "./slug.js";
 
 export const projectSchema = z.object({
   uuid: z.string().uuid(),
@@ -45,10 +46,20 @@ export const contributionMemberSchema = z.object({
   share_cp: z.number().int(),
 });
 
+/**
+ * Un slug de challenge ou de sandbox. Le message d'erreur est celui de
+ * `slugProblem`, le même que le formulaire affiche avant l'envoi.
+ */
+export const slugSchema = z.string().superRefine((value, ctx) => {
+  const problem = slugProblem(value);
+  if (problem) ctx.addIssue({ code: "custom", message: problem });
+});
+
 export const challengeSchema = z.object({
   uuid: z.string().uuid(),
   index: z.number().int().optional(),
   title: z.string(),
+  slug: slugSchema,
   status: z.string(),
   type: z.string().default('code'),
   start_date: z.coerce.date().nullish(),

@@ -12,9 +12,12 @@ import {
 import { toDomainChallenge, toDomainSandbox } from "../../database-service/db/mappers.js";
 import {
   AppSettingsRepository,
+  ChallengeRepository,
   ContributionRepository,
   SandboxRepository,
 } from "../../database-service/repositories/index.js";
+import { isSlugUniqueViolation } from "../../database-service/repositories/slugs.js";
+import { SlugTakenError } from "../../database-service/domain/slug.js";
 import type { Challenge, ChallengeRepoRole, Sandbox } from "../../database-service/domain/entities.js";
 import { buildRepoDefinitions } from "../challenge/challengeRepos.js";
 import { MlRewardsService, type MlSubmissionEvent } from "../challenge/ml-rewards.service.js";
@@ -42,6 +45,7 @@ export interface PromoteResult {
 /** Dépendances injectables, sur le motif de `SandboxServiceDeps`. */
 export interface SandboxPromotionDeps {
   sandboxRepo: Pick<SandboxRepository, "findById">;
+  challengeRepo: Pick<ChallengeRepository, "isSlugTaken" | "availableSlug">;
   appSettingsRepo: { get(): Promise<{ sandbox_promotion_bonus_cp: number }> };
   contributionRepo: Pick<ContributionRepository, "create">;
   /**
@@ -75,6 +79,7 @@ export class SandboxPromotionService {
   constructor(deps?: Partial<SandboxPromotionDeps>) {
     this.deps = {
       sandboxRepo: new SandboxRepository(),
+      challengeRepo: new ChallengeRepository(),
       appSettingsRepo: new AppSettingsRepository(),
       contributionRepo: new ContributionRepository(),
       awardMl: (event) => new MlRewardsService().award(event),
@@ -92,6 +97,11 @@ export class SandboxPromotionService {
     // transaction, elle, ne sait pas faire la différence entre les deux.
     const existing = await this.deps.sandboxRepo.findById(sandboxId);
     if (!existing) throw new SandboxNotFoundError(sandboxId);
+
+    // Vérifié avant d'ouvrir la transaction, pour répondre 409 avec une
+    // suggestion sans rien avoir écrit. L'index unique reste l'arbitre d'une
+    // création concurrente du même slug : voir le catch plus bas.
+    const slug = await this.resolveChallengeSlug(existing, input.slug);
 
     const settings = await this.deps.appSettingsRepo.get();
     const bonus = settings?.sandbox_promotion_bonus_cp ?? 0;
@@ -129,6 +139,7 @@ export class SandboxPromotionService {
         .values({
           uuid: challengeId,
           title: draft.title,
+          slug,
           status: draft.status,
           type: draft.type,
           start_date: draft.start_date?.toISOString().split("T")[0] ?? null,
@@ -207,11 +218,31 @@ export class SandboxPromotionService {
         sandbox: toDomainSandbox(linkedSandbox ?? claimed),
         reposByRole,
       };
+    }).catch(async (error) => {
+      // Un slug pris entre la vérification et l'insert : toute la promotion
+      // est annulée, et l'admin reçoit la même réponse qu'avant l'envoi.
+      if (isSlugUniqueViolation(error, ["idx_challenges_slug"])) {
+        throw new SlugTakenError(slug, await this.deps.challengeRepo.availableSlug(slug));
+      }
+      throw error;
     });
 
     this.scheduleAuthorWork(sandbox, challenge, reposByRole);
 
     return { challenge, sandbox };
+  }
+
+  /**
+   * Le slug du challenge promu. Demandé : il doit être libre. Absent : celui de
+   * la proposition — challenges et sandboxes ont des espaces de noms séparés,
+   * donc `/sandbox/mykine` devient `/challenges/mykine` s'il n'est pas déjà pris.
+   */
+  private async resolveChallengeSlug(sandbox: Sandbox, requested: string | null | undefined): Promise<string> {
+    if (!requested) return this.deps.challengeRepo.availableSlug(sandbox.slug);
+    if (await this.deps.challengeRepo.isSlugTaken(requested)) {
+      throw new SlugTakenError(requested, await this.deps.challengeRepo.availableSlug(requested));
+    }
+    return requested;
   }
 
   /**

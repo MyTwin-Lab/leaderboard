@@ -162,6 +162,7 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     uuid: row.uuid,
     index: row.index,
     title: row.title,
+    slug: row.slug,
     status: row.status,
     type: row.type ?? 'code',
     start_date: row.start_date ? new Date(row.start_date) : undefined,
@@ -300,6 +301,7 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid" | "created_at">): t
   return {
     // index est auto-généré par PostgreSQL (serial)
     title: entity.title,
+    slug: entity.slug,
     status: entity.status,
     type: entity.type ?? 'code',
     start_date: entity.start_date?.toISOString().split("T")[0] ?? null, // YYYY-MM-DD
@@ -1047,6 +1049,7 @@ export function toDomainSandbox(row: DbSandbox): Sandbox {
     user_id: row.user_id,
     type: row.type as SandboxType,
     title: row.title,
+    slug: row.slug,
     context: row.context ?? null,
     // `?? []` malgré le NOT NULL DEFAULT : une row écrite avant la migration
     // par un chemin qui ignorait la colonne remonterait null.

@@ -1,13 +1,20 @@
-import { db, sandboxes } from "../db/drizzle";
+import { db, sandbox_slug_redirects, sandboxes } from "../db/drizzle";
 import { and, desc, eq, gte, isNull, lt, ne } from "drizzle-orm";
 import { toDomainSandbox } from "../db/mappers";
 import type { Sandbox, SandboxEvaluationStatus, SandboxType } from "../domain/entities";
+import { SLUG_FALLBACK, SlugTakenError } from "../domain/slug";
+import { availableSlug, claimSlug, isSlugTaken, isSlugUniqueViolation, type SlugOwners } from "./slugs";
+
+/** Les contraintes qu'une écriture de slug peut heurter sous concurrence. */
+const SLUG_CONSTRAINTS = ["idx_sandboxes_slug", "sandbox_slug_redirects_pkey"] as const;
 
 /** Ce que l'auteur fournit à la création. `type` n'apparaît nulle part ailleurs : il est figé ici. */
 export interface SandboxDraft {
   user_id: string;
   type: SandboxType;
   title: string;
+  /** Dérivé du titre s'il manque — voir `claimSlug`. */
+  slug?: string;
   context?: string | null;
   goals?: string[];
   why?: string | null;
@@ -19,6 +26,8 @@ export interface SandboxDraft {
 /** Édition par l'auteur. Ni `type`, ni `status`, ni les champs d'évaluation : chacun a son chemin dédié. */
 export interface SandboxPatch {
   title?: string;
+  /** Modifié, l'ancien slug reste une redirection. Le titre, lui, n'y touche jamais. */
+  slug?: string;
   context?: string | null;
   goals?: string[];
   why?: string | null;
@@ -39,6 +48,20 @@ export interface SandboxPatch {
  * ligne à ligne d'un reward reste un geste d'admin explicite et séparé.
  */
 export class SandboxRepository {
+  private readonly slugOwners: SlugOwners = {
+    currentOwner: async (slug) => {
+      const [row] = await db.select({ uuid: sandboxes.uuid }).from(sandboxes).where(eq(sandboxes.slug, slug));
+      return row?.uuid ?? null;
+    },
+    redirectOwner: async (slug) => {
+      const [row] = await db
+        .select({ uuid: sandbox_slug_redirects.sandbox_id })
+        .from(sandbox_slug_redirects)
+        .where(eq(sandbox_slug_redirects.slug, slug));
+      return row?.uuid ?? null;
+    },
+  };
+
   /**
    * Les archivés sont exclus par défaut : le listing public ne les montre pas.
    * L'appelant qui a le droit de les voir (auteur, admin) demande explicitement
@@ -56,6 +79,26 @@ export class SandboxRepository {
   async findById(uuid: string): Promise<Sandbox | null> {
     const [row] = await db.select().from(sandboxes).where(eq(sandboxes.uuid, uuid));
     return row ? toDomainSandbox(row) : null;
+  }
+
+  /** Archivés compris : c'est la route qui décide de ce qu'un visiteur peut voir. */
+  async findBySlug(slug: string): Promise<Sandbox | null> {
+    const [row] = await db.select().from(sandboxes).where(eq(sandboxes.slug, slug));
+    return row ? toDomainSandbox(row) : null;
+  }
+
+  /** Le sandbox vers lequel un ancien slug redirige, `null` si ce slug n'a jamais été abandonné. */
+  async findSlugRedirect(slug: string): Promise<string | null> {
+    return this.slugOwners.redirectOwner(slug);
+  }
+
+  /** Voir `isSlugTaken` dans ./slugs : `exceptId` est le sandbox en cours d'édition. */
+  async isSlugTaken(slug: string, exceptId?: string): Promise<boolean> {
+    return isSlugTaken(this.slugOwners, slug, exceptId);
+  }
+
+  async availableSlug(base: string, exceptId?: string): Promise<string> {
+    return availableSlug(this.slugOwners, base, exceptId);
   }
 
   /**
@@ -98,21 +141,34 @@ export class SandboxRepository {
   }
 
   async create(draft: SandboxDraft): Promise<Sandbox> {
-    const [inserted] = await db
-      .insert(sandboxes)
-      .values({
-        user_id: draft.user_id,
-        type: draft.type,
-        title: draft.title,
-        context: draft.context ?? null,
-        goals: draft.goals ?? [],
-        why: draft.why ?? null,
-        repo_url: draft.repo_url,
-        model_url: draft.model_url ?? null,
-        dataset_urls: draft.dataset_urls ?? [],
-      })
-      .returning();
-    return toDomainSandbox(inserted);
+    const slug = await claimSlug(this.slugOwners, {
+      requested: draft.slug,
+      title: draft.title,
+      fallback: SLUG_FALLBACK.sandbox,
+    });
+    try {
+      const [inserted] = await db
+        .insert(sandboxes)
+        .values({
+          user_id: draft.user_id,
+          type: draft.type,
+          title: draft.title,
+          slug,
+          context: draft.context ?? null,
+          goals: draft.goals ?? [],
+          why: draft.why ?? null,
+          repo_url: draft.repo_url,
+          model_url: draft.model_url ?? null,
+          dataset_urls: draft.dataset_urls ?? [],
+        })
+        .returning();
+      return toDomainSandbox(inserted);
+    } catch (error) {
+      if (isSlugUniqueViolation(error, SLUG_CONSTRAINTS)) {
+        throw new SlugTakenError(slug, await this.availableSlug(slug));
+      }
+      throw error;
+    }
   }
 
   /**
@@ -130,12 +186,44 @@ export class SandboxRepository {
     if (patch.model_url !== undefined) set.model_url = patch.model_url;
     if (patch.dataset_urls !== undefined) set.dataset_urls = patch.dataset_urls;
 
-    const [updated] = await db
-      .update(sandboxes)
-      .set(set)
-      .where(eq(sandboxes.uuid, uuid))
-      .returning();
-    return updated ? toDomainSandbox(updated) : null;
+    let change: { from: string; to: string } | null = null;
+    if (patch.slug !== undefined) {
+      const [current] = await db.select({ slug: sandboxes.slug }).from(sandboxes).where(eq(sandboxes.uuid, uuid));
+      if (!current) return null;
+      if (current.slug !== patch.slug) {
+        if (await this.isSlugTaken(patch.slug, uuid)) {
+          throw new SlugTakenError(patch.slug, await this.availableSlug(patch.slug, uuid));
+        }
+        change = { from: current.slug, to: patch.slug };
+        set.slug = patch.slug;
+      }
+    }
+
+    const slugChange = change;
+    try {
+      const [updated] = slugChange
+        ? await db.transaction(async (tx) => {
+            // Reprendre un de ses propres anciens slugs : il cesse d'être une redirection.
+            await tx
+              .delete(sandbox_slug_redirects)
+              .where(and(eq(sandbox_slug_redirects.slug, slugChange.to), eq(sandbox_slug_redirects.sandbox_id, uuid)));
+            await tx
+              .insert(sandbox_slug_redirects)
+              .values({ slug: slugChange.from, sandbox_id: uuid })
+              .onConflictDoUpdate({
+                target: sandbox_slug_redirects.slug,
+                set: { sandbox_id: uuid, created_at: new Date() },
+              });
+            return tx.update(sandboxes).set(set).where(eq(sandboxes.uuid, uuid)).returning();
+          })
+        : await db.update(sandboxes).set(set).where(eq(sandboxes.uuid, uuid)).returning();
+      return updated ? toDomainSandbox(updated) : null;
+    } catch (error) {
+      if (slugChange && isSlugUniqueViolation(error, SLUG_CONSTRAINTS)) {
+        throw new SlugTakenError(slugChange.to, await this.availableSlug(slugChange.to, uuid));
+      }
+      throw error;
+    }
   }
 
   /**

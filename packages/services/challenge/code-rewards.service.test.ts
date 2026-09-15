@@ -7,7 +7,7 @@ const CH = "ch-1", ALICE = "alice";
 
 function makeChallenge(over: Partial<Challenge> = {}): Challenge {
   return {
-    uuid: CH, title: "Build the app", status: "active", type: "code",
+    uuid: CH, title: "Build the app", slug: "build-the-app", status: "active", type: "code",
     contribution_points_reward: 200, completion: 0, project_id: "p-1",
     workspace_mode: "provided_repo",
     reward_rules: { version: 1, delivery: { fixed: 50, cap: 150 } },

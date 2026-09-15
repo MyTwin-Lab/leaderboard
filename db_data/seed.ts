@@ -2,6 +2,8 @@ import { db, projects, users, challenges, contributions, challenge_teams, sandbo
 import { readFileSync } from "fs";
 import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
+import { ChallengeRepository } from "../packages/database-service/repositories/challenge.repo.js";
+import { SLUG_FALLBACK, slugify } from "../packages/database-service/domain/slug.js";
 
 /**
  * Additive seed — inserts only missing data, never deletes or overwrites.
@@ -105,6 +107,9 @@ async function seed() {
         uuid: newUuid,
         index: c.index,
         title: c.title,
+        // Insert brut (uuid et index imposés) : le repository ne pose donc pas
+        // le slug à notre place, on le dérive du titre avec les mêmes règles.
+        slug: await new ChallengeRepository().availableSlug(slugify(c.title, SLUG_FALLBACK.challenge)),
         status: c.completion === 1.0 ? "completed" : "active",
         start_date: c.start_date,
         end_date: c.end_date,

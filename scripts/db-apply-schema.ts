@@ -1,5 +1,6 @@
 import { db } from "../packages/database-service/db/drizzle.js";
 import { sql } from "drizzle-orm";
+import { SLUG_FALLBACK, planSlugBackfill } from "../packages/database-service/domain/slug.js";
 
 /**
  * Applique les changements de schéma que `drizzle-kit push` ne peut pas
@@ -95,7 +96,68 @@ function fkSetNullStatement(table: string, column: string): { label: string; sql
   };
 }
 
-const STATEMENTS: Array<{ label: string; sql: string }> = [
+/**
+ * Les slugs d'une table (challenges ou sandboxes) : backfill, NOT NULL et
+ * index unique, dans **une** transaction.
+ *
+ * Pourquoi en TypeScript et pas en SQL : le slug est calculé par
+ * `planSlugBackfill`, avec le même `slugify` que l'interface. Postgres n'a pas
+ * de translittération sans l'extension `unaccent`, et deux implémentations
+ * finiraient par diverger — la prod recevrait des slugs que l'UI n'aurait
+ * jamais proposés.
+ *
+ * Pourquoi une transaction avec verrou : le postdeploy Scalingo tourne pendant
+ * que l'ancienne version sert encore le trafic, et elle crée des lignes sans
+ * slug. `SHARE ROW EXCLUSIVE` bloque les écritures (pas les lectures) le temps
+ * du backfill ; sans lui, une ligne insérée entre le SELECT et le SET NOT NULL
+ * ferait échouer le déploiement. Tout ou rien : en cas d'échec la colonne reste
+ * nullable et l'ancien code continue de fonctionner.
+ *
+ * Idempotent : une colonne déjà NOT NULL court-circuite tout, sans verrou.
+ */
+function slugStatement(
+  table: "challenges" | "sandboxes",
+  redirectsTable: "challenge_slug_redirects" | "sandbox_slug_redirects",
+): { label: string; run: () => Promise<void> } {
+  const indexName = `idx_${table}_slug`;
+  return {
+    label: `${table}.slug (backfill, NOT NULL, unicité)`,
+    run: async () => {
+      const { rows: columns } = await db.execute(sql`
+        SELECT is_nullable FROM information_schema.columns
+        WHERE table_name = ${table} AND column_name = 'slug'`);
+      if (columns[0]?.is_nullable === "NO") {
+        await db.execute(sql.raw(`CREATE UNIQUE INDEX IF NOT EXISTS ${indexName} ON ${table} (slug)`));
+        return;
+      }
+
+      await db.transaction(async (tx) => {
+        await tx.execute(sql.raw(`LOCK TABLE ${table} IN SHARE ROW EXCLUSIVE MODE`));
+
+        const { rows } = await tx.execute(sql.raw(
+          `SELECT uuid, title, slug FROM ${table} ORDER BY created_at, uuid`,
+        ));
+        const { rows: redirects } = await tx.execute(sql.raw(`SELECT slug FROM ${redirectsTable}`));
+
+        const plan = planSlugBackfill(
+          rows as Array<{ uuid: string; title: string; slug: string | null }>,
+          table === "challenges" ? SLUG_FALLBACK.challenge : SLUG_FALLBACK.sandbox,
+          (redirects as Array<{ slug: string }>).map((row) => row.slug),
+        );
+        // La trace du déploiement : quel identifiant a reçu quel slug.
+        for (const { uuid, slug } of plan) {
+          await tx.execute(sql`UPDATE ${sql.raw(table)} SET slug = ${slug} WHERE uuid = ${uuid}`);
+          console.log(`      ${uuid} → ${slug}`);
+        }
+
+        await tx.execute(sql.raw(`ALTER TABLE ${table} ALTER COLUMN slug SET NOT NULL`));
+        await tx.execute(sql.raw(`CREATE UNIQUE INDEX IF NOT EXISTS ${indexName} ON ${table} (slug)`));
+      });
+    },
+  };
+}
+
+const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: () => Promise<void> }> = [
   // challenges.workspace_mode — c'est cette colonne qui manquait et faisait
   // échouer challenge.findAll(), donc chaque rendu de la page d'accueil.
   {
@@ -687,13 +749,63 @@ const STATEMENTS: Array<{ label: string; sql: string }> = [
       FOR EACH ROW
       EXECUTE FUNCTION sync_contribution_reward()`,
   },
+
+  // --- Slugs des URLs publiques (docs/superpowers/plans/2026-09-15-slug-urls.md) ---
+  //
+  // En toute fin de tableau, volontairement : le SET NOT NULL rend la colonne
+  // obligatoire pour l'ancien code encore en ligne pendant le postdeploy. Plus
+  // il arrive tard, moins il reste d'instructions capables d'échouer après lui
+  // et de laisser l'ancien code incapable de créer un challenge ou un sandbox.
+  // Retour arrière si besoin : ALTER TABLE challenges|sandboxes ALTER COLUMN
+  // slug DROP NOT NULL.
+  //
+  // Les tables de redirection d'abord : le backfill lit leurs slugs pour ne
+  // jamais attribuer un ancien slug encore en service.
+  {
+    label: "challenge_slug_redirects",
+    sql: `
+      CREATE TABLE IF NOT EXISTS challenge_slug_redirects (
+        slug varchar(80) PRIMARY KEY,
+        challenge_id uuid NOT NULL REFERENCES challenges(uuid) ON DELETE CASCADE,
+        created_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+  {
+    label: "challenge_slug_redirects.challenge_id (index)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_challenge_slug_redirects_challenge_id ON challenge_slug_redirects (challenge_id)`,
+  },
+  {
+    label: "sandbox_slug_redirects",
+    sql: `
+      CREATE TABLE IF NOT EXISTS sandbox_slug_redirects (
+        slug varchar(80) PRIMARY KEY,
+        sandbox_id uuid NOT NULL REFERENCES sandboxes(uuid) ON DELETE CASCADE,
+        created_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+  {
+    label: "sandbox_slug_redirects.sandbox_id (index)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_sandbox_slug_redirects_sandbox_id ON sandbox_slug_redirects (sandbox_id)`,
+  },
+  // Nullable à l'ajout : les lignes existantes n'ont pas encore de slug.
+  {
+    label: "challenges.slug",
+    sql: `ALTER TABLE challenges ADD COLUMN IF NOT EXISTS slug varchar(80)`,
+  },
+  slugStatement("challenges", "challenge_slug_redirects"),
+  {
+    label: "sandboxes.slug",
+    sql: `ALTER TABLE sandboxes ADD COLUMN IF NOT EXISTS slug varchar(80)`,
+  },
+  slugStatement("sandboxes", "sandbox_slug_redirects"),
 ];
 
 async function main() {
   console.log("🔧 Apply schema (idempotent)");
 
   for (const statement of STATEMENTS) {
-    await db.execute(sql.raw(statement.sql));
+    if ("run" in statement) await statement.run();
+    else await db.execute(sql.raw(statement.sql));
     console.log(`  ✓ ${statement.label}`);
   }
 

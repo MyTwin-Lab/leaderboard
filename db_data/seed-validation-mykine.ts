@@ -32,6 +32,8 @@ import {
   validation_targets,
   validation_scenario_steps,
 } from "../packages/database-service/db/drizzle.js";
+import { ChallengeRepository } from "../packages/database-service/repositories/challenge.repo.js";
+import { SLUG_FALLBACK, slugify } from "../packages/database-service/domain/slug.js";
 
 const PROJECT_TITLE = "MyCoach";
 const CODE_CHALLENGE_TITLE = "MyCoach — démo patient (parcours mobile)";
@@ -140,6 +142,11 @@ async function findOrCreateAuthor(): Promise<string> {
   return uuid;
 }
 
+/** Insert brut (uuid imposé) : le slug est dérivé ici, avec les règles du repository. */
+function freeChallengeSlug(title: string): Promise<string> {
+  return new ChallengeRepository().availableSlug(slugify(title, SLUG_FALLBACK.challenge));
+}
+
 async function findOrCreateCodeChallenge(projectId: string): Promise<string> {
   const [existing] = await db
     .select({ uuid: challenges.uuid })
@@ -152,6 +159,7 @@ async function findOrCreateCodeChallenge(projectId: string): Promise<string> {
   await db.insert(challenges).values({
     uuid,
     title: CODE_CHALLENGE_TITLE,
+    slug: await freeChallengeSlug(CODE_CHALLENGE_TITLE),
     status: "completed",
     type: "code",
     description:
@@ -225,6 +233,7 @@ async function findOrCreateValidationChallenge(
   await db.insert(challenges).values({
     uuid,
     title: VALIDATION_CHALLENGE_TITLE,
+    slug: await freeChallengeSlug(VALIDATION_CHALLENGE_TITLE),
     status: "active",
     type: "validation",
     description:
@@ -305,7 +314,7 @@ async function main() {
   await ensureScenarioSteps(validationChallengeId);
 
   console.log("\n✅ Prêt.");
-  console.log(`   Challenge de validation : /challenges/${validationChallengeId}`);
+  console.log(`   Challenge de validation : /challenges/${validationChallengeId} (redirige vers son slug)`);
   console.log(`   Configuration          : /challenges/${validationChallengeId}/manage`);
   console.log(`   Application exposée    : ${DEPLOYED_URL}`);
   console.log(
