@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 
 import { Providers } from "./providers";
+import { GET as getModules } from "@/app/api/modules/route";
 import { GradientBackground } from "@/components/layout/GradientBackground";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { OnboardingDrawer } from "@/components/onboarding/OnboardingDrawer";
 import { SessionGuard } from "@/components/layout/SessionGuard";
 import { fetchContributorSession } from "@/lib/contributor";
+import type { ModulesResponse } from "@/lib/moduleSlots";
 import { fetchOnboardingQuests } from "@/lib/server/onboarding";
+import { readPublicRoute } from "@/lib/server/publicSsr";
 import { modules } from "@packages/capabilities/modules";
 import { AppSettingsRepository } from "@packages/database-service/repositories";
 import { THEMES, DEFAULT_THEME_KEY, isValidThemeKey } from "@/lib/themes";
@@ -63,15 +67,23 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [session, settings] = await Promise.all([
+  const [session, settings, moduleStates] = await Promise.all([
     fetchContributorSession(),
     appSettingsRepo.get(),
+    readPublicRoute<ModulesResponse>(getModules, "/api/modules"),
   ]);
   // Le tiroir d'onboarding : module actif, et au moins une quête à accomplir.
   const onboardingQuests = session && (await modules.enabled("onboarding"))
     ? await fetchOnboardingQuests(session.id)
     : [];
   const showOnboarding = onboardingQuests.some((quest) => !quest.completed);
+
+  // L'état des modules dans le cache dès le rendu serveur : les entrées de
+  // navigation des modules actifs (la sandbox) sont dans le HTML initial —
+  // lues par les crawlers, sans apparaître après coup — et celles d'un module
+  // désactivé n'y sont jamais.
+  const queryClient = new QueryClient();
+  if (moduleStates) queryClient.setQueryData(["modules"], moduleStates);
 
   const themeKey = isValidThemeKey(settings.theme_key) ? settings.theme_key : DEFAULT_THEME_KEY;
   const palette = THEMES[themeKey];
@@ -101,15 +113,17 @@ export default async function RootLayout({
       <head />
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Providers>
-          <GradientBackground>
-            <Navbar session={session} />
-            <main className="mx-auto w-full max-w-6xl px-4 pt-20 pb-16 sm:px-6 md:pt-24">
-              {children}
-            </main>
-            <Footer />
-            {showOnboarding && <OnboardingDrawer quests={onboardingQuests} />}
-            {session && <SessionGuard />}
-          </GradientBackground>
+          <HydrationBoundary state={dehydrate(queryClient)}>
+            <GradientBackground>
+              <Navbar session={session} />
+              <main className="mx-auto w-full max-w-6xl px-4 pt-20 pb-16 sm:px-6 md:pt-24">
+                {children}
+              </main>
+              <Footer />
+              {showOnboarding && <OnboardingDrawer quests={onboardingQuests} />}
+              {session && <SessionGuard />}
+            </GradientBackground>
+          </HydrationBoundary>
         </Providers>
       </body>
     </html>
