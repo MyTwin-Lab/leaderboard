@@ -116,6 +116,9 @@ function store(over: Partial<CronRunStore> = {}) {
   } as CronRunStore & { claim: ReturnType<typeof vi.fn>; finish: ReturnType<typeof vi.fn> };
 }
 
+// Ces tests portent sur l'ordonnancement : les propriétaires de leurs jobs sont actifs.
+const enabledOwners = async () => true;
+
 describe("runDueJobs", () => {
   const NOW = at("2026-09-15T05:00:20Z");
   const clock = () => NOW;
@@ -130,7 +133,7 @@ describe("runDueJobs", () => {
     const digest = job("digest.generate", "0 5 * * *");
     const slack = job("slack.detect", "0 6 * * *");
 
-    const summary = await runDueJobs({ jobs: [digest, slack], repo, clock });
+    const summary = await runDueJobs({ jobs: [digest, slack], repo, clock, isOwnerEnabled: enabledOwners });
 
     expect(summary).toEqual([
       { key: "digest.generate", owner: "module:digest", status: "succeeded", result: { ok: "digest.generate" } },
@@ -150,7 +153,7 @@ describe("runDueJobs", () => {
     const repo = store({ claim: vi.fn(async () => false) });
     const every = job("compute.expiration", "* * * * *");
 
-    const summary = await runDueJobs({ jobs: [every], repo, clock });
+    const summary = await runDueJobs({ jobs: [every], repo, clock, isOwnerEnabled: enabledOwners });
 
     expect(summary[0].status).toBe("busy");
     expect(every.run).not.toHaveBeenCalled();
@@ -163,7 +166,7 @@ describe("runDueJobs", () => {
     const failing = job("meetings.check", "* * * * *", async () => { throw new Error("Meet down"); });
     const next = job("compute.provisioning", "* * * * *");
 
-    const summary = await runDueJobs({ jobs: [failing, next], repo, clock });
+    const summary = await runDueJobs({ jobs: [failing, next], repo, clock, isOwnerEnabled: enabledOwners });
 
     expect(summary.map((s) => s.status)).toEqual(["failed", "succeeded"]);
     expect(summary[0].error).toBe("Meet down");
@@ -174,7 +177,7 @@ describe("runDueJobs", () => {
   it("reports an invalid schedule as a failed job", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const summary = await runDueJobs({ jobs: [job("broken.job", "every minute")], repo: store(), clock });
+    const summary = await runDueJobs({ jobs: [job("broken.job", "every minute")], repo: store(), clock, isOwnerEnabled: enabledOwners });
 
     expect(summary[0]).toMatchObject({ status: "failed" });
     errorSpy.mockRestore();
@@ -186,14 +189,14 @@ describe("runJobNow", () => {
     const repo = store();
     const daily = job("digest.generate", "0 5 * * *");
 
-    const summary = await runJobNow("digest.generate", { jobs: [daily], repo, clock: () => at("2026-09-15T14:00:00Z") });
+    const summary = await runJobNow("digest.generate", { jobs: [daily], repo, clock: () => at("2026-09-15T14:00:00Z"), isOwnerEnabled: enabledOwners });
 
     expect(summary.status).toBe("succeeded");
     expect(repo.claim).toHaveBeenCalledOnce();
   });
 
   it("refuses an unknown job", async () => {
-    await expect(runJobNow("nope", { jobs: [], repo: store() })).rejects.toThrow('Unknown job "nope"');
+    await expect(runJobNow("nope", { jobs: [], repo: store(), isOwnerEnabled: enabledOwners })).rejects.toThrow('Unknown job "nope"');
   });
 });
 
@@ -230,7 +233,7 @@ describe("PlatformRegistry — jobs", () => {
       ["demo.purge", "flow:demo"],
       ["digest.generate", "module:digest"],
     ]);
-    expect(installedJobs().map((j) => j.key)).toEqual(["core.refresh-tokens.cleanup", "demo.purge", "digest.generate"]);
+    expect(installedJobs().map((j) => j.key)).toEqual(["core.refresh-tokens.cleanup", "core.events.distribute", "core.events.purge", "demo.purge", "digest.generate"]);
   });
 
   it("refuses a job key declared twice", () => {

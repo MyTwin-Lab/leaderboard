@@ -42,3 +42,9 @@ export { NotificationRepository, buildGroupInviteDraft, NOTIFICATIONS_PAGE_SIZE 
 export type { NotificationDraft } from "./notification.repo.js";
 export { CronRunRepository } from "./cronRun.repo.js";
 export type { CronRun, CronRunStatus } from "./cronRun.repo.js";
+export { ModuleSettingRepository } from "./moduleSetting.repo.js";
+export type { ModuleSetting } from "./moduleSetting.repo.js";
+export { PlatformEventRepository } from "./platformEvent.repo.js";
+export type { StoredPlatformEvent, EventExecutor } from "./platformEvent.repo.js";
+export { EventDeliveryRepository } from "./eventDelivery.repo.js";
+export type { EventDelivery } from "./eventDelivery.repo.js";

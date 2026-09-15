@@ -1,5 +1,7 @@
 import { CronRunRepository, RefreshTokenRepository } from "../database-service/repositories/index.js";
 import { PlatformRegistry, type JobDeclaration, type Owned } from "../registry/platform.js";
+import { coreEventJobs } from "./events.js";
+import { ownerEnabled } from "./modules.js";
 
 /**
  * Capacité `cron` — le tick unique
@@ -7,7 +9,7 @@ import { PlatformRegistry, type JobDeclaration, type Owned } from "../registry/p
  * Le planificateur de la plateforme appelle `/api/cron/tick` chaque minute. Le
  * tick lance chaque job déclaré (core, flows, extensions, kits, modules) dont
  * l'horaire est échu depuis son dernier démarrage, pris un par un par le
- * verrou de `cron_runs`.
+ * verrou de `cron_runs`. Les jobs d'un module désactivé sont sautés.
  *
  * Les horaires sont des expressions cron à 5 champs, lues en UTC.
  */
@@ -135,7 +137,7 @@ export function isDue(schedule: CronSchedule | string, lastStartedAt: Date | nul
 /** Verrou par défaut : un job tombé en plein milieu redevient prenable au bout de 10 minutes. */
 export const DEFAULT_LOCK_SECONDS = 600;
 
-/** Les jobs du core. */
+/** Les jobs du core : le nettoyage des sessions, et la distribution et la purge de l'outbox. */
 export const coreJobs: Owned<JobDeclaration>[] = [
   {
     key: "core.refresh-tokens.cleanup",
@@ -145,6 +147,7 @@ export const coreJobs: Owned<JobDeclaration>[] = [
       return { deleted: await new RefreshTokenRepository().cleanupExpired() };
     },
   },
+  ...coreEventJobs,
 ];
 
 /** Tous les jobs installés : ceux du core, puis ceux de la distribution. */
@@ -158,7 +161,8 @@ export function installedJobs(): Owned<JobDeclaration>[] {
   return jobs;
 }
 
-export type JobRunStatus = "succeeded" | "failed" | "busy" | "not_due";
+/** `skipped` : le module qui déclare le job est désactivé. */
+export type JobRunStatus = "succeeded" | "failed" | "busy" | "not_due" | "skipped";
 
 export interface JobRunSummary {
   key: string;
@@ -174,6 +178,8 @@ export interface CronOptions {
   jobs?: Owned<JobDeclaration>[];
   repo?: CronRunStore;
   clock?: () => Date;
+  /** Le propriétaire du job est-il actif ? Par défaut, un module désactivé ne l'est pas. */
+  isOwnerEnabled?: (owner: string) => Promise<boolean>;
 }
 
 async function runClaimed(
@@ -215,12 +221,18 @@ export async function runDueJobs(options: CronOptions = {}): Promise<JobRunSumma
   const jobs = options.jobs ?? installedJobs();
   const repo = options.repo ?? new CronRunRepository();
   const clock = options.clock ?? (() => new Date());
+  const isOwnerEnabled = options.isOwnerEnabled ?? ((owner: string) => ownerEnabled(owner));
 
   const now = clock();
   const lastStarts = new Map((await repo.findAll()).map((run) => [run.job_key, run.last_started_at]));
 
   const summaries: JobRunSummary[] = [];
   for (const job of jobs) {
+    if (!(await isOwnerEnabled(job.owner))) {
+      summaries.push({ key: job.key, owner: job.owner, status: "skipped" });
+      continue;
+    }
+
     let dueAt: Date | null;
     let due: boolean;
     try {
@@ -245,11 +257,14 @@ export async function runDueJobs(options: CronOptions = {}): Promise<JobRunSumma
 /**
  * Lance un job tout de suite, sans regarder son horaire, sous le même verrou
  * que le tick. Sert les anciennes routes `/api/cron/*`, conservées jusqu'au
- * lot L7 le temps de basculer le planificateur.
+ * lot L7 le temps de basculer le planificateur. Un job de module désactivé
+ * est sauté, comme au tick.
  */
 export async function runJobNow(key: string, options: CronOptions = {}): Promise<JobRunSummary> {
   const jobs = options.jobs ?? installedJobs();
   const job = jobs.find((candidate) => candidate.key === key);
   if (!job) throw new Error(`[cron] Unknown job "${key}"`);
+  const isOwnerEnabled = options.isOwnerEnabled ?? ((owner: string) => ownerEnabled(owner));
+  if (!(await isOwnerEnabled(job.owner))) return { key: job.key, owner: job.owner, status: "skipped" };
   return runClaimed(job, options.repo ?? new CronRunRepository(), options.clock ?? (() => new Date()));
 }

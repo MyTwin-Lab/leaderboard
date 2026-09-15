@@ -1037,6 +1037,67 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
       )`,
   },
 
+  // --- Modules et outbox (challenge 020, L6) ---
+  //
+  // `module_settings` reprend les drapeaux et réglages de modules
+  // d'app_settings, qui ne sont plus lus et partent en L7. La reprise ne
+  // touche jamais une ligne existante : un réglage modifié par l'ancien code
+  // pendant le déploiement ne sera pas recopié. La sandbox, toujours active
+  // jusqu'ici, arrive activée.
+  {
+    label: "module_settings",
+    sql: `
+      CREATE TABLE IF NOT EXISTS module_settings (
+        key varchar(64) PRIMARY KEY,
+        enabled boolean NOT NULL DEFAULT false,
+        settings jsonb NOT NULL DEFAULT '{}'::jsonb,
+        updated_at timestamp NOT NULL DEFAULT now(),
+        updated_by uuid REFERENCES users(uuid) ON DELETE SET NULL
+      )`,
+  },
+  {
+    label: "module_settings (reprise d'app_settings)",
+    sql: `
+      INSERT INTO module_settings (key, enabled, settings)
+      SELECT v.key, v.enabled, v.settings
+      FROM app_settings s
+      CROSS JOIN LATERAL (VALUES
+        ('meetings', s.modules_meetings_enabled, '{}'::jsonb),
+        ('onboarding', s.modules_onboarding_enabled, '{}'::jsonb),
+        ('digest', s.digest_enabled, jsonb_build_object('frequency_days', s.digest_frequency_days)),
+        ('sandbox', true, jsonb_build_object(
+          'star_tiers', s.sandbox_star_tiers,
+          'promotion_bonus_cp', s.sandbox_promotion_bonus_cp
+        ))
+      ) AS v(key, enabled, settings)
+      WHERE s.id = 1
+      ON CONFLICT (key) DO NOTHING`,
+  },
+  {
+    label: "platform_events",
+    sql: `
+      CREATE TABLE IF NOT EXISTS platform_events (
+        id serial PRIMARY KEY,
+        type varchar(128) NOT NULL,
+        payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+        occurred_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+  {
+    label: "platform_events (type, id)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_platform_events_type_id ON platform_events (type, id)`,
+  },
+  {
+    label: "event_deliveries",
+    sql: `
+      CREATE TABLE IF NOT EXISTS event_deliveries (
+        subscriber_key varchar(128) PRIMARY KEY,
+        last_event_id integer NOT NULL DEFAULT 0,
+        last_error text,
+        updated_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+
   // --- Slugs des URLs publiques (docs/superpowers/plans/2026-09-15-slug-urls.md) ---
   //
   // En toute fin de tableau, volontairement : le SET NOT NULL rend la colonne

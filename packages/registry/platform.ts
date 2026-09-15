@@ -295,11 +295,42 @@ export interface JobDeclaration {
   run(): Promise<unknown>;
 }
 
+/** Un événement de la plateforme, lu dans l'outbox (`platform_events`). */
+export interface PlatformEvent<Payload = Record<string, unknown>> {
+  id: number;
+  type: string;
+  payload: Payload;
+  occurredAt: Date;
+}
+
+/**
+ * Un type d'événement qu'un propriétaire émet (`task.created`…). Un événement
+ * n'existe que s'il a au moins un abonné : sans abonné, rien n'est écrit.
+ */
+export interface EventDeclaration {
+  type: string;
+  description?: string;
+}
+
+/**
+ * Un abonné : il consomme dans l'ordre les événements d'un type, distribués
+ * par le tick. Un événement peut être relivré après une panne : le handler
+ * doit être idempotent. Une erreur arrête sa file jusqu'au tick suivant.
+ */
+export interface EventSubscriptionDeclaration {
+  /** Unique sur la plateforme ; c'est le curseur de `event_deliveries`. */
+  key: string;
+  event: string;
+  handle(event: PlatformEvent): Promise<void>;
+}
+
 interface Declarations {
   ruleKeys?: readonly RuleKeyDeclaration[];
   jobs?: readonly JobDeclaration[];
   contributionTypes?: readonly ContributionTypeDeclaration[];
   evaluationHandlers?: readonly EvaluationHandlerDeclaration[];
+  events?: readonly EventDeclaration[];
+  subscriptions?: readonly EventSubscriptionDeclaration[];
 }
 
 export interface FlowDefinition extends Declarations {
@@ -337,9 +368,22 @@ export interface KitDefinition extends Declarations {
 
 export interface ModuleDefinition extends Declarations {
   key: string;
+  /** Nom de l'écran des modules. La clé, à défaut. */
+  label?: string;
+  description?: string;
+  /** L'état d'un module sans ligne dans `module_settings`. Désactivé par défaut. */
+  defaultEnabled?: boolean;
+  /** Ses réglages (`module_settings.settings`), validés et complétés par le schéma. */
+  settings?: { schema: ConfigSchema };
   /** CP que le module verse hors du ledger des challenges. */
   cpSource?: CpSourceDefinition;
 }
+
+/**
+ * Les événements que le core émet lui-même (identité, board, évaluation). Un
+ * type n'y entre qu'avec le lot qui lui ajoute son premier abonné.
+ */
+export const CORE_EVENTS: readonly EventDeclaration[] = [];
 
 export interface PlatformDefinitions {
   flows: readonly FlowDefinition[];
@@ -361,6 +405,9 @@ interface PlatformState {
   ruleKeys: Map<string, Owned<RuleKeyDeclaration>>;
   contributionTypes: Map<string, Owned<ContributionTypeDeclaration>>;
   jobs: Map<string, Owned<JobDeclaration>>;
+  /** Par type d'événement. */
+  events: Map<string, Owned<EventDeclaration>>;
+  subscriptions: Map<string, Owned<EventSubscriptionDeclaration>>;
   /** Par clé de propriétaire (`code`, `sandbox`…), telle qu'inscrite dans `evaluation_runs.trigger_type`. */
   evaluationHandlers: Map<string, { owner: string; handlers: Map<string, EvaluationHandlerDeclaration> }>;
 }
@@ -393,6 +440,23 @@ function claim<T extends { key: string }>(
       );
     }
     target.set(declaration.key, { ...declaration, owner });
+  }
+}
+
+/** Un type d'événement n'a qu'un émetteur déclaré. */
+function claimEvents(
+  target: Map<string, Owned<EventDeclaration>>,
+  owner: string,
+  declarations: readonly EventDeclaration[] | undefined
+): void {
+  for (const declaration of declarations ?? []) {
+    const existing = target.get(declaration.type);
+    if (existing) {
+      throw new Error(
+        `[PlatformRegistry] Event "${declaration.type}" is declared by both ${existing.owner} and ${owner}`
+      );
+    }
+    target.set(declaration.type, { ...declaration, owner });
   }
 }
 
@@ -485,6 +549,8 @@ export class PlatformRegistry {
       ruleKeys: new Map(),
       contributionTypes: new Map(),
       jobs: new Map(),
+      events: new Map(CORE_EVENTS.map((event) => [event.type, { ...event, owner: "core" }])),
+      subscriptions: new Map(),
       evaluationHandlers: new Map(),
     };
 
@@ -526,7 +592,18 @@ export class PlatformRegistry {
       claim(state.ruleKeys, "Rule key", owner, declarations.ruleKeys);
       claim(state.contributionTypes, "Contribution type", owner, declarations.contributionTypes);
       claim(state.jobs, "Job", owner, declarations.jobs);
+      claimEvents(state.events, owner, declarations.events);
+      claim(state.subscriptions, "Subscription", owner, declarations.subscriptions);
       claimEvaluationHandlers(state.evaluationHandlers, key, owner, declarations.evaluationHandlers);
+    }
+
+    // Un abonné n'écoute qu'un événement que quelqu'un émet.
+    for (const subscription of state.subscriptions.values()) {
+      if (!state.events.has(subscription.event)) {
+        throw new Error(
+          `[PlatformRegistry] Subscription "${subscription.key}" of ${subscription.owner} listens to "${subscription.event}", which nothing declares`
+        );
+      }
     }
 
     holder()[STATE_KEY] = state;
@@ -602,6 +679,25 @@ export class PlatformRegistry {
   /** Les jobs planifiés de la distribution, avec leur propriétaire. */
   static jobs(): Owned<JobDeclaration>[] {
     return [...current().jobs.values()];
+  }
+
+  /** Les modules installés, dans l'ordre de la distribution. */
+  static modules(): ModuleDefinition[] {
+    return [...current().modules.values()];
+  }
+
+  /** La déclaration d'un type d'événement, avec son émetteur. */
+  static event(type: string): Owned<EventDeclaration> | undefined {
+    return current().events.get(type);
+  }
+
+  static events(): Owned<EventDeclaration>[] {
+    return [...current().events.values()];
+  }
+
+  /** Les abonnés de l'outbox, avec leur propriétaire. */
+  static subscriptions(): Owned<EventSubscriptionDeclaration>[] {
+    return [...current().subscriptions.values()];
   }
 
   /** Le handler d'évaluation `handlerKey` du propriétaire `ownerKey` (flow, extension, kit ou module). */

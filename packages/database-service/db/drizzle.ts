@@ -1322,6 +1322,43 @@ export const cron_runs = pgTable("cron_runs", {
   locked_until: timestamp("locked_until"),
 });
 
+// --- MODULE_SETTINGS ---
+// L'état et les réglages de chaque module produit (challenge 020, L6). Un
+// module sans ligne prend l'état par défaut qu'il déclare. `settings` est
+// validé par le schéma du module (`packages/capabilities/modules.ts`).
+// Remplace `modules_*_enabled`, `digest_*` et `sandbox_*` d'app_settings,
+// supprimées en L7.
+export const module_settings = pgTable("module_settings", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+  updated_by: uuid("updated_by").references(() => users.uuid, { onDelete: "set null" }),
+});
+
+// --- PLATFORM_EVENTS ---
+// L'outbox (challenge 020, L6) : un événement écrit dans la transaction de
+// l'action qui l'émet, distribué ensuite par le tick à ses abonnés. Purgé
+// après 30 jours.
+export const platform_events = pgTable("platform_events", {
+  id: serial("id").primaryKey(),
+  type: varchar("type", { length: 128 }).notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  occurred_at: timestamp("occurred_at").defaultNow().notNull(),
+}, (table) => ({
+  typeIdIdx: index("idx_platform_events_type_id").on(table.type, table.id),
+}));
+
+// --- EVENT_DELIVERIES ---
+// Le curseur de chaque abonné : le dernier événement qu'il a traité, et la
+// dernière erreur qui a arrêté sa file.
+export const event_deliveries = pgTable("event_deliveries", {
+  subscriber_key: varchar("subscriber_key", { length: 128 }).primaryKey(),
+  last_event_id: integer("last_event_id").notNull().default(0),
+  last_error: text("last_error"),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // --- DATABASE CLIENT ---
 
 const pool = new Pool({

@@ -11,6 +11,10 @@ import type { ModuleDefinition } from "../../packages/registry/platform.js";
  */
 export const sandboxModule: ModuleDefinition = {
   key: "sandbox",
+  label: "Sandbox",
+  description: "Open proposals that the community stars, and that an admin can promote into challenges.",
+  // Toujours actif avant les modules : une instance existante le garde.
+  defaultEnabled: true,
   jobs: [
     {
       // Les hachés d'IP des étoiles ne se gardent que 30 jours, digest activé ou non.

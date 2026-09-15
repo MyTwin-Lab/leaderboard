@@ -1,16 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockGet, mockUpdate, mockFetchContributorSession } = vi.hoisted(() => ({
-  mockGet: vi.fn(),
+const { mockAll, mockState, mockUpdate, mockFetchContributorSession } = vi.hoisted(() => ({
+  mockAll: vi.fn(),
+  mockState: vi.fn(),
   mockUpdate: vi.fn(),
   mockFetchContributorSession: vi.fn(),
 }));
 
-vi.mock('@packages/database-service/repositories', () => ({
-  AppSettingsRepository: class {
-    get = mockGet;
-    update = mockUpdate;
-  },
+vi.mock('@packages/capabilities/modules', () => ({
+  modules: { all: mockAll, state: mockState, update: mockUpdate },
 }));
 
 vi.mock('@/lib/contributor', () => ({
@@ -18,6 +16,10 @@ vi.mock('@/lib/contributor', () => ({
 }));
 
 import { GET, PATCH } from './route';
+
+const state = (key: string, enabled: boolean) => ({
+  key, label: key, description: null, enabled, settings: { secret: 'admin only' }, updatedAt: null,
+});
 
 function patchModules(body: unknown) {
   const req = new Request('http://localhost/api/modules', {
@@ -30,19 +32,20 @@ function patchModules(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAll.mockResolvedValue([state('meetings', true), state('sandbox', true)]);
+  mockState.mockImplementation(async (key: string) => (key === 'onboarding' ? null : state(key, true)));
 });
 
 describe('GET /api/modules', () => {
-  it('returns the current module flags', async () => {
-    mockGet.mockResolvedValue({
-      modules_meetings_enabled: true,
-      modules_onboarding_enabled: false,
-    });
-
+  it('lists the installed modules without their settings, plus the legacy flags', async () => {
     const res = await GET();
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
+      modules: [
+        { key: 'meetings', label: 'meetings', description: null, enabled: true },
+        { key: 'sandbox', label: 'sandbox', description: null, enabled: true },
+      ],
       meetings_enabled: true,
       onboarding_enabled: false,
     });
@@ -50,65 +53,29 @@ describe('GET /api/modules', () => {
 });
 
 describe('PATCH /api/modules', () => {
-  it('returns 403 when there is no session', async () => {
-    mockFetchContributorSession.mockResolvedValue(null);
-
-    const res = await patchModules({ meetings_enabled: true });
-
-    expect(res.status).toBe(403);
-    expect(mockUpdate).not.toHaveBeenCalled();
-  });
-
-  it('returns 403 when the session is not an admin', async () => {
+  it('returns 403 without an admin session', async () => {
     mockFetchContributorSession.mockResolvedValue({ id: 'u1', role: 'contributor' });
 
-    const res = await patchModules({ meetings_enabled: true });
+    const res = await patchModules({ meetings_enabled: false });
 
     expect(res.status).toBe(403);
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
-  it('updates only the boolean fields present in the body', async () => {
+  it('updates the modules named by the legacy boolean fields', async () => {
     mockFetchContributorSession.mockResolvedValue({ id: 'admin-1', role: 'admin' });
-    mockUpdate.mockResolvedValue({
-      modules_meetings_enabled: true,
-      modules_onboarding_enabled: false,
-    });
 
-    const res = await patchModules({ meetings_enabled: true, extra: 'ignored' });
+    const res = await patchModules({ meetings_enabled: false, extra: 'ignored' });
 
     expect(res.status).toBe(200);
-    expect(mockUpdate).toHaveBeenCalledWith({ modules_meetings_enabled: true }, 'admin-1');
-    expect(await res.json()).toEqual({
-      meetings_enabled: true,
-      onboarding_enabled: false,
-    });
+    expect(mockUpdate).toHaveBeenCalledWith('meetings', { enabled: false }, 'admin-1');
   });
 
-  it('updates both flags when both are provided', async () => {
+  it('ignores a module the distribution does not install, and non-boolean values', async () => {
     mockFetchContributorSession.mockResolvedValue({ id: 'admin-1', role: 'admin' });
-    mockUpdate.mockResolvedValue({
-      modules_meetings_enabled: false,
-      modules_onboarding_enabled: true,
-    });
 
-    await patchModules({ meetings_enabled: false, onboarding_enabled: true });
+    await patchModules({ onboarding_enabled: true, meetings_enabled: 'yes' });
 
-    expect(mockUpdate).toHaveBeenCalledWith(
-      { modules_meetings_enabled: false, modules_onboarding_enabled: true },
-      'admin-1',
-    );
-  });
-
-  it('sends an empty patch when no recognized boolean fields are provided', async () => {
-    mockFetchContributorSession.mockResolvedValue({ id: 'admin-1', role: 'admin' });
-    mockUpdate.mockResolvedValue({
-      modules_meetings_enabled: false,
-      modules_onboarding_enabled: false,
-    });
-
-    await patchModules({ meetings_enabled: 'not-a-boolean' });
-
-    expect(mockUpdate).toHaveBeenCalledWith({}, 'admin-1');
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 });
