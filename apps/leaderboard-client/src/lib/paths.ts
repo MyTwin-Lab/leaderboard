@@ -6,8 +6,9 @@
  * un moteur, un signal de canonique moins net. Les routes d'API, elles,
  * restent sur l'UUID ; les URLs admin (`/admin/challenges/<uuid>`) aussi.
  *
- * Pur et sans import : utilisable côté client comme côté serveur.
+ * Pur : utilisable côté client comme côté serveur.
  */
+import { looksLikeUuid } from "../../../../packages/database-service/domain/slug";
 
 export function challengePath(slug: string): string {
   return `/challenges/${slug}`;
@@ -20,6 +21,17 @@ export function challengeManagePath(slug: string): string {
 /** Le lien d'invitation d'un groupe : c'est lui, l'invitation (docs/challenge-groups.md). */
 export function challengeInvitePath(slug: string, groupToken: string): string {
   return `${challengePath(slug)}?group=${encodeURIComponent(groupToken)}`;
+}
+
+/**
+ * La connexion depuis la page d'un challenge, avec retour sur cette page — et
+ * sur l'invitation, si le visiteur en ouvrait une. Un jeton qui n'a pas la
+ * forme d'un UUID n'est pas transmis : `safeInternalPath` refuserait tout le
+ * chemin, et le visiteur reviendrait sur l'accueil.
+ */
+export function challengeSignInPath(slug: string, groupToken?: string | null): string {
+  const from = groupToken && looksLikeUuid(groupToken) ? challengeInvitePath(slug, groupToken) : challengePath(slug);
+  return `/signin?from=${encodeURIComponent(from)}`;
 }
 
 export function sandboxPath(slug: string): string {

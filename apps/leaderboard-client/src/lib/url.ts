@@ -6,15 +6,25 @@ import type { NextRequest } from 'next/server';
  *
  * The allowlist is deliberately narrower than "is a valid path": it admits
  * only root-anchored paths made of unreserved characters, so `//evil.com`,
- * `https://evil.com` and `/\evil.com` are all rejected as hosts, and `?`, `#`
- * and `.` never survive. Shared by /signin and /api/google-auth/authorize —
- * both feed the same OAuth round-trip, so a path one accepts and the other
- * rejects would be a bug either way.
+ * `https://evil.com` and `/\evil.com` are all rejected as hosts, and `#` and
+ * `.` never survive. Shared by /signin and /api/google-auth/authorize — both
+ * feed the same OAuth round-trip, so a path one accepts and the other rejects
+ * would be a bug either way.
+ *
+ * One query is admitted, and only in one shape: a group invitation link,
+ * `/challenges/<slug>?group=<uuid>`. Without it a signed-out visitor opening
+ * an invitation came back from Google on the bare challenge page, the token
+ * lost, and had to find the link again.
  */
 export function safeInternalPath(raw: string | null | undefined): string {
-  // `(?!\/)` : sans lui, `//1311768467/x` passait (docs/temp.md, M3).
-  return typeof raw === 'string' && /^\/(?!\/)[a-zA-Z0-9\-_\/]*$/.test(raw) ? raw : '/';
+  if (typeof raw !== 'string') return '/';
+  return PLAIN_PATH.test(raw) || GROUP_INVITE_PATH.test(raw) ? raw : '/';
 }
+
+// `(?!\/)` : sans lui, `//1311768467/x` passait (docs/temp.md, M3).
+const PLAIN_PATH = /^\/(?!\/)[a-zA-Z0-9\-_\/]*$/;
+const GROUP_INVITE_PATH =
+  /^\/challenges\/[a-zA-Z0-9\-_]+\?group=[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 /**
  * Origine des appels HTTP internes (proxy.ts → /api/auth/*).

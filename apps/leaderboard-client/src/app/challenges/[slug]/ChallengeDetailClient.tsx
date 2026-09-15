@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { challengeInvitePath, challengePath } from '@/lib/paths';
+import { challengeInvitePath, challengePath, challengeSignInPath } from '@/lib/paths';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import {
   ArrowLeft, CheckCircle2, CalendarDays, BrainCircuit,
@@ -496,7 +496,7 @@ export default function ChallengeDetailClient({
                 // Aucun chemin ne doit permettre à un non-connecté de lancer
                 // une requête de join : on l'envoie se connecter.
                 <a
-                  href={`/signin?from=${challengePath(challengeSlug)}`}
+                  href={challengeSignInPath(challengeSlug, inviteToken)}
                   title="Join this challenge"
                   style={{ color: '#fff' }}
                   className="flex shrink-0 items-center gap-1.5 rounded-full bg-brandCP px-4 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(10,247,193,0.2)] active:translate-y-0"
@@ -684,7 +684,7 @@ export default function ChallengeDetailClient({
             Sign in to join this challenge and start your own board.
           </p>
           <a
-            href={`/signin?from=${challengePath(challengeSlug)}`}
+            href={challengeSignInPath(challengeSlug, inviteToken)}
             className="inline-flex items-center justify-center rounded-xl bg-brandCP/20 px-6 py-3 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCP/40"
           >
             Continue with Google

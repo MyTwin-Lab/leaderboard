@@ -45,6 +45,23 @@ describe('safeInternalPath', () => {
     expect(safeInternalPath('/challenges?id=1')).toBe('/');
   });
 
+  // Le seul query admis : le jeton d'une invitation de groupe, pour qu'un
+  // visiteur non connecté le retrouve après Google.
+  it('keeps a group invitation link', () => {
+    const invite = '/challenges/mykine?group=8e53bee5-27d0-483d-9adf-091e5df9f2e8';
+    expect(safeInternalPath(invite)).toBe(invite);
+  });
+
+  it.each([
+    ['a token that is not a uuid', '/challenges/mykine?group=abc'],
+    ['anything after the token', '/challenges/mykine?group=8e53bee5-27d0-483d-9adf-091e5df9f2e8&next=//evil.com'],
+    ['another query key', '/challenges/mykine?from=8e53bee5-27d0-483d-9adf-091e5df9f2e8'],
+    ['a group token outside a challenge page', '/contributors/me?group=8e53bee5-27d0-483d-9adf-091e5df9f2e8'],
+    ['a nested challenge path', '/challenges/mykine/manage?group=8e53bee5-27d0-483d-9adf-091e5df9f2e8'],
+  ])('rejects %s', (_label, raw) => {
+    expect(safeInternalPath(raw)).toBe('/');
+  });
+
   it('rejects a path carrying a fragment', () => {
     expect(safeInternalPath('/challenges#top')).toBe('/');
   });
