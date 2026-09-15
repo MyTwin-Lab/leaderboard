@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BrainCircuit, Code2, ShieldCheck } from "lucide-react";
 import { TeamAvatars } from "../ui/TeamAvatars";
+import { FlowIcon } from "@/components/ui/FlowIcon";
 import { SparkBars } from "@/components/ui/SparkBars";
+import { flowCatalog } from "@/distribution/mytwin.flows";
 import { formatCP } from "@/lib/formatters";
 import { challengePath } from "@/lib/paths";
 import type { TeamMember } from "@/lib/types";
@@ -35,16 +36,13 @@ interface ChallengeCardProps {
   onCardClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-const CHALLENGE_TYPE_BADGE: Record<string, { icon: typeof Code2; label: string }> = {
-  ml: { icon: BrainCircuit, label: 'ML' },
-  validation: { icon: ShieldCheck, label: 'Validation' },
-};
-
 function ChallengeTypeBadge({ type }: { type: string }) {
-  const { icon: Icon, label } = CHALLENGE_TYPE_BADGE[type] ?? { icon: Code2, label: 'Code' };
+  // Nom et icône viennent du flow ; un type absent ou inconnu s'affiche comme
+  // le flow par défaut.
+  const { icon, label } = flowCatalog.resolve(type);
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-brandCP/10 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-brandCP">
-      <Icon className="h-3 w-3" />
+      <FlowIcon icon={icon} className="h-3 w-3" />
       {label}
     </span>
   );

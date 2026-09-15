@@ -1,4 +1,4 @@
-import { BRIEF_GATED_TYPES } from './challengeBrief';
+import { isBriefGated } from './challengeBrief';
 import { GROUP_MAX_SIZE } from '../../../../packages/database-service/domain/groupPolicy';
 
 /**
@@ -42,7 +42,7 @@ export function showJoinInHeader({
 }): boolean {
   if (isMember) return false;
   if (!isOpen(challengeStatus)) return false;
-  return BRIEF_GATED_TYPES.includes(challengeType ?? '');
+  return isBriefGated(challengeType);
 }
 
 /**

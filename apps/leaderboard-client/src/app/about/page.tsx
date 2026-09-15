@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, Eyebrow, PrimaryCta, SecondaryCta, SectionHeading, TextLink } from "@/components/about/primitives";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { flowCatalog } from "@/distribution/mytwin.flows";
 import { challengePath } from "@/lib/paths";
 import { fetchLabChallenges, type LabChallenge } from "@/lib/server/publicPages";
 import {
@@ -141,8 +142,6 @@ const FAQ = [
       "Anyone who wants to help build health technology, with no title or prior expertise required. Sign in with a Google account to join a challenge or propose a community project.",
   },
 ];
-
-const TYPE_LABELS: Record<string, string> = { code: "Code", ml: "Machine learning" };
 
 /** La vitrine ne doit jamais faire tomber la landing : sans base, on s'en passe. */
 async function readChallenges(): Promise<LabChallenge[]> {
@@ -338,7 +337,7 @@ export default async function AboutPage() {
                 className="group flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-brandCP/25 hover:bg-white/[0.06]"
               >
                 <span className="w-fit rounded-full bg-brandCP/10 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-brandCP">
-                  {TYPE_LABELS[challenge.type] ?? "Challenge"}
+                  {flowCatalog.get(challenge.type)?.longLabel ?? "Challenge"}
                 </span>
                 <h3 className="text-lg font-semibold tracking-tight text-white transition-colors group-hover:text-brandCP">
                   {challenge.title}

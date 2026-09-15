@@ -1,3 +1,5 @@
+import { flowCatalog } from '@/distribution/mytwin.flows';
+
 /**
  * Le brief d'un challenge est un document comme les autres — il vit dans
  * `challenge_documents` et reste consultable dans le tiroir Docs une fois le
@@ -35,15 +37,17 @@ export function findBrief<T extends { filename: string }>(docs: T[]): T | null {
 }
 
 /**
- * Types de challenge dont l'accès passe par le brief.
+ * L'accès à ce challenge passe-t-il par le brief ?
  *
- * Les challenges de validation en sont exclus : aucune de leurs routes ne
- * vérifie l'appartenance à l'équipe, et rien n'y ajoute un validateur
- * implicitement. Les mettre derrière le brief ne changerait pas seulement
- * l'affichage, ça leur imposerait une adhésion préalable qu'ils n'ont jamais
- * demandée.
+ * C'est son flow qui le dit (`briefRequired`). Un flow dont aucune route ne
+ * vérifie l'appartenance à l'équipe — la validation — en est exclu : le mettre
+ * derrière le brief ne changerait pas seulement l'affichage, ça lui imposerait
+ * une adhésion préalable qu'il n'a jamais demandée. Un type inconnu n'y passe
+ * pas non plus.
  */
-export const BRIEF_GATED_TYPES = ['code', 'ml'];
+export function isBriefGated(challengeType: string | null | undefined): boolean {
+  return flowCatalog.get(challengeType)?.briefRequired === true;
+}
 
 /**
  * Le brief remplace-t-il les KPI et l'espace de travail ?
@@ -63,5 +67,5 @@ export function shouldShowBrief({ isMember, challengeType, brief }: {
 }): boolean {
   if (isMember) return false;
   if (!brief || !brief.trim()) return false;
-  return BRIEF_GATED_TYPES.includes(challengeType ?? '');
+  return isBriefGated(challengeType);
 }

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { repositories } from "@/lib/db";
+import { flowCatalog } from "@/distribution/mytwin.flows";
 import { isPubliclyVisible } from "@/lib/public/challengeVisibility";
 import type { ProjectWithChallenges, TrendingChallenge } from "@/lib/types";
 
@@ -109,7 +110,7 @@ export async function fetchProjectsWithChallenges(
           title: challenge.title,
           description: challenge.description || null,
           status: challenge.status,
-          type: challenge.type ?? 'code',
+          type: challenge.type ?? flowCatalog.defaultKey,
           rewardPool: challenge.contribution_points_reward ?? 0,
           contributionsCount: contributionsCountByChallenge.get(challenge.uuid) ?? 0,
           completion: challenge.completion ?? 0,
@@ -177,7 +178,7 @@ export async function fetchTrendingChallenges(limit: number): Promise<TrendingCh
       slug: c.slug,
       index: c.index ?? 0,
       title: c.title,
-      type: c.type ?? "code",
+      type: c.type ?? flowCatalog.defaultKey,
       projectName: project?.title ?? "Unknown project",
       description: c.description || null,
       rewardPool: c.contribution_points_reward ?? 0,

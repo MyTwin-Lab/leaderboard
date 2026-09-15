@@ -1,6 +1,7 @@
 import "server-only";
 
 import { repositories } from "@/lib/db";
+import { flowCatalog } from "@/distribution/mytwin.flows";
 import { aggregateUsersByContribution, rankEntries } from "@/lib/leaderboard";
 import type {
   HomeLeaderboardEntry,
@@ -13,8 +14,6 @@ import type {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TRENDING_LIMIT = 2;
 const REST_LIMIT = 3;
-
-const TYPE_LABELS: Record<string, string> = { code: "Code", ml: "ML", validation: "Validation" };
 
 function dayKey(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -192,8 +191,9 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
     id: c.uuid,
     slug: c.slug,
     title: c.title,
-    type: c.type ?? "code",
-    typeLabel: TYPE_LABELS[c.type ?? "code"] ?? "Code",
+    type: c.type ?? flowCatalog.defaultKey,
+    // Un type absent ou inconnu s'affiche comme le flow par défaut.
+    typeLabel: flowCatalog.resolve(c.type).label,
     projectName: projectsMap.get(c.project_id)?.title ?? "Unknown project",
     description: c.description || null,
     rewardPool: c.contribution_points_reward ?? 0,
