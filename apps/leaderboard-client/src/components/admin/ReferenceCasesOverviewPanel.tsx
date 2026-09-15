@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { FileText, Loader2, Trash2 } from 'lucide-react';
 
 interface CaseItem {
@@ -34,7 +35,7 @@ export function ReferenceCasesOverviewPanel({ challengeId, open }: { challengeId
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-reference-cases`);
+      const res = await fetch(flowActionUrl(challengeId, 'reference-cases'));
       if (res.ok) {
         const data = await res.json();
         setCases(data.cases ?? []);
@@ -55,7 +56,7 @@ export function ReferenceCasesOverviewPanel({ challengeId, open }: { challengeId
     setDeletingId(caseId);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-reference-cases/${caseId}`, {
+      const res = await fetch(flowActionUrl(challengeId, `reference-cases/${caseId}`), {
         method: 'DELETE',
       });
       if (res.ok) {

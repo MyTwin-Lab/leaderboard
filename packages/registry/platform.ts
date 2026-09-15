@@ -1,4 +1,4 @@
-import type { Challenge } from "../database-service/domain/entities.js";
+import type { Challenge, ChallengeRepoRole } from "../database-service/domain/entities.js";
 import type { FlowDescriptor } from "./flows.js";
 
 /**
@@ -199,6 +199,68 @@ export interface ChallengeActionDeclaration {
   handle(ctx: ActionContext): Promise<unknown>;
 }
 
+/** Un dépôt qu'un challenge se voit créer à sa naissance (`repos` puis `challenge_repos`). */
+export interface RepoDefinition {
+  title: string;
+  /** `github`, `kaggle_dataset`… */
+  type: string;
+  /** Le rôle du dépôt, quand le flow en distingue plusieurs. */
+  role?: ChallengeRepoRole;
+  /** Slug `owner/repo`, quand le créateur en a fourni un. */
+  external_repo_id?: string;
+}
+
+export interface ChallengeCreateContext {
+  challenge: Challenge;
+  /** Les champs de création que la configuration ne garde pas (`github_repo`, `api_packaging_enabled`…). */
+  input: Readonly<Record<string, unknown>>;
+}
+
+export interface ChallengeJoinContext {
+  challenge: Challenge;
+  userId: string;
+  /** Le groupe que ce join crée, `null` en solo. */
+  groupId: string | null;
+}
+
+export interface ChallengeGroupJoinContext {
+  challenge: Challenge;
+  userId: string;
+  groupId: string;
+}
+
+/** Ce qu'un hook de join ajoute à la réponse (`missingGithub`…). */
+export type ChallengeHookReport = Record<string, unknown>;
+
+/**
+ * Les moments de la vie d'un challenge où un flow ou une extension agit. Le
+ * core les appelle pour le flow du challenge, puis pour chaque extension qui
+ * s'y attache (`packages/capabilities/challenge-hooks.ts`).
+ */
+export interface ChallengeHooks {
+  /**
+   * Ce que la création doit persister. Pur : la route de création et la
+   * promotion d'un sandbox l'écrivent chacune dans leur transaction.
+   */
+  onCreate?(ctx: ChallengeCreateContext): { repos?: readonly RepoDefinition[] };
+  /** Après l'inscription d'un participant solo ou d'un créateur de groupe, board copié. */
+  onJoin?(ctx: ChallengeJoinContext): Promise<ChallengeHookReport | void>;
+  /** Après l'arrivée d'un membre dans un groupe existant. */
+  onGroupJoin?(ctx: ChallengeGroupJoinContext): Promise<ChallengeHookReport | void>;
+  /** À la clôture. Au mieux : un échec n'annule pas la clôture. */
+  onClose?(challenge: Challenge): Promise<void>;
+  /** Avant la suppression de la ligne, qui emporte ses dépendances en cascade. */
+  onDelete?(challenge: Challenge): Promise<void>;
+}
+
+/** Les capacités du core qu'un flow active. */
+export interface FlowUses {
+  /** Un board personnel par participant, copié du template au join (`packages/capabilities/board.ts`). */
+  board?: boolean;
+  /** Le travail en groupe (`packages/capabilities/groups.ts`). */
+  groups?: boolean;
+}
+
 interface Declarations {
   ruleKeys?: readonly RuleKeyDeclaration[];
   contributionTypes?: readonly ContributionTypeDeclaration[];
@@ -219,6 +281,8 @@ export interface FlowDefinition extends Declarations {
   deliverables?: readonly DeliverableDeclaration[];
   /** Pour un flow qui éprouve les livrables d'un challenge parent (`source_challenge_id`). */
   requires?: { deliverableCapability: string };
+  uses?: FlowUses;
+  hooks?: ChallengeHooks;
   actions?: readonly ChallengeActionDeclaration[];
 }
 
@@ -227,6 +291,7 @@ export interface ExtensionDefinition extends Declarations {
   /** Les flows auxquels l'extension s'attache, ou `"*"` pour tous. */
   appliesTo: readonly string[] | "*";
   config?: ExtensionConfigDeclaration;
+  hooks?: ChallengeHooks;
   actions?: readonly ChallengeActionDeclaration[];
 }
 

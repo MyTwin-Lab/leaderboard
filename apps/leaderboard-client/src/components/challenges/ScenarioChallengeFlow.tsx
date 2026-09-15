@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Coins, ListOrdered, MonitorSmartphone } from 'lucide-react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { ScenarioWalkthroughScreen } from './ScenarioWalkthroughScreen';
 
 interface TargetItem {
@@ -66,8 +67,8 @@ export function ScenarioChallengeFlow({ challengeId }: { challengeId: string }) 
     setError('');
     try {
       const [targetsRes, stepsRes] = await Promise.all([
-        fetch(`/api/challenges/${challengeId}/validation-targets`),
-        fetch(`/api/challenges/${challengeId}/validation-scenario-steps`),
+        fetch(flowActionUrl(challengeId, 'targets')),
+        fetch(flowActionUrl(challengeId, 'scenario-steps')),
       ]);
       // 401 is not "nothing exposed" — say so explicitly rather than falling
       // through to the empty state, which would read as "nothing to validate".

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { Plus, Trash2, Loader2, ShieldCheck } from 'lucide-react';
 
 interface EligibleSubmission {
@@ -53,8 +54,8 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
     setError('');
     try {
       const [targetsRes, eligibleRes] = await Promise.all([
-        fetch(`/api/challenges/${challengeId}/validation-targets`),
-        fetch(`/api/challenges/${challengeId}/validation-targets?eligible=true`),
+        fetch(flowActionUrl(challengeId, 'targets')),
+        fetch(flowActionUrl(challengeId, 'targets?eligible=true')),
       ]);
       if (targetsRes.ok) {
         const d = await targetsRes.json();
@@ -83,7 +84,7 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
     setAddingId(contributionId);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-targets`, {
+      const res = await fetch(flowActionUrl(challengeId, 'targets'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contribution_id: contributionId, live_endpoint_url: url }),
@@ -102,7 +103,7 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
   const handleRemove = async (targetId: string) => {
     setDeletingId(targetId);
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-targets/${targetId}`, { method: 'DELETE' });
+      const res = await fetch(flowActionUrl(challengeId, `targets/${targetId}`), { method: 'DELETE' });
       if (res.ok) await fetchAll();
       else { const d = await res.json().catch(() => ({})); setError(d.error || 'Failed to remove'); }
     } catch { setError('Network error'); }

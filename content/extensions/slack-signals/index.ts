@@ -1,5 +1,13 @@
-import type { ExtensionDefinition } from "../../../packages/registry/platform.js";
+import type { ActionAccess, ExtensionDefinition } from "../../../packages/registry/platform.js";
 import { SLACK_SIGNAL_RULE_KEY, summarizeSignals } from "./profile.js";
+
+export const SLACK_SIGNALS_EXTENSION_KEY = "slack-signals";
+
+/** Régler le canal et les signaux : un admin, ou le manager du challenge. */
+const EDITORS: ActionAccess = { roles: ["admin"], manager: true };
+
+// Import à la demande : déclarer l'extension ne doit pas ouvrir la base.
+const load = () => import("./actions.js");
 
 /**
  * Extension signaux Slack — détecte dans le canal d'un challenge les signaux
@@ -11,7 +19,7 @@ import { SLACK_SIGNAL_RULE_KEY, summarizeSignals } from "./profile.js";
  * et se résume en chips sur son profil.
  */
 export const slackSignalsExtension: ExtensionDefinition = {
-  key: "slack-signals",
+  key: SLACK_SIGNALS_EXTENSION_KEY,
   appliesTo: "*",
   ruleKeys: [
     {
@@ -28,5 +36,15 @@ export const slackSignalsExtension: ExtensionDefinition = {
       countsAsContribution: false,
       profileAggregate: { title: "Discussion", summarize: summarizeSignals },
     },
+  ],
+  actions: [
+    // Les signaux d'un challenge se lisent par tout compte connecté.
+    { path: "signals", method: "GET", access: {}, handle: async (ctx) => (await load()).listSignals(ctx) },
+    { path: "signals", method: "POST", access: EDITORS, handle: async (ctx) => (await load()).createSignal(ctx) },
+    { path: "signals/:signalId", method: "PUT", access: EDITORS, handle: async (ctx) => (await load()).updateSignal(ctx) },
+    { path: "signals/:signalId", method: "DELETE", access: EDITORS, handle: async (ctx) => (await load()).deleteSignal(ctx) },
+    { path: "config", method: "GET", access: EDITORS, handle: async (ctx) => (await load()).getConfig(ctx) },
+    { path: "config", method: "PUT", access: EDITORS, handle: async (ctx) => (await load()).saveConfig(ctx) },
+    { path: "config", method: "DELETE", access: EDITORS, handle: async (ctx) => (await load()).deleteConfig(ctx) },
   ],
 };

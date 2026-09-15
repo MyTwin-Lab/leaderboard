@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Loader2, Stethoscope } from 'lucide-react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { RESULT_META, type ScenarioResult } from '@/components/challenges/scenarioResult';
 
 interface ScenarioStep { id: string; position: number; title: string }
@@ -149,7 +150,7 @@ export function ScenarioWalkthroughsPanel({ challengeId, open }: { challengeId: 
     if (!justOpened) return;
     setLoading(true);
     setError('');
-    fetch(`/api/challenges/${challengeId}/validation-scenario-runs`)
+    fetch(flowActionUrl(challengeId, 'scenario-runs'))
       .then(async res => {
         if (!res.ok) {
           // Avec zéro quorum ce panneau EST le contrôle qualité : un 403/500

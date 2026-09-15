@@ -238,9 +238,10 @@ describe('proxy — cross-site writes', () => {
 // docs/temp.md §6 : écritures légitimes de non-admins, autorisées dans les handlers.
 describe('proxy — non-admin write exceptions', () => {
   it.each([
-    `/api/challenges/${CHALLENGE_ID}/compute-request`,
-    `/api/challenges/${CHALLENGE_ID}/compute-request/reveal-token`,
-    `/api/challenges/${CHALLENGE_ID}/compute-requests/req-1/decision`,
+    // Actions de flow et d'extension : le dispatcher applique l'accès que chacune déclare.
+    `/api/challenges/${CHALLENGE_ID}/flow/targets/target-1/claim`,
+    `/api/challenges/${CHALLENGE_ID}/ext/compute/request`,
+    `/api/challenges/${CHALLENGE_ID}/ext/compute/requests/req-1/decision`,
     '/api/sync-meetings',
   ])('lets a contributor POST %s', async (path) => {
     stubCheckSession(200, { valid: true });
@@ -251,8 +252,9 @@ describe('proxy — non-admin write exceptions', () => {
   });
 
   it.each([
-    ['POST', `/api/challenges/${CHALLENGE_ID}/compute-requests`],
-    ['DELETE', `/api/challenges/${CHALLENGE_ID}/compute-request`],
+    ['POST', `/api/challenges/${CHALLENGE_ID}/close`],
+    // Sans chemin d'action, ce n'est pas une action : la règle générale s'applique.
+    ['DELETE', `/api/challenges/${CHALLENGE_ID}/flow`],
     ['POST', '/api/sync-meetings/meeting-1/analyze'],
     ['DELETE', '/api/sync-meetings'],
   ])('still requires admin for %s %s', async (method, path) => {

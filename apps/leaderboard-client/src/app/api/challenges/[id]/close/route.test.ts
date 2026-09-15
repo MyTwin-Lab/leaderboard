@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindById, mockUpdate } = vi.hoisted(() => ({
+const { mockFindById, mockUpdate, mockRunCloseHooks } = vi.hoisted(() => ({
   mockFindById: vi.fn(),
   mockUpdate: vi.fn(),
+  mockRunCloseHooks: vi.fn(),
 }));
 
 vi.mock('../../../../../../../../packages/database-service/repositories', () => ({
@@ -11,6 +12,11 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
     findById = mockFindById;
     update = mockUpdate;
   },
+}));
+
+vi.mock('../../../../../../../../packages/capabilities/challenge-hooks', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  runCloseHooks: mockRunCloseHooks,
 }));
 
 import { POST } from './route';
@@ -24,6 +30,7 @@ function postClose() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockRunCloseHooks.mockResolvedValue(undefined);
 });
 
 describe('POST /api/challenges/[id]/close', () => {
@@ -37,7 +44,7 @@ describe('POST /api/challenges/[id]/close', () => {
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
-  it('sets the challenge status to completed and returns it', async () => {
+  it('sets the challenge status to completed, runs the close hooks, and returns it', async () => {
     mockFindById.mockResolvedValue({ uuid: CHALLENGE_ID, status: 'active' });
     const closed = { uuid: CHALLENGE_ID, status: 'completed' };
     mockUpdate.mockResolvedValue(closed);
@@ -46,7 +53,17 @@ describe('POST /api/challenges/[id]/close', () => {
 
     expect(res.status).toBe(200);
     expect(mockUpdate).toHaveBeenCalledWith(CHALLENGE_ID, { status: 'completed' });
+    expect(mockRunCloseHooks).toHaveBeenCalledWith(closed);
     expect(await res.json()).toEqual({ success: true, challenge: closed });
+  });
+
+  it('does not run the close hooks again for a challenge already closed', async () => {
+    mockFindById.mockResolvedValue({ uuid: CHALLENGE_ID, status: 'archived' });
+    mockUpdate.mockResolvedValue({ uuid: CHALLENGE_ID, status: 'completed' });
+
+    await postClose();
+
+    expect(mockRunCloseHooks).not.toHaveBeenCalled();
   });
 
   it('returns 500 when closing fails', async () => {

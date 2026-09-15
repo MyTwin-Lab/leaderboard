@@ -2,6 +2,7 @@
 
 import { flowConfigView } from '@/lib/flowConfig';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { FilePlus2, Loader2, AlertCircle, FileText, Upload, X } from 'lucide-react';
 
 interface CaseSummary {
@@ -78,7 +79,7 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
       const [meRes, challengeRes, casesRes] = await Promise.all([
         fetch('/api/contributors/me'),
         fetch(`/api/challenges/${challengeId}`),
-        fetch(`/api/challenges/${challengeId}/validation-reference-cases`),
+        fetch(flowActionUrl(challengeId, 'reference-cases')),
       ]);
       const me = meRes.ok ? await meRes.json() : null;
       if (challengeRes.ok) {
@@ -130,7 +131,7 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
         form.append('expected_output', new Blob([expectedText], { type: 'text/plain' }), 'expected_output.txt');
       }
 
-      const res = await fetch(`/api/challenges/${challengeId}/validation-reference-cases`, {
+      const res = await fetch(flowActionUrl(challengeId, 'reference-cases'), {
         method: 'POST',
         body: form,
       });

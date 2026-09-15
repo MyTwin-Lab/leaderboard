@@ -30,6 +30,10 @@ function makeTask(status: Task["status"]): Task {
   return { uuid: `t-${Math.random()}`, challenge_id: CH, user_id: ALICE, title: "x", status, created_at: new Date() };
 }
 
+function progressOf(tasks: Task[]) {
+  return { total: tasks.length, done: tasks.filter(t => t.status === "done").length };
+}
+
 function makeDeps(opts: {
   challenge?: Partial<Challenge> | null;
   participation?: Partial<ChallengeTeam> | null;
@@ -70,7 +74,7 @@ function makeDeps(opts: {
     challengeRepoRepo: {
       findByChallengeWithRepo: vi.fn(async () => opts.challengeRepos ?? []),
     },
-    taskRepo: { findPersonalTasks: vi.fn(async () => opts.tasks ?? [makeTask("done")]) },
+    board: { progress: vi.fn(async () => progressOf(opts.tasks ?? [makeTask("done")])) },
     contributionRepo: {
       findByChallenge: vi.fn(async () => [...contributions, ...created]),
       // Même triplet (challenge, user, type) que findContribution.

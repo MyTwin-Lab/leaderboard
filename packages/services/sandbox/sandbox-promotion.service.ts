@@ -19,7 +19,7 @@ import {
 import { isSlugUniqueViolation } from "../../database-service/repositories/slugs.js";
 import { SlugTakenError } from "../../database-service/domain/slug.js";
 import type { Challenge, ChallengeRepoRole, Sandbox } from "../../database-service/domain/entities.js";
-import { buildRepoDefinitions } from "../challenge/challengeRepos.js";
+import { creationRepos } from "../../capabilities/challenge-hooks.js";
 import { MlRewardsService, type MlSubmissionEvent } from "../challenge/ml-rewards.service.js";
 import {
   InvalidRewardRulesError,
@@ -182,15 +182,12 @@ export class SandboxPromotionService {
         .returning();
 
       // 3. Repos et liens, avec le workspace de l'auteur déjà rempli. Les
-      //    définitions viennent de `buildRepoDefinitions`, la même fonction que
+      //    définitions viennent du hook `onCreate` du flow, que lit aussi
       //    la route de création : un challenge promu a les mêmes étapes qu'un
       //    challenge créé à la main.
       const metaSeed = seedMlWorkspaceMeta(claimedSandbox, claimedSandbox.user_id);
-      const definitions = buildRepoDefinitions({
-        type: draft.type,
-        title: draft.title,
-        workspaceMode: draft.flow_config.workspace_mode,
-        apiPackagingEnabled: input.api_packaging_enabled,
+      const definitions = creationRepos(toDomainChallenge(challengeRow), {
+        api_packaging_enabled: input.api_packaging_enabled,
       });
 
       const reposByRole = new Map<ChallengeRepoRole, string>();

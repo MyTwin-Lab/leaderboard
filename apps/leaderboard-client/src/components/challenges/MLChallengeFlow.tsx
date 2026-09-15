@@ -6,6 +6,7 @@ import {
   ExternalLink, Users, ChevronRight, Loader2, AlertCircle, Lock,
 } from 'lucide-react';
 import { ComputeRequestPanel } from './ComputeRequestPanel';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -177,7 +178,7 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
   const fetchData = async () => {
     try {
       const [wsRes, poolRes] = await Promise.all([
-        fetch(`/api/challenges/${challengeId}/ml-workspace`),
+        fetch(flowActionUrl(challengeId, 'workspace')),
         fetch(`/api/challenges/${challengeId}/ml-rewards`),
       ]);
       if (wsRes.ok) setData(await wsRes.json());
@@ -429,7 +430,7 @@ function RepoSubmission({
     setSaving(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/ml-workspace`, {
+      const res = await fetch(flowActionUrl(challengeId, 'workspace'), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ repo_id: repo.repo_id, workspace_url: url }),
@@ -460,7 +461,7 @@ function RepoSubmission({
     setSaving(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/ml-workspace`, {
+      const res = await fetch(flowActionUrl(challengeId, 'workspace'), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ repo_id: repo.repo_id, dataset_urls: next.length ? next : null }),

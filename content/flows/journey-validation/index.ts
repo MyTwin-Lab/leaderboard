@@ -1,7 +1,8 @@
 import { z } from "zod";
-import type { FlowDefinition } from "../../../packages/registry/platform.js";
+import type { ActionAccess, FlowDefinition } from "../../../packages/registry/platform.js";
 import { flowConfigOf, type FlowConfigSource } from "../../../packages/capabilities/flow-config.js";
 import { cpPerValidationSchema } from "../../kits/validation/index.js";
+import { validationKitActions } from "../../kits/validation/actions/index.js";
 import { journeyValidationFlowDescriptor } from "./descriptor.js";
 
 export { JOURNEY_VALIDATION_FLOW_KEY, journeyValidationFlowDescriptor } from "./descriptor.js";
@@ -38,6 +39,13 @@ export function journeyAccessOf(challenge: FlowConfigSource): JourneyAccess {
   };
 }
 
+/** Écrire le scénario et lire tous les retours signés : un admin, ou le manager du challenge. */
+const MANAGERS: ActionAccess = { roles: ["admin"], manager: true };
+
+// Import à la demande : déclarer le flow ne charge ni les services ni la base.
+const steps = () => import("./actions/steps.js");
+const runs = () => import("./actions/runs.js");
+
 /**
  * Flow journey-validation — des validateurs parcourent le même scénario, étape
  * par étape, dans chaque application déployée, et closent sur un retour
@@ -51,4 +59,18 @@ export const journeyValidationFlow: FlowDefinition = {
   descriptor: journeyValidationFlowDescriptor,
   config: { version: 1, schema: journeyValidationConfigSchema },
   requires: { deliverableCapability: "deployed_app" },
+  // Ouvrir, remplir et clore une walkthrough : tout compte connecté ici, le
+  // service applique les rôles éligibles et l'avis expert de la configuration.
+  actions: [
+    // Cibles et récompenses : communes aux flows de validation.
+    ...validationKitActions,
+    { path: "scenario-steps", method: "GET", access: {}, handle: async (ctx) => (await steps()).listSteps(ctx) },
+    { path: "scenario-steps", method: "POST", access: MANAGERS, handle: async (ctx) => (await steps()).addStep(ctx) },
+    { path: "scenario-steps/:stepId", method: "PATCH", access: MANAGERS, handle: async (ctx) => (await steps()).editStep(ctx) },
+    { path: "scenario-steps/:stepId", method: "DELETE", access: MANAGERS, handle: async (ctx) => (await steps()).removeStep(ctx) },
+    { path: "scenario-runs", method: "GET", access: MANAGERS, handle: async (ctx) => (await runs()).listRuns(ctx) },
+    { path: "scenario-runs", method: "POST", access: {}, handle: async (ctx) => (await runs()).openRun(ctx) },
+    { path: "scenario-runs/:runId/steps/:stepId", method: "PUT", access: {}, handle: async (ctx) => (await runs()).saveStep(ctx) },
+    { path: "scenario-runs/:runId/complete", method: "POST", access: {}, handle: async (ctx) => (await runs()).completeRun(ctx) },
+  ],
 };

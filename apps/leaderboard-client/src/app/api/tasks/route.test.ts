@@ -52,6 +52,10 @@ vi.mock('../../../../../../packages/database-service/repositories', () => ({
   },
 }));
 
+vi.mock('../../../../../../packages/capabilities/board', () => ({
+  usesBoard: (type: string) => type === 'code',
+}));
+
 vi.mock('@/lib/db', () => ({
   repositories: {
     project: {
@@ -242,7 +246,7 @@ describe('POST /api/tasks', () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('returns 400 for a challenge of type "ml"', async () => {
+  it('returns 400 for a challenge whose flow has no board', async () => {
     mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'ml', project_id: 'project-1' });
 
     const res = await postTask(validBody, 'valid-token');

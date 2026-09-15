@@ -1,10 +1,11 @@
 import { z } from "zod";
 import type { FlowDefinition } from "../../../packages/registry/platform.js";
-import { flowConfigOf, type FlowConfigSource } from "../../../packages/capabilities/flow-config.js";
-import { cpPerValidationSchema, quorumSchema } from "../../kits/validation/index.js";
+import { cpPerValidationSchema, quorumSchema, validationKitActions } from "../../kits/validation/index.js";
+import { endpointValidationActions } from "./actions/index.js";
 import { endpointValidationFlowDescriptor } from "./descriptor.js";
 
 export { ENDPOINT_VALIDATION_FLOW_KEY, endpointValidationFlowDescriptor } from "./descriptor.js";
+export { reviewerQualificationOf } from "../../kits/validation/index.js";
 
 /**
  * Configuration, version 1 :
@@ -18,12 +19,6 @@ export const endpointValidationConfigSchema = z.object({
   required_validations: quorumSchema,
   reviewer_qualification: z.string().min(1),
 });
-
-/** La qualification exigée des relecteurs, ou `null` quand la configuration ne se lit pas : personne ne relit. */
-export function reviewerQualificationOf(challenge: FlowConfigSource): string | null {
-  const key = flowConfigOf(challenge)?.reviewer_qualification;
-  return typeof key === "string" && key ? key : null;
-}
 
 /**
  * Flow endpoint-validation — des validateurs qualifiés éprouvent chaque
@@ -39,4 +34,5 @@ export const endpointValidationFlow: FlowDefinition = {
   descriptor: endpointValidationFlowDescriptor,
   config: { version: 1, schema: endpointValidationConfigSchema },
   requires: { deliverableCapability: "endpoint" },
+  actions: [...validationKitActions, ...endpointValidationActions],
 };

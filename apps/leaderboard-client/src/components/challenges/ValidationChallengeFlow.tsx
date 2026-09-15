@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { CheckCircle2, XCircle, Loader2, AlertCircle, Coins, ShieldCheck, FileSearch } from 'lucide-react';
 import { ValidationOutputViewer } from './ValidationOutputViewer';
 
@@ -48,7 +49,7 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
 
   const fetchData = useCallback(async () => {
     try {
-      const targetsRes = await fetch(`/api/challenges/${challengeId}/validation-targets`);
+      const targetsRes = await fetch(flowActionUrl(challengeId, 'targets'));
       if (targetsRes.ok) {
         const data = await targetsRes.json();
         // Relire exige la qualification que le challenge pose : le serveur le dit.
@@ -213,7 +214,7 @@ function TargetCard({
     setLoadingCases(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-targets/${target.id}/claimable-cases`);
+      const res = await fetch(flowActionUrl(challengeId, `targets/${target.id}/claimable-cases`));
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         setError(d.error || 'Failed to load reference cases');
@@ -245,7 +246,7 @@ function TargetCard({
     setError('');
     setClaimedFilename(claimableCases.find(c => c.id === referenceCaseId)?.inputFilename ?? null);
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-targets/${target.id}/claim`, {
+      const res = await fetch(flowActionUrl(challengeId, `targets/${target.id}/claim`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reference_case_id: referenceCaseId }),
@@ -278,7 +279,7 @@ function TargetCard({
     setBusy(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-case-claims/${claimId}/observation`, {
+      const res = await fetch(flowActionUrl(challengeId, `case-claims/${claimId}/observation`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ observation: observation.trim() }),
@@ -292,7 +293,7 @@ function TargetCard({
       // ordering (observation before reveal) is already guaranteed server-side,
       // no extra click needed here.
       setState('revealing');
-      const revealRes = await fetch(`/api/challenges/${challengeId}/validation-case-claims/${claimId}/reveal`, {
+      const revealRes = await fetch(flowActionUrl(challengeId, `case-claims/${claimId}/reveal`), {
         method: 'POST',
       });
       if (!revealRes.ok) {
@@ -316,7 +317,7 @@ function TargetCard({
     setBusy(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-verdicts`, {
+      const res = await fetch(flowActionUrl(challengeId, 'verdicts'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

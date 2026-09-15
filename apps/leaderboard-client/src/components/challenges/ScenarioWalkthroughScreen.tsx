@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2, ExternalLink, Loader2, Stethoscope } from 'lucide-react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { RESULT_META, SCENARIO_RESULTS } from './scenarioResult';
 import {
   finishHint,
@@ -68,12 +69,12 @@ export function ScenarioWalkthroughScreen({
     (async () => {
       try {
         const [runRes, targetsRes] = await Promise.all([
-          fetch(`/api/challenges/${challengeId}/validation-scenario-runs`, {
+          fetch(flowActionUrl(challengeId, 'scenario-runs'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contribution_id: contributionId }),
           }),
-          fetch(`/api/challenges/${challengeId}/validation-targets`),
+          fetch(flowActionUrl(challengeId, 'targets')),
         ]);
         if (cancelled) return;
 
@@ -139,7 +140,7 @@ export function ScenarioWalkthroughScreen({
     setError('');
     try {
       const res = await fetch(
-        `/api/challenges/${challengeId}/validation-scenario-runs/${runId}/steps/${step.stepId}`,
+        flowActionUrl(challengeId, `scenario-runs/${runId}/steps/${step.stepId}`),
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -185,7 +186,7 @@ export function ScenarioWalkthroughScreen({
     setError('');
     try {
       const res = await fetch(
-        `/api/challenges/${challengeId}/validation-scenario-runs/${runId}/complete`,
+        flowActionUrl(challengeId, `scenario-runs/${runId}/complete`),
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

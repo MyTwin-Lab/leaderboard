@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Loader2, GitBranch, Rocket, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import { ContributorTaskBoard, type BoardTask } from '@/components/contributor/ContributorTaskBoard';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
+import { flowActionUrl } from '@/lib/challengeActions';
 
 export interface CodeParticipation {
   user_id: string;
@@ -43,7 +44,7 @@ export function CodeChallengePanel({
 
   const saveRepoUrl = async () => {
     setError('');
-    const res = await fetch(`/api/challenges/${challengeId}/workspace`, {
+    const res = await fetch(flowActionUrl(challengeId, 'workspace'), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repo_url: repoUrl }),
@@ -55,7 +56,7 @@ export function CodeChallengePanel({
   const launchEvaluation = async () => {
     setLaunching(true); setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/project-evaluation`, { method: 'POST' });
+      const res = await fetch(flowActionUrl(challengeId, 'project-evaluation'), { method: 'POST' });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error || 'Cannot start evaluation'); return; }
       trackOnboardingStep('validated_task');
       await onReload();

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { fetchJson } from '@/lib/fetchJson';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { challengeManagePath, challengePath } from '@/lib/paths';
 import {
   ArrowLeft, Users, Trophy, CalendarDays, Code2, BrainCircuit, ShieldCheck,
@@ -450,8 +451,9 @@ export function ChallengeManageView({ challengeId, isAdmin = false }: { challeng
 
   const mlWorkspaceQuery = useQuery({
     queryKey: ['challenge-ml-workspace', challengeId],
-    queryFn: () => fetchJson(`/api/challenges/${challengeId}/ml-workspace`),
-    enabled: !!challengeId,
+    queryFn: () => fetchJson(flowActionUrl(challengeId, 'workspace')),
+    // Action du flow ML : un autre flow n'a pas ce workspace.
+    enabled: !!challengeId && overviewQuery.data?.challenge?.type === 'ml',
   });
 
   const repoActivityQuery = useQuery({

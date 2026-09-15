@@ -28,3 +28,14 @@ export function validationConfigOf(challenge: FlowConfigSource): ValidationPayou
     required_validations: typeof required === "number" ? required : null,
   };
 }
+
+/**
+ * La qualification exigée des relecteurs (`reviewer_qualification`), ou `null`
+ * quand la configuration ne la porte pas : personne ne relit. Posée par la
+ * validation d'endpoints ; lue aussi par les cibles du kit, qui disent à
+ * l'appelant s'il peut relire.
+ */
+export function reviewerQualificationOf(challenge: FlowConfigSource): string | null {
+  const key = flowConfigOf(challenge)?.reviewer_qualification;
+  return typeof key === "string" && key ? key : null;
+}

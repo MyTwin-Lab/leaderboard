@@ -5,6 +5,7 @@ import {
   parseFlowRules,
   patchExtensionConfig,
 } from '../../../../../../../packages/capabilities/flow-config';
+import { isClosedStatus, runCloseHooks, runDeleteHooks } from '../../../../../../../packages/capabilities/challenge-hooks';
 import { verifyRequestToken } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { slugField, slugTakenResponse } from '@/lib/server/slugs';
@@ -125,24 +126,11 @@ export async function PUT(
     // still exists, available for an explicit future call once that policy
     // is set — it's just no longer wired to this transition.
 
-    // Closing an ML challenge cuts any still-active GPU compute instance
-    // immediately, regardless of how much of its 24h window is left — same
-    // "completed/archived" set ChallengeManageView treats as closed.
-    const CLOSED_STATUSES = ['completed', 'archived'];
-    const wasOpen = !CLOSED_STATUSES.includes(before.status ?? '');
-    const isNowClosed = CLOSED_STATUSES.includes(validated.status ?? '');
-    if (before.type === 'ml' && wasOpen && isNowClosed) {
-      // Best-effort and fully isolated from the challenge update itself — a
-      // failure here (constructor throw, DB error, Scaleway API error) must
-      // never turn a successful status change into a 500.
-      try {
-        const { ComputeRequestService } = await import('../../../../../../../packages/services/compute/compute-request.service.js');
-        new ComputeRequestService().terminateForChallenge(id, 'challenge_closed').catch(err => {
-          console.error('Error terminating compute requests on challenge close:', err);
-        });
-      } catch (err) {
-        console.error('Error terminating compute requests on challenge close:', err);
-      }
+    // Un challenge qui se clôt : son flow et ses extensions libèrent ce qui
+    // tourne encore (les instances de calcul, par exemple). Au mieux : un
+    // échec n'annule jamais la clôture.
+    if (!isClosedStatus(before.status) && isClosedStatus(validated.status)) {
+      await runCloseHooks(challenge ?? before);
     }
 
     return NextResponse.json(challenge);
@@ -181,11 +169,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Cut any active GPU compute instance *before* the challenge row is
-    // deleted — compute_requests.challenge_id cascades on delete, so doing
-    // this after would drop the rows before their instances could be reached.
-    const { ComputeRequestService } = await import('../../../../../../../packages/services/compute/compute-request.service.js');
-    await new ComputeRequestService().terminateForChallenge(id, 'challenge_deleted');
+    // Avant la suppression : la ligne emporte ses dépendances en cascade, que
+    // les hooks doivent encore pouvoir lire (les demandes de calcul, par exemple).
+    const challenge = await challengeRepo.findById(id);
+    if (challenge) await runDeleteHooks(challenge);
 
     await challengeRepo.delete(id);
     return NextResponse.json({ success: true });

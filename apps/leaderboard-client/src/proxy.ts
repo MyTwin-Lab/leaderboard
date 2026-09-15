@@ -298,9 +298,6 @@ export async function proxy(request: NextRequest) {
         (pathname === '/api/tasks' && method === 'POST') ||
         (/^\/api\/tasks\/[^/]+$/.test(pathname) && ['PATCH', 'DELETE'].includes(method));
 
-      // Routes ML accessibles aux contributeurs pour soumettre leur travail
-      const isMLContributorRoute = pathname.includes('/ml-workspace');
-
       // Rejoindre un challenge
       const isChallengeJoinRoute = pathname.endsWith('/join');
 
@@ -309,11 +306,6 @@ export async function proxy(request: NextRequest) {
       // « admin only » plus bas bloquerait la fonctionnalité pour tout
       // contributeur, qui en est pourtant le seul utilisateur.
       const isGroupInviteRoute = pathname.endsWith('/group/invite');
-
-      // Lancer l'évaluation de son board personnel (code) / déclarer son repo
-      // perso en mode own_repo — ownership vérifiée dans les handlers.
-      const isChallengeSelfServiceRoute =
-        pathname.endsWith('/project-evaluation') || pathname.endsWith('/workspace');
 
       // Mise à jour du profil par le contributeur lui-même
       const isContributorSelfRoute = pathname === '/api/contributors/me' && method === 'PATCH';
@@ -330,54 +322,7 @@ export async function proxy(request: NextRequest) {
         (pathname.match(/^\/api\/challenges\/[^/]+$/) && ['PUT', 'PATCH'].includes(method)) ||
         (pathname === '/api/challenges' && method === 'POST') ||
         (pathname.startsWith('/api/repos') && ['POST', 'PUT'].includes(method)) ||
-        pathname.includes('/documents') ||
-        // Écriture du scénario d'un challenge de validation en mode scénario :
-        // admin OU manager de ce challenge, vérifié dans le handler via
-        // isManagerOfChallenge, plus le gel côté service dès la première
-        // walkthrough. Sans cette exception un manager non-admin ne pourrait
-        // pas écrire le scénario qu'il est censé écrire.
-        pathname.includes('/validation-scenario-steps');
-
-      // Cycle de vote de la validation qualifiée (challenge-014) : claim/observation/
-      // reveal/verdict/authoring d'un cas de référence — réservé aux relecteurs
-      // qualifiés, vérifié dans chaque handler contre la qualification que le challenge exige. Sans cette exception,
-      // le garde-fou "admin only" ci-dessous bloquerait toute la fonctionnalité pour
-      // un relecteur qualifié non-admin.
-      const isQualifiedValidationRoute =
-        // `medical_pro` : jeton émis avant la reprise en qualification,
-        // accepté jusqu'au lot L7 du challenge 020.
-        ['contributor', 'medical_pro'].includes(payload.role) &&
-        (pathname.includes('/validation-verdicts') ||
-          pathname.includes('/validation-targets') ||
-          pathname.includes('/validation-case-claims') ||
-          pathname.includes('/validation-reference-cases'));
-
-      // Parcours de scénario (challenge-018) : ouvrir ou reprendre une
-      // walkthrough, enregistrer le retour d'une étape, et la clore. Ouvert à
-      // tout principal connecté à ce niveau, sans condition de rôle ici —
-      // contrairement au flux cas de référence, il n'y a pas de vérité
-      // terrain à être qualifié pour juger, seulement un scénario à
-      // parcourir. C'est le geste central de la fonctionnalité, pas une
-      // action d'administration.
-      //
-      // Les vraies gardes vivent dans ScenarioWalkthroughService, où elles sont
-      // testées : rôle éligible selon la configuration du parcours (pas viewer,
-      // lecture seule partout ailleurs), pas ma propre application (porteur ET
-      // membres du groupe), la walkthrough m'appartient et est encore
-      // brouillon, l'avis médical réservé à la qualification exigée. Sans cette
-      // exception, le garde-fou « admin only » ci-dessous interdirait à tout
-      // le monde sauf un admin de démarrer une walkthrough — et donc d'être payé.
-      const isScenarioWalkthroughRoute = pathname.includes('/validation-scenario-runs');
-
-      // Puissance de calcul GPU (challenges ML) : un contributeur demande une
-      // instance et lit son propre token Jupyter — les handlers relisent la
-      // session en base et ne touchent qu'à la demande de l'appelant ; un
-      // manager ou un admin tranche une demande — rôle et isManagerOfChallenge
-      // vérifiés dans le handler de decision.
-      const isComputeRequestRoute =
-        method === 'POST' &&
-        (/^\/api\/challenges\/[^/]+\/compute-request(\/reveal-token)?$/.test(pathname) ||
-          /^\/api\/challenges\/[^/]+\/compute-requests\/[^/]+\/decision$/.test(pathname));
+        pathname.includes('/documents');
 
       // Planifier un meeting : admin ou manager du challenge, vérifié dans le
       // handler (isManagerOfChallenge).
@@ -389,7 +334,7 @@ export async function proxy(request: NextRequest) {
 
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        if (!isChallengeActionRoute && !isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isQualifiedValidationRoute && !isScenarioWalkthroughRoute && !isNotificationSelfRoute && !isGroupInviteRoute && !isComputeRequestRoute && !isSyncMeetingCreateRoute) {
+        if (!isChallengeActionRoute && !isTaskSelfServiceRoute && !isChallengeJoinRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isNotificationSelfRoute && !isGroupInviteRoute && !isSyncMeetingCreateRoute) {
           return respond(NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }

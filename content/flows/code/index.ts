@@ -1,12 +1,18 @@
 import type { FlowDefinition } from "../../../packages/registry/platform.js";
 import { codeFlowDescriptor } from "./descriptor.js";
 import { CODE_FLOW_CONFIG_VERSION, codeFlowConfigSchema, codeFlowRules } from "./config.js";
+import { codeCreationRepos } from "./repos.js";
 
 export { codeFlowDescriptor } from "./descriptor.js";
 export { codeConfigOf, type CodeFlowConfig } from "./config.js";
 
 /** Le handler d'évaluation de la livraison d'un contributeur (ou de son groupe). */
 export const CODE_PROJECT_EVALUATION_HANDLER = "project";
+
+// Import à la demande : déclarer le flow ne charge ni le service, ni l'agent, ni le provisioner.
+const workspaceActions = () => import("./actions/workspace.js");
+const evaluationActions = () => import("./actions/project-evaluation.js");
+const joinHooks = () => import("./hooks.js");
 
 /**
  * Flow code — chaque contributeur (ou groupe) livre un projet sur sa branche,
@@ -28,6 +34,19 @@ export const codeFlow: FlowDefinition = {
   contributionTypes: [{ key: "project", countsAsContribution: true }],
   // Le livrable `project`, une fois déployé par l'équipe, se parcourt en scénario.
   deliverables: [{ contributionType: "project", capabilities: ["deployed_app"] }],
+  // Un board personnel, condition de l'évaluation ; le travail à plusieurs sur une même branche.
+  uses: { board: true, groups: true },
+  hooks: {
+    onCreate: codeCreationRepos,
+    onJoin: async (ctx) => (await joinHooks()).provisionWorkspace(ctx),
+    onGroupJoin: async (ctx) => (await joinHooks()).reprotectGroupBranch(ctx),
+  },
+  actions: [
+    // Déclarer son propre dépôt (mode own_repo) : un participant du challenge.
+    { path: "workspace", method: "PATCH", access: { member: true }, handle: async (ctx) => (await workspaceActions()).setOwnRepo(ctx) },
+    // Le service vérifie le board, le workspace et l'appartenance au groupe.
+    { path: "project-evaluation", method: "POST", access: {}, handle: async (ctx) => (await evaluationActions()).startProjectEvaluation(ctx) },
+  ],
   evaluationHandlers: [
     {
       key: CODE_PROJECT_EVALUATION_HANDLER,

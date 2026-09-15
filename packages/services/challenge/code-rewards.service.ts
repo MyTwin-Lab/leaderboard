@@ -7,8 +7,8 @@ import {
   ContributionMemberRepository,
   ContributionRepository,
   RewardEntryRepository,
-  TaskRepository,
 } from "../../database-service/repositories/index.js";
+import { boardProgress, type BoardProgress } from "../../capabilities/board.js";
 import { isEvaluationRunning } from "../../database-service/repositories/contribution.repo.js";
 import { splitShares } from "../../database-service/domain/share.js";
 import { getGroupContext, type GroupContext } from "../../capabilities/groups.js";
@@ -70,7 +70,8 @@ export interface CodeRewardsDeps {
   /** `findByChallenge` sert la résolution du groupe (voir group.ts). */
   challengeTeamRepo: Pick<ChallengeTeamRepository, "findByChallengeAndUser" | "findByChallenge">;
   challengeRepoRepo: Pick<ChallengeRepoRepository, "findByChallengeWithRepo">;
-  taskRepo: Pick<TaskRepository, "findPersonalTasks">;
+  /** L'avancement du board du porteur : l'évaluation attend un board terminé. */
+  board: { progress(challengeId: string, ownerId: string): Promise<BoardProgress> };
   contributionRepo: Pick<ContributionRepository, "findByChallenge" | "createIfAbsent" | "claimEvaluation" | "update">;
   rewardRepo: Pick<RewardEntryRepository, "findByUserAndChallenge" | "sumByChallenge" | "createManyAndSyncRewards">;
   contributionMemberRepo: Pick<ContributionMemberRepository, "addShares">;
@@ -99,7 +100,7 @@ export class CodeRewardsService {
       challengeRepo: new ChallengeRepository(),
       challengeTeamRepo: new ChallengeTeamRepository(),
       challengeRepoRepo: new ChallengeRepoRepository(),
-      taskRepo: new TaskRepository(),
+      board: { progress: (challengeId, ownerId) => boardProgress(challengeId, ownerId) },
       contributionRepo: new ContributionRepository(),
       rewardRepo: new RewardEntryRepository(),
       contributionMemberRepo: new ContributionMemberRepository(),
@@ -146,9 +147,9 @@ export class CodeRewardsService {
         : participation.workspace_status === "ready";
     if (!workspaceReady) return { ok: false, reason: "workspace_not_ready" };
 
-    const tasks = await this.deps.taskRepo.findPersonalTasks(challengeId, ownerId);
-    if (tasks.length === 0) return { ok: false, reason: "no_tasks" };
-    if (tasks.some(t => t.status !== "done")) return { ok: false, reason: "tasks_not_done" };
+    const board = await this.deps.board.progress(challengeId, ownerId);
+    if (board.total === 0) return { ok: false, reason: "no_tasks" };
+    if (board.done < board.total) return { ok: false, reason: "tasks_not_done" };
 
     const contribution = await this.findContribution(challengeId, ownerId);
     // Même règle que la garde SQL de `claimEvaluation` : un `running` orphelin

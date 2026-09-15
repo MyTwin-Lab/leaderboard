@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { FlowDefinition } from "../../../packages/registry/platform.js";
 import { parseMlRewardRules } from "../../../packages/database-service/domain/mlRewardRules.js";
 import { mlFlowDescriptor } from "./descriptor.js";
+import { mlCreationRepos } from "./repos.js";
 
 export { mlFlowDescriptor } from "./descriptor.js";
 
@@ -11,6 +12,9 @@ export const MODEL_METRIC_META_FIELD = "metricValue";
 
 /** Le handler d'évaluation d'une soumission (dataset, code du modèle, packaging d'API). */
 export const ML_SUBMISSION_EVALUATION_HANDLER = "submission";
+
+// Import à la demande : déclarer le flow ne charge ni les repositories ni l'agent.
+const workspaceActions = () => import("./actions/workspace.js");
 
 /**
  * Configuration du flow ML, version 1 : aucune clé propre. Ce qui se règle sur
@@ -49,6 +53,15 @@ export const mlFlow: FlowDefinition = {
   ],
   // Le packaging d'API expose un endpoint qu'une validation peut éprouver.
   deliverables: [{ contributionType: "api_packaging", capabilities: ["endpoint"] }],
+  // Rejoindre en groupe reste possible, comme avant la déclaration.
+  uses: { groups: true },
+  hooks: { onCreate: mlCreationRepos },
+  // Un challenge ML n'a pas de join préalable : soumettre une étape fait entrer
+  // dans l'équipe. Lire et soumettre restent donc ouverts à tout compte connecté.
+  actions: [
+    { path: "workspace", method: "GET", access: {}, handle: async (ctx) => (await workspaceActions()).readWorkspace(ctx) },
+    { path: "workspace", method: "PATCH", access: {}, handle: async (ctx) => (await workspaceActions()).submitWorkspace(ctx) },
+  ],
   evaluationHandlers: [
     {
       key: ML_SUBMISSION_EVALUATION_HANDLER,

@@ -6,31 +6,23 @@ const {
   mockChallengeFindById,
   mockChallengeTeamFindByChallengeAndUser,
   mockChallengeTeamCreate,
-  mockChallengeTeamUpdateWorkspace,
-  mockTaskFindTemplateTasks,
-  mockTaskCreate,
-  mockChallengeRepoFindByChallengeWithRepo,
-  mockUserFindById,
-  mockProvisionContributorWorkspace,
-  mockGetProvider,
-  mockMapRepoTypeToWorkspaceType,
-  mockProtect,
   mockChallengeTeamFindByGroup,
+  mockUsesBoard,
+  mockCopyBoardTemplate,
+  mockFlowUses,
+  mockRunJoinHooks,
+  mockRunGroupJoinHooks,
 } = vi.hoisted(() => ({
   mockVerifyRequestToken: vi.fn(),
   mockChallengeFindById: vi.fn(),
   mockChallengeTeamFindByChallengeAndUser: vi.fn(),
   mockChallengeTeamCreate: vi.fn(),
-  mockChallengeTeamUpdateWorkspace: vi.fn(),
-  mockTaskFindTemplateTasks: vi.fn(),
-  mockTaskCreate: vi.fn(),
-  mockChallengeRepoFindByChallengeWithRepo: vi.fn(),
-  mockUserFindById: vi.fn(),
-  mockProvisionContributorWorkspace: vi.fn(),
-  mockGetProvider: vi.fn(),
-  mockMapRepoTypeToWorkspaceType: vi.fn(),
-  mockProtect: vi.fn(),
   mockChallengeTeamFindByGroup: vi.fn(),
+  mockUsesBoard: vi.fn(),
+  mockCopyBoardTemplate: vi.fn(),
+  mockFlowUses: vi.fn(),
+  mockRunJoinHooks: vi.fn(),
+  mockRunGroupJoinHooks: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -41,35 +33,28 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   ChallengeRepository: class {
     findById = mockChallengeFindById;
   },
-  ChallengeRepoRepository: class {
-    findByChallengeWithRepo = mockChallengeRepoFindByChallengeWithRepo;
-  },
   ChallengeTeamRepository: class {
     findByChallengeAndUser = mockChallengeTeamFindByChallengeAndUser;
     create = mockChallengeTeamCreate;
-    updateWorkspace = mockChallengeTeamUpdateWorkspace;
     findByGroup = mockChallengeTeamFindByGroup;
-  },
-  TaskRepository: class {
-    findTemplateTasks = mockTaskFindTemplateTasks;
-    create = mockTaskCreate;
-  },
-  UserRepository: class {
-    findById = mockUserFindById;
   },
 }));
 
-vi.mock('../../../../../../../../packages/provisioner/src/index.js', () => ({
-  provisionContributorWorkspace: mockProvisionContributorWorkspace,
-  ProvisionerRegistry: {
-    getProvider: mockGetProvider,
-  },
-  mapRepoTypeToWorkspaceType: mockMapRepoTypeToWorkspaceType,
+vi.mock('../../../../../../../../packages/capabilities/board', () => ({
+  usesBoard: mockUsesBoard,
+  copyBoardTemplate: mockCopyBoardTemplate,
+}));
+
+vi.mock('../../../../../../../../packages/capabilities/challenge-hooks', () => ({
+  flowUses: mockFlowUses,
+  runJoinHooks: mockRunJoinHooks,
+  runGroupJoinHooks: mockRunGroupJoinHooks,
 }));
 
 import { POST } from './route';
 
 const CHALLENGE_ID = 'challenge-1';
+const CHALLENGE = { uuid: CHALLENGE_ID, type: 'code', flow_config: { workspace_mode: 'provided_repo' }, index: 3 };
 
 function joinChallenge(body?: Record<string, unknown>) {
   const req = new NextRequest(`http://localhost/api/challenges/${CHALLENGE_ID}/join`, {
@@ -82,19 +67,15 @@ function joinChallenge(body?: Record<string, unknown>) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockVerifyRequestToken.mockResolvedValue({ userId: 'alice' });
-  mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', flow_config: { workspace_mode: 'provided_repo' }, index: 3 });
+  mockChallengeFindById.mockResolvedValue(CHALLENGE);
   mockChallengeTeamFindByChallengeAndUser.mockResolvedValue(null);
   mockChallengeTeamCreate.mockResolvedValue({});
-  mockChallengeTeamUpdateWorkspace.mockResolvedValue({});
-  mockTaskFindTemplateTasks.mockResolvedValue([]);
-  mockTaskCreate.mockImplementation(async (data: any) => ({ uuid: `created-${Math.random()}`, ...data }));
-  mockChallengeRepoFindByChallengeWithRepo.mockResolvedValue([]);
-  mockUserFindById.mockResolvedValue({ uuid: 'alice', full_name: 'Alice', github_username: 'alice-gh' });
-  mockProvisionContributorWorkspace.mockResolvedValue({ ref: 'refs/heads/contrib/3-alice-gh', url: 'https://github.com/acme/repo/tree/contrib/3-alice-gh', status: 'ready' });
-  mockMapRepoTypeToWorkspaceType.mockReturnValue('git_branch');
-  mockGetProvider.mockReturnValue({ protect: mockProtect });
-  mockProtect.mockResolvedValue(undefined);
   mockChallengeTeamFindByGroup.mockResolvedValue([]);
+  mockUsesBoard.mockReturnValue(true);
+  mockCopyBoardTemplate.mockResolvedValue(3);
+  mockFlowUses.mockReturnValue(true);
+  mockRunJoinHooks.mockResolvedValue({});
+  mockRunGroupJoinHooks.mockResolvedValue({});
 });
 
 describe('POST /api/challenges/[id]/join', () => {
@@ -108,7 +89,7 @@ describe('POST /api/challenges/[id]/join', () => {
   });
 
   it('returns 403 when the challenge is closed (completed or archived)', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', flow_config: { workspace_mode: 'provided_repo' }, index: 3, status: 'completed' });
+    mockChallengeFindById.mockResolvedValue({ ...CHALLENGE, status: 'completed' });
 
     const res = await joinChallenge();
     const body = await res.json();
@@ -127,96 +108,38 @@ describe('POST /api/challenges/[id]/join', () => {
     expect(mockChallengeTeamCreate).not.toHaveBeenCalled();
   });
 
-  it('code + provided_repo: creates the team row, copies the template board, and provisions the personal branch', async () => {
-    mockTaskFindTemplateTasks.mockResolvedValue([
-      { uuid: 't1', parent_task_id: null, title: 'Parent 1', description: 'd1' },
-      { uuid: 't2', parent_task_id: null, title: 'Parent 2', description: 'd2' },
-      { uuid: 't3', parent_task_id: 't1', title: 'Child of 1', description: 'd3' },
-    ]);
-    mockChallengeRepoFindByChallengeWithRepo.mockResolvedValue([
-      { challenge_id: CHALLENGE_ID, repo_id: 'repo-1', repo_type: 'github', repo_external_id: 'acme/widgets', workspace_ref: 'refs/heads/challenge/3' },
-    ]);
+  it('creates the participation, copies the board, then runs the join hooks and reports what they add', async () => {
+    mockRunJoinHooks.mockResolvedValue({ workspace: 'ready' });
 
     const res = await joinChallenge();
     const body = await res.json();
 
     expect(res.status).toBe(201);
-    expect(body.tasksCreated).toBe(3);
-
-    expect(mockChallengeTeamCreate).toHaveBeenCalledWith({
-      challenge_id: CHALLENGE_ID,
-      user_id: 'alice',
-      workspace_provider: 'github',
-      workspace_status: 'pending',
-    });
-
-    // 3 tasks created: 2 parents then the child.
-    expect(mockTaskCreate).toHaveBeenCalledTimes(3);
-    const calls = mockTaskCreate.mock.calls.map(([args]: any[]) => args);
-    expect(calls[0]).toEqual(expect.objectContaining({ title: 'Parent 1', user_id: 'alice', status: 'todo' }));
-    expect(calls[1]).toEqual(expect.objectContaining({ title: 'Parent 2', user_id: 'alice', status: 'todo' }));
-    // The child's parent_task_id must point at the COPY of parent 1, not the original template uuid.
-    const parent1CopyResult = await mockTaskCreate.mock.results[0].value;
-    expect(calls[2]).toEqual(expect.objectContaining({ title: 'Child of 1', parent_task_id: parent1CopyResult.uuid }));
-    expect(calls[2].parent_task_id).not.toBe('t1');
-
-    // Provisioning happened using the challenge's linked repo.
-    expect(mockProvisionContributorWorkspace).toHaveBeenCalledWith({
-      challengeIndex: 3,
-      username: 'alice-gh',
-      repoExternalId: 'acme/widgets',
-      repoType: 'github',
-      challengeBranchRef: 'refs/heads/challenge/3',
-    });
-    expect(mockChallengeTeamUpdateWorkspace).toHaveBeenCalledWith(CHALLENGE_ID, 'alice', {
-      workspace_ref: 'refs/heads/contrib/3-alice-gh',
-      workspace_url: 'https://github.com/acme/repo/tree/contrib/3-alice-gh',
-      workspace_status: 'ready',
-    });
-    expect(mockProtect).toHaveBeenCalledWith('acme/widgets', 'refs/heads/contrib/3-alice-gh', ['alice-gh']);
+    expect(mockChallengeTeamCreate).toHaveBeenCalledWith({ challenge_id: CHALLENGE_ID, user_id: 'alice' });
+    expect(mockCopyBoardTemplate).toHaveBeenCalledWith(CHALLENGE_ID, 'alice');
+    expect(mockRunJoinHooks).toHaveBeenCalledWith({ challenge: CHALLENGE, userId: 'alice', groupId: null });
+    expect(mockCopyBoardTemplate.mock.invocationCallOrder[0]).toBeLessThan(mockRunJoinHooks.mock.invocationCallOrder[0]);
+    expect(body).toMatchObject({ tasksCreated: 3, workspace: 'ready' });
   });
 
-  it('code + own_repo: sets workspace_provider external and never calls the provisioner', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', flow_config: { workspace_mode: 'own_repo' }, index: 3 });
+  it('copies no board for a flow without one', async () => {
+    mockUsesBoard.mockReturnValue(false);
 
-    const res = await joinChallenge();
+    const body = await (await joinChallenge()).json();
 
-    expect(res.status).toBe(201);
-    expect(mockChallengeTeamCreate).toHaveBeenCalledWith({
-      challenge_id: CHALLENGE_ID,
-      user_id: 'alice',
-      workspace_provider: 'external',
-    });
-    expect(mockProvisionContributorWorkspace).not.toHaveBeenCalled();
-    expect(mockChallengeRepoFindByChallengeWithRepo).not.toHaveBeenCalled();
-  });
-
-  it('ml challenge: creates a simple team row with no template copy or provisioning', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'ml', index: 3 });
-
-    const res = await joinChallenge();
-    const body = await res.json();
-
-    expect(res.status).toBe(201);
     expect(body.tasksCreated).toBe(0);
-    expect(mockChallengeTeamCreate).toHaveBeenCalledWith({
-      challenge_id: CHALLENGE_ID,
-      user_id: 'alice',
-    });
-    expect(mockTaskFindTemplateTasks).not.toHaveBeenCalled();
-    expect(mockProvisionContributorWorkspace).not.toHaveBeenCalled();
+    expect(mockCopyBoardTemplate).not.toHaveBeenCalled();
+    expect(mockRunJoinHooks).toHaveBeenCalled();
   });
 
-  it('provisioner failure: marks the workspace failed but still returns 201', async () => {
-    mockChallengeRepoFindByChallengeWithRepo.mockResolvedValue([
-      { challenge_id: CHALLENGE_ID, repo_id: 'repo-1', repo_type: 'github', repo_external_id: 'acme/widgets', workspace_ref: 'refs/heads/challenge/3' },
-    ]);
-    mockProvisionContributorWorkspace.mockRejectedValue(new Error('GitHub API down'));
+  it('returns 500 when a join hook fails', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockRunJoinHooks.mockRejectedValue(new Error('provider exploded'));
 
     const res = await joinChallenge();
 
-    expect(res.status).toBe(201);
-    expect(mockChallengeTeamUpdateWorkspace).toHaveBeenCalledWith(CHALLENGE_ID, 'alice', { workspace_status: 'failed' });
+    expect(res.status).toBe(500);
+    spy.mockRestore();
   });
 });
 
@@ -231,76 +154,47 @@ describe('POST /api/challenges/[id]/join — groups', () => {
   });
 
   it('creates a group and returns its invite token', async () => {
-    mockChallengeRepoFindByChallengeWithRepo.mockResolvedValue([
-      { repo_type: 'github', repo_external_id: 'acme/repo' },
-    ]);
-
     const body = await (await joinChallenge({ mode: 'group' })).json();
 
     expect(body.group_id).toEqual(expect.any(String));
-    // Le créateur reste un participant normal : board copié, branche provisionnée.
-    expect(mockChallengeTeamCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ group_id: body.group_id, workspace_provider: 'github' })
-    );
-    expect(mockProvisionContributorWorkspace).toHaveBeenCalled();
+    // Le créateur reste un participant normal : board copié, hooks de join.
+    expect(mockChallengeTeamCreate).toHaveBeenCalledWith(expect.objectContaining({ group_id: body.group_id }));
+    expect(mockCopyBoardTemplate).toHaveBeenCalled();
+    expect(mockRunJoinHooks).toHaveBeenCalledWith(expect.objectContaining({ groupId: body.group_id }));
   });
 
-  it('joins an existing group without copying a board or provisioning', async () => {
+  it('refuses a group on a flow that does not accept groups', async () => {
+    mockFlowUses.mockReturnValue(false);
+
+    const created = await joinChallenge({ mode: 'group' });
+    const invited = await joinChallenge({ group: GROUP });
+
+    expect(created.status).toBe(400);
+    expect(invited.status).toBe(400);
+    expect(mockFlowUses).toHaveBeenCalledWith('code', 'groups');
+    expect(mockChallengeTeamCreate).not.toHaveBeenCalled();
+  });
+
+  it('joins an existing group without copying a board, and runs the group hooks', async () => {
     // Le workspace est celui du porteur : dupliquer board et branche donnerait
     // exactement ce que le modèle de groupe cherche à éviter.
     mockVerifyRequestToken.mockResolvedValue({ userId: 'bob' });
     mockChallengeTeamFindByGroup.mockResolvedValue([
       { challenge_id: CHALLENGE_ID, user_id: 'alice', group_id: GROUP, workspace_ref: 'refs/heads/contrib/003-alice' },
     ]);
-    mockTaskFindTemplateTasks.mockResolvedValue([{ uuid: 't-1', title: 'Do it' }]);
+    mockRunGroupJoinHooks.mockResolvedValue({ missingGithub: ['Bob'] });
 
     const res = await joinChallenge({ group: GROUP });
     const body = await res.json();
 
     expect(res.status).toBe(201);
-    expect(body.tasksCreated).toBe(0);
-    expect(mockTaskCreate).not.toHaveBeenCalled();
-    expect(mockProvisionContributorWorkspace).not.toHaveBeenCalled();
+    expect(body).toMatchObject({ tasksCreated: 0, group_id: GROUP, missingGithub: ['Bob'] });
+    expect(mockCopyBoardTemplate).not.toHaveBeenCalled();
+    expect(mockRunJoinHooks).not.toHaveBeenCalled();
+    expect(mockRunGroupJoinHooks).toHaveBeenCalledWith({ challenge: CHALLENGE, userId: 'bob', groupId: GROUP });
     expect(mockChallengeTeamCreate).toHaveBeenCalledWith({
       challenge_id: CHALLENGE_ID, user_id: 'bob', group_id: GROUP,
     });
-  });
-
-  it('reopens the branch to every member on join', async () => {
-    mockVerifyRequestToken.mockResolvedValue({ userId: 'bob' });
-    mockChallengeRepoFindByChallengeWithRepo.mockResolvedValue([
-      { repo_type: 'github', repo_external_id: 'acme/repo' },
-    ]);
-    mockChallengeTeamFindByGroup.mockResolvedValue([
-      { challenge_id: CHALLENGE_ID, user_id: 'alice', group_id: GROUP, workspace_ref: 'refs/heads/contrib/003-alice' },
-      { challenge_id: CHALLENGE_ID, user_id: 'bob', group_id: GROUP },
-    ]);
-    mockUserFindById.mockImplementation(async (id: string) =>
-      ({ uuid: id, full_name: id, github_username: `${id}-gh` }));
-
-    await joinChallenge({ group: GROUP });
-
-    expect(mockProtect).toHaveBeenCalledWith(
-      'acme/repo', 'refs/heads/contrib/003-alice', ['alice-gh', 'bob-gh']
-    );
-  });
-
-  it('reports members who cannot push for lack of a GitHub account', async () => {
-    mockVerifyRequestToken.mockResolvedValue({ userId: 'bob' });
-    mockChallengeRepoFindByChallengeWithRepo.mockResolvedValue([
-      { repo_type: 'github', repo_external_id: 'acme/repo' },
-    ]);
-    mockChallengeTeamFindByGroup.mockResolvedValue([
-      { challenge_id: CHALLENGE_ID, user_id: 'alice', group_id: GROUP, workspace_ref: 'refs/heads/contrib/003-alice' },
-      { challenge_id: CHALLENGE_ID, user_id: 'bob', group_id: GROUP },
-    ]);
-    mockUserFindById.mockImplementation(async (id: string) =>
-      id === 'bob' ? { uuid: id, full_name: 'Bob' } : { uuid: id, full_name: 'Alice', github_username: 'alice-gh' });
-
-    const body = await (await joinChallenge({ group: GROUP })).json();
-
-    // Sans ça, Bob découvrirait son 403 au premier push.
-    expect(body.missingGithub).toEqual(['Bob']);
   });
 
   it('refuses an unknown group', async () => {

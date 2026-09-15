@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { Coins, Loader2 } from 'lucide-react';
 
 interface RewardsState {
@@ -27,7 +28,7 @@ export function ValidationRewardsPanel({ challengeId, open }: { challengeId: str
     wasOpen.current = open;
     if (!justOpened) return;
     setLoading(true);
-    fetch(`/api/challenges/${challengeId}/validation-rewards`)
+    fetch(flowActionUrl(challengeId, 'rewards'))
       .then(res => (res.ok ? res.json() : null))
       .then(setData)
       .finally(() => setLoading(false));

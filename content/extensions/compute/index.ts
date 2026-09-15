@@ -23,6 +23,8 @@ const DECIDERS: ActionAccess = { roles: ["admin"], manager: true };
 
 // Import à la demande : déclarer l'extension ne charge ni le service ni Scaleway.
 const load = () => import("./actions.js");
+const computeService = async () =>
+  new (await import("../../../packages/services/compute/compute-request.service.js")).ComputeRequestService();
 
 /**
  * Extension puissance de calcul — demandes d'instances GPU Scaleway, décidées
@@ -35,6 +37,21 @@ export const computeExtension: ExtensionDefinition = {
   key: COMPUTE_EXTENSION_KEY,
   appliesTo: ["ml"],
   config: { schema: computeConfigSchema, editableKeys: ["enabled"] },
+  hooks: {
+    // Un challenge clos coupe ses instances encore actives, quel que soit le
+    // temps restant sur leur fenêtre. Sans attendre : la clôture ne dépend pas
+    // de Scaleway.
+    async onClose(challenge) {
+      (await computeService()).terminateForChallenge(challenge.uuid, "challenge_closed").catch((error) => {
+        console.error("[compute] Terminating compute requests on close failed:", error);
+      });
+    },
+    // Avant la suppression : `compute_requests` part en cascade avec le
+    // challenge, et ses instances ne seraient plus joignables après.
+    async onDelete(challenge) {
+      await (await computeService()).terminateForChallenge(challenge.uuid, "challenge_deleted");
+    },
+  },
   // Le service vérifie qu'un contributeur peut demander (extension activée,
   // Scaleway connecté, pas de demande en cours).
   actions: [

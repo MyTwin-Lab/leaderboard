@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2, Loader2, Hash, Radio, X } from 'lucide-react';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
 import { SIGNAL_ICONS, getSignalIcon } from '@/components/ui/signalIcons';
+import { extensionActionUrl } from '@/lib/challengeActions';
+
+/** Le canal et les signaux passent par les actions de l'extension slack-signals. */
+const SLACK_SIGNALS = 'slack-signals';
 
 interface SignalItem {
   uuid: string;
@@ -60,7 +64,7 @@ export function ChallengeSlackSignalsEditor({ challengeId, open }: { challengeId
   }, [open]);
 
   const fetchSignals = async () => {
-    const res = await fetch(`/api/challenges/${challengeId}/signals`);
+    const res = await fetch(extensionActionUrl(challengeId, SLACK_SIGNALS, 'signals'));
     if (res.ok) {
       const data = await res.json();
       setSignals(Array.isArray(data) ? data : []);
@@ -78,7 +82,7 @@ export function ChallengeSlackSignalsEditor({ challengeId, open }: { challengeId
 
       await Promise.all([
         fetchSignals(),
-        fetch(`/api/challenges/${challengeId}/slack-config`).then(r => r.ok && r.json()).then(d => {
+        fetch(extensionActionUrl(challengeId, SLACK_SIGNALS, 'config')).then(r => r.ok && r.json()).then(d => {
           setConfig(d ?? null);
         }),
         fetch('/api/slack/channels').then(r => r.ok && r.json()).then(d => {
@@ -93,7 +97,7 @@ export function ChallengeSlackSignalsEditor({ challengeId, open }: { challengeId
     setSavingChannel(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/slack-config`, {
+      const res = await fetch(extensionActionUrl(challengeId, SLACK_SIGNALS, 'config'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channel_id: channelId, channel_name: channel?.name ?? null }),
@@ -108,7 +112,7 @@ export function ChallengeSlackSignalsEditor({ challengeId, open }: { challengeId
     setSavingChannel(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/slack-config`, { method: 'DELETE' });
+      const res = await fetch(extensionActionUrl(challengeId, SLACK_SIGNALS, 'config'), { method: 'DELETE' });
       if (res.ok) setConfig(null);
       else { const d = await res.json().catch(() => ({})); setError(d.error || 'Failed to remove channel'); }
     } catch { setError('Network error'); }
@@ -120,7 +124,7 @@ export function ChallengeSlackSignalsEditor({ challengeId, open }: { challengeId
     setAdding(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/signals`, {
+      const res = await fetch(extensionActionUrl(challengeId, SLACK_SIGNALS, 'signals'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -147,7 +151,7 @@ export function ChallengeSlackSignalsEditor({ challengeId, open }: { challengeId
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/signals/${id}`, { method: 'DELETE' });
+      const res = await fetch(extensionActionUrl(challengeId, SLACK_SIGNALS, `signals/${id}`), { method: 'DELETE' });
       if (res.ok) await fetchSignals();
       else { const d = await res.json().catch(() => ({})); setError(d.error || 'Failed to delete signal'); }
     } catch { setError('Network error'); }

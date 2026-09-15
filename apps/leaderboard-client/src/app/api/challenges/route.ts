@@ -6,7 +6,7 @@ import {
   ChallengeRepoRepository,
   ParentFlowTakenError,
 } from '../../../../../../packages/database-service/repositories';
-import { buildRepoDefinitions } from '../../../../../../packages/services/challenge/challengeRepos';
+import { creationRepos } from '../../../../../../packages/capabilities/challenge-hooks';
 import {
   FlowConfigError,
   parseFlowRules,
@@ -184,29 +184,9 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
-    // Extract owner/repo slug from a GitHub URL or plain slug
-    const parseGithubSlug = (input: string): string | undefined => {
-      if (!input) return undefined;
-      const match = input.match(/github\.com\/([^/?#]+\/[^/?#]+)/);
-      if (match) return match[1].replace(/\.git$/, '');
-      // Already a slug like "owner/repo"
-      if (/^[^/]+\/[^/]+$/.test(input)) return input;
-      return undefined;
-    };
-
-    const githubSlug = github_repo ? parseGithubSlug(github_repo) : undefined;
-
-    // Auto-create repos based on challenge type and link them. La construction
-    // vit dans `services/challenge/challengeRepos.ts` : la promotion d'un
-    // sandbox crée un challenge sans passer par cette route et doit produire
-    // exactement les mêmes repos.
-    const repoDefinitions = buildRepoDefinitions({
-      type: validated.type,
-      title: validated.title,
-      workspaceMode: workspace_mode,
-      githubSlug,
-      apiPackagingEnabled: api_packaging_enabled,
-    });
+    // Les dépôts que le flow du challenge et ses extensions déclarent à la
+    // création. La promotion d'un sandbox lit la même déclaration.
+    const repoDefinitions = creationRepos(challenge, { github_repo, api_packaging_enabled });
 
     await Promise.all(
       repoDefinitions.map(async ({ title, type, role, external_repo_id }) => {

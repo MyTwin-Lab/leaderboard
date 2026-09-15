@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TaskRepository, ChallengeRepository, ChallengeTeamRepository } from '../../../../../../packages/database-service/repositories';
 import { repositories } from '@/lib/db';
 import { resolveWorkspaceOwner } from '../../../../../../packages/capabilities/groups';
+import { usesBoard } from '../../../../../../packages/capabilities/board';
 import { verifyRequestToken } from '@/lib/auth';
 import { canAccessChallengeInternals } from '@/lib/server/managerAuth';
 import { z } from 'zod';
@@ -78,8 +79,8 @@ export async function POST(request: NextRequest) {
 
     const challenge = await challengeRepo.findById(validated.challenge_id);
     if (!challenge) return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
-    if (challenge.type !== 'code') {
-      return NextResponse.json({ error: 'Only code challenges have tasks' }, { status: 400 });
+    if (!usesBoard(challenge.type)) {
+      return NextResponse.json({ error: 'This challenge has no board' }, { status: 400 });
     }
 
     // Board de travail de l'appelant : le sien en solo, celui du porteur en
