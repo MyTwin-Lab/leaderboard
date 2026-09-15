@@ -51,9 +51,9 @@ const GITHUB_EVENT_CONFIG = {
  * this. The page's took only `repoActivity` and could not attribute anything;
  * this one is the manage view's, so both now show who did what.
  */
-export function ChallengeActivity({ contributions, team, repoActivity, isML }: {
+export function ChallengeActivity({ contributions, team, repoActivity, showRewardBreakdown }: {
   contributions: Contribution[]; team: TeamMember[];
-  repoActivity: Record<string, any> | null; isML: boolean;
+  repoActivity: Record<string, any> | null; showRewardBreakdown: boolean;
 }) {
   const userMap = Object.fromEntries(team.map(m => [m.id, m.fullName]));
   const avatarMap = Object.fromEntries(team.map(m => [m.id, m.avatarUrl]));
@@ -80,7 +80,7 @@ export function ChallengeActivity({ contributions, team, repoActivity, isML }: {
                   <p className="text-xs text-white/35">{userMap[c.user_id] ?? c.user_id} · {fmt(c.submitted_at, { month: 'short', day: 'numeric' })}</p>
                 </div>
                 <Badge label={c.type ?? "contribution"} variant="muted" />
-                {isML
+                {showRewardBreakdown
                   ? <ContributionRewardBreakdown contributionId={c.uuid} title={c.title ?? c.type ?? "Contribution"} reward={c.reward} index={i} />
                   : <span className="shrink-0 text-sm font-semibold text-brandCP">{c.reward} CP</span>}
               </div>

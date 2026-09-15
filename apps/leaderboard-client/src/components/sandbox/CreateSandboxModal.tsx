@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Box, BrainCircuit, Code2, X } from "lucide-react";
+import { Box, X } from "lucide-react";
+import { sandboxKindOf, sandboxKinds } from "@/distribution/mytwin.forms";
 import type { SandboxView } from "@/lib/public/sandbox";
 import { useSlugField } from "@/lib/useSlugField";
 import { SlugField } from "@/components/ui/SlugField";
@@ -21,7 +22,8 @@ interface CreateSandboxModalProps {
   onSaved: (sandbox: SandboxView) => void;
 }
 
-type SandboxType = "code" | "ml";
+/** La clé du flow que la proposition deviendra (`sandboxKinds` de la distribution). */
+type SandboxType = string;
 
 interface FormState {
   type: SandboxType;
@@ -35,7 +37,7 @@ interface FormState {
 }
 
 const EMPTY: FormState = {
-  type: "code",
+  type: sandboxKinds[0].key,
   title: "",
   context: "",
   goals: "",
@@ -49,11 +51,6 @@ const EMPTY: FormState = {
 function isHttpUrl(value: string): boolean {
   return /^https?:\/\/.+/i.test(value.trim());
 }
-
-const TYPE_OPTIONS: { key: SandboxType; label: string; hint: string; icon: typeof Code2 }[] = [
-  { key: "code", label: "Code", hint: "A repository to build on", icon: Code2 },
-  { key: "ml", label: "ML", hint: "Dataset, model, evaluation", icon: BrainCircuit },
-];
 
 function Field({
   label,
@@ -121,7 +118,7 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
     setForm(
       sandbox
         ? {
-            type: (sandbox.type === "ml" ? "ml" : "code") as SandboxType,
+            type: sandboxKindOf(sandbox.type).key,
             title: sandbox.title,
             context: sandbox.context ?? "",
             goals: formatGoals(sandbox.goals),
@@ -145,14 +142,15 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
 
   if (!open || !mounted) return null;
 
-  const isMl = form.type === "ml";
+  // Une URL de dataset requise et une URL de modèle optionnelle : ce que la sorte demande.
+  const hasArtifacts = sandboxKindOf(form.type).artifacts;
   const goals = parseGoals(form.goals);
   const goalsProblem = goalsError(goals);
   const valid =
     form.title.trim().length >= 3 &&
     isHttpUrl(form.repo) &&
-    (!isMl || isHttpUrl(form.dataset)) &&
-    (!isMl || !form.model.trim() || isHttpUrl(form.model)) &&
+    (!hasArtifacts || isHttpUrl(form.dataset)) &&
+    (!hasArtifacts || !form.model.trim() || isHttpUrl(form.model)) &&
     !goalsProblem &&
     slugField.ready;
 
@@ -180,7 +178,7 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
             goals,
             why: why || null,
             repo_url: form.repo.trim(),
-            ...(isMl
+            ...(hasArtifacts
               ? { model_url: model || null, dataset_urls: dataset ? [dataset] : [] }
               : {}),
           }
@@ -194,7 +192,7 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
             repo_url: form.repo.trim(),
             // Un sandbox `code` refuse modèle et datasets côté schéma : on ne
             // les envoie même pas, plutôt que d'envoyer des tableaux vides.
-            ...(isMl
+            ...(hasArtifacts
               ? { dataset_urls: [dataset], ...(model ? { model_url: model } : {}) }
               : {}),
           };
@@ -227,11 +225,11 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
   const fieldsMissing =
     form.title.trim().length < 3 ||
     !isHttpUrl(form.repo) ||
-    (isMl && !isHttpUrl(form.dataset));
+    (hasArtifacts && !isHttpUrl(form.dataset));
   const hint = !valid
     ? !fieldsMissing && !slugField.ready
       ? "Choose an available address."
-      : isMl
+      : hasArtifacts
         ? "A title, a repository and a dataset URL are required."
         : "A title and a repository URL are required."
     : isEdit
@@ -270,7 +268,7 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
             Sandbox type
           </span>
           <div className="flex gap-2">
-            {TYPE_OPTIONS.map(({ key, label, hint: typeHint, icon: Icon }) => {
+            {sandboxKinds.map(({ key, label, hint: typeHint, icon: Icon }) => {
               const active = form.type === key;
               return (
                 <button
@@ -372,7 +370,7 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
             />
           </Field>
 
-          {isMl && (
+          {hasArtifacts && (
             <>
               <Field label="Dataset URL">
                 <input

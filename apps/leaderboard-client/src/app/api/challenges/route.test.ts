@@ -254,7 +254,7 @@ describe('POST /api/challenges', () => {
     expect(roles.sort()).toEqual(['dataset', 'model', 'model_code']);
   });
 
-  describe('validation challenge business rules', () => {
+  describe('validation challenge business rules (the legacy `validation` type included)', () => {
     const mlSourceId = '22222222-2222-4222-8222-222222222222';
 
     beforeEach(() => {
@@ -361,6 +361,15 @@ describe('POST /api/challenges', () => {
       const res = await postChallenge(validationBody({ required_validations: undefined }), 'valid-token');
 
       expect(res.status).toBe(409);
+    });
+
+    it('accepts the resolved flow the forms send, and still checks it against the source', async () => {
+      const accepted = await postChallenge(validationBody({ type: 'endpoint-validation' }), 'valid-token');
+      mockChallengeFindById.mockResolvedValue({ uuid: mlSourceId, type: 'code' });
+      const refused = await postChallenge(validationBody({ type: 'endpoint-validation' }), 'valid-token');
+
+      expect(accepted.status).toBe(201);
+      expect(refused.status).toBe(400);
     });
 
     it('creates the validation challenge on success, with no repos', async () => {

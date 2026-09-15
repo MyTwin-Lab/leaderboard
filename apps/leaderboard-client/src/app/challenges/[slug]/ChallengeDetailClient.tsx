@@ -1,23 +1,13 @@
 'use client';
 
-import { flowConfigView } from '@/lib/flowConfig';
-import { isValidationFlow, validationModeOf } from '@/distribution/mytwin.validation';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { challengeInvitePath, challengePath, challengeSignInPath } from '@/lib/paths';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
-import {
-  ArrowLeft, CheckCircle2, CalendarDays, BrainCircuit,
-  GitBranch, GitPullRequest, Trophy, BarChart2, FlaskConical, Medal, FileText, Info,
-  Database, Cpu, ExternalLink, Users, UserPlus,
-} from 'lucide-react';
+import { ArrowLeft, CalendarDays, FileText, Info, Users, UserPlus } from 'lucide-react';
 import type { TeamMember } from '@/lib/types';
 import { trackOnboardingStep } from '@/lib/onboarding-track';
-import { MLChallengeFlow } from '@/components/challenges/MLChallengeFlow';
-import { ValidationChallengeFlow } from '@/components/challenges/ValidationChallengeFlow';
-import { ScenarioChallengeFlow } from '@/components/challenges/ScenarioChallengeFlow';
-import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseAuthorPanel';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { ChallengeBrief, type GroupInvite } from '@/components/challenges/ChallengeBrief';
 import { GroupInviteModal } from '@/components/challenges/GroupInviteModal';
@@ -26,22 +16,22 @@ import { JoinModal } from '@/components/challenges/JoinModal';
 // client Postgres, qui n'a rien à faire dans le bundle navigateur.
 import { GROUP_MAX_SIZE } from '../../../../../../packages/database-service/domain/groupPolicy';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
-import { type BoardTask } from '@/components/contributor/ContributorTaskBoard';
-import {
-  CodeChallengePanel, type CodeParticipation, type ProjectContribution,
-} from '@/components/challenges/CodeChallengePanel';
+import type { CodeParticipation, ProjectContribution } from '@/components/challenges/CodeChallengePanel';
 import { MeetingsSection } from '@/components/challenges/MeetingsSection';
 import { HeroStats, type HeroStat } from '@/components/challenges/HeroStats';
 import { fetchJson } from '@/lib/fetchJson';
-import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
-import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
 import { shouldShowBrief } from '@/lib/challengeBrief';
 import { showJoinInHeader } from '@/lib/joinGate';
 import { useJoinChallenge } from '@/lib/useJoinChallenge';
-
-const ML_REPO_TYPES = ['kaggle_dataset', 'kaggle_model'];
-
+import { flowCatalog } from '@/distribution/mytwin.flows';
+import { flowSlots } from '@/distribution/mytwin.client';
+import type {
+  BoardContribution,
+  ChallengeRewards,
+  ContributorSlotContext,
+  ContributorTask,
+} from '@/lib/flowSlots';
 
 interface Challenge {
   uuid: string;
@@ -54,26 +44,6 @@ interface Challenge {
   contribution_points_reward: number;
   project_id: string;
   flow_config?: unknown;
-}
-
-// A task row from the overview — either a template task (no `user_id`) or
-// an entry on a specific contributor's personal board.
-interface ChallengeTask extends BoardTask {
-  user_id?: string | null;
-}
-
-// Ledger entries (ML/validation/code contributions) — unrelated to the
-// personal task board, but still used for the challenge's stat cards below
-// and (for `type === 'project'`) the code-challenge evaluation status.
-interface BoardContribution {
-  uuid: string;
-  task_id?: string;
-  user_id: string;
-  type?: string;
-  evaluation?: { globalScore?: number } | null;
-  evaluation_status?: string;
-  reward: number;
-  submitted_at: string;
 }
 
 interface SyncMeeting {
@@ -133,6 +103,9 @@ function Skeleton() {
  * pré-rempli le cache (voir `page.tsx`). Inutile d'attendre `/api/contributors/me`
  * pour lui — la réponse ne peut être qu'un 401 — et c'est justement cette
  * attente qui réduisait le HTML serveur à un squelette.
+ *
+ * Ce qui dépend du flow du challenge (onglets, mesure du hero, vue anonyme)
+ * vient de ses slots (`@/distribution/mytwin.client`).
  */
 export default function ChallengeDetailClient({
   challengeId,
@@ -150,8 +123,6 @@ export default function ChallengeDetailClient({
   const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
-  // Couvre la fenêtre entre la création du groupe et le rechargement de
-  // l'overview, qui est la source de vérité une fois arrivée.
 
   // Declared before overviewQuery so its refetchInterval closure (below) can
   // read meQuery.data without a temporal-dead-zone hazard.
@@ -225,16 +196,14 @@ export default function ChallengeDetailClient({
     enabled: !!challengeId,
   });
 
-  // Same source as the "beat the leader" timeline inside MLChallengeFlow —
-  // reads the reward ledger (challenge.reward_rules.model.metric), not a live
-  // Kaggle call, so it still has a value with no Kaggle credentials configured.
-  const mlRewardsQuery = useQuery({
-    queryKey: ['challenge-ml-rewards', challengeId],
-    queryFn: () => fetchJson(`/api/challenges/${challengeId}/ml-rewards`) as Promise<{
-      metric: { name: string; baseline: number; points: number[] } | null;
-      bestValue: number | null;
-    }>,
-    enabled: !!challengeId && overviewQuery.data?.challenge?.type === 'ml',
+  const challengeType = overviewQuery.data?.challenge?.type;
+  // L'état du pool et ce que le flow y ajoute (la métrique d'un challenge ML) :
+  // le ledger, pas un appel Kaggle en direct, donc une valeur même sans
+  // credentials Kaggle configurés. Seuls les flows qui l'affichent le chargent.
+  const rewardsQuery = useQuery({
+    queryKey: ['challenge-rewards', challengeId],
+    queryFn: () => fetchJson(`/api/challenges/${challengeId}/rewards`) as Promise<ChallengeRewards>,
+    enabled: !!challengeId && !!challengeType && flowSlots(challengeType).readsRewards === true,
   });
 
   // Not challenge-specific — shared across every page that needs it.
@@ -248,10 +217,9 @@ export default function ChallengeDetailClient({
   const team: TeamMember[] = (overviewQuery.data?.team ?? []).map((m: any) => ({
     id: m.uuid, fullName: m.full_name, avatarUrl: m.avatar_url ?? undefined,
   }));
-  const tasks: ChallengeTask[] = overviewQuery.data?.tasks ?? [];
+  const tasks: ContributorTask[] = overviewQuery.data?.tasks ?? [];
   const meetings = overviewQuery.data?.meetings ?? [];
   const meetingsEnabled = modulesQuery.data?.meetings_enabled !== false;
-  const repoTypes: string[] = (overviewQuery.data?.repos ?? []).map((r: any) => r.repo_type ?? r.type ?? '');
   const contributions = overviewQuery.data?.contributions ?? [];
   const repoActivity = repoActivityQuery.data ?? null;
   const currentUserId = meQuery.data?.user?.id ?? null;
@@ -280,12 +248,7 @@ export default function ChallengeDetailClient({
   const myTasks = tasks.filter(t => t.user_id === workspaceOwnerId);
   const templateTasks = tasks.filter(t => !t.user_id);
   const myProjectContribution: ProjectContribution | null =
-    contributions.find(c => c.user_id === workspaceOwnerId && c.type === 'project') ?? null;
-
-  const isML = challenge?.type === 'ml' || repoTypes.some(t => ML_REPO_TYPES.includes(t));
-  const isValidation = isValidationFlow(challenge?.type);
-  // Le mode se lit sur le type du challenge source, publié par /overview.
-  const isScenarioValidation = validationModeOf(challenge?.type) === 'scenario';
+    (contributions.find(c => c.user_id === workspaceOwnerId && c.type === 'project') as ProjectContribution | undefined) ?? null;
 
   // Silent refresh after a board mutation — no skeleton flash.
   const reloadBoard = async () => {
@@ -335,7 +298,7 @@ export default function ChallengeDetailClient({
   });
 
   // repo-activity is excluded on purpose: it hits external connectors and can
-  // be slow, but TabActivity/TabMLMetrics already render their own inline
+  // be slow, but the panels that read it already render their own inline
   // skeleton while repoActivity is null — no reason to hold up the rest of
   // the page for it.
   // meQuery.isError is the anonymous case, not a failure to wait on.
@@ -356,20 +319,27 @@ export default function ChallengeDetailClient({
     );
   }
 
-  // Completion of the CURRENT USER's personal board, not the whole
-  // challenge's task pool — each contributor has their own board now.
-  const myDoneTasks = myTasks.filter(t => t.status === 'done').length;
-  const myCompletion = myTasks.length === 0 ? 0 : Math.round((myDoneTasks / myTasks.length) * 100);
+  const slots = flowSlots(challenge.type);
+  const slotContext: ContributorSlotContext = {
+    challengeId,
+    challenge,
+    team,
+    tasks,
+    participants,
+    contributions,
+    repoActivity,
+    rewards: rewardsQuery.data ?? null,
+    isMember,
+    myTasks,
+    templateTasks,
+    myParticipation,
+    myProjectContribution,
+    reloadBoard,
+  };
+
   // Actually distributed, not the pool/cap set at creation — reward is already
   // reconciled with the ledger (ML/validation) or the cached column (code).
   const awardedTotal = contributions.reduce((sum, c) => sum + (c.reward ?? 0), 0);
-
-  // Best reported model metric — same source as MLChallengeFlow's "beat the
-  // leader" timeline (the reward ledger), not the live Kaggle connector: that
-  // one needs real Kaggle credentials and returns nothing without them.
-  const mlRewards = mlRewardsQuery.data;
-  const bestMetricValue = mlRewards?.bestValue ?? mlRewards?.metric?.points?.[0] ?? null;
-  const bestMetricLabel = mlRewards?.metric?.name ? mlRewards.metric.name.toUpperCase() : null;
 
   // Le brief prend la place des KPI et de l'espace de travail : avant d'avoir
   // rejoint, un contributeur n'a ni board, ni branche, ni soumission dont ces
@@ -421,31 +391,8 @@ export default function ChallengeDetailClient({
     team,
   };
 
-  // La mesure du milieu est la seule qui dépende du type et de l'appartenance.
-  const middleStat: HeroStat = isML ? {
-    key: 'metric',
-    label: bestMetricLabel ? `Best ${bestMetricLabel}` : 'Best metric',
-    value: bestMetricValue !== null ? bestMetricValue.toFixed(3) : '-',
-    meta: bestMetricValue !== null ? 'from submitted model versions' : 'no metric yet',
-    barWidth: bestMetricValue !== null ? `${Math.round(bestMetricValue * 100)}%` : undefined,
-  } : isValidation ? {
-    key: 'contributions',
-    label: 'Contributions',
-    value: String(contributions.length),
-    meta: 'submissions & verdicts recorded',
-  } : isMember ? {
-    key: 'tasks',
-    label: 'Tasks',
-    value: `${myCompletion}%`,
-    meta: `${myDoneTasks} of ${myTasks.length} tasks done · your board`,
-    barWidth: `${myCompletion}%`,
-  } : {
-    key: 'tasks',
-    label: 'Tasks',
-    value: String(team.length),
-    unit: team.length === 1 ? 'participant' : 'participants',
-    meta: 'join the challenge to start your board',
-  };
+  // La mesure du milieu est la seule qui dépende du flow et de l'appartenance.
+  const middleStat = slots.contributorHeroStat(slotContext);
 
   return (
     <>
@@ -483,7 +430,7 @@ export default function ChallengeDetailClient({
             </>
           )}
           <span className="rounded-full bg-brandCP/10 px-3 py-1 text-xs font-semibold text-brandCP">
-            {isML ? 'ML' : isValidation ? 'Validation' : 'Code'}
+            {flowCatalog.resolve(challenge.type).label}
           </span>
         </div>
 
@@ -601,13 +548,13 @@ export default function ChallengeDetailClient({
 
       {/* ── Signed out: one block, no tabs ───────────────── */}
       {/* Every interactive panel below needs an account, so an anonymous
-          visitor gets the single thing worth showing for this challenge type:
-          its dataset and model metrics, or how far each contributor has got.
+          visitor gets the single thing worth showing for this flow — its own
+          view if it declares one, how far each contributor has got otherwise.
           Sauf quand le brief est là : il occupe déjà la page, et ces blocs
           reviendraient à lui coller un second écran par-dessous. */}
       {isAnonymous && !showBrief && (
-        isML
-          ? <ChallengeMetrics repoActivity={repoActivity} />
+        slots.anonymousView
+          ? slots.anonymousView(slotContext)
           : (
             <ParticipantsProgress
               team={team}
@@ -632,48 +579,7 @@ export default function ChallengeDetailClient({
             onJoin={link => { trackOnboardingStep('joined_meeting'); window.open(link, '_blank'); }}
           />
         )}
-        tabs={isValidation ? [
-        {
-          label: isScenarioValidation ? 'Walkthrough' : 'Validate',
-          panel: isScenarioValidation ? (
-            <ScenarioChallengeFlow challengeId={challengeId} />
-          ) : (
-            <div className="space-y-4">
-              <ReferenceCaseAuthorPanel challengeId={challengeId} />
-              <ValidationChallengeFlow challengeId={challengeId} />
-            </div>
-          ),
-        },
-      ] : isML ? [
-        {
-          label: 'Submission',
-          panel: <TabMLSubmission challengeId={challengeId} />,
-        },
-        {
-          label: 'Metrics',
-          panel: <ChallengeMetrics repoActivity={repoActivity} />,
-        },
-      ] : [
-        {
-          label: 'Tasks',
-          panel: (
-            <TabTasks
-              challengeId={challengeId}
-              workspaceMode={flowConfigView(challenge).workspace_mode}
-              myTasks={myTasks}
-              templateTasks={templateTasks}
-              myParticipation={myParticipation}
-              myProjectContribution={myProjectContribution}
-              isMember={isMember}
-              onReload={reloadBoard}
-            />
-          ),
-        },
-        {
-          label: 'Activity',
-          panel: <ChallengeActivity contributions={contributions} team={team} repoActivity={repoActivity} isML={isML} />,
-        },
-      ]} />
+        tabs={slots.contributorTabs(slotContext)} />
       )}
 
       {/* Deuxième appel à l'action, donc réservé aux pages qui n'en ont pas
@@ -730,71 +636,3 @@ export default function ChallengeDetailClient({
     </>
   );
 }
-
-// ─── Tab: Tasks (code) ────────────────────────────────────────────────────
-
-function TabTasks({
-  challengeId, workspaceMode, myTasks, templateTasks, myParticipation, myProjectContribution, isMember, onReload,
-}: {
-  challengeId: string;
-  workspaceMode: 'provided_repo' | 'own_repo';
-  myTasks: ChallengeTask[];
-  templateTasks: ChallengeTask[];
-  myParticipation: CodeParticipation | null;
-  myProjectContribution: ProjectContribution | null;
-  isMember: boolean;
-  onReload: () => Promise<void> | void;
-}) {
-  // "x/y" header reflects the current user's own board now — each
-  // contributor has a separate board, there's no single shared total.
-  const doneTasks = myTasks.filter(t => t.status === 'done').length;
-  const completion = myTasks.length === 0 ? 0 : Math.round((doneTasks / myTasks.length) * 100);
-  return (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-            <CheckCircle2 className="h-3.5 w-3.5 text-primary-100/35" />
-            Tasks
-          </h2>
-          {isMember && (
-            <div className="flex items-center gap-2 ml-auto">
-              <span className="text-xs text-white/30">{doneTasks}/{myTasks.length}</span>
-              {myTasks.length > 0 && (
-                <div className="h-1 w-20 overflow-hidden rounded-full bg-white/8">
-                  <div className="h-full rounded-full bg-brandCP/60 transition-[width] duration-700" style={{ width: `${completion}%` }} />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <CodeChallengePanel
-          challengeId={challengeId}
-          workspaceMode={workspaceMode}
-          myTasks={myTasks}
-          templateTasks={templateTasks}
-          myParticipation={myParticipation}
-          myProjectContribution={myProjectContribution}
-          isMember={isMember}
-          onReload={onReload}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ─── Tab: ML Submission ───────────────────────────────────────────────────
-
-function TabMLSubmission({ challengeId }: { challengeId: string }) {
-  return (
-    <div className="space-y-4">
-      <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-        <BrainCircuit className="h-3.5 w-3.5 text-primary-100/35" />
-        ML Submission
-      </h2>
-      <MLChallengeFlow challengeId={challengeId} />
-    </div>
-  );
-}
-

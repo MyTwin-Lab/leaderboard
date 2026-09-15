@@ -179,7 +179,7 @@ export function MLChallengeFlow({ challengeId }: { challengeId: string }) {
     try {
       const [wsRes, poolRes] = await Promise.all([
         fetch(flowActionUrl(challengeId, 'workspace')),
-        fetch(`/api/challenges/${challengeId}/ml-rewards`),
+        fetch(`/api/challenges/${challengeId}/rewards`),
       ]);
       if (wsRes.ok) setData(await wsRes.json());
       // A challenge with no reward rules yet still renders — the metric

@@ -15,9 +15,11 @@ import {
 import { flowsValidating, requiresDeliverable } from '../../../../../../packages/capabilities/deliverables';
 
 /**
- * Le type qu'envoient encore les formulaires pour « un challenge de
- * validation », quel que soit son flow. Les formulaires par flow du lot L4 du
- * challenge 020 le suppriment.
+ * Compatibilité : un tiroir chargé avant le lot L4c du challenge 020 envoie
+ * encore `validation` pour « un challenge de validation », quel que soit son
+ * flow. Les formulaires envoient désormais le flow résolu depuis le challenge
+ * source (`src/distribution/forms/validation.ts`), que la route revérifie
+ * contre les livrables. Ce repli disparaît au lot L7.
  */
 const FORM_VALIDATION_TYPE = 'validation';
 import { repositories } from '@/lib/db';

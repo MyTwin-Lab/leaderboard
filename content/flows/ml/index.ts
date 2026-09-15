@@ -3,12 +3,11 @@ import type { FlowDefinition } from "../../../packages/registry/platform.js";
 import { parseMlRewardRules } from "../../../packages/database-service/domain/mlRewardRules.js";
 import { mlFlowDescriptor } from "./descriptor.js";
 import { mlCreationRepos } from "./repos.js";
+import { MODEL_METRIC_RULE_KEY } from "./metric.js";
+import { ML_PUBLIC_REWARD_FIELDS, summarizeMlRewards } from "./rewards.js";
 
 export { mlFlowDescriptor } from "./descriptor.js";
-
-/** La clé qui porte la métrique d'un modèle, et le champ de `meta` où elle vit. */
-export const MODEL_METRIC_RULE_KEY = "model_metric";
-export const MODEL_METRIC_META_FIELD = "metricValue";
+export { MODEL_METRIC_META_FIELD, MODEL_METRIC_RULE_KEY } from "./metric.js";
 
 /** Le handler d'évaluation d'une soumission (dataset, code du modèle, packaging d'API). */
 export const ML_SUBMISSION_EVALUATION_HANDLER = "submission";
@@ -36,6 +35,8 @@ export const mlFlow: FlowDefinition = {
   descriptor: mlFlowDescriptor,
   config: { version: 1, schema: mlFlowConfigSchema },
   rules: { parse: parseMlRewardRules },
+  // La métrique du modèle et le seuil qui ferme les soumissions, lus par la page du challenge.
+  rewards: { summarize: summarizeMlRewards, publicFields: ML_PUBLIC_REWARD_FIELDS },
   ruleKeys: [
     { key: "dataset", consumesPool: true, label: "Dataset quality" },
     { key: MODEL_METRIC_RULE_KEY, consumesPool: true, label: "Model metric" },

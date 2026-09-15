@@ -14,7 +14,7 @@ const PUBLIC_PAGES = [/^\/challenges\/[^/]+\/?$/];
 const PUBLIC_API_ROUTES = [
   /^\/api\/challenges\/[^/]+\/overview$/,
   /^\/api\/challenges\/[^/]+\/repo-activity$/,
-  /^\/api\/challenges\/[^/]+\/ml-rewards$/,
+  /^\/api\/challenges\/[^/]+\/rewards$/,
   // Le brief seul, pas le tiroir Docs : `documents` sert tout ce qu'un admin a
   // déposé, `brief` ne sert que la page de garde — celle qu'on lit justement
   // avant d'avoir un compte.

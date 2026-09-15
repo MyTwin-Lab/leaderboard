@@ -5,35 +5,33 @@
  * Isolé dans son propre module (ni React, ni import `@/...`) pour être testé
  * directement, comme `templateTasksFlush.ts` et `briefFlush.ts`.
  *
- * Ce qui n'y figure **pas** est le cœur de la règle : `type` est hérité de la
- * proposition, `workspace_mode` et `github_repo` en découlent (un sandbox
- * `code` devient un challenge `own_repo` sur le dépôt de son auteur), et les
- * champs des challenges de validation n'ont pas de sens ici — un challenge de
- * validation dérive d'un challenge ML existant, pas d'une proposition. La route
- * les refuserait de toute façon : les envoyer laisserait croire le contraire.
+ * Les champs communs sont ceux que l'admin saisit pour tout challenge. Ceux du
+ * flow (règles, puissance de calcul, étape d'API…) viennent de sa section de
+ * formulaire, en mode promotion. Ce qui n'y figure **pas** est le cœur de la
+ * règle : `type` est hérité de la proposition, et `workspace_mode` comme
+ * `github_repo` en découlent — la route les refuserait de toute façon.
  */
 export interface PromotionFormState {
   title: string;
   /** Le slug du challenge — pré-rempli avec celui de la proposition, modifiable. */
   slug: string;
   status: string;
-  /** Hérité de la proposition — sert seulement à choisir les champs à envoyer. */
-  type: "code" | "ml";
   startDate: string;
   endDate: string;
   description: string;
   roadmap: string;
   cp: number;
   projectId: string;
-  rewardRules: unknown;
-  codeRules: unknown;
-  computeEnabled: boolean;
-  apiPackagingEnabled: boolean;
 }
 
-export function buildPromotionRequestBody(state: PromotionFormState): Record<string, unknown> {
-  const isMl = state.type === "ml";
+/** Ce que la route de promotion fixe elle-même, et qu'une section ne peut pas lui imposer. */
+const INHERITED_FIELDS = ['type', 'workspace_mode', 'github_repo'];
 
+export function buildPromotionRequestBody(
+  state: PromotionFormState,
+  flowFields: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const fields = Object.fromEntries(Object.entries(flowFields).filter(([key]) => !INHERITED_FIELDS.includes(key)));
   return {
     title: state.title.trim(),
     slug: state.slug,
@@ -45,10 +43,6 @@ export function buildPromotionRequestBody(state: PromotionFormState): Record<str
     roadmap: state.roadmap.trim() || undefined,
     contribution_points_reward: state.cp,
     project_id: state.projectId,
-    // Sans règles, le service n'a rien contre quoi scorer la reprise du travail
-    // de l'auteur — c'est ce qui rendrait la promotion muette côté CP.
-    reward_rules: isMl ? state.rewardRules : state.codeRules,
-    compute_enabled: isMl ? state.computeEnabled : false,
-    api_packaging_enabled: isMl ? state.apiPackagingEnabled : undefined,
+    ...fields,
   };
 }

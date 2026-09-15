@@ -73,7 +73,7 @@ export function ChallengeCard({
   index = 0,
   onCardClick,
 }: ChallengeCardProps) {
-  const normalizedType = (challengeType ?? 'code').toLowerCase();
+  const normalizedType = (challengeType ?? flowCatalog.defaultKey).toLowerCase();
   const done = challengeStatus === 'completed';
   const router = useRouter();
   const dest = isAdmin ? `/admin/challenges/${challengeId}` : challengePath(challengeSlug);

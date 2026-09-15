@@ -261,6 +261,26 @@ export interface FlowUses {
   groups?: boolean;
 }
 
+/** Ce qu'un flow lit pour résumer les récompenses de son challenge. */
+export interface FlowRewardsContext {
+  challenge: Challenge;
+  /** Toutes les lignes du ledger du challenge. */
+  entries: readonly import("../database-service/domain/entities.js").RewardEntry[];
+  /** Le plus grand nombre du champ `field` des `meta` des lignes de cette clé. */
+  maxMetaNumber(opts: { ruleKey: string; field: string }): Promise<number | null>;
+}
+
+/**
+ * Ce qu'un flow ajoute à l'état du pool de son challenge (`/api/challenges/[id]/rewards`) :
+ * le core calcule le pool, le distribué et la répartition, le flow ses propres
+ * champs (la métrique d'un challenge ML, par exemple).
+ */
+export interface FlowRewardsDeclaration {
+  summarize(ctx: FlowRewardsContext): Promise<Record<string, unknown>>;
+  /** Les champs servis à un visiteur anonyme. Aucun par défaut. */
+  publicFields?: readonly string[];
+}
+
 interface Declarations {
   ruleKeys?: readonly RuleKeyDeclaration[];
   contributionTypes?: readonly ContributionTypeDeclaration[];
@@ -277,6 +297,7 @@ export interface FlowDefinition extends Declarations {
    */
   configDefaults?: Readonly<Record<string, unknown>>;
   rules?: FlowRulesDeclaration;
+  rewards?: FlowRewardsDeclaration;
   /** Les livrables que ses contributions constituent. */
   deliverables?: readonly DeliverableDeclaration[];
   /** Pour un flow qui éprouve les livrables d'un challenge parent (`source_challenge_id`). */
