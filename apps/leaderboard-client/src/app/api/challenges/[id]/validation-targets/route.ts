@@ -12,6 +12,7 @@ import {
 } from '../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
+import { flowConfigOf } from '../../../../../../../../packages/capabilities/flow-config';
 import { assertPublicHttpUrl } from '../../../../../../../../packages/services/challenge/ssrf-guard';
 import { validationModeFor, TARGET_CONTRIBUTION_TYPE } from '../../../../../../../../packages/services/challenge/validation-mode';
 
@@ -155,8 +156,8 @@ export async function GET(
         pool,
         distributed,
         remaining: Math.max(0, pool - distributed),
-        cpPerValidation: challenge.cp_per_validation ?? 0,
-        requiredValidations: challenge.required_validations ?? 0,
+        cpPerValidation: Number(flowConfigOf(challenge)?.cp_per_validation ?? 0),
+        requiredValidations: Number(flowConfigOf(challenge)?.required_validations ?? 0),
       },
       targets: targets.map((t, i) => {
         const c = contributions[i];

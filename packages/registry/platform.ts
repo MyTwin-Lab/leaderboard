@@ -84,6 +84,42 @@ export interface EvaluationHandlerDeclaration {
   retry(payload: Record<string, unknown>): Promise<EvaluationRetryOutcome>;
 }
 
+/**
+ * Un schéma de configuration : tout ce qui a un `parse` qui lève sur une
+ * valeur invalide et rend la valeur normalisée (défauts posés). Un schéma zod
+ * convient tel quel ; le registre ne dépend pas de zod pour autant.
+ */
+export interface ConfigSchema<T = Record<string, unknown>> {
+  parse(value: unknown): T;
+}
+
+/**
+ * La configuration d'un flow (`challenges.flow_config`), fixée à la création.
+ *
+ * Versionnée : `version` est la version courante, `upgrades[n]` monte une
+ * configuration écrite en version `n` vers `n + 1`. Une montée manquante fait
+ * échouer l'installation.
+ */
+export interface FlowConfigDeclaration {
+  version: number;
+  schema: ConfigSchema;
+  upgrades?: Readonly<Record<number, (config: Record<string, unknown>) => Record<string, unknown>>>;
+}
+
+/**
+ * La configuration qu'une extension range dans `flow_config.extensions[key]`.
+ * Seules les clés de `editableKeys` changent après la création.
+ */
+export interface ExtensionConfigDeclaration {
+  schema: ConfigSchema;
+  editableKeys?: readonly string[];
+}
+
+/** Les règles de récompense d'un flow (`challenges.reward_rules`), éditables. `null` : illisibles. */
+export interface FlowRulesDeclaration {
+  parse(raw: unknown): unknown | null;
+}
+
 interface Declarations {
   ruleKeys?: readonly RuleKeyDeclaration[];
   contributionTypes?: readonly ContributionTypeDeclaration[];
@@ -92,12 +128,15 @@ interface Declarations {
 
 export interface FlowDefinition extends Declarations {
   descriptor: FlowDescriptor;
+  config?: FlowConfigDeclaration;
+  rules?: FlowRulesDeclaration;
 }
 
 export interface ExtensionDefinition extends Declarations {
   key: string;
   /** Les flows auxquels l'extension s'attache, ou `"*"` pour tous. */
   appliesTo: readonly string[] | "*";
+  config?: ExtensionConfigDeclaration;
 }
 
 export interface KitDefinition extends Declarations {
@@ -196,6 +235,24 @@ function claimEvaluationHandlers(
   target.set(key, { owner, handlers });
 }
 
+/** Une configuration versionnée doit pouvoir monter depuis chaque version antérieure. */
+function checkConfigVersions(flow: FlowDefinition): void {
+  const config = flow.config;
+  if (!config) return;
+
+  const key = flow.descriptor.key;
+  if (!Number.isInteger(config.version) || config.version < 1) {
+    throw new Error(`[PlatformRegistry] Flow "${key}" declares an invalid config version ${config.version}`);
+  }
+  for (let from = 1; from < config.version; from++) {
+    if (typeof config.upgrades?.[from] !== "function") {
+      throw new Error(
+        `[PlatformRegistry] Flow "${key}" config version ${config.version} has no upgrade from version ${from}`
+      );
+    }
+  }
+}
+
 export class PlatformRegistry {
   /**
    * Installe une distribution. Tout est vérifié avant que rien ne soit visible :
@@ -220,6 +277,7 @@ export class PlatformRegistry {
 
     for (const flow of definitions.flows) {
       addUnique(state.flows, "Flow", flow.descriptor.key, flow);
+      checkConfigVersions(flow);
       owners.push({ key: flow.descriptor.key, owner: `flow:${flow.descriptor.key}`, declarations: flow });
     }
     for (const kit of definitions.kits ?? []) {

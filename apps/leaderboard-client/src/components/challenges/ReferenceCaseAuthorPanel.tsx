@@ -1,5 +1,6 @@
 'use client';
 
+import { flowConfigView } from '@/lib/flowConfig';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FilePlus2, Loader2, AlertCircle, FileText, Upload, X } from 'lucide-react';
 
@@ -84,7 +85,7 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
       }
       if (challengeRes.ok) {
         const challenge = await challengeRes.json();
-        setRequiredValidations(challenge.required_validations ?? 0);
+        setRequiredValidations(flowConfigView(challenge).required_validations ?? 0);
       }
       if (casesRes.ok) {
         const data = await casesRes.json();

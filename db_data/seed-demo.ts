@@ -211,7 +211,7 @@ async function main() {
       contribution_points_reward: 2200,
       completion: 0.55,
       project_id: projectId,
-      compute_enabled: true,
+      flow_config: { extensions: { compute: { enabled: true } } },
       start_date: new Date("2026-06-01"),
       reward_rules: {
         version: 1,
@@ -358,8 +358,7 @@ async function main() {
       completion: 1.0,
       project_id: projectId,
       source_challenge_id: mlChallengeId,
-      cp_per_validation: 40,
-      required_validations: 3,
+      flow_config: { cp_per_validation: 40, required_validations: 3 },
     })
   );
   console.log(valCreated ? `✓ Validation challenge created` : `✓ Validation challenge already exists`);

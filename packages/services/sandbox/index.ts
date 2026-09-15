@@ -7,6 +7,7 @@ export {
   SelfStarError,
   SandboxNotOpenError,
   StarRateLimitedError,
+  InvalidRewardRulesError,
 } from "./sandbox.service.js";
 export type { SandboxServiceDeps, StarIdentity, StarState } from "./sandbox.service.js";
 
@@ -51,6 +52,7 @@ export type {
 } from "./sandbox-promotion.service.js";
 export {
   buildPromotedChallengeDraft,
+  promotedChallengeType,
   buildPromotedDescription,
   buildAuthorParticipation,
   buildAuthorContributions,

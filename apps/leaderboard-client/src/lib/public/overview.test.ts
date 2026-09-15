@@ -8,7 +8,7 @@ const RAW = {
     uuid: 'c1', title: 'Alpha', slug: 'alpha', description: 'desc', status: 'active',
     type: 'code', start_date: '2026-01-01', end_date: '2026-02-01',
     contribution_points_reward: 1000, project_id: 'p1',
-    workspace_mode: 'provided_repo',
+    flow_config: { workspace_mode: 'provided_repo' },
     roadmap: 'internal roadmap notes',
     reward_rules: { model: { metric: 'auc' } },
   },

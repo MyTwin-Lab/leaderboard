@@ -54,7 +54,7 @@ export function toPublicOverview(data: any): PublicOverview {
       end_date: c.end_date ?? null,
       contribution_points_reward: c.contribution_points_reward ?? 0,
       project_id: c.project_id,
-      workspace_mode: c.workspace_mode ?? null,
+      workspace_mode: c.flow_config?.workspace_mode ?? null,
     },
     team: (data?.team ?? []).map(toPublicTeamMember),
     tasks: (data?.tasks ?? []).map(toTaskProgress),

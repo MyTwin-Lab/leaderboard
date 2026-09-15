@@ -1,5 +1,6 @@
 'use client';
 
+import { flowConfigView } from '@/lib/flowConfig';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -51,7 +52,7 @@ interface Challenge {
   end_date?: string | null;
   contribution_points_reward: number;
   project_id: string;
-  workspace_mode?: string;
+  flow_config?: unknown;
 }
 
 // A task row from the overview — either a template task (no `user_id`) or
@@ -657,7 +658,7 @@ export default function ChallengeDetailClient({
           panel: (
             <TabTasks
               challengeId={challengeId}
-              workspaceMode={(challenge.workspace_mode as 'provided_repo' | 'own_repo' | undefined) ?? 'provided_repo'}
+              workspaceMode={flowConfigView(challenge).workspace_mode}
               myTasks={myTasks}
               templateTasks={templateTasks}
               myParticipation={myParticipation}

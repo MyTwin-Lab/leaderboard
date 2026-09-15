@@ -118,6 +118,7 @@ async function seed() {
         contribution_points_reward: c.contribution_points_reward,
         completion: c.completion ?? 0,
         project_id: projectIdMap.get(c.project_id),
+        flow_config: { workspace_mode: "provided_repo" },
       });
       challengesInserted++;
     }

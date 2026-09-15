@@ -54,7 +54,7 @@ function patchWorkspace(body: unknown, token?: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockVerifyRequestToken.mockResolvedValue({ userId: USER_ID, role: 'contributor' });
-  mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', workspace_mode: 'own_repo' });
+  mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', flow_config: { workspace_mode: 'own_repo' } });
   mockFindByChallengeAndUser.mockResolvedValue({ uuid: 'membership-1', challenge_id: CHALLENGE_ID, user_id: USER_ID });
   mockUpdateWorkspace.mockResolvedValue({ uuid: 'membership-1', workspace_url: 'https://github.com/acme/repo' });
   mockTeamFindByChallenge.mockResolvedValue([]);
@@ -69,7 +69,7 @@ describe('PATCH /api/challenges/[id]/workspace', () => {
   });
 
   it('returns 400 when the challenge is not code/own_repo', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', workspace_mode: 'provided_repo' });
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', flow_config: { workspace_mode: 'provided_repo' } });
 
     const res = await patchWorkspace({ repo_url: 'https://github.com/acme/repo' }, 'valid-token');
 

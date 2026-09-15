@@ -53,15 +53,15 @@ describe("buildPromotedChallengeDraft", () => {
     expect(draft.type).toBe("ml");
   });
 
-  it("force own_repo pour un sandbox code, et laisse le mode nul pour un ml", () => {
+  it("force own_repo pour un sandbox code, et ne pose aucun mode pour un ml", () => {
     expect(
       buildPromotedChallengeDraft(sandbox({ type: "code" }), {
         ...baseInput,
         workspace_mode: "provided_repo",
-      }).workspace_mode,
-    ).toBe("own_repo");
+      }).flow_config,
+    ).toEqual({ workspace_mode: "own_repo" });
 
-    expect(buildPromotedChallengeDraft(sandbox({ type: "ml" }), baseInput).workspace_mode).toBeNull();
+    expect(buildPromotedChallengeDraft(sandbox({ type: "ml" }), baseInput).flow_config.workspace_mode).toBeUndefined();
   });
 
   it("reprend le titre de la proposition quand l'admin n'en saisit pas", () => {
@@ -83,16 +83,14 @@ describe("buildPromotedChallengeDraft", () => {
       ...baseInput,
       compute_enabled: true,
     });
-    expect(ml.compute_enabled).toBe(true);
+    expect(ml.flow_config).toEqual({ extensions: { compute: { enabled: true } } });
 
     const code = buildPromotedChallengeDraft(sandbox({ type: "code" }), {
       ...baseInput,
       compute_enabled: true,
     });
-    expect(code.compute_enabled).toBe(false);
+    expect(code.flow_config.extensions).toBeUndefined();
     expect(code.source_challenge_id).toBeNull();
-    expect(code.cp_per_validation).toBeNull();
-    expect(code.required_validations).toBeNull();
     expect(code.completion).toBe(0);
   });
 

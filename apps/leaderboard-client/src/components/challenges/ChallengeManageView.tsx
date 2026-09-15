@@ -1,5 +1,6 @@
 'use client';
 
+import { flowConfigView } from '@/lib/flowConfig';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -46,7 +47,7 @@ interface Challenge {
   project_id: string;
   roadmap?: string;
   reward_rules?: MlRewardRules | null;
-  compute_enabled?: boolean | null;
+  flow_config?: unknown;
 }
 
 interface TeamMember { id: string; fullName: string; githubUsername?: string; avatarUrl?: string; }
@@ -574,7 +575,7 @@ export function ChallengeManageView({ challengeId, isAdmin = false }: { challeng
       label: 'Rankings',
       panel: <TabRankings contributions={contributions} team={team} />,
     },
-    ...(computeEnabled && challenge.compute_enabled ? [{
+    ...(computeEnabled && flowConfigView(challenge).compute_enabled ? [{
       label: 'Compute',
       panel: <ComputeRequestsPanel challengeId={challengeId} open />,
     }] : []),

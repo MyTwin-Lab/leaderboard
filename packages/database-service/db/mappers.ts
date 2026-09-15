@@ -44,8 +44,7 @@ import {
   notifications,
   role_changes,
 } from "./drizzle.js";
-import { parseMlRewardRules } from "../domain/mlRewardRules.js";
-import { parseCodeRewardRules } from "../domain/codeRewardRules.js";
+import { flowConfigFromLegacyColumns, legacyChallengeColumns } from "../domain/legacyFlowConfig.js";
 import type {
   Project,
   Repo,
@@ -172,12 +171,13 @@ export function toDomainChallenge(row: DbChallenge): Challenge {
     contribution_points_reward: row.contribution_points_reward ?? 0,
     completion: row.completion ?? 0,
     project_id: row.project_id ?? "",
-    reward_rules: parseMlRewardRules(row.reward_rules) ?? parseCodeRewardRules(row.reward_rules),
-    workspace_mode: (row.workspace_mode as Challenge["workspace_mode"]) ?? undefined,
+    reward_rules: row.reward_rules ?? null,
     source_challenge_id: row.source_challenge_id ?? null,
-    cp_per_validation: row.cp_per_validation ?? null,
-    required_validations: row.required_validations ?? null,
-    compute_enabled: row.compute_enabled ?? false,
+    // Une ligne écrite par l'ancien code n'a pas de flow_config : elle se
+    // reconstitue depuis les colonnes historiques (supprimées en L7).
+    flow_config: (row.flow_config as Record<string, unknown> | null)
+      ?? flowConfigFromLegacyColumns(row.type, row),
+    flow_config_version: row.flow_config_version ?? 1,
     created_at: new Date(row.created_at),
     closed_at: row.closed_at ? new Date(row.closed_at) : null,
   };
@@ -312,11 +312,11 @@ export function toDbChallenge(entity: Omit<Challenge, "uuid" | "created_at">): t
     completion: entity.completion ?? 0,
     project_id: entity.project_id || null,
     reward_rules: entity.reward_rules ?? null,
-    workspace_mode: entity.workspace_mode ?? null,
     source_challenge_id: entity.source_challenge_id ?? null,
-    cp_per_validation: entity.cp_per_validation ?? null,
-    required_validations: entity.required_validations ?? null,
-    compute_enabled: entity.compute_enabled ?? false,
+    flow_config: entity.flow_config ?? null,
+    flow_config_version: entity.flow_config_version ?? 1,
+    // Colonnes historiques écrites en miroir jusqu'au lot L7 (domain/legacyFlowConfig.ts).
+    ...legacyChallengeColumns(entity.flow_config),
   };
 }
 

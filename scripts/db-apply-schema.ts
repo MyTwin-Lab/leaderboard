@@ -763,6 +763,37 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
         ALTER COLUMN window_end DROP NOT NULL`,
   },
 
+  // --- Configuration des flows (challenge 020, L3) ---
+  // `flow_config` reprend workspace_mode (code), compute_enabled (extension
+  // compute du flow ML) et cp_per_validation / required_validations
+  // (validation), en version 1. Les quatre colonnes restent en place et
+  // écrites en miroir jusqu'au lot L7. Idempotent : seules les lignes sans
+  // configuration sont reprises. Même correspondance que
+  // packages/database-service/domain/legacyFlowConfig.ts.
+  {
+    label: "challenges.flow_config",
+    sql: `ALTER TABLE challenges ADD COLUMN IF NOT EXISTS flow_config jsonb`,
+  },
+  {
+    label: "challenges.flow_config_version",
+    sql: `ALTER TABLE challenges ADD COLUMN IF NOT EXISTS flow_config_version integer NOT NULL DEFAULT 1`,
+  },
+  {
+    label: "challenges.flow_config (reprise des colonnes historiques)",
+    sql: `
+      UPDATE challenges SET
+        flow_config = CASE COALESCE(type, 'code')
+          WHEN 'code' THEN jsonb_build_object('workspace_mode', COALESCE(workspace_mode, 'provided_repo'))
+          WHEN 'ml' THEN jsonb_build_object('extensions',
+            jsonb_build_object('compute', jsonb_build_object('enabled', COALESCE(compute_enabled, false))))
+          WHEN 'validation' THEN jsonb_strip_nulls(jsonb_build_object('cp_per_validation', cp_per_validation))
+            || jsonb_build_object('required_validations', required_validations)
+          ELSE '{}'::jsonb
+        END,
+        flow_config_version = 1
+      WHERE flow_config IS NULL`,
+  },
+
   // --- Slugs des URLs publiques (docs/superpowers/plans/2026-09-15-slug-urls.md) ---
   //
   // En toute fin de tableau, volontairement : le SET NOT NULL rend la colonne

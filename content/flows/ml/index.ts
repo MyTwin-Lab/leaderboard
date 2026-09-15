@@ -1,4 +1,6 @@
+import { z } from "zod";
 import type { FlowDefinition } from "../../../packages/registry/platform.js";
+import { parseMlRewardRules } from "../../../packages/database-service/domain/mlRewardRules.js";
 import { mlFlowDescriptor } from "./descriptor.js";
 
 export { mlFlowDescriptor } from "./descriptor.js";
@@ -11,16 +13,25 @@ export const MODEL_METRIC_META_FIELD = "metricValue";
 export const ML_SUBMISSION_EVALUATION_HANDLER = "submission";
 
 /**
+ * Configuration du flow ML, version 1 : aucune clé propre. Ce qui se règle sur
+ * un challenge ML appartient aux extensions (la puissance de calcul) ou aux
+ * règles de récompense, éditables.
+ */
+export const mlFlowConfigSchema = z.object({});
+
+/**
  * Flow ML — soumissions de dataset, de modèle, de code du modèle et de
  * packaging d'API, notées au fil de l'eau et payées sur le pool du challenge
  * (`services/challenge/ml-rewards.service.ts`, `reward.ts`).
  *
- * La définition déclare ce que le flow écrit dans le ledger et dans
- * `contributions`, et comment rejouer une évaluation échouée. Le reste de son
- * code n'a pas encore rejoint ce dossier.
+ * La définition déclare sa configuration, ses règles, ce qu'il écrit dans le
+ * ledger et dans `contributions`, et comment rejouer une évaluation échouée.
+ * Le reste de son code n'a pas encore rejoint ce dossier.
  */
 export const mlFlow: FlowDefinition = {
   descriptor: mlFlowDescriptor,
+  config: { version: 1, schema: mlFlowConfigSchema },
+  rules: { parse: parseMlRewardRules },
   ruleKeys: [
     { key: "dataset", consumesPool: true, label: "Dataset quality" },
     { key: MODEL_METRIC_RULE_KEY, consumesPool: true, label: "Model metric" },

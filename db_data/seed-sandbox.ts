@@ -6,6 +6,11 @@ import {
   SandboxRepository,
 } from "../packages/database-service/repositories/index.js";
 import { SandboxService, SandboxPromotionService, hashIp } from "../packages/services/sandbox/index.js";
+import { PlatformRegistry } from "../packages/registry/platform.js";
+import { platform } from "../apps/leaderboard-client/src/distribution/mytwin.platform";
+
+// La promotion valide la configuration du challenge avec le flow installé.
+PlatformRegistry.install(platform);
 
 /**
  * Sandbox seed — propositions de démonstration, leurs stars et les CP qu'elles paient.

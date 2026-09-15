@@ -82,7 +82,7 @@ function joinChallenge(body?: Record<string, unknown>) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockVerifyRequestToken.mockResolvedValue({ userId: 'alice' });
-  mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', workspace_mode: 'provided_repo', index: 3 });
+  mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', flow_config: { workspace_mode: 'provided_repo' }, index: 3 });
   mockChallengeTeamFindByChallengeAndUser.mockResolvedValue(null);
   mockChallengeTeamCreate.mockResolvedValue({});
   mockChallengeTeamUpdateWorkspace.mockResolvedValue({});
@@ -108,7 +108,7 @@ describe('POST /api/challenges/[id]/join', () => {
   });
 
   it('returns 403 when the challenge is closed (completed or archived)', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', workspace_mode: 'provided_repo', index: 3, status: 'completed' });
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', flow_config: { workspace_mode: 'provided_repo' }, index: 3, status: 'completed' });
 
     const res = await joinChallenge();
     const body = await res.json();
@@ -177,7 +177,7 @@ describe('POST /api/challenges/[id]/join', () => {
   });
 
   it('code + own_repo: sets workspace_provider external and never calls the provisioner', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', workspace_mode: 'own_repo', index: 3 });
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', flow_config: { workspace_mode: 'own_repo' }, index: 3 });
 
     const res = await joinChallenge();
 

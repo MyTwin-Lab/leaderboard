@@ -1,5 +1,6 @@
 'use client';
 
+import { flowConfigView } from '@/lib/flowConfig';
 import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
@@ -54,10 +55,8 @@ export interface EditableChallenge {
   project_id: string;
   reward_rules?: MlRewardRules | CodeRewardRules | null;
   source_challenge_id?: string | null;
-  cp_per_validation?: number | null;
-  required_validations?: number | null;
-  compute_enabled?: boolean | null;
-  workspace_mode?: 'provided_repo' | 'own_repo' | null;
+  /** Configuration du flow, lue par `flowConfigView`. */
+  flow_config?: unknown;
 }
 
 /**
@@ -203,7 +202,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setDescription(challenge.description ?? '');
       setRoadmap(challenge.roadmap ?? '');
       setShowRoadmap(!!challenge.roadmap);
-      setWorkspaceMode(challenge.workspace_mode ?? 'provided_repo');
+      setWorkspaceMode(flowConfigView(challenge).workspace_mode);
       const parsedCodeRules = parseCodeRewardRules(challenge.reward_rules);
       if (parsedCodeRules) {
         setCodeRules(parsedCodeRules);
@@ -211,9 +210,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         setRewardRules(parseMlRewardRules(challenge.reward_rules) ?? DEFAULT_ML_REWARD_RULES);
       }
       setSourceChallengeId(challenge.source_challenge_id ?? '');
-      setCpPerValidation(challenge.cp_per_validation ?? 5);
-      setRequiredValidations(challenge.required_validations ?? 3);
-      setComputeEnabled(challenge.compute_enabled ?? false);
+      setCpPerValidation(flowConfigView(challenge).cp_per_validation || 5);
+      setRequiredValidations(flowConfigView(challenge).required_validations ?? 3);
+      setComputeEnabled(flowConfigView(challenge).compute_enabled);
     } else if (promotion) {
       setTitle(promotion.title);
       // Les espaces de noms sont séparés : `/sandbox/mykine` peut devenir
@@ -496,7 +495,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   // challenge dont le champ est simplement absent.
   const sourceChallenge = sourceChallenges.find(c => c.id === sourceChallengeId);
   const isScenarioMode = isEdit
-    ? challenge?.required_validations == null
+    ? flowConfigView(challenge).required_validations == null
     : sourceChallenge?.type === 'code';
 
   return (

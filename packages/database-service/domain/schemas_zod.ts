@@ -69,12 +69,12 @@ export const challengeSchema = z.object({
   contribution_points_reward: z.number().int().nonnegative(),
   completion: z.number().min(0).max(1).default(0),
   project_id: z.string().uuid(),
-  reward_rules: z.union([mlRewardRulesSchema, codeRewardRulesSchema]).nullish(),
-  workspace_mode: z.enum(['provided_repo', 'own_repo']).nullish(),
+  // La forme des règles et de la configuration appartient au flow, qui les
+  // valide avant l'écriture (capacité `flow-config`).
+  reward_rules: z.unknown().nullish(),
   source_challenge_id: z.string().uuid().nullish(),
-  cp_per_validation: z.number().int().nonnegative().nullish(),
-  required_validations: z.number().int().positive().nullish(),
-  compute_enabled: z.boolean().default(false),
+  flow_config: z.record(z.string(), z.unknown()).nullish(),
+  flow_config_version: z.number().int().positive().default(1),
   created_at: z.coerce.date(),
   closed_at: z.coerce.date().nullish(),
 });

@@ -31,9 +31,7 @@ function makeChallenge(over: Partial<Challenge> = {}): Challenge {
     completion: 0,
     project_id: "proj-1",
     source_challenge_id: "ml-ch-1",
-    cp_per_validation: 5,
-    required_validations: 3,
-    compute_enabled: false,
+    flow_config: { cp_per_validation: 5, required_validations: 3 },
     ...over,
   };
 }
@@ -314,7 +312,7 @@ describe("ValidationChallengeService.castVerdict", () => {
   });
 
   it("clamps the payout batch to whatever remains in the pool", async () => {
-    const deps = withExtraClaims(makeDeps({ challenge: { contribution_points_reward: 8, cp_per_validation: 5 } }), ["carol", "dave"]);
+    const deps = withExtraClaims(makeDeps({ challenge: { contribution_points_reward: 8, flow_config: { cp_per_validation: 5, required_validations: 3 } } }), ["carol", "dave"]);
     const service = new ValidationChallengeService(deps);
 
     await service.castVerdict({ ...baseInput, validatorUserId: "bob", verdict: "works", referenceCaseClaimId: "claim-1" });

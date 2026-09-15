@@ -1,5 +1,6 @@
 'use client';
 
+import { flowConfigView } from '@/lib/flowConfig';
 import { useState, useEffect } from 'react';
 import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/components/ui/FormField';
 import { ChallengeTasksEditor } from './ChallengeTasksEditor';
@@ -46,12 +47,12 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
   const [rewardRules, setRewardRules] = useState<MlRewardRules>(
     parseMlRewardRules(challenge?.reward_rules) ?? DEFAULT_ML_REWARD_RULES
   );
-  const [computeEnabled, setComputeEnabled] = useState((challenge as any)?.compute_enabled ?? false);
+  const [computeEnabled, setComputeEnabled] = useState(flowConfigView(challenge).compute_enabled);
   const [apiPackagingEnabled, setApiPackagingEnabled] = useState(true);
 
   const [sourceChallengeId, setSourceChallengeId] = useState((challenge as any)?.source_challenge_id ?? '');
-  const [cpPerValidation, setCpPerValidation] = useState((challenge as any)?.cp_per_validation ?? 5);
-  const [requiredValidations, setRequiredValidations] = useState((challenge as any)?.required_validations ?? 3);
+  const [cpPerValidation, setCpPerValidation] = useState(flowConfigView(challenge).cp_per_validation || 5);
+  const [requiredValidations, setRequiredValidations] = useState(flowConfigView(challenge).required_validations ?? 3);
   const [sourceChallenges, setSourceChallenges] = useState<{ id: string; title: string; type: string }[]>([]);
 
   // Only needed to populate the source-challenge picker when creating a new
@@ -80,7 +81,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
   // `===` manquerait un challenge dont le champ est simplement absent.
   const sourceChallenge = sourceChallenges.find(c => c.id === sourceChallengeId);
   const isScenarioMode = challenge?.uuid
-    ? challenge?.required_validations == null
+    ? flowConfigView(challenge).required_validations == null
     : sourceChallenge?.type === 'code';
 
   const handleSubmit = (e: React.FormEvent) => {

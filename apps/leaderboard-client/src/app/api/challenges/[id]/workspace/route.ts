@@ -5,6 +5,7 @@ import {
   ChallengeTeamRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import { resolveWorkspaceOwner } from '../../../../../../../../packages/capabilities/groups';
+import { flowConfigOf } from '../../../../../../../../packages/capabilities/flow-config';
 import { z } from 'zod';
 
 const challengeRepo = new ChallengeRepository();
@@ -36,7 +37,7 @@ export async function PATCH(
 
     const challenge = await challengeRepo.findById(challengeId);
     if (!challenge) return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
-    if (challenge.type !== 'code' || (challenge.workspace_mode ?? 'provided_repo') !== 'own_repo') {
+    if (challenge.type !== 'code' || flowConfigOf(challenge)?.workspace_mode !== 'own_repo') {
       return NextResponse.json({ error: 'This challenge does not accept contributor repos' }, { status: 400 });
     }
 

@@ -1,7 +1,9 @@
 import type { FlowDefinition } from "../../../packages/registry/platform.js";
 import { codeFlowDescriptor } from "./descriptor.js";
+import { CODE_FLOW_CONFIG_VERSION, codeFlowConfigSchema, codeFlowRules } from "./config.js";
 
 export { codeFlowDescriptor } from "./descriptor.js";
+export { codeConfigOf, type CodeFlowConfig } from "./config.js";
 
 /** Le handler d'évaluation de la livraison d'un contributeur (ou de son groupe). */
 export const CODE_PROJECT_EVALUATION_HANDLER = "project";
@@ -11,12 +13,14 @@ export const CODE_PROJECT_EVALUATION_HANDLER = "project";
  * évalué par la grille `code` une fois son board terminé, et payé sur le pool
  * du challenge (`services/challenge/code-rewards.service.ts`, `reward.ts`).
  *
- * La définition déclare ce que le flow écrit dans le ledger et dans
- * `contributions`, et comment rejouer une évaluation échouée. Le reste de son
- * code n'a pas encore rejoint ce dossier.
+ * La définition déclare sa configuration, ses règles, ce qu'il écrit dans le
+ * ledger et dans `contributions`, et comment rejouer une évaluation échouée.
+ * Le reste de son code n'a pas encore rejoint ce dossier.
  */
 export const codeFlow: FlowDefinition = {
   descriptor: codeFlowDescriptor,
+  config: { version: CODE_FLOW_CONFIG_VERSION, schema: codeFlowConfigSchema },
+  rules: codeFlowRules,
   ruleKeys: [
     { key: "code_fixed", consumesPool: true },
     { key: "code_quality", consumesPool: true },

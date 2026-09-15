@@ -6,8 +6,11 @@ import {
   ChallengeRepoRepository,
 } from '../../../../../../packages/database-service/repositories';
 import { buildRepoDefinitions } from '../../../../../../packages/services/challenge/challengeRepos';
-import { parseMlRewardRules } from '../../../../../../packages/database-service/domain/mlRewardRules';
-import { parseCodeRewardRules } from '../../../../../../packages/database-service/domain/codeRewardRules';
+import {
+  FlowConfigError,
+  parseFlowRules,
+  prepareFlowConfig,
+} from '../../../../../../packages/capabilities/flow-config';
 import { validationModeFor } from '../../../../../../packages/services/challenge/validation-mode';
 import { repositories } from '@/lib/db';
 import { slugField, slugTakenResponse } from '@/lib/server/slugs';
@@ -33,6 +36,8 @@ const createChallengeSchema = z.object({
   project_id: z.string().uuid(),
   github_repo: z.string().optional(),
   reward_rules: z.unknown().nullish(),
+  // Champs de configuration, rangés dans `flow_config` par le flow du
+  // challenge (qui ignore ceux qui ne le concernent pas).
   workspace_mode: z.enum(['provided_repo', 'own_repo']).optional(),
   source_challenge_id: z.string().uuid().optional(),
   cp_per_validation: z.number().int().positive().optional(),
@@ -80,10 +85,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = createChallengeSchema.parse(body);
 
-    const rewardRules = validated.reward_rules == null
-      ? null
-      : parseMlRewardRules(validated.reward_rules) ?? parseCodeRewardRules(validated.reward_rules);
-    if (validated.reward_rules != null && !rewardRules) {
+    // Les règles se lisent avec le parseur du flow du challenge.
+    const rewardRules = parseFlowRules(validated.type, validated.reward_rules);
+    if (!rewardRules.ok) {
       return NextResponse.json({ error: 'Invalid reward_rules' }, { status: 400 });
     }
 
@@ -137,17 +141,43 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const {
+      workspace_mode,
+      cp_per_validation,
+      required_validations,
+      compute_enabled,
+      github_repo,
+      api_packaging_enabled,
+      reward_rules: _rawRules,
+      source_challenge_id,
+      ...fields
+    } = validated;
+
+    // La configuration candidate : le schéma du flow garde ses clés et pose
+    // ses défauts, chaque extension attachée valide sa section.
+    let storedConfig: ReturnType<typeof prepareFlowConfig>;
+    try {
+      storedConfig = prepareFlowConfig(validated.type, {
+        workspace_mode,
+        cp_per_validation,
+        required_validations: validationMode === 'reference_case' ? required_validations : null,
+        extensions: { compute: { enabled: compute_enabled } },
+      });
+    } catch (error) {
+      if (error instanceof FlowConfigError) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      throw error;
+    }
+
     const challenge = await challengeRepo.create({
-      ...validated,
+      ...fields,
       start_date: validated.start_date ? new Date(validated.start_date) : null,
       end_date: validated.end_date ? new Date(validated.end_date) : null,
       completion: 0,
-      reward_rules: rewardRules,
-      source_challenge_id: validated.type === 'validation' ? validated.source_challenge_id : null,
-      cp_per_validation: validated.type === 'validation' ? validated.cp_per_validation : null,
-      required_validations: validationMode === 'reference_case' ? validated.required_validations : null,
-      compute_enabled: validated.type === 'ml' ? (validated.compute_enabled ?? false) : false,
-      workspace_mode: validated.type === 'code' ? (validated.workspace_mode ?? 'provided_repo') : null,
+      reward_rules: rewardRules.rules,
+      source_challenge_id: validated.type === 'validation' ? source_challenge_id : null,
+      ...storedConfig,
     });
 
     // Extract owner/repo slug from a GitHub URL or plain slug
@@ -160,7 +190,7 @@ export async function POST(request: NextRequest) {
       return undefined;
     };
 
-    const githubSlug = validated.github_repo ? parseGithubSlug(validated.github_repo) : undefined;
+    const githubSlug = github_repo ? parseGithubSlug(github_repo) : undefined;
 
     // Auto-create repos based on challenge type and link them. La construction
     // vit dans `services/challenge/challengeRepos.ts` : la promotion d'un
@@ -169,9 +199,9 @@ export async function POST(request: NextRequest) {
     const repoDefinitions = buildRepoDefinitions({
       type: validated.type,
       title: validated.title,
-      workspaceMode: validated.workspace_mode,
+      workspaceMode: workspace_mode,
       githubSlug,
-      apiPackagingEnabled: validated.api_packaging_enabled,
+      apiPackagingEnabled: api_packaging_enabled,
     });
 
     await Promise.all(

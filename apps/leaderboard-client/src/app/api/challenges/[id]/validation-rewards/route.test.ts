@@ -64,7 +64,7 @@ describe('GET /api/challenges/[id]/validation-rewards', () => {
     mockIsManagerOfChallenge.mockResolvedValue(true);
     mockChallengeFindById.mockResolvedValue({
       uuid: CHALLENGE_ID, type: 'validation', contribution_points_reward: 100,
-      required_validations: 3, cp_per_validation: 5,
+      flow_config: { required_validations: 3, cp_per_validation: 5 },
     });
 
     const res = await getRewards();
@@ -91,7 +91,7 @@ describe('GET /api/challenges/[id]/validation-rewards', () => {
   it('computes pool state and a per-validator breakdown sorted by points desc', async () => {
     mockChallengeFindById.mockResolvedValue({
       uuid: CHALLENGE_ID, type: 'validation', contribution_points_reward: 100,
-      required_validations: 3, cp_per_validation: 5,
+      flow_config: { required_validations: 3, cp_per_validation: 5 },
     });
     mockFindByChallenge.mockResolvedValue([
       { user_id: 'u1', points: 10 },
@@ -121,7 +121,7 @@ describe('GET /api/challenges/[id]/validation-rewards', () => {
   it('clamps remaining to 0 when distributed exceeds the pool', async () => {
     mockChallengeFindById.mockResolvedValue({
       uuid: CHALLENGE_ID, type: 'validation', contribution_points_reward: 10,
-      required_validations: null, cp_per_validation: null,
+      flow_config: {},
     });
     mockFindByChallenge.mockResolvedValue([{ user_id: 'u1', points: 50 }]);
     mockFindByIds.mockResolvedValue([{ uuid: 'u1', full_name: 'Alice' }]);

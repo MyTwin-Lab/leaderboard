@@ -33,6 +33,7 @@ npm run db:setup:demo
 
 # Deployment-side (idempotent, run from the Procfile's postdeploy)
 npm run db:apply-schema     # explicit ALTER/CREATE ... IF NOT EXISTS
+npm run db:upgrade-flow-configs  # record flow_config upgrades to the current version of each flow
 npm run db:seed-grids       # insert the distribution's evaluation grids missing from the database
 npm run db:resync-rewards   # rebuild contributions.reward and challenges.completion
 npm run db:preview-slugs    # read-only: the slugs db:apply-schema would assign

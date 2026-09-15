@@ -1,5 +1,6 @@
 'use client';
 
+import { flowConfigView } from '@/lib/flowConfig';
 import { useEffect, useRef, useState } from 'react';
 import { Cpu, Loader2, ExternalLink, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
@@ -68,11 +69,11 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
     setLoading(true);
     Promise.all([
       fetch('/api/scaleway/status').then(r => (r.ok ? r.json() : { connected: false })),
-      fetch(`/api/challenges/${challengeId}`).then(r => (r.ok ? r.json() : { compute_enabled: false })),
+      fetch(`/api/challenges/${challengeId}`).then(r => (r.ok ? r.json() : null)),
     ])
       .then(([status, challenge]) => {
         setScalewayConnected(!!status.connected);
-        setComputeEnabled(!!challenge.compute_enabled);
+        setComputeEnabled(flowConfigView(challenge).compute_enabled);
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps

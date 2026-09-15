@@ -309,7 +309,7 @@ describe('POST /api/challenges', () => {
       // il n'a aucun sens sans quorum, et une valeur non nulle en base
       // laisserait croire qu'un target peut se résoudre.
       expect(mockChallengeCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ required_validations: null })
+        expect.objectContaining({ flow_config: expect.objectContaining({ required_validations: null }) })
       );
     });
 
@@ -367,8 +367,7 @@ describe('POST /api/challenges', () => {
       expect(mockChallengeCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           source_challenge_id: mlSourceId,
-          cp_per_validation: 5,
-          required_validations: 3,
+          flow_config: { cp_per_validation: 5, required_validations: 3 },
         })
       );
     });
@@ -390,9 +389,9 @@ describe('POST /api/challenges', () => {
       expect(res.status).toBe(201);
       expect(mockRepoCreate).not.toHaveBeenCalled();
       expect(mockChallengeCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ workspace_mode: 'own_repo' })
+        expect.objectContaining({ flow_config: { workspace_mode: 'own_repo' } })
       );
-      expect(body.workspace_mode).toBe('own_repo');
+      expect(body.flow_config?.workspace_mode).toBe('own_repo');
     });
 
     it('creates the GitHub repo for a "code" challenge without workspace_mode (historical behavior), defaulting to provided_repo', async () => {
@@ -402,9 +401,9 @@ describe('POST /api/challenges', () => {
       expect(res.status).toBe(201);
       expect(mockRepoCreate).toHaveBeenCalledTimes(1);
       expect(mockChallengeCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ workspace_mode: 'provided_repo' })
+        expect.objectContaining({ flow_config: { workspace_mode: 'provided_repo' } })
       );
-      expect(body.workspace_mode).toBe('provided_repo');
+      expect(body.flow_config?.workspace_mode).toBe('provided_repo');
     });
 
     it('accepts code reward_rules on a "code" challenge', async () => {

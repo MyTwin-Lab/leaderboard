@@ -43,9 +43,7 @@ function makeChallenge(over: Partial<Challenge> = {}): Challenge {
     completion: 0,
     project_id: "proj-1",
     source_challenge_id: "ml-ch-1",
-    cp_per_validation: 5,
-    required_validations: 3,
-    compute_enabled: false,
+    flow_config: { cp_per_validation: 5, required_validations: 3 },
     ...over,
   };
 }
@@ -185,7 +183,7 @@ describe("ReferenceCaseService.authorCase", () => {
   });
 
   it("throws ReferenceCaseQuotaError once required_validations cases already exist", async () => {
-    const deps = makeDeps({ existingCasesCount: 3, challenge: { required_validations: 3 } });
+    const deps = makeDeps({ existingCasesCount: 3, challenge: { flow_config: { cp_per_validation: 5, required_validations: 3 } } });
     const service = new ReferenceCaseService(deps);
 
     await expect(service.authorCase(authorInput)).rejects.toThrow(ReferenceCaseQuotaError);

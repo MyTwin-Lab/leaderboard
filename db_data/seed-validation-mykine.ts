@@ -168,6 +168,7 @@ async function findOrCreateCodeChallenge(projectId: string): Promise<string> {
     completion: 1,
     project_id: projectId,
     workspace_mode: "provided_repo",
+    flow_config: { workspace_mode: "provided_repo" },
   });
   console.log(`  + challenge code « ${CODE_CHALLENGE_TITLE} »`);
   return uuid;
@@ -247,6 +248,7 @@ async function findOrCreateValidationChallenge(
     // chaque walkthrough complétée paie. Le mode se déduit du type du challenge
     // source, il n'est stocké nulle part.
     required_validations: null,
+    flow_config: { cp_per_validation: CP_PER_WALKTHROUGH, required_validations: null },
   });
   console.log(`  + challenge validation « ${VALIDATION_CHALLENGE_TITLE} »`);
   return uuid;

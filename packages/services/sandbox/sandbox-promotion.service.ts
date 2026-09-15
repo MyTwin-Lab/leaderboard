@@ -21,11 +21,19 @@ import { SlugTakenError } from "../../database-service/domain/slug.js";
 import type { Challenge, ChallengeRepoRole, Sandbox } from "../../database-service/domain/entities.js";
 import { buildRepoDefinitions } from "../challenge/challengeRepos.js";
 import { MlRewardsService, type MlSubmissionEvent } from "../challenge/ml-rewards.service.js";
-import { SandboxForbiddenError, SandboxNotFoundError, SandboxNotOpenError } from "./sandbox.service.js";
+import {
+  InvalidRewardRulesError,
+  SandboxForbiddenError,
+  SandboxNotFoundError,
+  SandboxNotOpenError,
+} from "./sandbox.service.js";
+import { parseFlowRules, prepareFlowConfig } from "../../capabilities/flow-config.js";
+import { legacyChallengeColumns } from "../../database-service/domain/legacyFlowConfig.js";
 import {
   buildAuthorContributions,
   buildAuthorParticipation,
   buildPromotedChallengeDraft,
+  promotedChallengeType,
   seedMlWorkspaceMeta,
   type PromotionInput,
 } from "./promotion.js";
@@ -87,7 +95,7 @@ export class SandboxPromotionService {
     } as SandboxPromotionDeps;
   }
 
-  async promote({ sandboxId, actor, input }: PromoteCommand): Promise<PromoteResult> {
+  async promote({ sandboxId, actor, input: rawInput }: PromoteCommand): Promise<PromoteResult> {
     if (actor.role !== "admin") {
       throw new SandboxForbiddenError("only an admin can promote a sandbox");
     }
@@ -97,6 +105,13 @@ export class SandboxPromotionService {
     // transaction, elle, ne sait pas faire la différence entre les deux.
     const existing = await this.deps.sandboxRepo.findById(sandboxId);
     if (!existing) throw new SandboxNotFoundError(sandboxId);
+
+    // Mêmes règles qu'à la création d'un challenge, lues par le flow du
+    // challenge à naître : des règles illisibles seraient stockées telles
+    // quelles et le scoring ne trouverait rien.
+    const rewardRules = parseFlowRules(promotedChallengeType(existing), rawInput.reward_rules);
+    if (!rewardRules.ok) throw new InvalidRewardRulesError("Invalid reward_rules");
+    const input: PromotionInput = { ...rawInput, reward_rules: rewardRules.rules };
 
     // Vérifié avant d'ouvrir la transaction, pour répondre 409 avec une
     // suggestion sans rien avoir écrit. L'index unique reste l'arbitre d'une
@@ -134,6 +149,10 @@ export class SandboxPromotionService {
       // 2. Le challenge. Son uuid est généré côté applicatif pour pouvoir le
       //    recoller sur le sandbox sans second aller-retour.
       const draft = buildPromotedChallengeDraft(claimedSandbox, input);
+      // Validée par le flow, écrite dans sa version courante. L'insert est brut
+      // (transaction) : les colonnes historiques sont posées en miroir ici,
+      // comme le fait le repository (jusqu'au lot L7).
+      const flowConfig = prepareFlowConfig(draft.type, draft.flow_config);
       const [challengeRow] = await tx
         .insert(challenges)
         .values({
@@ -150,11 +169,9 @@ export class SandboxPromotionService {
           completion: draft.completion,
           project_id: draft.project_id,
           reward_rules: draft.reward_rules ?? null,
-          workspace_mode: draft.workspace_mode,
           source_challenge_id: draft.source_challenge_id,
-          cp_per_validation: draft.cp_per_validation,
-          required_validations: draft.required_validations,
-          compute_enabled: draft.compute_enabled,
+          ...flowConfig,
+          ...legacyChallengeColumns(flowConfig.flow_config),
         })
         .returning();
 
@@ -172,7 +189,7 @@ export class SandboxPromotionService {
       const definitions = buildRepoDefinitions({
         type: draft.type,
         title: draft.title,
-        workspaceMode: draft.workspace_mode,
+        workspaceMode: draft.flow_config.workspace_mode,
         apiPackagingEnabled: input.api_packaging_enabled,
       });
 

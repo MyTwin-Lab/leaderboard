@@ -102,12 +102,12 @@ Enable HTTPS with Certbot: `certbot --nginx -d lab.my-twin.io`
 
 ```
 web: cd apps/leaderboard-client && npm run start -- -p $PORT
-postdeploy: npm run db:apply-schema && npm run db:seed-grids && npm run db:resync-rewards
+postdeploy: npm run db:apply-schema && npm run db:upgrade-flow-configs && npm run db:seed-grids && npm run db:resync-rewards
 ```
 
 The `postdeploy` hook is what keeps the database in step. It deliberately does **not** run `drizzle-kit push`: push has to disambiguate moved columns through an interactive prompt, and a deploy has no TTY. `scripts/db-apply-schema.ts` applies explicit, idempotent `IF NOT EXISTS` statements instead — so **a new column added to `drizzle.ts` must also be added there**. See [`database.md`](./database.md#migrations).
 
-`scripts/db-seed-grids.ts` then inserts the evaluation grids the installed flows need (`code`, `model`, `dataset`, listed in `src/distribution/mytwin.grids.ts`) when no grid carries their slug yet — the core has no built-in grid, and an evaluation without its grid fails. `scripts/db-resync-rewards.ts` finally rebuilds the derived caches (`contributions.reward`, `challenges.completion`).
+`scripts/db-upgrade-flow-configs.ts` records the upgrades of `challenges.flow_config` to the version each installed flow declares (the application already upgrades an older configuration in memory when it reads it). `scripts/db-seed-grids.ts` then inserts the evaluation grids the installed flows need (`code`, `model`, `dataset`, listed in `src/distribution/mytwin.grids.ts`) when no grid carries their slug yet — the core has no built-in grid, and an evaluation without its grid fails. `scripts/db-resync-rewards.ts` finally rebuilds the derived caches (`contributions.reward`, `challenges.completion`).
 
 **The postdeploy runs while the previous release still serves traffic** — Scalingo only switches routing once it succeeds, and keeps the old release if it fails. Schema changes must therefore keep the old code working. The slug columns are the case in point: they are added nullable, backfilled under a write lock and set `NOT NULL` in one transaction per table, at the very end of `db-apply-schema`. Between that `NOT NULL` and the routing switch (seconds), the old release cannot create a challenge or a sandbox. If the postdeploy fails *after* it, the old release stays up in that state — roll back with `ALTER TABLE challenges ALTER COLUMN slug DROP NOT NULL` (and the same on `sandboxes`) while you fix the deploy. Before the first deploy of a data migration like this one, take a manual backup from the Scalingo dashboard, and preview what will be written with `npm run db:preview-slugs` through `scalingo db-tunnel`.
 

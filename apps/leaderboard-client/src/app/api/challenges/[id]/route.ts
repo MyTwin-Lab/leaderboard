@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChallengeRepository } from '../../../../../../../packages/database-service/repositories';
-import { parseMlRewardRules } from '../../../../../../../packages/database-service/domain/mlRewardRules';
-import { parseCodeRewardRules } from '../../../../../../../packages/database-service/domain/codeRewardRules';
+import {
+  FlowConfigError,
+  parseFlowRules,
+  patchExtensionConfig,
+} from '../../../../../../../packages/capabilities/flow-config';
 import { verifyRequestToken } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { slugField, slugTakenResponse } from '@/lib/server/slugs';
@@ -21,9 +24,9 @@ const updateChallengeSchema = z.object({
   roadmap: z.string().optional(),
   contribution_points_reward: z.number().int().nonnegative().optional(),
   project_id: z.string().uuid().optional(),
-  // Validated below via parseMlRewardRules ?? parseCodeRewardRules (not a zod
-  // union over package schemas — the app and packages resolve different zod
-  // instances on this branch, which breaks tsc structural checks).
+  // Lues plus bas par le parseur du flow du challenge (pas une union zod de
+  // schémas de packages — l'app et les packages résolvent des instances zod
+  // différentes, ce qui casse les vérifications structurelles de tsc).
   reward_rules: z.unknown().nullish(),
   compute_enabled: z.boolean().optional(),
 });
@@ -36,14 +39,14 @@ export async function GET(
   try {
     const { id } = await params;
     const challenge = await challengeRepo.findById(id);
-    
+
     if (!challenge) {
       return NextResponse.json(
         { error: 'Challenge not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(challenge);
   } catch (error) {
     console.error('Error fetching challenge:', error);
@@ -72,27 +75,42 @@ export async function PUT(
     }
 
     const before = await challengeRepo.findById(id);
+    if (!before) {
+      return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
+    }
 
     const body = await request.json();
     const validated = updateChallengeSchema.parse(body);
 
-    const updateData: any = { ...validated };
+    const { compute_enabled, ...fields } = validated;
+    const updateData: any = { ...fields };
     // Present but empty means "clear the date"; absent means "leave it alone".
     if (validated.start_date !== undefined) updateData.start_date = validated.start_date ? new Date(validated.start_date) : null;
     if (validated.end_date !== undefined) updateData.end_date = validated.end_date ? new Date(validated.end_date) : null;
 
     // Same rule: present-but-null clears the rules, absent leaves them alone.
-    // reward_rules can hold either an ML or a code shape (same column, keyed
-    // off challenge.type), so it's parsed explicitly rather than validated by
-    // a single zod schema in updateChallengeSchema above.
+    // Their shape belongs to the challenge's flow, which parses them.
     if (validated.reward_rules !== undefined) {
-      const rewardRules = validated.reward_rules == null
-        ? null
-        : parseMlRewardRules(validated.reward_rules) ?? parseCodeRewardRules(validated.reward_rules);
-      if (validated.reward_rules != null && !rewardRules) {
+      const rewardRules = parseFlowRules(before.type, validated.reward_rules);
+      if (!rewardRules.ok) {
         return NextResponse.json({ error: 'Invalid reward_rules' }, { status: 400 });
       }
-      updateData.reward_rules = rewardRules;
+      updateData.reward_rules = rewardRules.rules;
+    }
+
+    // La puissance de calcul est la configuration éditable de l'extension
+    // compute. Le formulaire l'envoie pour tous les types : un challenge dont
+    // le flow n'utilise pas l'extension n'a rien à changer.
+    if (compute_enabled !== undefined) {
+      try {
+        const patched = patchExtensionConfig(before, 'compute', { enabled: compute_enabled });
+        if (patched) Object.assign(updateData, patched);
+      } catch (error) {
+        if (error instanceof FlowConfigError) {
+          return NextResponse.json({ error: error.message }, { status: 409 });
+        }
+        throw error;
+      }
     }
 
     const challenge = await challengeRepo.update(id, updateData);
@@ -109,9 +127,9 @@ export async function PUT(
     // immediately, regardless of how much of its 24h window is left — same
     // "completed/archived" set ChallengeManageView treats as closed.
     const CLOSED_STATUSES = ['completed', 'archived'];
-    const wasOpen = !CLOSED_STATUSES.includes(before?.status ?? '');
+    const wasOpen = !CLOSED_STATUSES.includes(before.status ?? '');
     const isNowClosed = CLOSED_STATUSES.includes(validated.status ?? '');
-    if (before?.type === 'ml' && wasOpen && isNowClosed) {
+    if (before.type === 'ml' && wasOpen && isNowClosed) {
       // Best-effort and fully isolated from the challenge update itself — a
       // failure here (constructor throw, DB error, Scaleway API error) must
       // never turn a successful status change into a 500.

@@ -9,7 +9,7 @@ function makeChallenge(over: Partial<Challenge> = {}): Challenge {
   return {
     uuid: CH, title: "Build the app", slug: "build-the-app", status: "active", type: "code",
     contribution_points_reward: 200, completion: 0, project_id: "p-1",
-    workspace_mode: "provided_repo",
+    flow_config: { workspace_mode: "provided_repo" },
     reward_rules: { version: 1, delivery: { fixed: 50, cap: 150 } },
     ...over,
   };
@@ -145,7 +145,7 @@ describe("canEvaluate", () => {
 
   it("refuses an own_repo participant without a repo URL", async () => {
     const { deps } = makeDeps({
-      challenge: { workspace_mode: "own_repo" },
+      challenge: { flow_config: { workspace_mode: "own_repo" } },
       participation: { workspace_provider: "external", workspace_ref: undefined, workspace_url: undefined, workspace_status: undefined },
     });
     const svc = new CodeRewardsService(deps);

@@ -29,6 +29,9 @@ fi
 export NODE_ENV="${NODE_ENV:-production}"
 export PORT="${PORT:-$DEFAULT_PORT}"
 
+echo "Recording flow configuration upgrades..."
+npx tsx "$ROOT_DIR/scripts/db-upgrade-flow-configs.ts"
+
 echo "Seeding the evaluation grids missing from the database..."
 npx tsx "$ROOT_DIR/scripts/db-seed-grids.ts"
 

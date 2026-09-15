@@ -9,6 +9,7 @@ import {
 import type { ValidationReferenceCase, ValidationCaseClaim } from "../../database-service/domain/entities.js";
 import { proxyFileToEndpoint, EndpointCallError, type ProxyResult } from "./endpoint-proxy.js";
 import { SelfVoteError, ValidationTargetError } from "./validation-challenge.service.js";
+import { validationConfigOf } from "../../../content/flows/validation/config.js";
 
 export { EndpointCallError, SelfVoteError, ValidationTargetError };
 
@@ -80,7 +81,7 @@ export class ReferenceCaseService {
     if (!challenge || challenge.type !== "validation") {
       throw new ValidationTargetError("Not a validation challenge");
     }
-    const requiredValidations = challenge.required_validations ?? 0;
+    const requiredValidations = validationConfigOf(challenge).required_validations ?? 0;
     if (requiredValidations <= 0) {
       throw new ValidationTargetError("This validation challenge has no required_validations configured");
     }

@@ -38,7 +38,7 @@ function makeDeps(opts: {
             uuid: VCH, title: "Usability walkthrough", status: "active", type: "validation",
             contribution_points_reward: 12000, completion: 0, project_id: "proj-1",
             source_challenge_id: opts.sourceType === null ? null : CODE_SOURCE,
-            cp_per_validation: 200, required_validations: null, compute_enabled: false,
+            flow_config: { cp_per_validation: 200, required_validations: null },
           } as Challenge;
         }
         if (opts.sourceType === null) return null;

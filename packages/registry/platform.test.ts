@@ -102,6 +102,16 @@ describe("PlatformRegistry", () => {
     ).toThrow(/Evaluation handlers under "lab" are declared by both flow:lab and module:lab/);
   });
 
+  it("refuses a flow config version that cannot be reached from an older one", () => {
+    const schema = { parse: (value: unknown) => value as Record<string, unknown> };
+    expect(() =>
+      PlatformRegistry.install({
+        flows: [flow("alpha", { config: { version: 3, schema, upgrades: { 1: (config) => config } } })],
+      })
+    ).toThrow(/Flow "alpha" config version 3 has no upgrade from version 2/);
+    expect(PlatformRegistry.isInstalled()).toBe(false);
+  });
+
   it("refuses a second distribution, and says when none is installed", () => {
     expect(() => PlatformRegistry.flows()).toThrow(/No distribution installed/);
 

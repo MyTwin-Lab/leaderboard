@@ -13,6 +13,7 @@ import {
 } from '../../../../../../../../packages/provisioner/src/index.js';
 import { verifyRequestToken } from '@/lib/auth';
 import { GROUP_MAX_SIZE, pickGroupOwner } from '../../../../../../../../packages/capabilities/groups';
+import { flowConfigOf } from '../../../../../../../../packages/capabilities/flow-config';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
@@ -137,7 +138,7 @@ export async function POST(
     }
 
     const isCode = challenge.type === 'code';
-    const mode = challenge.workspace_mode ?? 'provided_repo';
+    const mode = flowConfigOf(challenge)?.workspace_mode === 'own_repo' ? 'own_repo' : 'provided_repo';
     // Créer un groupe, c'est un join normal qui porte en plus un group_id : le
     // créateur reçoit bien son board et sa branche, que les autres rejoindront.
     const groupId = joinMode === 'group' ? randomUUID() : null;

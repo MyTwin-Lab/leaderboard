@@ -57,7 +57,12 @@ export const challenges = pgTable("challenges", {
   contribution_points_reward: integer("contribution_points_reward").default(0),
   completion: real("completion").default(0),
   project_id: uuid("project_id").references(() => projects.uuid, { onDelete: "cascade" }),
-  reward_rules: json("reward_rules"), // ML challenges only — see domain/mlRewardRules.ts
+  reward_rules: json("reward_rules"), // forme propre au flow, lue par ses `rules.parse`
+  // Configuration du flow, validée par son schéma et versionnée (capacité
+  // flow-config). Remplace les quatre colonnes ci-dessous, qui restent écrites
+  // en miroir jusqu'au lot L7 du challenge 020 (domain/legacyFlowConfig.ts).
+  flow_config: jsonb("flow_config"),
+  flow_config_version: integer("flow_config_version").notNull().default(1),
   // Validation challenges only: the ML challenge this one validates. 1:1,
   // enforced at the service layer (a source challenge can back at most one).
   source_challenge_id: uuid("source_challenge_id").references((): AnyPgColumn => challenges.uuid, { onDelete: "cascade" }),

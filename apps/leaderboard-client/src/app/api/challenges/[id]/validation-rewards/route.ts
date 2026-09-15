@@ -6,6 +6,7 @@ import {
 } from '../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
+import { flowConfigOf } from '../../../../../../../../packages/capabilities/flow-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,8 +52,8 @@ export async function GET(
       pool,
       distributed,
       remaining: Math.max(0, pool - distributed),
-      requiredValidations: challenge.required_validations ?? 0,
-      cpPerValidation: challenge.cp_per_validation ?? 0,
+      requiredValidations: Number(flowConfigOf(challenge)?.required_validations ?? 0),
+      cpPerValidation: Number(flowConfigOf(challenge)?.cp_per_validation ?? 0),
       breakdown: [...byUser.entries()]
         .map(([userId, points]) => ({ userId, userName: usersById.get(userId)?.full_name ?? 'Unknown', points }))
         .sort((a, b) => b.points - a.points),

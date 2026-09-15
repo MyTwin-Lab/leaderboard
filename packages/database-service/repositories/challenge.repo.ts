@@ -4,6 +4,7 @@ import { eq, and, gte, inArray, lt, isNotNull } from "drizzle-orm";
 import { toDomainChallenge, toDomainRepo, toDomainContribution, toDbChallenge } from "../db/mappers";
 import type { Challenge, Repo, Contribution } from "../domain/entities";
 import { challengeSchema } from "../domain/schemas_zod";
+import { legacyChallengeColumns } from "../domain/legacyFlowConfig";
 import { SLUG_FALLBACK, SlugTakenError } from "../domain/slug";
 import { availableSlug, claimSlug, isSlugTaken, isSlugUniqueViolation, type SlugOwners } from "./slugs";
 
@@ -168,7 +169,11 @@ export class ChallengeRepository {
     if (validated.type !== undefined) dbData.type = validated.type;
     if (validated.project_id) dbData.project_id = validated.project_id;
     if (validated.reward_rules !== undefined) dbData.reward_rules = validated.reward_rules ?? null;
-    if (validated.compute_enabled !== undefined) dbData.compute_enabled = validated.compute_enabled;
+    if (validated.flow_config !== undefined) {
+      dbData.flow_config = validated.flow_config ?? null;
+      dbData.flow_config_version = validated.flow_config_version;
+      Object.assign(dbData, legacyChallengeColumns(validated.flow_config));
+    }
     // Without this, MlRewardsService.award() writing { completion } here was a
     // silent no-op — the field passed Zod validation but never made it into
     // dbData, so challenges.completion stayed 0 no matter how much CP was

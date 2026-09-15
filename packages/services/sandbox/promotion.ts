@@ -60,11 +60,21 @@ export interface PromotedChallengeDraft {
   completion: number;
   project_id: string;
   reward_rules: unknown;
-  compute_enabled: boolean;
-  workspace_mode: "own_repo" | null;
+  /**
+   * La configuration candidate, validée par le flow à l'écriture
+   * (`prepareFlowConfig`) : le mode `own_repo` d'un challenge code, la
+   * puissance de calcul d'un challenge ML.
+   */
+  flow_config: {
+    workspace_mode?: "own_repo";
+    extensions?: { compute: { enabled: boolean } };
+  };
   source_challenge_id: null;
-  cp_per_validation: null;
-  required_validations: null;
+}
+
+/** Le type du challenge que devient une proposition : hérité, jamais choisi. */
+export function promotedChallengeType(sandbox: Pick<Sandbox, "type">): "code" | "ml" {
+  return sandbox.type === "ml" ? "ml" : "code";
 }
 
 /** '' d'un input date vide vaut « pas de date », comme à la création. */
@@ -119,7 +129,7 @@ export function buildPromotedChallengeDraft(
   sandbox: Pick<Sandbox, "type" | "title" | "context" | "goals" | "why">,
   input: PromotionInput,
 ): PromotedChallengeDraft {
-  const type = sandbox.type === "ml" ? "ml" : "code";
+  const type = promotedChallengeType(sandbox);
   const description = trimmed(input.description) || buildPromotedDescription(sandbox);
 
   return {
@@ -134,13 +144,13 @@ export function buildPromotedChallengeDraft(
     completion: 0,
     project_id: input.project_id,
     reward_rules: input.reward_rules ?? null,
-    compute_enabled: type === "ml" ? input.compute_enabled ?? false : false,
-    workspace_mode: type === "code" ? "own_repo" : null,
-    // Un challenge de validation dérive d'un challenge ML existant : il ne peut
-    // pas naître d'une proposition, donc ces trois colonnes restent nulles.
+    flow_config:
+      type === "code"
+        ? { workspace_mode: "own_repo" }
+        : { extensions: { compute: { enabled: input.compute_enabled ?? false } } },
+    // Un challenge de validation dérive d'un challenge existant : il ne peut
+    // pas naître d'une proposition.
     source_challenge_id: null,
-    cp_per_validation: null,
-    required_validations: null,
   };
 }
 

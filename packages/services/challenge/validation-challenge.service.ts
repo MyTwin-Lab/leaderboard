@@ -11,6 +11,7 @@ import type { RewardEntryDraft } from "../../database-service/repositories/index
 import type { Challenge, ValidationAttempt } from "../../database-service/domain/entities.js";
 import { findOrCreateValidatorContribution } from "./validatorContribution.js";
 import { distributedFromPool, remainingPool } from "../../capabilities/pool.js";
+import { validationConfigOf } from "../../../content/flows/validation/config.js";
 
 /** The submission isn't exposed on this validation challenge, or has no endpoint — a 4xx-shaped problem. */
 export class ValidationTargetError extends Error {}
@@ -114,7 +115,7 @@ export class ValidationChallengeService {
     if (!challenge || challenge.type !== "validation") {
       throw new ValidationTargetError("Not a validation challenge");
     }
-    const requiredValidations = challenge.required_validations ?? 0;
+    const requiredValidations = validationConfigOf(challenge).required_validations ?? 0;
 
     const targets = await this.deps.targetRepo.findByChallenge(validationChallengeId);
     const target = targets.find(t => t.contribution_id === contributionId);
@@ -229,7 +230,7 @@ export class ValidationChallengeService {
 
     for (const v of allVerdicts) {
       if (v.verdict !== majority || remaining <= 0) continue;
-      const grant = Math.min(challenge.cp_per_validation ?? 0, remaining);
+      const grant = Math.min(validationConfigOf(challenge).cp_per_validation, remaining);
       if (grant <= 0) continue;
       remaining -= grant;
 

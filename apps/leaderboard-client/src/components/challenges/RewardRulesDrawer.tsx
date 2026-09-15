@@ -1,5 +1,6 @@
 'use client';
 
+import { flowConfigView } from '@/lib/flowConfig';
 import { useEffect, useState } from 'react';
 import { Info, X, ArrowDown, Trophy, Lock, Loader2, Users, CheckCircle2, Star } from 'lucide-react';
 import { parseMlRewardRules, type MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
@@ -9,8 +10,7 @@ interface ChallengeRules {
   type: string;
   contribution_points_reward: number;
   reward_rules?: MlRewardRules | CodeRewardRules | null;
-  cp_per_validation?: number | null;
-  required_validations?: number | null;
+  flow_config?: unknown;
 }
 
 interface RewardRulesDrawerProps {
@@ -223,8 +223,8 @@ function MlRules({ challenge }: { challenge: ChallengeRules }) {
 // ─── Validation ─────────────────────────────────────────────────────────────
 
 function ValidationRules({ challenge }: { challenge: ChallengeRules }) {
-  const cpPerValidation = challenge.cp_per_validation ?? 0;
-  const required = challenge.required_validations ?? 0;
+  const cpPerValidation = flowConfigView(challenge).cp_per_validation;
+  const required = flowConfigView(challenge).required_validations ?? 0;
 
   return (
     <div>

@@ -20,6 +20,8 @@ export class SelfStarError extends Error {}
 export class SandboxNotOpenError extends Error {}
 /** Plafond horaire des stars anonymes atteint pour cette IP hachée. → 429 */
 export class StarRateLimitedError extends Error {}
+/** Les règles de reward d'une promotion ne se lisent pas avec le flow du challenge. → 400 */
+export class InvalidRewardRulesError extends Error {}
 
 /**
  * Qui star. Deux formes exclusives, jamais mélangées : une star faite en étant

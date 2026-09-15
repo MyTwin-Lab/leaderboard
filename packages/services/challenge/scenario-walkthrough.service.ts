@@ -20,6 +20,7 @@ import type { Challenge } from "../../database-service/domain/entities.js";
 import { assertScenarioChallenge } from "./scenario-guard.js";
 import { findOrCreateValidatorContribution } from "./validatorContribution.js";
 import { distributedFromPool, remainingPool } from "../../capabilities/pool.js";
+import { validationConfigOf } from "../../../content/flows/validation/config.js";
 import {
   EmptyScenarioError,
   ForbiddenRunAccessError,
@@ -337,7 +338,7 @@ export class ScenarioWalkthroughService {
   private async payWalkthrough(challenge: Challenge, run: ValidationScenarioRun): Promise<number> {
     const distributed = await distributedFromPool(this.deps.rewardRepo, challenge.uuid);
     const remaining = remainingPool(challenge.contribution_points_reward, distributed);
-    const grant = Math.min(challenge.cp_per_validation ?? 0, remaining);
+    const grant = Math.min(validationConfigOf(challenge).cp_per_validation, remaining);
     // Pool vide : la walkthrough est complétée quand même. Refuser ici
     // effacerait un parcours entier déjà effectué ; la bannière de pool est
     // ce qui évite la surprise, en amont.

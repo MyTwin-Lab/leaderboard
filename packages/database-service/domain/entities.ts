@@ -66,12 +66,16 @@ export interface Challenge {
   contribution_points_reward: number;
   completion: number;
   project_id: string; // FK -> projects.uuid
-  reward_rules?: MlRewardRules | CodeRewardRules | null;
-  workspace_mode?: ChallengeWorkspaceMode | null; // Code challenges uniquement
-  source_challenge_id?: string | null; // Validation uniquement — le challenge ML validé
-  cp_per_validation?: number | null;   // Validation uniquement — CP fixe par validation
-  required_validations?: number | null; // Validation uniquement — nb de verdicts requis avant résolution (impair)
-  compute_enabled?: boolean; // ML uniquement — active la demande de puissance de calcul Scaleway sur ce challenge
+  /** Règles de récompense, éditables. Leur forme appartient au flow, qui les lit (`rules.parse`). */
+  reward_rules?: unknown;
+  source_challenge_id?: string | null; // Lien générique vers un challenge parent (validation aujourd'hui)
+  /**
+   * Configuration du flow, fixée à la création (sections d'extensions mises à
+   * part). Lue par la capacité `flow-config`, qui la monte à la version courante.
+   */
+  flow_config?: Record<string, unknown> | null;
+  /** Version sous laquelle `flow_config` a été écrite. */
+  flow_config_version?: number;
   created_at: Date;
   closed_at?: Date | null; // Posée à la bascule vers 'completed' (jamais 'archived')
 }

@@ -16,8 +16,7 @@ describe("assertScenarioChallenge", () => {
     const validation: Challenge = {
       uuid: VCH, title: "Usability walkthrough", status: "active", type: "validation",
       contribution_points_reward: 12000, completion: 0, project_id: "proj-1",
-      source_challenge_id: SOURCE, cp_per_validation: 200,
-      required_validations: null, compute_enabled: false,
+      source_challenge_id: SOURCE, flow_config: { cp_per_validation: 200, required_validations: null },
     } as Challenge;
     const source: Challenge = { uuid: SOURCE, type: "code" } as Challenge;
     const challengeRepo = makeChallengeRepo({ [VCH]: validation, [SOURCE]: source });
