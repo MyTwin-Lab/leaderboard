@@ -52,60 +52,6 @@ export interface ContributionReward {
 }
 
 /**
- * Contexte pour l'identification des contributions
- */
-export interface IdentifyContext {
-  syncPreview?: string;  // Résumé de réunion depuis Google Drive
-  commits: CommitInfo[]; // Liste des commits
-  users: UserInfo[];     // Membres de l'équipe
-  roadmap?: string;      // Roadmap du challenge
-  tasks?: TaskInfo[];    // Tâches du challenge
-}
-
-/**
- * Informations sur une tâche (pour identification)
- */
-export interface TaskInfo {
-  uuid: string;
-  title: string;
-  description?: string;
-  status: "todo" | "in_progress" | "done";
-}
-
-/**
- * Informations sur un commit (provenant des connecteurs)
- */
-export interface CommitInfo {
-  id: string;
-  message: string;
-  author: string;
-  date: string;
-  sha: string;
-}
-
-/**
- * Informations sur un utilisateur (pour identification)
- */
-export interface UserInfo {
-  uuid: string;
-  full_name: string;
-  github_username?: string;
-}
-
-/**
- * Contribution existante (pour fusion)
- */
-export interface OldContribution {
-  uuid: string;
-  title: string;
-  type: string;
-  description?: string;
-  tags?: string[];
-  user_id: string;
-  // Autres champs possibles : created_at, etc., mais sanitizés dans ChallengeService
-}
-
-/**
  * Contexte pour l'évaluation
  */
 export interface EvaluateContext {

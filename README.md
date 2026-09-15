@@ -50,11 +50,6 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/api/google-auth/callback
 # Optional (only needed for connectors / evaluator / API usage)
 OPENAI_API_KEY=
 GITHUB_TOKEN=
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REFRESH_TOKEN=
-GOOGLE_REDIRECT_URI=
-GOOGLE_FOLDER_ID=
 
 # Optional — only needed for ML challenges (Kaggle), see docs/admin-settings.md
 KAGGLE_USERNAME=

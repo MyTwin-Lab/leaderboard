@@ -66,18 +66,6 @@ export default function ChallengesPage() {
 
   const handleEdit = (challenge: Challenge) => { setEditingChallenge(challenge); setActiveTab(1); };
 
-  const handleSync = async (id: string) => {
-    const ok = await confirm({ title: 'Run Sync Evaluation', message: 'This will run the Sync Meeting evaluation for all participants.', confirmLabel: 'Run Sync' });
-    if (!ok) return;
-    setActionLoading(`sync-${id}`);
-    try {
-      const res = await fetch(`/api/challenges/${id}/sync`, { method: 'POST' });
-      const data = await res.json();
-      if (res.ok) toast(`${data.count} evaluations completed`, 'success');
-      else toast(data.error ?? 'Sync failed', 'error');
-    } finally { setActionLoading(null); }
-  };
-
   const handleClose = async (id: string) => {
     const ok = await confirm({ title: 'Close Challenge', message: 'This will mark the challenge as completed. This cannot be undone.', confirmLabel: 'Close', variant: 'danger' });
     if (!ok) return;
@@ -110,7 +98,6 @@ export default function ChallengesPage() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onTeam={c => setTeamModalChallenge(c)}
-                  onSync={handleSync}
                   onClose={handleClose}
                   actionLoading={actionLoading}
                 />

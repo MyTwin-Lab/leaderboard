@@ -56,7 +56,6 @@ describe('isPublicApiRoute', () => {
     for (const route of [
       '/api/challenges/abc/join',
       '/api/challenges/abc/close',
-      '/api/challenges/abc/sync',
       '/api/challenges/abc/workspace',
       '/api/challenges/abc/project-evaluation',
       '/api/challenges/abc/validation-runs',

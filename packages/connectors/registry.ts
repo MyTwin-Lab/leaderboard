@@ -89,10 +89,6 @@ export class ConnectorRegistry {
         });
       }
 
-      case 'google_drive':
-        // Google Drive n'est pas utilisé dans l'orchestrateur (seulement pour sync)
-        return null;
-
       default:
         console.warn(`[ConnectorRegistry] Unknown repo type '${repo.type}' for repo: ${repo.title}`);
         return null;

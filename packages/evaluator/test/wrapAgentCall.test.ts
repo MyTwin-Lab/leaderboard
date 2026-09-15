@@ -1,16 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { OpenAIAgentEvaluator } from "../evaluator.js";
-import * as IdentifyAgent from "../openai/identify.agent.js";
-import * as MergeAgent from "../openai/merge.agent.js";
 import * as EvaluateAgent from "../openai/evaluate.agent.js";
 import { EvaluationGridRegistry } from "../grids/index.js";
 
-const baseContext = {
-  syncPreview: "summary",
-  commits: [],
-  users: [],
-  roadmap: "roadmap",
+const contribution = {
+  title: "Contribution",
+  type: "code",
+  challenge_id: "challenge",
+  userId: "user",
+  commitShas: [],
 };
+
+function context() {
+  return { snapshot: { modifiedFiles: [] }, grid: EvaluationGridRegistry.getGrid("code") };
+}
 
 describe("OpenAIAgentEvaluator", () => {
   beforeEach(() => {
@@ -21,87 +24,6 @@ describe("OpenAIAgentEvaluator", () => {
     vi.useRealTimers();
   });
 
-  it("delegates to identify agent with retry", async () => {
-    const spy = vi.spyOn(IdentifyAgent, "runIdentifyAgent").mockResolvedValue([
-      {
-        title: "Contribution",
-        type: "code",
-        challenge_id: "challenge",
-        userId: "user",
-        commitShas: [],
-      },
-    ]);
-
-    const evaluator = new OpenAIAgentEvaluator();
-    const result = await evaluator.identify(baseContext);
-
-    expect(result).toHaveLength(1);
-    expect(spy).toHaveBeenCalledTimes(1);
-  });
-
-  it("retries failed identify calls up to 3 times", async () => {
-    vi.useFakeTimers();
-
-    const spy = vi.spyOn(IdentifyAgent, "runIdentifyAgent")
-      .mockRejectedValueOnce(new Error("temporary"))
-      .mockRejectedValueOnce(new Error("temporary"))
-      .mockResolvedValue([
-        {
-          title: "Contribution",
-          type: "code",
-          challenge_id: "challenge",
-          userId: "user",
-          commitShas: [],
-        },
-      ]);
-
-    const evaluator = new OpenAIAgentEvaluator();
-    const promise = evaluator.identify(baseContext);
-
-    await vi.runAllTimersAsync();
-    const result = await promise;
-
-    expect(result).toHaveLength(1);
-    expect(spy).toHaveBeenCalledTimes(3);
-  });
-
-  it("throws after three failed attempts", async () => {
-    vi.useFakeTimers();
-
-    const error = new Error("boom");
-    vi.spyOn(IdentifyAgent, "runIdentifyAgent").mockRejectedValue(error);
-
-    const evaluator = new OpenAIAgentEvaluator();
-    const promise = evaluator.identify(baseContext);
-
-    await vi.runAllTimersAsync();
-
-    await expect(promise).rejects.toThrow(
-      "Agent Identify a échoué après 3 tentatives"
-    );
-  });
-
-  it("delegates to merge agent", async () => {
-    const spy = vi.spyOn(MergeAgent, "runMergeAgent").mockResolvedValue([
-      {
-        contribution: {
-          title: "Contribution",
-          type: "code",
-          challenge_id: "challenge",
-          userId: "user",
-          commitShas: [],
-        },
-        oldContributionId: "old",
-      },
-    ]);
-
-    const evaluator = new OpenAIAgentEvaluator();
-    const result = await evaluator.merge([], []);
-
-    expect(result).toHaveLength(1);
-    expect(spy).toHaveBeenCalledTimes(1);
-  });
-
   it("delegates to evaluate agent", async () => {
     const spy = vi.spyOn(EvaluateAgent, "runEvaluateAgent").mockResolvedValue({
       scores: [],
@@ -109,22 +31,42 @@ describe("OpenAIAgentEvaluator", () => {
     });
 
     const evaluator = new OpenAIAgentEvaluator();
-    const grid = EvaluationGridRegistry.getGrid("code");
-
-    const result = await evaluator.evaluate(false, {
-      title: "Contribution",
-      type: "code",
-      challenge_id: "challenge",
-      userId: "user",
-      commitShas: [],
-    }, {
-      snapshot: {
-        modifiedFiles: [],
-      },
-      grid,
-    });
+    const result = await evaluator.evaluate(false, contribution, context());
 
     expect(result.globalScore).toBe(80);
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries failed evaluate calls up to 3 times", async () => {
+    vi.useFakeTimers();
+
+    const spy = vi.spyOn(EvaluateAgent, "runEvaluateAgent")
+      .mockRejectedValueOnce(new Error("temporary"))
+      .mockRejectedValueOnce(new Error("temporary"))
+      .mockResolvedValue({ scores: [], globalScore: 42 });
+
+    const evaluator = new OpenAIAgentEvaluator();
+    const promise = evaluator.evaluate(false, contribution, context());
+
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.globalScore).toBe(42);
+    expect(spy).toHaveBeenCalledTimes(3);
+  });
+
+  it("throws after three failed attempts", async () => {
+    vi.useFakeTimers();
+
+    vi.spyOn(EvaluateAgent, "runEvaluateAgent").mockRejectedValue(new Error("boom"));
+
+    const evaluator = new OpenAIAgentEvaluator();
+    const promise = evaluator.evaluate(false, contribution, context());
+    // L'assertion s'attache avant d'avancer le temps : sinon la promesse
+    // rejette sans gestionnaire et Vitest signale une erreur non gérée.
+    const assertion = expect(promise).rejects.toThrow("Agent Evaluate a échoué après 3 tentatives");
+
+    await vi.runAllTimersAsync();
+    await assertion;
   });
 });

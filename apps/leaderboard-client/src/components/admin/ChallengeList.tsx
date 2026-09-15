@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Pencil, Trash2, Users, RefreshCw, Trophy, Code2, BrainCircuit, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Pencil, Trash2, Users, Trophy, Code2, BrainCircuit, ShieldCheck, ExternalLink } from 'lucide-react';
 import type { Challenge } from '../../../../../packages/database-service/domain/entities';
 
 interface ChallengeListProps {
@@ -12,12 +12,11 @@ interface ChallengeListProps {
   onEdit: (challenge: Challenge) => void;
   onDelete: (id: string) => void;
   onTeam: (challenge: Challenge) => void;
-  onSync: (id: string) => void;
   onClose: (id: string) => void;
   actionLoading?: string | null;
 }
 
-export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, onClose, actionLoading }: ChallengeListProps) {
+export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onClose, actionLoading }: ChallengeListProps) {
   const columns = [
     {
       key: 'title',
@@ -91,15 +90,6 @@ export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, on
           </Link>
           <Button size="sm" variant="secondary" onClick={() => onTeam(challenge)} title="Manage team">
             <Users className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => onSync(challenge.uuid)}
-            disabled={actionLoading === `sync-${challenge.uuid}`}
-            title="Run sync evaluation"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${actionLoading === `sync-${challenge.uuid}` ? 'animate-spin' : ''}`} />
           </Button>
           <Button
             size="sm"

@@ -2,34 +2,32 @@
 
 AI scoring engine for contributor work. Takes a contribution (metadata + code snapshot) and an evaluation grid, and returns per-criterion scores (0–9 each) with a `globalScore` that is their weighted sum — since the grid's weights sum to ~1, `globalScore` lands on roughly that same 0–9 scale, not 0–100.
 
-Used by `packages/services/task_evaluation` — not called directly from the app.
+Used by the code rewards (`services/challenge/code-rewards.service.ts`), the ML rewards (`services/challenge/ml-rewards.service.ts`) and the formative sandbox evaluation (`services/sandbox/sandbox-evaluation.service.ts`), through `services/challenge/repo-evaluation.ts` for the GitHub-based ones. Not called directly from the app, except the grid test run of the admin panel.
 
 ## What it does
 
-The evaluator exposes one active agent:
+The evaluator exposes one agent:
 
 - **Evaluate** (`openai/evaluate.agent.ts`) — reads the code snapshot, scores the contribution against the grid criteria, and returns an `Evaluation` object
-
-> `openai/identify.agent.ts` and `openai/merge.agent.ts` are still present in the package but are **no longer used**. The old challenge-level identify/merge pipeline has been replaced by task-level evaluation in `packages/services/task_evaluation`.
 
 ## Structure
 
 ```
 evaluator/
-├── evaluator.ts           # OpenAIAgentEvaluator class
+├── evaluator.ts           # OpenAIAgentEvaluator class (3-retry wrapper)
 ├── interfaces.ts          # AgentEvaluator interface
-├── types.ts               # Contribution, Evaluation, EvaluateContext types
-├── reward.ts              # CP reward distribution
+├── types.ts               # Contribution, Evaluation, EvaluateContext, SnapshotInfo types
+├── code-reward.ts         # computeCodeAward — CP of a code challenge project
+├── ml-reward.ts           # computeMlAward, normalizeMetric — CP of ML submissions
+├── share.ts               # splitShares — CP split between group members
 ├── grids/
 │   ├── index.ts           # EvaluationGridRegistry
 │   ├── code.grid.ts       # Code scoring grid
 │   ├── model.grid.ts      # ML model scoring grid
-│   ├── dataset.grid.ts    # Dataset scoring grid
-│   └── docs.grid.ts       # Documentation scoring grid
+│   └── dataset.grid.ts    # Dataset scoring grid
 └── openai/
-    ├── evaluate.agent.ts  # Active: scores a contribution
-    ├── identify.agent.ts  # Unused (old pipeline)
-    └── merge.agent.ts     # Unused (old pipeline)
+    ├── client.ts          # OpenAI client, key resolved at call time
+    └── evaluate.agent.ts  # Scores a contribution
 ```
 
 ## Key types
@@ -37,7 +35,7 @@ evaluator/
 ```typescript
 interface Contribution {
   title: string;
-  type: 'code' | 'model' | 'dataset' | 'docs';
+  type: string;
   description?: string;
   challenge_id: string;
   userId: string;
@@ -66,8 +64,6 @@ interface EvaluateContext {
 
 ## Usage
 
-The evaluator is instantiated and called by `TaskEvaluationService`:
-
 ```typescript
 const evaluator = new OpenAIAgentEvaluator();
 
@@ -87,19 +83,7 @@ Grids define what is scored and how much each criterion is weighted.
 
 ### Built-in grids
 
-**`code`** — weights across 6 categories:
-
-| Category | Weight |
-|----------|--------|
-| Technical quality (complexity, duplication, test coverage) | 25% |
-| Architecture & design (SRP, modularity, error handling, performance) | 18% |
-| Business impact (problem resolution, functional scope) | 12% |
-| Documentation & clarity | 12% |
-| Security & robustness | 12% |
-| Maintainability (tech debt, ease of change) | 18% |
-| Documentation | 3% |
-
-**`model`**, **`dataset`**, **`docs`** — similar structure, criteria adapted to each contribution type.
+**`code`**, **`model`**, **`dataset`** — categories of weighted criteria, adapted to each contribution type.
 
 ### Scoring scale
 
@@ -122,26 +106,23 @@ const grid = EvaluationGridRegistry.getGrid('code');
 const grid = await EvaluationGridRegistry.getGridAsync('code');
 
 const types = EvaluationGridRegistry.getAvailableTypes();
-// ['code', 'model', 'dataset', 'docs']
+// ['code', 'model', 'dataset']
 ```
 
-The `DatabaseGridProvider` (set up by `TaskEvaluationService`) allows grids defined in the database via the admin panel to override the built-in ones.
+The `DatabaseGridProvider` (`packages/services/database-grid-provider.ts`) lets grids defined in the database via the admin panel override the built-in ones.
 
-## Reward distribution
+## Rewards
 
-```typescript
-import { computeRewards } from './reward.js';
+The reward math is pure and lives next to the agent. The services call it and write the result to the reward ledger:
 
-const rewards = computeRewards(evaluations, totalRewardPool);
-// Returns: Array<{ userId, contributionTitle, score, reward }>
-```
-
-Formula: `reward = (contributionScore / totalScores) × rewardPool`
-
-Edge case: if `totalScore = 0`, rewards are distributed equally. Rounding is adjusted on the last entry to ensure the exact pool is distributed.
+- `computeCodeAward` — fixed part plus a quality part proportional to the score, as a positive delta clamped to the remaining pool. See [`docs/challenges-and-tasks.md`](../../docs/challenges-and-tasks.md).
+- `computeMlAward` — dataset, model metric, model code, API packaging, reuse and lead bonus. See [`docs/ml-rewards.md`](../../docs/ml-rewards.md).
+- `splitShares` — splits a group contribution's CP between its members.
 
 ## Environment variables
 
 ```env
 OPENAI_API_KEY=sk-...
 ```
+
+The OpenAI connection of the admin settings takes precedence over the env var.

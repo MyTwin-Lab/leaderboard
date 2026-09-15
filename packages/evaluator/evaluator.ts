@@ -1,8 +1,6 @@
 import { AgentEvaluator } from "./interfaces.js";
-import { Contribution, Evaluation, ToMergeContribution, OldContribution, EvaluateContext, IdentifyContext } from "./types.js";
-import { runIdentifyAgent } from "./openai/identify.agent.js";
+import { Contribution, Evaluation, ToMergeContribution, EvaluateContext } from "./types.js";
 import { runEvaluateAgent } from "./openai/evaluate.agent.js";
-import { runMergeAgent } from "./openai/merge.agent.js";
 
 // Wrapper pour gérer les erreurs des agents avec retries (3 tentatives max, délai 1s entre chaque tentative)
 async function wrapAgentCall<T>(agentCall: () => Promise<T>, agentName: string): Promise<T> {
@@ -25,14 +23,6 @@ async function wrapAgentCall<T>(agentCall: () => Promise<T>, agentName: string):
 }
 
 export class OpenAIAgentEvaluator implements AgentEvaluator {
-  async identify(context: IdentifyContext): Promise<Contribution[]> {
-    return await wrapAgentCall(() => runIdentifyAgent(context), "Identify");
-  }
-
-  async merge(newContributions: Contribution[], oldContributions: OldContribution[]): Promise<ToMergeContribution[]> {
-    return await wrapAgentCall(() => runMergeAgent(newContributions, oldContributions), "Merge");
-  }
-
   async evaluate(toMerge : boolean, contribution: Contribution | ToMergeContribution, context: EvaluateContext): Promise<Evaluation> {
     return await wrapAgentCall(() => runEvaluateAgent(toMerge, contribution, context), "Evaluate");
   }

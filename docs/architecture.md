@@ -63,7 +63,7 @@ flowchart TD
   J --> K["leaderboard UI updated (polls evaluation_status)"]
 ```
 
-> The codebase still contains `sync-evaluation.service.ts` and the `identify` / `merge` agents from an earlier challenge-level pipeline — these are **no longer used**. The task-level evaluation pipeline that once lived in `packages/services/task_evaluation` has itself been removed and replaced by the project-level flow above.
+> The earlier challenge-level sync pipeline (`ChallengeService`, `sync-evaluation.service.ts`, the `identify` / `merge` agents, the Google Drive connector) and the task-level pipeline of `packages/services/task_evaluation` have both been removed. The project-level flow above is the only code evaluation path.
 
 ## Authentication flow
 

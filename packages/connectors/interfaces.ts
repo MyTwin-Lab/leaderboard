@@ -1,4 +1,4 @@
-export type ConnectorType = 'github' | 'google_drive' | 'kaggle_dataset' | 'kaggle_model' | 'slack' | string;
+export type ConnectorType = 'github' | 'kaggle_dataset' | 'kaggle_model' | 'slack' | string;
 
 export interface ConnectorAuthConfig {
   apiKey?: string;
