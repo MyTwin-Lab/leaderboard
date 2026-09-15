@@ -26,7 +26,7 @@ vi.mock("../../../../packages/database-service/repositories/index.js", () => {
   };
 });
 
-vi.mock("../../../../packages/services/challenge/ssrf-guard.js", () => ({ assertPublicHttpUrl: h.assertPublicHttpUrl }));
+vi.mock("../../../../packages/capabilities/http-proxy/ssrf-guard.js", () => ({ assertPublicHttpUrl: h.assertPublicHttpUrl }));
 
 import { actionContext, type ActionContextOptions } from "../../../../packages/capabilities/testing/action-context.js";
 import { validationKitActions } from "./index.js";

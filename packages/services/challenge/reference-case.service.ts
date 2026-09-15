@@ -8,7 +8,7 @@ import {
   UserQualificationRepository,
 } from "../../database-service/repositories/index.js";
 import type { ValidationReferenceCase, ValidationCaseClaim } from "../../database-service/domain/entities.js";
-import { proxyFileToEndpoint, EndpointCallError, type ProxyResult } from "./endpoint-proxy.js";
+import { proxyFileToEndpoint, EndpointCallError, type ProxyResult } from "../../capabilities/http-proxy/endpoint-proxy.js";
 import { SelfVoteError, ValidationTargetError } from "./validation-challenge.service.js";
 import { validationConfigOf } from "../../../content/kits/validation/config.js";
 import { ENDPOINT_VALIDATION_FLOW_KEY } from "../../../content/flows/endpoint-validation/descriptor.js";

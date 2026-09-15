@@ -12,7 +12,7 @@ import {
   ValidationTargetRepository,
 } from "../../../../packages/database-service/repositories/index.js";
 import { eligibleDeliverableType } from "../../../../packages/capabilities/deliverables.js";
-import { assertPublicHttpUrl } from "../../../../packages/services/challenge/ssrf-guard.js";
+import { assertPublicHttpUrl } from "../../../../packages/capabilities/http-proxy/ssrf-guard.js";
 import { reviewerQualificationOf, validationConfigOf } from "../config.js";
 import { validationModeOf } from "../mode.js";
 
