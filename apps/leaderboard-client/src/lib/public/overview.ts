@@ -8,8 +8,9 @@
  * Task titles are excluded: personal boards carry contributors' own wording.
  * "{done}/{total} tasks" needs only `status` and `user_id`.
  *
- * Meetings and repos are dropped wholesale — a meeting carries a joinable
- * link, and a repo row carries workspace metadata.
+ * Repos are dropped wholesale — a repo row carries workspace metadata.
+ * Meetings are not part of the overview at all: they belong to the meetings
+ * module and have their own route (`/api/challenges/[id]/meetings`).
  */
 export interface PublicOverview {
   challenge: {
@@ -90,8 +91,6 @@ export interface SignedInViewer {
   role: string;
   /** Porteur du workspace du visiteur : lui-même en solo, le porteur du groupe sinon. */
   workspaceOwnerId: string | null;
-  /** Le visiteur figure dans `participants`. */
-  isMember: boolean;
   /** Admin, ou manager du projet du challenge : la vue de pilotage lit tout. */
   privileged: boolean;
 }
@@ -102,14 +101,14 @@ export interface SignedInViewer {
  * Même principe que `toPublicOverview` : liste blanche, champ par champ. Les
  * deux pages qui partagent la clé `['challenge-overview', id]` reçoivent donc
  * une forme qui dépend du visiteur, pas de la page — la vue manager n'est
- * ouverte qu'aux utilisateurs `privileged`, qui gardent tasks, participants et
- * meetings entiers.
+ * ouverte qu'aux utilisateurs `privileged`, qui gardent tasks et participants
+ * entiers.
  *
  * "Le mien" (`mine`) = le visiteur et le porteur de son workspace : en groupe,
  * le board, la branche et la contribution appartiennent au porteur.
  */
 export function toSignedInOverview(data: any, viewer: SignedInViewer) {
-  const { userId, role, workspaceOwnerId, isMember, privileged } = viewer;
+  const { userId, role, workspaceOwnerId, privileged } = viewer;
   const isAdmin = role === 'admin';
   const mine = new Set([userId, workspaceOwnerId].filter((v): v is string => !!v));
 
@@ -136,25 +135,6 @@ export function toSignedInOverview(data: any, viewer: SignedInViewer) {
         row.workspace_ref = p.workspace_ref;
         row.workspace_url = p.workspace_url;
         row.workspace_status = p.workspace_status;
-      }
-      return row;
-    }),
-    meetings: (data?.meetings ?? []).map((m: any) => {
-      if (privileged) return m;
-      const row: Record<string, unknown> = {
-        uuid: m.uuid,
-        title: m.title,
-        description: m.description,
-        challenge_id: m.challenge_id,
-        start_time: m.start_time,
-        end_time: m.end_time,
-        status: m.status,
-      };
-      // Le lien Meet permet d'entrer dans la réunion : réservé aux membres.
-      // Les identifiants calendrier et conférence ne servent à aucune page.
-      if (isMember) {
-        row.meet_link = m.meet_link;
-        row.created_by = m.created_by;
       }
       return row;
     }),

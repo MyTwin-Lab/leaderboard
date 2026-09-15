@@ -7,6 +7,7 @@ import {
   StarRateLimitedError,
   type SandboxServiceDeps,
 } from "./sandbox.service.js";
+import { InvalidProposalError, SandboxFlowUnavailableError } from "./proposal.js";
 import { planAnonAttach } from "./starAttach.js";
 import type {
   Sandbox,
@@ -14,6 +15,12 @@ import type {
   SandboxStar,
   SandboxStarTier,
 } from "../../database-service/domain/entities.js";
+import type { ProposableDeclaration } from "../../registry/platform.js";
+import { codeProposable } from "../../../content/flows/code/proposable.js";
+import { mlProposable } from "../../../content/flows/ml/proposable.js";
+
+/** Les flows proposables de la distribution MyTwin, sans installer le registre. */
+const PROPOSABLE: Record<string, ProposableDeclaration> = { code: codeProposable, ml: mlProposable };
 
 const SANDBOX_ID = "sb-1";
 const AUTHOR = "author-1";
@@ -205,19 +212,18 @@ function makeDeps(
     ),
   };
 
-  const appSettingsRepo = {
-    get: vi.fn(async () => ({ sandbox_star_tiers: opts.tiers ?? TIERS })),
-  };
+  const settings = vi.fn(async () => ({ star_tiers: opts.tiers ?? TIERS }));
 
   const deps: SandboxServiceDeps = {
     sandboxRepo,
     starRepo,
     rewardRepo,
-    appSettingsRepo,
+    settings,
+    proposable: (flowKey) => PROPOSABLE[flowKey],
     now: () => NOW,
   };
 
-  return { deps, stars, rewards, sandboxRepo, starRepo, rewardRepo, appSettingsRepo };
+  return { deps, stars, rewards, sandboxRepo, starRepo, rewardRepo, settings };
 }
 
 describe("SandboxService.star", () => {
@@ -393,6 +399,98 @@ describe("SandboxService.update", () => {
 
     expect(updated.title).toBe("Nouveau titre");
     expect(sandboxRepo.update).toHaveBeenCalledWith(SANDBOX_ID, { title: "Nouveau titre" });
+  });
+
+  it("valide les champs édités, fusionnés aux actuels, avec le schéma du flow", async () => {
+    const { deps, sandboxRepo } = makeDeps({
+      sandbox: { type: "ml", dataset_urls: ["https://kaggle.com/d/one"], model_url: "https://kaggle.com/m/one" },
+    });
+    const service = new SandboxService(deps);
+
+    await service.update(SANDBOX_ID, AUTHOR, { fields: { model_url: null } });
+
+    expect(sandboxRepo.update).toHaveBeenCalledWith(SANDBOX_ID, {
+      repo_url: "https://github.com/org/repo",
+      model_url: null,
+      dataset_urls: ["https://kaggle.com/d/one"],
+      proposal_fields: {
+        repo_url: "https://github.com/org/repo",
+        model_url: null,
+        dataset_urls: ["https://kaggle.com/d/one"],
+      },
+    });
+  });
+
+  it("refuse une édition qui laisse une proposition invalide", async () => {
+    const { deps, sandboxRepo } = makeDeps({ sandbox: { type: "ml", dataset_urls: ["https://kaggle.com/d/one"] } });
+    const service = new SandboxService(deps);
+
+    await expect(service.update(SANDBOX_ID, AUTHOR, { fields: { dataset_urls: [] } })).rejects.toBeInstanceOf(
+      InvalidProposalError
+    );
+    expect(sandboxRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("n'édite plus les champs d'un sandbox dont le flow a été retiré, mais le reste si", async () => {
+    const { deps, sandboxRepo } = makeDeps({ sandbox: { type: "retired" } });
+    const service = new SandboxService(deps);
+
+    await expect(
+      service.update(SANDBOX_ID, AUTHOR, { fields: { repo_url: "https://github.com/org/other" } })
+    ).rejects.toBeInstanceOf(SandboxFlowUnavailableError);
+    expect(sandboxRepo.update).not.toHaveBeenCalled();
+
+    await service.update(SANDBOX_ID, AUTHOR, { title: "Renamed", fields: {} });
+    expect(sandboxRepo.update).toHaveBeenCalledWith(SANDBOX_ID, { title: "Renamed" });
+  });
+});
+
+describe("SandboxService.create", () => {
+  const command = {
+    user_id: AUTHOR,
+    title: "Triage assistant",
+    goals: [],
+    fields: { repo_url: "https://github.com/org/repo" },
+  };
+
+  it("écrit les champs validés par le flow, et les anciennes colonnes en miroir", async () => {
+    const { deps, sandboxRepo } = makeDeps();
+    const service = new SandboxService(deps);
+
+    await service.create({ ...command, type: "code" });
+
+    expect(sandboxRepo.create).toHaveBeenCalledWith({
+      user_id: AUTHOR,
+      type: "code",
+      title: "Triage assistant",
+      goals: [],
+      repo_url: "https://github.com/org/repo",
+      model_url: null,
+      dataset_urls: [],
+      proposal_fields: { repo_url: "https://github.com/org/repo", dataset_urls: [] },
+    });
+  });
+
+  it("refuse un flow qui n'est pas installé ou n'accepte pas de propositions", async () => {
+    const { deps, sandboxRepo } = makeDeps();
+    const service = new SandboxService(deps);
+
+    const error = await service.create({ ...command, type: "journey-validation" }).catch((e) => e);
+
+    expect(error).toBeInstanceOf(InvalidProposalError);
+    expect(error.details.fieldErrors.type).toHaveLength(1);
+    expect(sandboxRepo.create).not.toHaveBeenCalled();
+  });
+
+  it("refuse des champs que le schéma du flow rejette, avec le détail", async () => {
+    const { deps, sandboxRepo } = makeDeps();
+    const service = new SandboxService(deps);
+
+    const error = await service.create({ ...command, type: "ml" }).catch((e) => e);
+
+    expect(error).toBeInstanceOf(InvalidProposalError);
+    expect(error.details.fieldErrors).toHaveProperty("dataset_urls");
+    expect(sandboxRepo.create).not.toHaveBeenCalled();
   });
 });
 

@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Loader2, GitBranch, Rocket, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import { ContributorTaskBoard, type BoardTask } from '@/components/contributor/ContributorTaskBoard';
-import { trackOnboardingStep } from '@/lib/onboarding-track';
 import { flowActionUrl } from '@/lib/challengeActions';
 
 export interface CodeParticipation {
@@ -58,7 +57,6 @@ export function CodeChallengePanel({
     try {
       const res = await fetch(flowActionUrl(challengeId, 'project-evaluation'), { method: 'POST' });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error || 'Cannot start evaluation'); return; }
-      trackOnboardingStep('validated_task');
       await onReload();
     } catch { setError('Network error'); }
     finally { setLaunching(false); }

@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const { mockVerifyRequestToken, mockClaim, mockScheduleRun } = vi.hoisted(() => ({
+const { mockVerifyRequestToken, mockClaim, mockScheduleRun, mockModuleNotFound } = vi.hoisted(() => ({
   mockVerifyRequestToken: vi.fn(),
   mockClaim: vi.fn(),
   mockScheduleRun: vi.fn(),
+  mockModuleNotFound: vi.fn(),
 }));
+
+vi.mock("@/lib/server/modules", () => ({ moduleNotFoundResponse: mockModuleNotFound }));
 
 // Comme le vrai helper : `null` sans cookie access_token ; la doublure décide du reste.
 vi.mock("@/lib/auth", () => ({
@@ -14,6 +17,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("../../../../../../../../packages/services/sandbox", () => ({
+  SANDBOX_MODULE: "sandbox",
   SandboxEvaluationService: class {
     claim = mockClaim;
     scheduleRun = mockScheduleRun;
@@ -37,9 +41,20 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockVerifyRequestToken.mockResolvedValue({ userId: USER_ID, role: "contributor" });
   mockClaim.mockResolvedValue({ ok: true });
+  mockModuleNotFound.mockResolvedValue(null);
 });
 
 describe("POST /api/sandboxes/[id]/evaluation", () => {
+  it("returns 404 when the sandbox module is disabled", async () => {
+    mockModuleNotFound.mockResolvedValue(Response.json({ error: "Not found" }, { status: 404 }));
+
+    const res = await postEvaluation("valid-token");
+
+    expect(res.status).toBe(404);
+    expect(mockModuleNotFound).toHaveBeenCalledWith("sandbox");
+    expect(mockClaim).not.toHaveBeenCalled();
+  });
+
   it("returns 401 without a session", async () => {
     const res = await postEvaluation();
 
@@ -74,7 +89,8 @@ describe("POST /api/sandboxes/[id]/evaluation", () => {
   it.each([
     ["not_found", 404],
     ["not_author", 403],
-    ["invalid_repo", 400],
+    ["invalid_fields", 400],
+    ["not_evaluable", 400],
   ])("maps a %s refusal to %i without scheduling", async (reason, status) => {
     mockClaim.mockResolvedValue({ ok: false, reason });
 

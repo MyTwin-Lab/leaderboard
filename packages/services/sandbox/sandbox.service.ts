@@ -1,11 +1,20 @@
 import {
-  AppSettingsRepository,
   SandboxRepository,
   SandboxRewardRepository,
   SandboxStarRepository,
 } from "../../database-service/repositories/index.js";
 import type { SandboxDraft, SandboxPatch } from "../../database-service/repositories/sandbox.repo.js";
-import type { Sandbox, SandboxStarTier } from "../../database-service/domain/entities.js";
+import type { Sandbox } from "../../database-service/domain/entities.js";
+import { legacyColumnsFromProposalFields } from "../../database-service/domain/legacyProposalFields.js";
+import type { ProposableDeclaration } from "../../registry/platform.js";
+import {
+  InvalidProposalError,
+  SandboxFlowUnavailableError,
+  installedProposable,
+  parseProposalFields,
+  proposalFieldsOf,
+} from "./proposal.js";
+import { readSandboxSettings, type SandboxEconomySettings } from "./settings.js";
 import { tiersToPay } from "./starTiers.js";
 import { planAnonAttach } from "./starAttach.js";
 import { ipHashRetentionCutoff, isRateLimited, rateLimitWindowStart } from "./starPolicy.js";
@@ -61,10 +70,24 @@ export interface SandboxServiceDeps {
     | "purgeIpHashesOlderThan"
   >;
   rewardRepo: Pick<SandboxRewardRepository, "paidTierThresholdsBySandboxIds" | "insertTierIfAbsent">;
-  /** Réduit à ce que le service lit : les paliers configurés par l'admin. */
-  appSettingsRepo: { get(): Promise<{ sandbox_star_tiers: SandboxStarTier[] }> };
+  /** Réduit à ce que le service lit : les paliers réglés dans le module sandbox. */
+  settings: () => Promise<Pick<SandboxEconomySettings, "star_tiers">>;
+  /** La déclaration `proposable` d'un flow — le registre installé, par défaut. */
+  proposable: (flowKey: string) => ProposableDeclaration | undefined;
   /** Injectable pour que les fenêtres de débit et de purge soient testables. */
   now: () => Date;
+}
+
+/** Une création : ce que tout sandbox partage, et les champs bruts de la proposition. */
+export interface SandboxCreateCommand
+  extends Omit<SandboxDraft, "repo_url" | "model_url" | "dataset_urls" | "proposal_fields"> {
+  fields: Record<string, unknown>;
+}
+
+/** Une édition : les champs communs, et les champs de proposition à fusionner aux actuels. */
+export interface SandboxEditCommand
+  extends Omit<SandboxPatch, "repo_url" | "model_url" | "dataset_urls" | "proposal_fields"> {
+  fields?: Record<string, unknown>;
 }
 
 /**
@@ -74,9 +97,9 @@ export interface SandboxServiceDeps {
  *
  * Ce que ce service ne fait pas, volontairement : aucun contrôle de rôle à la
  * création (§1.6 — c'est la route qui connaît le rôle de l'appelant), aucune
- * validation de forme (les schémas Zod du palier 1 la portent), et aucune
- * écriture dans `reward_entries` ni dans `contributions` — le ledger sandbox
- * est séparé, par construction.
+ * connaissance des champs d'une proposition (le flow les valide, voir
+ * `proposable`), et aucune écriture dans `reward_entries` ni dans
+ * `contributions` — le ledger sandbox est séparé, par construction.
  */
 export class SandboxService {
   private deps: SandboxServiceDeps;
@@ -86,18 +109,35 @@ export class SandboxService {
       sandboxRepo: new SandboxRepository(),
       starRepo: new SandboxStarRepository(),
       rewardRepo: new SandboxRewardRepository(),
-      appSettingsRepo: new AppSettingsRepository(),
+      settings: () => readSandboxSettings(),
+      proposable: installedProposable,
       now: () => new Date(),
       ...deps,
     } as SandboxServiceDeps;
   }
 
   /**
-   * Création. `type` est figé ici et n'apparaît dans aucun chemin d'édition :
-   * il a déterminé les champs saisis et déterminera la grille d'évaluation.
+   * Création. `type` est la clé d'un flow installé qui accepte des propositions,
+   * et ses champs passent le schéma de ce flow. `type` est figé ici et
+   * n'apparaît dans aucun chemin d'édition : il a déterminé les champs saisis
+   * et l'évaluation.
    */
-  async create(draft: SandboxDraft): Promise<Sandbox> {
-    return this.deps.sandboxRepo.create(draft);
+  async create({ fields: rawFields, ...draft }: SandboxCreateCommand): Promise<Sandbox> {
+    const proposable = this.deps.proposable(draft.type);
+    if (!proposable) {
+      throw new InvalidProposalError(`"${draft.type}" does not accept proposals`, {
+        formErrors: [],
+        fieldErrors: { type: [`"${draft.type}" does not accept proposals`] },
+      });
+    }
+
+    const fields = parseProposalFields(proposable, rawFields);
+    return this.deps.sandboxRepo.create({
+      ...draft,
+      // Les anciennes colonnes, en miroir jusqu'au lot L7.
+      ...legacyColumnsFromProposalFields(fields),
+      proposal_fields: fields,
+    });
   }
 
   /**
@@ -105,10 +145,14 @@ export class SandboxService {
    *
    * Un sandbox promu a donné naissance à un challenge qui vit sa vie : éditer
    * la proposition après coup réécrirait l'histoire sans rien changer au
-   * challenge. Un archivé est sorti. `SandboxPatch` ne porte pas `type` : son
-   * immuabilité est portée par le typage, pas par un test à l'exécution.
+   * challenge. Un archivé est sorti. `SandboxEditCommand` ne porte pas `type` :
+   * son immuabilité est portée par le typage, pas par un test à l'exécution.
+   *
+   * Des champs de proposition édités sont fusionnés aux actuels puis validés
+   * **en entier** par le flow : l'état qui résulte de l'édition doit rester une
+   * proposition valable. Un flow retiré laisse éditer le reste, pas les champs.
    */
-  async update(sandboxId: string, actorId: string, patch: SandboxPatch): Promise<Sandbox> {
+  async update(sandboxId: string, actorId: string, { fields: rawFields, ...patch }: SandboxEditCommand): Promise<Sandbox> {
     const sandbox = await this.requireSandbox(sandboxId);
     if (sandbox.user_id !== actorId) {
       throw new SandboxForbiddenError("only the author can edit this sandbox");
@@ -117,7 +161,17 @@ export class SandboxService {
       throw new SandboxNotOpenError(`sandbox is ${sandbox.status}`);
     }
 
-    const updated = await this.deps.sandboxRepo.update(sandboxId, patch);
+    let write: SandboxPatch = patch;
+    if (rawFields && Object.keys(rawFields).length > 0) {
+      const proposable = this.deps.proposable(sandbox.type);
+      if (!proposable) {
+        throw new SandboxFlowUnavailableError(`flow "${sandbox.type}" no longer accepts proposals`);
+      }
+      const fields = parseProposalFields(proposable, { ...proposalFieldsOf(sandbox), ...rawFields });
+      write = { ...patch, ...legacyColumnsFromProposalFields(fields), proposal_fields: fields };
+    }
+
+    const updated = await this.deps.sandboxRepo.update(sandboxId, write);
     if (!updated) throw new SandboxNotFoundError(sandboxId);
     return updated;
   }
@@ -256,12 +310,12 @@ export class SandboxService {
   ): Promise<{ starCount: number; paidTierThresholds: number[] }> {
     const [starCount, settings, paidMap] = await Promise.all([
       this.deps.starRepo.countActive(sandbox.uuid),
-      this.deps.appSettingsRepo.get(),
+      this.deps.settings(),
       this.deps.rewardRepo.paidTierThresholdsBySandboxIds([sandbox.uuid]),
     ]);
 
     const alreadyPaid = paidMap.get(sandbox.uuid) ?? [];
-    const due = tiersToPay(starCount, settings.sandbox_star_tiers ?? [], alreadyPaid);
+    const due = tiersToPay(starCount, settings.star_tiers ?? [], alreadyPaid);
 
     for (const tier of due) {
       await this.deps.rewardRepo.insertTierIfAbsent({

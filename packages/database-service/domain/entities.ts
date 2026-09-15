@@ -587,13 +587,6 @@ export interface AppSettings {
   background_color?: string | null;
   theme_mode: string; // "dark" | "light"
   updated_at?: Date;
-  modules_meetings_enabled: boolean;
-  modules_onboarding_enabled: boolean;
-  digest_enabled: boolean;
-  digest_frequency_days: number;
-  /** Vide = l'économie des stars ne paie rien. Voir SandboxStarTier. */
-  sandbox_star_tiers: SandboxStarTier[];
-  sandbox_promotion_bonus_cp: number;
 }
 
 // --- INTEGRATION CREDENTIALS ---
@@ -611,8 +604,8 @@ export interface IntegrationCredential {
 // --- SANDBOX ---
 // Proposition ouverte déposée par un contributeur. Voir docs/sandbox.md.
 
-/** 'validation' est exclu : un challenge de validation dérive d'un challenge ML existant. */
-export type SandboxType = 'code' | 'ml';
+/** La clé d'un flow qui déclare `proposable` (`code`, `ml` dans la distribution MyTwin). */
+export type SandboxType = string;
 
 export type SandboxStatus = 'open' | 'promoted' | 'archived';
 
@@ -782,33 +775,21 @@ export interface Digest {
   payload: DigestPayload;
 }
 
-// --- ONBOARDING PROGRESS WITH USER ---
+// --- ONBOARDING QUESTS ---
+// Les quêtes elles-mêmes sont déclarées au registre (`PlatformRegistry.quests()`).
+
+/** Une quête d'onboarding accomplie (`onboarding_quest_progress`). */
+export interface OnboardingQuestCompletion {
+  quest_key: string;
+  completed_at: Date;
+}
+
+/** Un compte et les quêtes qu'il a accomplies, pour le suivi de l'admin. */
 export interface OnboardingProgressWithUser {
   user_id: string;
   full_name: string;
   avatar_url: string | null;
-  clicked_challenge: boolean;
-  assigned_task: boolean;
-  evaluated_contribution: boolean;
-  validated_task: boolean;
-  joined_meeting: boolean;
-  completed_at?: Date;
-}
-
-// --- ONBOARDING PROGRESS ---
-
-export type OnboardingStep = 'clicked_challenge' | 'assigned_task' | 'evaluated_contribution' | 'validated_task' | 'joined_meeting';
-
-export interface OnboardingProgress {
-  user_id: string;
-  clicked_challenge: boolean;
-  assigned_task: boolean;
-  evaluated_contribution: boolean;
-  validated_task: boolean;
-  joined_meeting: boolean;
-  completed_at?: Date;
-  created_at: Date;
-  updated_at: Date;
+  completed: OnboardingQuestCompletion[];
 }
 
 // --- NOTIFICATIONS ---

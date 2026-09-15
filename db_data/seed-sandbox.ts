@@ -1,12 +1,13 @@
 import { eq, and } from "drizzle-orm";
 import { db, sandboxes, users, projects } from "../packages/database-service/db/drizzle.js";
 import {
-  AppSettingsRepository,
   ProjectRepository,
   SandboxRepository,
 } from "../packages/database-service/repositories/index.js";
 import { SandboxService, SandboxPromotionService, hashIp } from "../packages/services/sandbox/index.js";
 import { PlatformRegistry } from "../packages/registry/platform.js";
+import { modules } from "../packages/capabilities/modules.js";
+import { sandboxSettingsSchema } from "../modules/sandbox/settings.js";
 import { platform } from "../apps/leaderboard-client/src/distribution/mytwin.platform";
 
 // La promotion valide la configuration du challenge avec le flow installé.
@@ -44,7 +45,6 @@ PlatformRegistry.install(platform);
  * pas l'être deux fois (index unique partiel sur `sandbox_rewards`).
  */
 
-const appSettingsRepo = new AppSettingsRepository();
 const projectRepo = new ProjectRepository();
 const sandboxRepo = new SandboxRepository();
 const sandboxService = new SandboxService();
@@ -168,17 +168,18 @@ async function main() {
   // --- Réglages de l'économie ---
   // Écrits seulement si l'admin n'a rien configuré : ce seed ne doit pas
   // écraser des paliers réglés à la main sur une base de travail.
-  const settings = await appSettingsRepo.get();
-  if ((settings.sandbox_star_tiers ?? []).length === 0) {
-    await appSettingsRepo.update({
-      sandbox_star_tiers: STAR_TIERS,
-      sandbox_promotion_bonus_cp: PROMOTION_BONUS_CP,
-    });
+  const settings = sandboxSettingsSchema.parse(await modules.settings("sandbox"));
+  if (settings.star_tiers.length === 0) {
+    await modules.update(
+      "sandbox",
+      { settings: { star_tiers: STAR_TIERS, promotion_bonus_cp: PROMOTION_BONUS_CP } },
+      null,
+    );
     console.log(
       `✓ Paliers configurés : ${STAR_TIERS.map((t) => `${t.stars}* -> ${t.cp} CP`).join(", ")} · promotion +${PROMOTION_BONUS_CP} CP`
     );
   } else {
-    console.log(`✓ Paliers déjà configurés (${settings.sandbox_star_tiers.length}) — laissés tels quels`);
+    console.log(`✓ Paliers déjà configurés (${settings.star_tiers.length}) — laissés tels quels`);
   }
 
   const projectId = await findOrCreateProject(

@@ -100,7 +100,7 @@ describe('toSignedInOverview', () => {
     meetings: [{ ...RAW.meetings[0], calendar_event_id: 'cal-1', conference_id: 'conf-1', conference_record_id: 'rec-1', created_by: 'u1' }],
     contributions: [{ ...RAW.contributions[0], evaluation: { globalScore: 87, comment: 'AI feedback for u1' } }],
   };
-  const stranger = { userId: 'u9', role: 'contributor', workspaceOwnerId: 'u9', isMember: false, privileged: false };
+  const stranger = { userId: 'u9', role: 'contributor', workspaceOwnerId: 'u9', privileged: false };
 
   it('never lets an account, workspace metadata or another contributor task through', () => {
     const serialised = JSON.stringify(toSignedInOverview(RAW_WITH_ACCOUNTS as any, stranger));
@@ -128,33 +128,32 @@ describe('toSignedInOverview', () => {
     expect(result.repos).toEqual([{ repo_id: 'r1', role: null, repo_type: undefined, repo_title: undefined }]);
   });
 
-  it('gives a member their own board, workspace, evaluation and meeting link', () => {
+  it('gives a member their own board, workspace and evaluation', () => {
     const result = toSignedInOverview(RAW_WITH_ACCOUNTS as any, {
-      userId: 'u1', role: 'contributor', workspaceOwnerId: 'u1', isMember: true, privileged: false,
+      userId: 'u1', role: 'contributor', workspaceOwnerId: 'u1', privileged: false,
     });
     expect(result.tasks[0]).toMatchObject({ title: 'my private note' });
     expect(result.participants[0]).toMatchObject({ workspace_url: 'https://github.com/org/repo/tree/contrib/3-alix' });
     expect(result.contributions[0].evaluation).toEqual({ globalScore: 87, comment: 'AI feedback for u1' });
-    expect(result.meetings[0]).toMatchObject({ meet_link: 'https://meet.google.com/abc-defg-hij' });
-    expect(result.meetings[0].calendar_event_id).toBeUndefined();
+    // Les meetings ont leur route, celle du module : l'overview ne les porte plus.
+    expect((result as Record<string, unknown>).meetings).toBeUndefined();
   });
 
   it('gives a group co-member the owner board, workspace and evaluation', () => {
     const result = toSignedInOverview(RAW_WITH_ACCOUNTS as any, {
-      userId: 'u2', role: 'contributor', workspaceOwnerId: 'u1', isMember: true, privileged: false,
+      userId: 'u2', role: 'contributor', workspaceOwnerId: 'u1', privileged: false,
     });
     expect(result.tasks[0]).toMatchObject({ title: 'my private note' });
     expect(result.participants[0]).toMatchObject({ workspace_ref: 'contrib/3-alix' });
     expect(result.contributions[0].evaluation).toEqual({ globalScore: 87, comment: 'AI feedback for u1' });
   });
 
-  it('keeps tasks, participants and meetings whole for a privileged viewer, never the accounts', () => {
+  it('keeps tasks and participants whole for a privileged viewer, never the accounts', () => {
     const result = toSignedInOverview(RAW_WITH_ACCOUNTS as any, {
-      userId: 'm1', role: 'contributor', workspaceOwnerId: 'm1', isMember: false, privileged: true,
+      userId: 'm1', role: 'contributor', workspaceOwnerId: 'm1', privileged: true,
     });
     expect(result.tasks[0]).toEqual(RAW.tasks[0]);
     expect(result.participants[0]).toEqual(RAW.participants[0]);
-    expect(result.meetings[0]).toEqual(RAW_WITH_ACCOUNTS.meetings[0]);
     // Manager sans être admin : l'évaluation reste à l'auteur.
     expect(result.contributions[0].evaluation).toBeNull();
     expect(JSON.stringify(result)).not.toContain('alix@example.com');
@@ -163,7 +162,7 @@ describe('toSignedInOverview', () => {
 
   it('shows every evaluation to an admin', () => {
     const result = toSignedInOverview(RAW_WITH_ACCOUNTS as any, {
-      userId: 'a1', role: 'admin', workspaceOwnerId: 'a1', isMember: false, privileged: true,
+      userId: 'a1', role: 'admin', workspaceOwnerId: 'a1', privileged: true,
     });
     expect(result.contributions[0].evaluation).toEqual({ globalScore: 87, comment: 'AI feedback for u1' });
   });

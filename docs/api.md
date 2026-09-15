@@ -230,7 +230,9 @@ Tasks are personal boards on `code` challenges (see [`challenges-and-tasks.md`](
 
 Contributor-proposed open challenges. See [`sandbox.md`](./sandbox.md).
 
-Listing and detail are **public** — this is what lets a newsletter link to a sandbox and have its reader star it. `/api/sandboxes/**` sits outside the proxy matcher, like `/api/admin/*`, so every handler runs its own check.
+Listing and detail are **public** — this is what lets a newsletter link to a sandbox and have its reader star it. `/api/sandboxes/**` sits outside the proxy matcher, like `/api/admin/*`, so every handler runs its own check. Every route below answers `404` while the `sandbox` module is disabled. The star tiers and the promotion bonus are the module's settings (`PATCH /api/modules/sandbox`, `settings.star_tiers` and `settings.promotion_bonus_cp`).
+
+A sandbox's `type` is the key of a flow that declares `proposable`; its fields (`repo_url`, `dataset_urls`…) are validated by that flow's schema, `400` with `details` otherwise. A sandbox whose flow is no longer installed or proposable answers `409` to promotion and to field edits.
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
@@ -242,7 +244,6 @@ Listing and detail are **public** — this is what lets a newsletter link to a s
 | `POST` | `/api/sandboxes/:id/promote` | Turn the sandbox into a challenge. Optional `slug`, the sandbox's own when omitted and free; `409` when taken. | Admin |
 | `PUT` | `/api/sandboxes/:id/star` | Star. Idempotent, checks the tiers, and issues the anonymous cookie when the request carries none. `403` for the author, `409` if not `open`, `429` past the rate limit. | Public |
 | `DELETE` | `/api/sandboxes/:id/star` | Unstar. Soft delete — never reverses a paid tier. | Public |
-| `PATCH` | `/api/admin/sandbox-settings` | Update the star tiers and the promotion bonus. | Admin |
 | `GET` | `/api/admin/sandboxes/:id/stars` | Audit: stars grouped by origin, hashed-IP prefix and day. Never the full hash or the `anon_id`. | Admin |
 | `DELETE` | `/api/admin/sandboxes/:id/stars` | Delete stars by id, by hashed IP or by time window. | Admin |
 | `DELETE` | `/api/admin/sandbox-rewards/:id` | Delete a paid reward. Lowers the leaderboard total immediately — there is no cache. | Admin |

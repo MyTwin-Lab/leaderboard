@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SLUG_FALLBACK } from "../../../../../../../packages/database-service/domain/slug";
 import { verifyRequestToken } from "@/lib/auth";
 import { repositories } from "@/lib/db";
+import { moduleNotFoundResponse } from "@/lib/server/modules";
 import { canCreateSandbox } from "@/lib/server/sandboxAuth";
 import { checkSlugAvailability } from "@/lib/server/slugs";
 
@@ -16,6 +17,9 @@ export const dynamic = "force-dynamic";
  * ici, et seuls les rôles qui peuvent créer un sandbox y ont accès.
  */
 export async function GET(request: NextRequest) {
+  const disabled = await moduleNotFoundResponse("sandbox");
+  if (disabled) return disabled;
+
   const session = await verifyRequestToken(request);
   if (!session) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   if (!canCreateSandbox(session.role)) {

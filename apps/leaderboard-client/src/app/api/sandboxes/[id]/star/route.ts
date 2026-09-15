@@ -5,11 +5,13 @@ import {
   SandboxStarRepository,
 } from "../../../../../../../../packages/database-service/repositories";
 import {
+  SANDBOX_MODULE,
   SandboxNotFoundError,
   SandboxService,
 } from "../../../../../../../../packages/services/sandbox";
 import type { StarState } from "../../../../../../../../packages/services/sandbox";
 import { verifyRequestToken } from "@/lib/auth";
+import { moduleNotFoundResponse } from "@/lib/server/modules";
 import { issueAnonCookie, newAnonId, readAnonId } from "@/lib/server/anonVisitor";
 import { clientIpHash } from "@/lib/server/clientIp";
 import { sandboxViewer, starIdentity } from "@/lib/server/sandboxAuth";
@@ -46,6 +48,9 @@ function starPayload(state: StarState) {
  * stars anonymes.
  */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const disabled = await moduleNotFoundResponse(SANDBOX_MODULE);
+  if (disabled) return disabled;
+
   const { id } = await params;
 
   try {
@@ -92,6 +97,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
  * résultat que l'appelant demandait.
  */
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const disabled = await moduleNotFoundResponse(SANDBOX_MODULE);
+  if (disabled) return disabled;
+
   const { id } = await params;
 
   try {

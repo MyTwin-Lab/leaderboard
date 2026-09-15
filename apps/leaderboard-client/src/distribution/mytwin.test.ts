@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PlatformRegistry } from '../../../../packages/registry/platform';
 import {
-  SANDBOX_EVALUATION_GRID,
   SANDBOX_EVALUATION_HANDLER,
   SANDBOX_EVALUATION_OWNER,
 } from '../../../../packages/services/sandbox/sandbox-evaluation.service';
@@ -58,9 +57,18 @@ describe('distribution MyTwin', () => {
     }
   });
 
+  it('lets the sandbox propose code and ML challenges', () => {
+    const proposable = platform.flows.filter((flow) => flow.proposable).map((flow) => flow.descriptor.key);
+    expect(proposable).toEqual([codeFlowDescriptor.key, mlFlowDescriptor.key]);
+  });
+
   it('seeds every grid a flow evaluates with', () => {
     const seeded = gridSeeds.map((seed) => seed.slug);
-    const used = [SANDBOX_EVALUATION_GRID, 'code', ...Object.values(ML_ROLE_RULE).map((role) => role.grid)];
+    const used = [
+      'code',
+      ...Object.values(ML_ROLE_RULE).map((role) => role.grid),
+      ...platform.flows.map((flow) => flow.proposable?.evaluation?.grid),
+    ];
 
     for (const slug of used.filter((grid): grid is string => !!grid)) {
       expect(seeded).toContain(slug);

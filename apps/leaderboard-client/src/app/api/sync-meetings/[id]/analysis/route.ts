@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MeetingAnalysisRepository } from '../../../../../../../../packages/database-service/repositories/meetingAnalysis.repo.js';
 import { getSessionUser } from '@/lib/auth';
+import { moduleNotFoundResponse } from '@/lib/server/modules';
 import { loadAccessibleMeeting, toAnalysisView } from '../../meetingAccess';
 
 export async function GET(
@@ -8,6 +9,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Module désactivé : la route n'existe pas.
+    const disabled = await moduleNotFoundResponse('meetings');
+    if (disabled) return disabled;
+
     const user = await getSessionUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

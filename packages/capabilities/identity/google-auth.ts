@@ -1,6 +1,11 @@
 import { OAuth2Client } from 'google-auth-library';
 import { config } from '../../config/index.js';
 
+/**
+ * Identité — la connexion Google des utilisateurs (OAuth2, lecture du profil).
+ * Rien d'autre : l'agenda et Meet restent au module meetings
+ * (`services/google-workspace`).
+ */
 export class GoogleAuthService {
   private oauth2Client: OAuth2Client;
 

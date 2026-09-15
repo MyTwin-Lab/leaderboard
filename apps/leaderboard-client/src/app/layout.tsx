@@ -8,7 +8,8 @@ import { Footer } from "@/components/layout/Footer";
 import { OnboardingDrawer } from "@/components/onboarding/OnboardingDrawer";
 import { SessionGuard } from "@/components/layout/SessionGuard";
 import { fetchContributorSession } from "@/lib/contributor";
-import { fetchOnboardingProgress } from "@/lib/server/onboarding";
+import { fetchOnboardingQuests } from "@/lib/server/onboarding";
+import { modules } from "@packages/capabilities/modules";
 import { AppSettingsRepository } from "@packages/database-service/repositories";
 import { THEMES, DEFAULT_THEME_KEY, isValidThemeKey } from "@/lib/themes";
 import { resolveTheme } from "@/lib/color-utils";
@@ -66,7 +67,11 @@ export default async function RootLayout({
     fetchContributorSession(),
     appSettingsRepo.get(),
   ]);
-  const onboarding = session ? await fetchOnboardingProgress(session.id) : null;
+  // Le tiroir d'onboarding : module actif, et au moins une quête à accomplir.
+  const onboardingQuests = session && (await modules.enabled("onboarding"))
+    ? await fetchOnboardingQuests(session.id)
+    : [];
+  const showOnboarding = onboardingQuests.some((quest) => !quest.completed);
 
   const themeKey = isValidThemeKey(settings.theme_key) ? settings.theme_key : DEFAULT_THEME_KEY;
   const palette = THEMES[themeKey];
@@ -102,9 +107,7 @@ export default async function RootLayout({
               {children}
             </main>
             <Footer />
-            {session && onboarding && !onboarding.completed_at && settings.modules_onboarding_enabled && (
-              <OnboardingDrawer initialProgress={onboarding} />
-            )}
+            {showOnboarding && <OnboardingDrawer quests={onboardingQuests} />}
             {session && <SessionGuard />}
           </GradientBackground>
         </Providers>

@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronRight, FileClock, RefreshCw } from "lucide-react";
+import { ChevronRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Toggle } from "@/components/ui/Toggle";
 import { formatCP } from "@/lib/formatters";
 
 interface DigestCounts {
@@ -55,11 +54,6 @@ interface DigestPayload {
     user_id: string; full_name: string; challenge_title: string;
     total_cp: number; by_rule: Record<string, number>;
   }>;
-}
-
-interface Props {
-  enabled: boolean;
-  frequencyDays: number;
 }
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
@@ -208,9 +202,11 @@ function DigestDetail({ id }: { id: string }) {
   );
 }
 
-export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequency }: Props) {
-  const [enabled, setEnabled] = useState(initialEnabled);
-  const [frequency, setFrequency] = useState(String(initialFrequency));
+/**
+ * Onglet admin « Digest » : l'historique et la génération manuelle. L'activation
+ * et l'intervalle se règlent dans l'écran des modules.
+ */
+export function DigestTab() {
   const [digests, setDigests] = useState<DigestSummary[] | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -230,38 +226,6 @@ export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequ
   }, []);
 
   useEffect(() => { void loadDigests(); }, [loadDigests]);
-
-  const saveSettings = async (patch: Record<string, unknown>, rollback: () => void) => {
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/digest-settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      if (!res.ok) throw new Error((await res.json()).error ?? "Failed to save");
-    } catch (e) {
-      rollback();
-      setError(e instanceof Error ? e.message : "Failed to save");
-    }
-  };
-
-  const toggleEnabled = (value: boolean) => {
-    setEnabled(value);
-    void saveSettings({ digest_enabled: value }, () => setEnabled(!value));
-  };
-
-  const commitFrequency = () => {
-    const days = Number(frequency);
-    if (!Number.isInteger(days) || days < 1 || days > 365) {
-      setFrequency(String(initialFrequency));
-      setError("Frequency must be a whole number of days between 1 and 365");
-      return;
-    }
-    void saveSettings({ digest_frequency_days: days }, () =>
-      setFrequency(String(initialFrequency)),
-    );
-  };
 
   const generateNow = async () => {
     setGenerating(true);
@@ -286,45 +250,6 @@ export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequ
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
-          Digest
-        </h2>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5">
-            <div className="flex items-center gap-3 min-w-0">
-              <FileClock className="h-4 w-4 text-white/50" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-white">Automatic generation</p>
-                <p className="text-xs text-white/35 mt-0.5">
-                  A daily check generates a digest once the interval has elapsed
-                </p>
-              </div>
-            </div>
-            <Toggle enabled={enabled} onChange={toggleEnabled} />
-          </div>
-
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-white">Interval</p>
-              <p className="text-xs text-white/35 mt-0.5">Days between two automatic digests</p>
-            </div>
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
-              onBlur={commitFrequency}
-              className="w-20 shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-right text-sm text-white focus:border-brandCP/40 focus:outline-none"
-            />
-          </div>
-        </div>
-
-        {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
-      </div>
-
       <div>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30">
@@ -359,6 +284,8 @@ export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequ
           </div>
         </div>
 
+        {error && <p className="mb-3 text-xs text-red-400">{error}</p>}
+
         <p className="mb-3 text-xs text-white/25">
           {startDate
             ? `The digest will cover ${formatDate(`${startDate}T00:00:00.000Z`)} → now. Picking a start can overlap a period an earlier digest already covered.`
@@ -369,7 +296,7 @@ export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequ
 
         {digests?.length === 0 && (
           <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-6 text-center text-xs text-white/30">
-            No digest yet. Enable automatic generation, or generate one now.
+            No digest yet. Generate one now, or wait for the next automatic digest.
           </p>
         )}
 

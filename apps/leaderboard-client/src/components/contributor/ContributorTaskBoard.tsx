@@ -9,7 +9,6 @@ import {
   type DragStartEvent, type DragEndEvent,
 } from '@dnd-kit/core';
 import { Loader2, MoreVertical, Trash2, Plus } from 'lucide-react';
-import { trackOnboardingStep } from '@/lib/onboarding-track';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -99,9 +98,6 @@ export function ContributorTaskBoard({
       const d = await res.json().catch(() => ({}));
       throw new Error(d.error || 'Failed to create task');
     }
-    // Onboarding's "got to work" step is now keyed off creating your first
-    // personal task rather than self-assigning one — marking it is idempotent.
-    trackOnboardingStep('assigned_task');
     await onReload();
   };
 

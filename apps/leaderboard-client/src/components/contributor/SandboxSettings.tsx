@@ -87,14 +87,15 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
   const patchSettings = async (body: Record<string, unknown>): Promise<boolean> => {
     setError(null);
     try {
-      const res = await fetch("/api/admin/sandbox-settings", {
+      // Les réglages du module sandbox : fusionnés aux actuels, puis validés par son schéma.
+      const res = await fetch("/api/modules/sandbox", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ settings: body }),
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => null);
-        throw new Error(payload?.error ?? "Failed to save");
+        throw new Error(payload?.details ?? payload?.error ?? "Failed to save");
       }
       return true;
     } catch (e) {
@@ -112,7 +113,7 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
     }
     setSavingTiers(true);
     setTiersMessage(null);
-    const ok = await patchSettings({ sandbox_star_tiers: validation.tiers });
+    const ok = await patchSettings({ star_tiers: validation.tiers });
     setSavingTiers(false);
     if (ok) setTiersMessage("Milestones saved.");
   };
@@ -124,7 +125,7 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
       setError(validation.error);
       return;
     }
-    await patchSettings({ sandbox_promotion_bonus_cp: validation.value });
+    await patchSettings({ promotion_bonus_cp: validation.value });
   };
 
   // Le listing public sert de sélecteur : un admin y voit tout, archivés

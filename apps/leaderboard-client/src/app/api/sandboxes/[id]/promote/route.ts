@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { SandboxPromotionService } from "../../../../../../../../packages/services/sandbox";
+import { SANDBOX_MODULE, SandboxPromotionService } from "../../../../../../../../packages/services/sandbox";
 import { getSessionUser } from "@/lib/auth";
+import { moduleNotFoundResponse } from "@/lib/server/modules";
 import { sandboxErrorResponse } from "@/lib/server/sandboxErrors";
 import { slugField } from "@/lib/server/slugs";
 
@@ -15,9 +16,9 @@ const service = new SandboxPromotionService();
  *
  * - `type` — hérité de la proposition, immuable (le tiroir verrouille le
  *   sélecteur, `buildPromotedChallengeDraft` le garantit côté serveur) ;
- * - `workspace_mode` et `github_repo` — un sandbox `code` devient forcément un
- *   challenge `own_repo` sur le dépôt de son auteur, il n'y a pas de repo
- *   partagé à saisir ;
+ * - `workspace_mode` et `github_repo` — la configuration du challenge est
+ *   décidée par le flow de la proposition (`proposable.promote`) : un sandbox
+ *   `code` devient un challenge `own_repo` sur le dépôt de son auteur ;
  * - `source_challenge_id`, `cp_per_validation`, `required_validations` — propres
  *   aux challenges de validation, qui dérivent d'un challenge ML existant et ne
  *   peuvent pas naître d'une proposition.
@@ -51,8 +52,12 @@ const promoteSchema = z.object({
  * `409` quand la proposition n'est plus `open` : elle a déjà été promue (ou
  * archivée). C'est la garde en tête de transaction qui le dit, pas une lecture
  * préalable — deux POST concurrents ne peuvent pas produire deux challenges.
+ * `409` aussi quand le flow de la proposition n'est plus installé ou proposable.
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const disabled = await moduleNotFoundResponse(SANDBOX_MODULE);
+  if (disabled) return disabled;
+
   try {
     // Rôle relu en base : le JWT garde l'ancien rôle jusqu'à son expiration.
     const session = await getSessionUser();

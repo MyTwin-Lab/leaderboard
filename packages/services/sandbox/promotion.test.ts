@@ -1,11 +1,9 @@
 import { describe, it, expect } from "vitest";
 import type { Sandbox } from "../../database-service/domain/entities.js";
 import {
-  buildAuthorContributions,
   buildAuthorParticipation,
   buildPromotedChallengeDraft,
   buildPromotedDescription,
-  seedMlWorkspaceMeta,
   type PromotionInput,
 } from "./promotion.js";
 
@@ -45,7 +43,7 @@ const baseInput: PromotionInput = {
 };
 
 describe("buildPromotedChallengeDraft", () => {
-  it("hérite le type de la proposition, même quand l'entrée en réclame un autre", () => {
+  it("hérite le flow de la proposition, même quand l'entrée en réclame un autre", () => {
     const draft = buildPromotedChallengeDraft(sandbox({ type: "ml" }), {
       ...baseInput,
       type: "validation",
@@ -53,15 +51,17 @@ describe("buildPromotedChallengeDraft", () => {
     expect(draft.type).toBe("ml");
   });
 
-  it("force own_repo pour un sandbox code, et ne pose aucun mode pour un ml", () => {
+  it("pose la configuration décidée par le flow, et ignore le mode demandé", () => {
     expect(
-      buildPromotedChallengeDraft(sandbox({ type: "code" }), {
-        ...baseInput,
-        workspace_mode: "provided_repo",
-      }).flow_config,
+      buildPromotedChallengeDraft(
+        sandbox({ type: "code" }),
+        { ...baseInput, workspace_mode: "provided_repo" },
+        { workspace_mode: "own_repo" },
+      ).flow_config,
     ).toEqual({ workspace_mode: "own_repo" });
 
-    expect(buildPromotedChallengeDraft(sandbox({ type: "ml" }), baseInput).flow_config.workspace_mode).toBeUndefined();
+    // Un flow sans décision de promotion : une configuration vide, que son schéma complète.
+    expect(buildPromotedChallengeDraft(sandbox(), baseInput).flow_config).toEqual({});
   });
 
   it("reprend le titre de la proposition quand l'admin n'en saisit pas", () => {
@@ -78,20 +78,10 @@ describe("buildPromotedChallengeDraft", () => {
     ).toBe("Rewritten.");
   });
 
-  it("n'active le compute que sur un ml, et jamais les champs de validation", () => {
-    const ml = buildPromotedChallengeDraft(sandbox({ type: "ml" }), {
-      ...baseInput,
-      compute_enabled: true,
-    });
-    expect(ml.flow_config).toEqual({ extensions: { compute: { enabled: true } } });
-
-    const code = buildPromotedChallengeDraft(sandbox({ type: "code" }), {
-      ...baseInput,
-      compute_enabled: true,
-    });
-    expect(code.flow_config.extensions).toBeUndefined();
-    expect(code.source_challenge_id).toBeNull();
-    expect(code.completion).toBe(0);
+  it("ne pose jamais les champs de validation", () => {
+    const draft = buildPromotedChallengeDraft(sandbox(), baseInput);
+    expect(draft.source_challenge_id).toBeNull();
+    expect(draft.completion).toBe(0);
   });
 
   it("traite une date vide comme une absence de date", () => {
@@ -141,93 +131,5 @@ describe("buildAuthorParticipation", () => {
       workspace_url: "https://github.com/alice/triage",
       workspace_status: "ready",
     });
-  });
-});
-
-describe("seedMlWorkspaceMeta", () => {
-  const mlSandbox = sandbox({
-    type: "ml",
-    model_url: "https://kaggle.com/models/alice/triage",
-    dataset_urls: ["https://kaggle.com/datasets/alice/intake", "https://kaggle.com/datasets/bob/vitals"],
-  });
-
-  it("recopie datasets, modèle et code dans les formes attendues par le workspace ML", () => {
-    expect(seedMlWorkspaceMeta(mlSandbox, AUTHOR)).toEqual({
-      dataset: {
-        userUrls: { [AUTHOR]: "https://kaggle.com/datasets/alice/intake" },
-        datasetUrls: {
-          [AUTHOR]: [
-            "https://kaggle.com/datasets/alice/intake",
-            "https://kaggle.com/datasets/bob/vitals",
-          ],
-        },
-      },
-      model: { userUrls: { [AUTHOR]: "https://kaggle.com/models/alice/triage" } },
-      model_code: { userUrls: { [AUTHOR]: "https://github.com/alice/triage" } },
-    });
-  });
-
-  it("n'écrit rien pour le rôle model quand la proposition n'a pas de modèle", () => {
-    const seed = seedMlWorkspaceMeta(sandbox({ ...mlSandbox, model_url: null }), AUTHOR);
-    expect(seed.model).toBeUndefined();
-    expect(seed.dataset).toBeDefined();
-    expect(seed.model_code).toBeDefined();
-  });
-
-  it("ne produit aucun workspace pour un sandbox code", () => {
-    expect(seedMlWorkspaceMeta(sandbox({ type: "code" }), AUTHOR)).toEqual({});
-  });
-});
-
-describe("buildAuthorContributions", () => {
-  const mlSandbox = sandbox({
-    type: "ml",
-    model_url: "https://kaggle.com/models/alice/triage",
-    dataset_urls: ["https://kaggle.com/datasets/alice/intake"],
-  });
-  const now = new Date("2026-02-02T10:00:00Z");
-
-  it("reprend le dataset et le code du modèle, jamais le modèle seul", () => {
-    const drafts = buildAuthorContributions(mlSandbox, CHALLENGE_ID, now);
-    expect(drafts.map((d) => d.role)).toEqual(["dataset", "model_code"]);
-
-    const [dataset, modelCode] = drafts;
-    expect(dataset.contribution.type).toBe("dataset");
-    expect(dataset.contribution.artifact_url).toBe("kaggle.com/datasets/alice/intake");
-    expect(dataset.url).toBe("https://kaggle.com/datasets/alice/intake");
-
-    // L'étape modèle n'a qu'une contribution pour ses deux repos, et le code
-    // n'identifie pas l'artefact — pas d'artifact_url.
-    expect(modelCode.contribution.type).toBe("model");
-    expect(modelCode.contribution.artifact_url).toBeUndefined();
-    expect(modelCode.contribution.description).toBe(
-      "model: https://kaggle.com/models/alice/triage\nmodel_code: https://github.com/alice/triage",
-    );
-    expect(modelCode.url).toBe("https://github.com/alice/triage");
-  });
-
-  it("omet la ligne model quand la proposition n'a pas de modèle", () => {
-    const [, ...rest] = buildAuthorContributions(
-      sandbox({ ...mlSandbox, model_url: null }),
-      CHALLENGE_ID,
-      now,
-    );
-    expect(rest[0].contribution.description).toBe("model_code: https://github.com/alice/triage");
-  });
-
-  it("ne reprend rien pour un sandbox code — son dépôt suit le cycle du challenge", () => {
-    expect(buildAuthorContributions(sandbox({ type: "code" }), CHALLENGE_ID, now)).toEqual([]);
-  });
-
-  it("marque les contributions à évaluer, à zéro CP, au nom de l'auteur", () => {
-    for (const draft of buildAuthorContributions(mlSandbox, CHALLENGE_ID, now)) {
-      expect(draft.contribution).toMatchObject({
-        reward: 0,
-        user_id: AUTHOR,
-        challenge_id: CHALLENGE_ID,
-        evaluation_status: "pending",
-        submitted_at: now,
-      });
-    }
   });
 });

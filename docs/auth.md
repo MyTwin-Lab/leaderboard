@@ -161,7 +161,7 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/api/google-auth/callback
 | `apps/leaderboard-client/src/app/api/google-auth/callback/route.ts` | Handles OAuth callback, creates/links user, issues JWT |
 | `apps/leaderboard-client/src/app/api/auth/refresh/route.ts` | Token refresh handler |
 | `apps/leaderboard-client/src/app/api/auth/logout/route.ts` | Logout handler |
-| `packages/services/google-workspace/google-auth.service.ts` | Google OAuth client (getAuthUrl, getTokensFromCode, getUserInfo) |
+| `packages/capabilities/identity/google-auth.ts` | Google OAuth client (getAuthUrl, getTokensFromCode, getUserInfo) |
 | `apps/leaderboard-client/src/app/api/auth/check-session/route.ts` | Account-still-exists check called by the proxy |
 | `apps/leaderboard-client/src/lib/server/publicPages.ts` | Which pages/routes bypass the proxy entirely |
 | `packages/database-service/repositories/refresh-token.repo.ts` | Refresh token DB operations |

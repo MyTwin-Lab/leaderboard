@@ -4,10 +4,16 @@ import {
   buildEvaluationContext,
 } from "./sandbox-evaluation.service.js";
 import type { Sandbox } from "../../database-service/domain/entities.js";
+import type { ProposableDeclaration } from "../../registry/platform.js";
+import { codeProposable } from "../../../content/flows/code/proposable.js";
+import { mlProposable } from "../../../content/flows/ml/proposable.js";
 
 const SB = "sb-1";
 const ALICE = "alice";
 const EVENT = { sandboxId: SB, userId: ALICE };
+
+/** Les flows proposables de la distribution MyTwin, sans installer le registre. */
+const PROPOSABLE: Record<string, ProposableDeclaration> = { code: codeProposable, ml: mlProposable };
 
 function makeSandbox(over: Partial<Sandbox> = {}): Sandbox {
   return {
@@ -66,9 +72,9 @@ function makeDeps(opts: { sandbox?: Partial<Sandbox> | null; claim?: boolean; fa
     }),
   };
 
-  const evaluateRepo = vi.fn(async () => {
+  const evaluate = vi.fn(async (_request: any) => {
     if (opts.fails) throw new Error("agent down");
-    return { score10: 8, evaluation: { globalScore: 7.2, scores: [] } };
+    return { runId: "run-1", evaluation: { globalScore: 7.2, scores: [] }, refs: ["abc"] };
   });
 
   // Les repositories de reward : jamais touchés, et c'est ce qu'on vérifie.
@@ -79,8 +85,12 @@ function makeDeps(opts: { sandbox?: Partial<Sandbox> | null; claim?: boolean; fa
   };
   const contributionRepo = { create: vi.fn(), update: vi.fn() };
 
-  const service = new SandboxEvaluationService({ sandboxRepo, evaluateRepo } as any);
-  return { service, sandboxRepo, evaluateRepo, rewardRepo, contributionRepo, stored, transitions };
+  const service = new SandboxEvaluationService({
+    sandboxRepo,
+    evaluate,
+    proposable: (flowKey) => PROPOSABLE[flowKey],
+  } as any);
+  return { service, sandboxRepo, evaluate, rewardRepo, contributionRepo, stored, transitions };
 }
 
 describe("buildEvaluationContext", () => {
@@ -104,24 +114,9 @@ describe("buildEvaluationContext", () => {
     expect(text).not.toContain("What the author set out to build");
   });
 
-  it("injecte modèle et datasets d'un sandbox ml", () => {
-    const text = buildEvaluationContext(
-      makeSandbox({
-        type: "ml",
-        model_url: "https://hf.co/acme/model",
-        dataset_urls: ["https://kaggle.com/d/one", "https://kaggle.com/d/two"],
-      }),
-    );
-    expect(text).toContain("Model artifact: https://hf.co/acme/model");
-    expect(text).toContain("Datasets: https://kaggle.com/d/one, https://kaggle.com/d/two");
-  });
-
-  it("un sandbox ml sans modèle ne produit aucune ligne Model artifact", () => {
-    const text = buildEvaluationContext(
-      makeSandbox({ type: "ml", model_url: null, dataset_urls: ["https://kaggle.com/d/one"] }),
-    );
-    expect(text).not.toContain("Model artifact");
-    expect(text).toContain("Datasets: https://kaggle.com/d/one");
+  it("ajoute en dernier les lignes que le flow tire des champs", () => {
+    const text = buildEvaluationContext(makeSandbox(), ["Datasets: https://kaggle.com/d/one"]);
+    expect(text.endsWith("Datasets: https://kaggle.com/d/one")).toBe(true);
   });
 });
 
@@ -141,9 +136,21 @@ describe("SandboxEvaluationService.canEvaluate", () => {
     expect(await service.canEvaluate(SB, ALICE)).toEqual({ ok: false, reason: "not_found" });
   });
 
-  it("refuse une URL de repo inexploitable", async () => {
+  it("refuse des champs dont le flow ne tire aucune entrée", async () => {
     const { service } = makeDeps({ sandbox: { repo_url: "https://gitlab.com/acme/widget" } });
-    expect(await service.canEvaluate(SB, ALICE)).toEqual({ ok: false, reason: "invalid_repo" });
+    expect(await service.canEvaluate(SB, ALICE)).toEqual({ ok: false, reason: "invalid_fields" });
+  });
+
+  it("lit les champs du jsonb avant les anciennes colonnes", async () => {
+    const { service } = makeDeps({
+      sandbox: { repo_url: "https://github.com/acme/widget", proposal_fields: { repo_url: "https://gitlab.com/x/y" } },
+    });
+    expect(await service.canEvaluate(SB, ALICE)).toEqual({ ok: false, reason: "invalid_fields" });
+  });
+
+  it("refuse un sandbox dont le flow n'évalue plus de propositions", async () => {
+    const { service } = makeDeps({ sandbox: { type: "journey-validation" } });
+    expect(await service.canEvaluate(SB, ALICE)).toEqual({ ok: false, reason: "not_evaluable" });
   });
 
   it("refuse tant qu'un run est en vol", async () => {
@@ -154,12 +161,12 @@ describe("SandboxEvaluationService.canEvaluate", () => {
 
 describe("SandboxEvaluationService.claim", () => {
   it("bascule en running par compare-and-set, sans lancer l'agent", async () => {
-    const { service, transitions, evaluateRepo } = makeDeps();
+    const { service, transitions, evaluate } = makeDeps();
 
     expect(await service.claim(EVENT)).toEqual({ ok: true });
 
     expect(transitions).toEqual([{ status: "running", expectedFrom: null }]);
-    expect(evaluateRepo).not.toHaveBeenCalled();
+    expect(evaluate).not.toHaveBeenCalled();
   });
 
   it("un second claim pendant le run reçoit already_running", async () => {
@@ -189,7 +196,8 @@ describe("SandboxEvaluationService.claim", () => {
   it.each([
     [{ sandbox: null }, ALICE, "not_found"],
     [{}, "bob", "not_author"],
-    [{ sandbox: { repo_url: "https://gitlab.com/acme/widget" } }, ALICE, "invalid_repo"],
+    [{ sandbox: { repo_url: "https://gitlab.com/acme/widget" } }, ALICE, "invalid_fields"],
+    [{ sandbox: { type: "unknown" } }, ALICE, "not_evaluable"],
     [{ sandbox: { evaluation_status: "pending" as const } }, ALICE, "already_running"],
   ] as const)("refuse sans rien écrire (%#)", async (opts, userId, reason) => {
     const { service, transitions } = makeDeps(opts as any);
@@ -201,50 +209,61 @@ describe("SandboxEvaluationService.claim", () => {
 
 describe("SandboxEvaluationService.run", () => {
   it("n'évalue rien sans claim préalable", async () => {
-    const { service, evaluateRepo, transitions } = makeDeps();
+    const { service, evaluate, transitions } = makeDeps();
 
     await service.run(EVENT);
 
-    expect(evaluateRepo).not.toHaveBeenCalled();
+    expect(evaluate).not.toHaveBeenCalled();
     expect(transitions).toHaveLength(0);
   });
 
   it("n'évalue rien pour qui n'est pas l'auteur", async () => {
-    const { service, evaluateRepo, transitions } = makeDeps({ sandbox: { evaluation_status: "running" } });
+    const { service, evaluate, transitions } = makeDeps({ sandbox: { evaluation_status: "running" } });
 
     await service.run({ sandboxId: SB, userId: "bob" });
 
-    expect(evaluateRepo).not.toHaveBeenCalled();
+    expect(evaluate).not.toHaveBeenCalled();
     expect(transitions).toHaveLength(0);
   });
 
-  it("passe à failed si l'URL du repo n'est plus exploitable", async () => {
-    const { service, evaluateRepo, transitions } = makeDeps({
+  it("passe à failed si les champs ne donnent plus d'entrée", async () => {
+    const { service, evaluate, transitions } = makeDeps({
       sandbox: { evaluation_status: "running", repo_url: "https://gitlab.com/acme/widget" },
     });
 
-    await expect(service.run(EVENT)).rejects.toThrow("Unparseable repo URL");
+    await expect(service.run(EVENT)).rejects.toThrow("Unusable proposal fields");
 
-    expect(evaluateRepo).not.toHaveBeenCalled();
+    expect(evaluate).not.toHaveBeenCalled();
+    expect(transitions).toEqual([{ status: "failed", expectedFrom: undefined }]);
+  });
+
+  it("passe à failed si le flow a été retiré depuis le claim", async () => {
+    const { service, evaluate, transitions } = makeDeps({
+      sandbox: { evaluation_status: "running", type: "retired" },
+    });
+
+    await expect(service.run(EVENT)).rejects.toThrow('Flow "retired" does not evaluate proposals');
+
+    expect(evaluate).not.toHaveBeenCalled();
     expect(transitions).toEqual([{ status: "failed", expectedFrom: undefined }]);
   });
 });
 
 describe("SandboxEvaluationService.evaluate", () => {
-  it("passe à running puis stocke le résultat en done", async () => {
-    const { service, evaluateRepo, transitions, stored, rewardRepo, contributionRepo } = makeDeps();
+  it("évalue avec la source et la grille déclarées par le flow, puis stocke en done", async () => {
+    const { service, evaluate, transitions, stored, rewardRepo, contributionRepo } = makeDeps();
 
     await service.evaluate(EVENT);
 
     expect(transitions).toEqual([{ status: "running", expectedFrom: null }]);
     expect(stored).toEqual([{ evaluation: { globalScore: 7.2, scores: [] }, status: "done" }]);
 
-    // Grille `code` quel que soit le type (§1.3), et le contexte en description.
-    expect(evaluateRepo).toHaveBeenCalledWith(
+    expect(evaluate).toHaveBeenCalledWith(
       expect.objectContaining({
-        slug: "acme/widget",
+        bundle: { source: "github-snapshot", input: { slug: "acme/widget", branch: undefined } },
         gridSlug: "code",
-        subject: expect.objectContaining({ challengeId: SB, userId: ALICE }),
+        subject: expect.objectContaining({ ref: SB, userId: ALICE, type: "code" }),
+        origin: expect.objectContaining({ owner: "sandbox", handler: "formative", challengeId: null }),
       }),
     );
 
@@ -254,17 +273,17 @@ describe("SandboxEvaluationService.evaluate", () => {
     }
   });
 
-  it("évalue un sandbox ml avec la grille code et le contexte enrichi", async () => {
-    const { service, evaluateRepo } = makeDeps({
+  it("donne à l'agent les artefacts d'une proposition ml, par le contexte de son flow", async () => {
+    const { service, evaluate } = makeDeps({
       sandbox: { type: "ml", dataset_urls: ["https://kaggle.com/d/one"] },
     });
 
     await service.evaluate(EVENT);
 
-    const input = (evaluateRepo.mock.calls[0] as unknown as any[])[0];
-    expect(input.gridSlug).toBe("code");
-    expect(input.subject.description).toContain("Datasets: https://kaggle.com/d/one");
-    expect(input.subject.description).not.toContain("Model artifact");
+    const request = evaluate.mock.calls[0][0];
+    expect(request.gridSlug).toBe("code");
+    expect(request.subject.description).toContain("Datasets: https://kaggle.com/d/one");
+    expect(request.subject.description).not.toContain("Model artifact");
   });
 
   it("passe à failed et relaie l'erreur quand l'agent lève", async () => {
@@ -280,30 +299,30 @@ describe("SandboxEvaluationService.evaluate", () => {
   });
 
   it("ignore un sandbox déjà en cours d'évaluation", async () => {
-    const { service, evaluateRepo, transitions } = makeDeps({
+    const { service, evaluate, transitions } = makeDeps({
       sandbox: { evaluation_status: "running" },
     });
 
     await service.evaluate(EVENT);
 
-    expect(evaluateRepo).not.toHaveBeenCalled();
+    expect(evaluate).not.toHaveBeenCalled();
     expect(transitions).toHaveLength(0);
   });
 
   it("ignore un run dont un autre appel a pris la main", async () => {
-    const { service, evaluateRepo } = makeDeps({ claim: false });
+    const { service, evaluate } = makeDeps({ claim: false });
 
     await service.evaluate(EVENT);
 
-    expect(evaluateRepo).not.toHaveBeenCalled();
+    expect(evaluate).not.toHaveBeenCalled();
   });
 
   it("n'évalue rien pour qui n'est pas l'auteur", async () => {
-    const { service, evaluateRepo, transitions } = makeDeps();
+    const { service, evaluate, transitions } = makeDeps();
 
     await service.evaluate({ sandboxId: SB, userId: "bob" });
 
-    expect(evaluateRepo).not.toHaveBeenCalled();
+    expect(evaluate).not.toHaveBeenCalled();
     expect(transitions).toHaveLength(0);
   });
 });

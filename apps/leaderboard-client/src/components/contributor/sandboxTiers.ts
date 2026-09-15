@@ -1,7 +1,7 @@
 /**
  * Validation des paliers de stars, côté formulaire admin.
  * -------------------------------------------------------
- * `sandboxSettingsPatchSchema` reste l'autorité : cette fonction ne fait que
+ * Le schéma des réglages du module sandbox reste l'autorité : cette fonction ne fait que
  * dire à l'admin, avant l'envoi, ce que l'API refuserait — et surtout
  * *pourquoi*, là où un 400 ne rendrait qu'un `flatten()`.
  *
@@ -19,7 +19,7 @@ export interface TierDraft {
   cp: string;
 }
 
-/** Un palier validé, dans la forme attendue par `PATCH /api/admin/sandbox-settings`. */
+/** Un palier validé, dans la forme attendue par `PATCH /api/modules/sandbox` (`settings.star_tiers`). */
 export interface TierValue {
   stars: number;
   cp: number;

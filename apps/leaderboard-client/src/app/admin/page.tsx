@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
-import { AlertTriangle, CalendarDays, PlayCircle, Trophy, Users, BarChart2, Video } from 'lucide-react';
+import { Empty, SectionHeader, StatCard } from '@/components/admin/overviewCards';
+import { useModuleSlots } from '@/distribution/mytwin.modules';
+import { AlertTriangle, PlayCircle, Trophy, Users, BarChart2 } from 'lucide-react';
 
 /* ── Types ── */
 interface Stats {
@@ -13,11 +15,9 @@ interface Stats {
   registeredUsers: number;
   totalContributions: number;
   publishedGrids: number;
-  upcomingMeetings: number;
 }
 interface ActiveChallenge { uuid: string; title: string; end_date: string; contribution_points_reward: number; }
 interface RecentRun { uuid: string; status: string; trigger_type: string; started_at?: string; challengeTitle?: string; durationMs?: number; challenge_id: string; }
-interface UpcomingMeeting { uuid: string; title: string; start_time: string; status: string; }
 
 /* ── Helpers ── */
 function daysUntil(date: string) { return Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000); }
@@ -31,37 +31,9 @@ function fmtDuration(ms?: number) {
   return `${Math.floor(ms / 60_000)}m ${Math.floor((ms % 60_000) / 1000)}s`;
 }
 
-/* ── Stat card ── */
-function StatCard({ label, value, loading, icon }: { label: string; value: number; loading: boolean; icon: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-white/25">{label}</span>
-        <span className="text-primary-100/30">{icon}</span>
-      </div>
-      <div className="text-3xl font-bold text-white">
-        {loading ? <span className="inline-block h-8 w-12 animate-pulse rounded-lg bg-white/10" /> : value}
-      </div>
-    </div>
-  );
-}
-
-/* ── Section header ── */
-function SectionHeader({ title, href }: { title: string; href: string }) {
-  return (
-    <div className="mb-4 flex items-center justify-between">
-      <h3 className="text-[10px] font-semibold uppercase tracking-widest text-white/30">{title}</h3>
-      <Link href={href} className="text-xs text-white/30 transition-colors hover:text-brandCP">View all →</Link>
-    </div>
-  );
-}
-
-function Empty({ label }: { label: string }) {
-  return <p className="py-8 text-center text-xs text-white/25">{label}</p>;
-}
-
 /* ── Tab: Overview ── */
-function TabOverview({ stats, loading }: { stats: Stats | null; loading: boolean }) {
+// `moduleStats` : les cartes des modules actifs (meetings…), après celles du core.
+function TabOverview({ stats, loading, moduleStats }: { stats: Stats | null; loading: boolean; moduleStats: ReactNode }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <StatCard label="Active Challenges" value={stats?.activeChallenges ?? 0} loading={loading} icon={<Trophy className="h-4 w-4" />} />
@@ -69,7 +41,7 @@ function TabOverview({ stats, loading }: { stats: Stats | null; loading: boolean
       <StatCard label="Users" value={stats?.registeredUsers ?? 0} loading={loading} icon={<Users className="h-4 w-4" />} />
       <StatCard label="Contributions" value={stats?.totalContributions ?? 0} loading={loading} icon={<BarChart2 className="h-4 w-4" />} />
       <StatCard label="Published Grids" value={stats?.publishedGrids ?? 0} loading={loading} icon={<BarChart2 className="h-4 w-4" />} />
-      <StatCard label="Upcoming Meetings" value={stats?.upcomingMeetings ?? 0} loading={loading} icon={<Video className="h-4 w-4" />} />
+      {moduleStats}
     </div>
   );
 }
@@ -142,59 +114,31 @@ function TabRuns({ runs, loading }: { runs: RecentRun[]; loading: boolean }) {
   );
 }
 
-/* ── Tab: Meetings ── */
-function TabMeetings({ meetings, loading }: { meetings: UpcomingMeeting[]; loading: boolean }) {
-  return (
-    <div className="max-w-xl space-y-3">
-      <SectionHeader title="Upcoming Meetings" href="/admin/meetings" />
-      {loading ? (
-        <div className="space-y-2 animate-pulse">{[...Array(4)].map((_, i) => <div key={i} className="h-14 rounded-xl bg-white/5" />)}</div>
-      ) : meetings.length === 0 ? <Empty label="No upcoming meetings" /> : (
-        <div className="space-y-2">
-          {meetings.map(m => (
-            <div key={m.uuid} className="flex items-center gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-              <CalendarDays className="h-4 w-4 shrink-0 text-white/25" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white">{m.title}</p>
-                <p className="text-xs text-white/35">{fmtDate(m.start_time)}</p>
-              </div>
-              <Badge label={m.status} />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ── Page ── */
 export default function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [activeChallenges, setActiveChallenges] = useState<ActiveChallenge[]>([]);
   const [recentRuns, setRecentRuns] = useState<RecentRun[]>([]);
-  const [upcomingMeetings, setUpcomingMeetings] = useState<UpcomingMeeting[]>([]);
   const [loading, setLoading] = useState(true);
+  // Les modules actifs ajoutent leurs cartes et leurs onglets, et chargent
+  // eux-mêmes leurs données.
+  const { slots } = useModuleSlots();
 
   useEffect(() => {
-    const now = new Date();
     Promise.all([
       fetch('/api/challenges').then(r => r.json()).catch(() => []),
       fetch('/api/projects').then(r => r.json()).catch(() => []),
       fetch('/api/users').then(r => r.json()).catch(() => []),
       fetch('/api/contributions').then(r => r.json()).catch(() => []),
       fetch('/api/evaluation-grids').then(r => r.json()).catch(() => []),
-      fetch('/api/sync-meetings').then(r => r.json()).catch(() => ({ meetings: [] })),
       fetch('/api/evaluation-runs?pageSize=5').then(r => r.json()).catch(() => []),
-    ]).then(([challenges, projects, users, contributions, grids, meetingsRes, runs]) => {
-      const meetings: any[] = meetingsRes?.meetings ?? [];
-
+    ]).then(([challenges, projects, users, contributions, grids, runs]) => {
       setStats({
         activeChallenges: challenges.filter((c: any) => c.status === 'active').length,
         totalProjects: projects.length,
         registeredUsers: users.length,
         totalContributions: contributions.length,
         publishedGrids: grids.filter((g: any) => g.status === 'published').length,
-        upcomingMeetings: meetings.filter((m: any) => new Date(m.start_time) > now).length,
       });
 
       // This list is "what ends soonest": a challenge without an end date has
@@ -210,16 +154,12 @@ export default function AdminPage() {
           ...r, challengeTitle: challengeMap[r.challenge_id], durationMs: r.meta?.durationMs,
         }))
       );
-
-      setUpcomingMeetings(
-        meetings.filter((m: any) => new Date(m.start_time) > now)
-          .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-          .slice(0, 6)
-      );
     }).finally(() => setLoading(false));
   }, []);
 
   const failedRuns = recentRuns.filter(r => r.status === 'failed');
+  const moduleStats = slots.map(({ key, AdminStat }) => AdminStat && <AdminStat key={key} />);
+  const moduleTabs = slots.flatMap(({ adminTab }) => adminTab ? [{ label: adminTab.label, panel: <adminTab.Panel /> }] : []);
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -236,10 +176,10 @@ export default function AdminPage() {
       )}
 
       <ContributorTabs tabs={[
-        { label: 'Overview',   panel: <TabOverview stats={stats} loading={loading} /> },
+        { label: 'Overview',   panel: <TabOverview stats={stats} loading={loading} moduleStats={moduleStats} /> },
         { label: 'Challenges', panel: <TabChallenges challenges={activeChallenges} loading={loading} /> },
         { label: 'Runs',       panel: <TabRuns runs={recentRuns} loading={loading} /> },
-        { label: 'Meetings',   panel: <TabMeetings meetings={upcomingMeetings} loading={loading} /> },
+        ...moduleTabs,
       ]} />
     </div>
   );

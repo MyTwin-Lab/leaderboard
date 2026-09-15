@@ -1,32 +1,25 @@
 import { SandboxRepository } from "../../database-service/repositories/index.js";
 import type { Sandbox } from "../../database-service/domain/entities.js";
-import { evaluateGithubRepo, parseGithubRepoUrl } from "../challenge/repo-evaluation.js";
+import type { ProposableDeclaration } from "../../registry/platform.js";
+import { evaluate } from "../../capabilities/evaluation.js";
+import { installedProposable, proposalFieldsOf } from "./proposal.js";
 
 /**
  * SandboxEvaluationService
  * ------------------------
- * L'évaluation **formative** d'une proposition : l'auteur lance l'agent sur son
- * repo et lit une note sur 10, pour savoir où il en est. Voir docs/sandbox.md.
+ * L'évaluation **formative** d'une proposition : l'auteur lance l'agent sur ce
+ * qu'il a déposé et lit une note sur 10, pour savoir où il en est. Voir
+ * docs/sandbox.md.
  *
- * Ce que ce service n'écrit **jamais** — et c'est ce qui le distingue de
- * `CodeRewardsService`, dont il partage pourtant le cœur d'exécution : aucune
- * ligne dans `reward_entries`, `sandbox_rewards` ni `contributions`. Un
- * sandbox ne rapporte des CP que par ses stars et sa promotion ; l'évaluation
- * est un miroir, pas une monnaie. Le service n'a donc aucun repository de
- * reward dans ses dépendances : l'absence est structurelle, pas une omission.
- */
-
-/**
- * **Les deux types de sandbox sont évalués avec la grille `code`** (§1.3 du plan).
+ * La source de bundle, la grille et l'entrée viennent de la déclaration
+ * `proposable.evaluation` du flow du sandbox ; le service passe par `evaluate()`
+ * comme toute évaluation, et ne connaît aucun type de proposition.
  *
- * Ce n'est pas un raccourci : la table des rôles de `ml-rewards.service.ts`
- * associe `model_code → code` et `model → null`, le rôle modèle se scorant sur
- * une métrique Kaggle et non sur une grille. La grille `model` n'évalue donc
- * jamais de code, et un sandbox n'a que du code à snapshoter. Ce qui distingue
- * un sandbox `ml`, c'est le contexte textuel passé à l'agent — voir
- * `buildEvaluationContext`.
+ * Ce que ce service n'écrit **jamais** : aucune ligne dans `reward_entries`,
+ * `sandbox_rewards` ni `contributions`. Un sandbox ne rapporte des CP que par
+ * ses stars et sa promotion ; l'évaluation est un miroir, pas une monnaie. Le
+ * service n'a donc aucun repository de reward dans ses dépendances.
  */
-export const SANDBOX_EVALUATION_GRID = "code";
 
 /**
  * Le module et le handler au nom desquels le run est tracé, et que le rejeu
@@ -39,7 +32,10 @@ export const SANDBOX_EVALUATION_HANDLER = "formative";
 export type CannotEvaluateSandboxReason =
   | "not_found"
   | "not_author"
-  | "invalid_repo"
+  /** Le flow du sandbox n'est plus installé, ou ne déclare pas d'évaluation formative. */
+  | "not_evaluable"
+  /** Les champs ne donnent pas d'entrée à la source (un dépôt illisible…). */
+  | "invalid_fields"
   | "already_running";
 
 export interface SandboxEvaluationEvent {
@@ -50,24 +46,22 @@ export interface SandboxEvaluationEvent {
 /** Dépendances injectables, sur le motif de `SandboxServiceDeps`. */
 export interface SandboxEvaluationDeps {
   sandboxRepo: Pick<SandboxRepository, "findById" | "setEvaluationStatus" | "storeEvaluation">;
-  /** Isole l'accès réseau (GitHub + OpenAI) — remplacé par une doublure en test. */
-  evaluateRepo: typeof evaluateGithubRepo;
+  /** La déclaration `proposable` d'un flow — le registre installé, par défaut. */
+  proposable: (flowKey: string) => ProposableDeclaration | undefined;
+  /** Isole l'accès réseau (source de bundle + agent) — remplacé par une doublure en test. */
+  evaluate: typeof evaluate;
 }
 
 /**
  * Le contexte textuel donné à l'agent.
  *
  * Un sandbox n'a pas de tâches ni de brief : ce texte est tout ce que l'agent
- * saura de l'intention de l'auteur. Les URLs de datasets et de modèle y sont
- * injectées quand elles existent — c'est là, et **pas dans le choix de la
- * grille**, que se joue la différence entre un sandbox `code` et un `ml`.
- *
- * Un sandbox `ml` sans artefact ne produit aucune ligne `Model artifact:` :
- * `model_url` est nullable par construction (§1.2), démarrer sans modèle est
- * un état normal.
+ * saura de l'intention de l'auteur. Les lignes que le flow tire des champs
+ * (`proposable.evaluation.context`, les artefacts d'une proposition ML) suivent.
  */
 export function buildEvaluationContext(
-  sandbox: Pick<Sandbox, "context" | "goals" | "why" | "model_url" | "dataset_urls">,
+  sandbox: Pick<Sandbox, "context" | "goals" | "why">,
+  fieldLines: string[] = [],
 ): string {
   const blocks: string[] = [];
 
@@ -86,10 +80,7 @@ export function buildEvaluationContext(
   const why = sandbox.why?.trim();
   if (why) blocks.push(`Why it matters: ${why}`);
 
-  if (sandbox.model_url) blocks.push(`Model artifact: ${sandbox.model_url}`);
-
-  const datasets = (sandbox.dataset_urls ?? []).filter(Boolean);
-  if (datasets.length > 0) blocks.push(`Datasets: ${datasets.join(", ")}`);
+  blocks.push(...fieldLines.filter(Boolean));
 
   return blocks.join("\n\n");
 }
@@ -100,7 +91,8 @@ export class SandboxEvaluationService {
   constructor(deps?: Partial<SandboxEvaluationDeps>) {
     this.deps = {
       sandboxRepo: new SandboxRepository(),
-      evaluateRepo: evaluateGithubRepo,
+      proposable: installedProposable,
+      evaluate,
       ...deps,
     };
   }
@@ -120,7 +112,7 @@ export class SandboxEvaluationService {
   ): Promise<{ ok: boolean; reason?: CannotEvaluateSandboxReason }> {
     const sandbox = await this.deps.sandboxRepo.findById(sandboxId);
     if (!sandbox) return { ok: false, reason: "not_found" };
-    const reason = refusalFor(sandbox, userId);
+    const reason = this.refusalFor(sandbox, userId);
     return reason ? { ok: false, reason } : { ok: true };
   }
 
@@ -130,8 +122,7 @@ export class SandboxEvaluationService {
    * Mêmes préconditions que `canEvaluate`, puis bascule vers `running` en
    * compare-and-set (`expectedFrom`) : de deux `POST /evaluation` concurrents,
    * un seul obtient `true`, l'autre reçoit `already_running` et la route
-   * répond 409 sans rien planifier. Tant que ce CAS vivait dans le run
-   * planifié, les deux appels avaient déjà reçu 202.
+   * répond 409 sans rien planifier.
    *
    * Pas de reprise d'un `running` orphelin (process mort en plein run) : la
    * table n'a aucune date de lancement — `evaluated_at` date la fin du
@@ -144,7 +135,7 @@ export class SandboxEvaluationService {
 
     const sandbox = await this.deps.sandboxRepo.findById(sandboxId);
     if (!sandbox) return { ok: false, reason: "not_found" };
-    const reason = refusalFor(sandbox, userId);
+    const reason = this.refusalFor(sandbox, userId);
     if (reason) return { ok: false, reason };
 
     const claimed = await this.deps.sandboxRepo.setEvaluationStatus(sandboxId, "running", {
@@ -189,22 +180,25 @@ export class SandboxEvaluationService {
     }
 
     try {
-      // Validée au claim, mais l'auteur a pu éditer l'URL depuis : le run
-      // échoue alors proprement plutôt que de laisser `running` en place.
-      const target = parseGithubRepoUrl(sandbox.repo_url);
-      if (!target) throw new Error(`Unparseable repo URL on ${sandboxId}: ${sandbox.repo_url}`);
+      // Validés au claim, mais le flow a pu être retiré et l'auteur a pu
+      // éditer ses champs depuis : le run échoue alors proprement plutôt que
+      // de laisser `running` en place.
+      const declaration = this.deps.proposable(sandbox.type)?.evaluation;
+      if (!declaration) throw new Error(`Flow "${sandbox.type}" does not evaluate proposals (${sandboxId})`);
+      const fields = proposalFieldsOf(sandbox);
+      const input = declaration.input(fields);
+      if (input == null) throw new Error(`Unusable proposal fields on ${sandboxId}`);
 
-      const { evaluation } = await this.deps.evaluateRepo({
-        slug: target.slug,
-        branch: target.branch,
-        gridSlug: SANDBOX_EVALUATION_GRID,
+      const { evaluation } = await this.deps.evaluate({
+        bundle: { source: declaration.bundleSource, input },
+        gridSlug: declaration.grid,
         subject: {
           title: sandbox.title,
-          type: "code",
-          description: buildEvaluationContext(sandbox),
-          // Le sandbox tient la place du challenge : il n'y en a pas, et
-          // l'agent n'a besoin que d'un identifiant de rattachement.
-          challengeId: sandbox.uuid,
+          type: declaration.grid,
+          description: buildEvaluationContext(sandbox, declaration.context?.(fields) ?? []),
+          // Le sandbox tient la place du challenge : l'agent n'a besoin que
+          // d'un identifiant de rattachement.
+          ref: sandbox.uuid,
           userId: sandbox.user_id,
         },
         hasPriorEvaluation: !!sandbox.evaluation,
@@ -220,7 +214,11 @@ export class SandboxEvaluationService {
 
       // `storeEvaluation` pose `evaluated_at` en même temps que le statut :
       // c'est la date du score affiché, pas celle du lancement.
-      await this.deps.sandboxRepo.storeEvaluation(sandboxId, evaluation, "done");
+      await this.deps.sandboxRepo.storeEvaluation(
+        sandboxId,
+        { scores: evaluation.scores, globalScore: evaluation.globalScore },
+        "done",
+      );
     } catch (error) {
       await this.deps.sandboxRepo.setEvaluationStatus(sandboxId, "failed");
       throw error;
@@ -233,14 +231,16 @@ export class SandboxEvaluationService {
     if (!ok) return;
     await this.run(event);
   }
-}
 
-/** Les refus communs à `canEvaluate` et `claim`, sur un sandbox existant. */
-function refusalFor(sandbox: Sandbox, userId: string): CannotEvaluateSandboxReason | null {
-  if (sandbox.user_id !== userId) return "not_author";
-  if (!parseGithubRepoUrl(sandbox.repo_url)) return "invalid_repo";
-  if (isInFlight(sandbox.evaluation_status)) return "already_running";
-  return null;
+  /** Les refus communs à `canEvaluate` et `claim`, sur un sandbox existant. */
+  private refusalFor(sandbox: Sandbox, userId: string): CannotEvaluateSandboxReason | null {
+    if (sandbox.user_id !== userId) return "not_author";
+    const declaration = this.deps.proposable(sandbox.type)?.evaluation;
+    if (!declaration) return "not_evaluable";
+    if (declaration.input(proposalFieldsOf(sandbox)) == null) return "invalid_fields";
+    if (isInFlight(sandbox.evaluation_status)) return "already_running";
+    return null;
+  }
 }
 
 /** `pending` comme `running` : un run est en vol, l'UI poll et le bouton est bloqué. */

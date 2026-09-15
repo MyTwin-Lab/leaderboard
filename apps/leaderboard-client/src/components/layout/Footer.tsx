@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { MYTWIN } from "@/lib/seo";
 import { MyTwinLogo } from "./MyTwinLogo";
+import { ModuleNavLinks } from "./ModuleNavLinks";
 
 const EXPLORE_LINKS = [
   { href: "/about", label: "About MyTwin Lab" },
   { href: "/challenges", label: "Challenges" },
-  { href: "/sandbox", label: "Sandbox" },
   { href: "/leaderboard", label: "Leaderboard" },
 ];
 
@@ -58,6 +58,8 @@ export function Footer() {
                   {link.label}
                 </Link>
               ))}
+              {/* Les modules actifs (la sandbox) : masqués quand ils sont désactivés. */}
+              <ModuleNavLinks className={linkClass} />
             </div>
             <div className="flex flex-col gap-2.5">
               <ColumnTitle>MyTwin</ColumnTitle>

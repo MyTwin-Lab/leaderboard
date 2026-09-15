@@ -15,7 +15,7 @@ const clickedChallenge: QuestDeclaration = {
   key: "clicked_challenge",
   label: "Open a challenge",
   order: 1,
-  event: "ui.challenge_opened",
+  event: "ui.brief_opened",
   userOf: (event) => (typeof event.payload.userId === "string" ? event.payload.userId : null),
 };
 
@@ -33,7 +33,7 @@ describe("PlatformRegistry — quests", () => {
     PlatformRegistry.install({
       flows: [{ descriptor: descriptor("code"), events: [{ type: "evaluation.requested" }], quests: [validatedTask] }],
       modules: [
-        { key: "challenge-page", events: [{ type: "ui.challenge_opened" }], quests: [clickedChallenge] },
+        { key: "challenge-page", events: [{ type: "ui.brief_opened" }], quests: [clickedChallenge] },
         { key: "onboarding", questRecorder: { record } },
       ],
     });

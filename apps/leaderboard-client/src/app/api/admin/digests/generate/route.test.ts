@@ -11,6 +11,11 @@ vi.mock('../../../../../../../../packages/services/digest/digest.service.js', ()
   },
 }));
 
+const { mockModuleNotFound } = vi.hoisted(() => ({ mockModuleNotFound: vi.fn() }));
+
+// Le module digest est actif, sauf dans le test qui le désactive.
+vi.mock('@/lib/server/modules', () => ({ moduleNotFoundResponse: mockModuleNotFound }));
+
 vi.mock('@/lib/contributor', () => ({
   fetchContributorSession: mockFetchContributorSession,
 }));
@@ -27,6 +32,7 @@ function post(body?: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockModuleNotFound.mockResolvedValue(null);
   mockGenerate.mockResolvedValue({ uuid: 'd-1', payload: { version: 1 } });
 });
 
@@ -88,6 +94,14 @@ describe('POST /api/admin/digests/generate', () => {
 
     const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
     expect((await post({ period_start: tomorrow })).status).toBe(400);
+    expect(mockGenerate).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 when the digest module is disabled, without generating', async () => {
+    mockModuleNotFound.mockResolvedValue(Response.json({ error: 'Not found' }, { status: 404 }));
+    mockFetchContributorSession.mockResolvedValue({ id: 'u1', role: 'admin' });
+
+    expect((await post()).status).toBe(404);
     expect(mockGenerate).not.toHaveBeenCalled();
   });
 

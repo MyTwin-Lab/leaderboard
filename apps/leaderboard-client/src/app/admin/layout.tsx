@@ -7,8 +7,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialog';
 import { LogOut } from 'lucide-react';
+import { useModuleSlots } from '@/distribution/mytwin.modules';
 
-const NAV_ITEMS = [
+type NavItem = { href: string; label: string; exact?: boolean };
+
+// Les entrées du core ; celles des modules actifs (Meetings…) suivent.
+const NAV_ITEMS: readonly NavItem[] = [
   { href: '/admin',             label: 'Overview',      exact: true },
   { href: '/admin/challenges',  label: 'Challenges' },
   { href: '/admin/projects',    label: 'Projects' },
@@ -17,16 +21,17 @@ const NAV_ITEMS = [
   { href: '/admin/contributions', label: 'Contributions' },
   { href: '/admin/evaluation-grids', label: 'Grids' },
   { href: '/admin/evaluation-runs',  label: 'Runs' },
-  { href: '/admin/meetings',    label: 'Meetings' },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { slots } = useModuleSlots();
+  const navItems: NavItem[] = [...NAV_ITEMS, ...slots.flatMap(slot => slot.adminNav ?? [])];
 
   const isChallengeDetail = /^\/admin\/challenges\/[^/]+$/.test(pathname);
 
-  const isActive = (item: typeof NAV_ITEMS[0]) =>
+  const isActive = (item: NavItem) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
   const handleLogout = async () => {
@@ -52,7 +57,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
                 {/* Nav links — scrollable on mobile */}
                 <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
-                  {NAV_ITEMS.map(item => {
+                  {navItems.map(item => {
                     const active = isActive(item);
                     return (
                       <Link

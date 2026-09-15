@@ -5,6 +5,7 @@ import { mlFlowDescriptor } from "./descriptor.js";
 import { mlCreationRepos } from "./repos.js";
 import { MODEL_METRIC_RULE_KEY } from "./metric.js";
 import { ML_PUBLIC_REWARD_FIELDS, summarizeMlRewards } from "./rewards.js";
+import { mlProposable } from "./proposable.js";
 
 export { mlFlowDescriptor } from "./descriptor.js";
 export { MODEL_METRIC_META_FIELD, MODEL_METRIC_RULE_KEY } from "./metric.js";
@@ -57,6 +58,8 @@ export const mlFlow: FlowDefinition = {
   // Rejoindre en groupe reste possible, comme avant la déclaration.
   uses: { groups: true },
   hooks: { onCreate: mlCreationRepos },
+  // La sandbox accepte des propositions ML : un dépôt et ses datasets, travail repris à la promotion.
+  proposable: mlProposable,
   // Un challenge ML n'a pas de join préalable : soumettre une étape fait entrer
   // dans l'équipe. Lire et soumettre restent donc ouverts à tout compte connecté.
   actions: [

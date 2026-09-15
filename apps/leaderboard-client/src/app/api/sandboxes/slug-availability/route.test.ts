@@ -1,13 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const { mockVerifyRequestToken, mockIsSlugTaken, mockAvailableSlug } = vi.hoisted(() => ({
+const { mockVerifyRequestToken, mockIsSlugTaken, mockAvailableSlug, mockModuleNotFound } = vi.hoisted(() => ({
   mockVerifyRequestToken: vi.fn(),
   mockIsSlugTaken: vi.fn(),
   mockAvailableSlug: vi.fn(),
+  mockModuleNotFound: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ verifyRequestToken: mockVerifyRequestToken }));
+vi.mock("@/lib/server/modules", () => ({ moduleNotFoundResponse: mockModuleNotFound }));
 vi.mock("@/lib/db", () => ({
   repositories: { sandbox: { isSlugTaken: mockIsSlugTaken, availableSlug: mockAvailableSlug } },
 }));
@@ -23,9 +25,16 @@ beforeEach(() => {
   mockVerifyRequestToken.mockResolvedValue({ userId: "u1", role: "contributor" });
   mockIsSlugTaken.mockResolvedValue(false);
   mockAvailableSlug.mockImplementation(async (base: string) => `${base}-2`);
+  mockModuleNotFound.mockResolvedValue(null);
 });
 
 describe("GET /api/sandboxes/slug-availability", () => {
+  it("returns 404 when the sandbox module is disabled", async () => {
+    mockModuleNotFound.mockResolvedValue(Response.json({ error: "Not found" }, { status: 404 }));
+    expect((await check("?slug=mykine")).status).toBe(404);
+    expect(mockIsSlugTaken).not.toHaveBeenCalled();
+  });
+
   it("returns 401 without a session — the route is outside the proxy matcher", async () => {
     mockVerifyRequestToken.mockResolvedValue(null);
     expect((await check("?slug=mykine")).status).toBe(401);

@@ -4,6 +4,7 @@ import { jwtVerify } from 'jose';
 import { getBaseUrl, getInternalBaseUrl } from '@/lib/url';
 import { isPublicPage, isPublicApiRoute } from '@/lib/routeVisibility';
 import { parseSessionClaims } from '@/lib/sessionClaims';
+import { isModuleNonAdminWrite, moduleProtectedApiRoutes } from '@/distribution/mytwin.proxy';
 
 type UserRole = 'admin' | 'contributor' | 'viewer' | 'medical_pro';
 type ProtectedPage = { prefix: string; roles: readonly UserRole[] };
@@ -34,7 +35,9 @@ const protectedApiRoutes = [
   '/api/evaluation-runs',
   '/api/github-oauth',
   '/api/integrations',
-  '/api/sync-meetings',
+  '/api/events',
+  // Celles des modules installés (distribution/mytwin.proxy.ts).
+  ...moduleProtectedApiRoutes,
 ];
 
 // Routes publiques d'authentification
@@ -325,9 +328,13 @@ export async function proxy(request: NextRequest) {
         (pathname.startsWith('/api/repos') && ['POST', 'PUT'].includes(method)) ||
         pathname.includes('/documents');
 
-      // Planifier un meeting : admin ou manager du challenge, vérifié dans le
-      // handler (isManagerOfChallenge).
-      const isSyncMeetingCreateRoute = pathname === '/api/sync-meetings' && method === 'POST';
+      // Écritures de modules ouvertes aux non-admins (distribution/mytwin.proxy.ts),
+      // le droit vérifié dans leur handler — planifier un meeting, par exemple.
+      const isModuleWriteRoute = isModuleNonAdminWrite(pathname, method);
+
+      // Événements d'interface (challenge 020, L6) : tout compte connecté ; le
+      // handler vérifie le type et ce que l'appelant peut voir.
+      const isUiEventRoute = pathname === '/api/events/ui' && method === 'POST';
 
       // Actions des flows et des extensions (challenge 020, L4) : chaque action
       // déclare qui peut l'appeler, et le dispatcher du core l'applique.
@@ -335,7 +342,7 @@ export async function proxy(request: NextRequest) {
 
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        if (!isChallengeActionRoute && !isTaskSelfServiceRoute && !isChallengeJoinRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isNotificationSelfRoute && !isGroupInviteRoute && !isSyncMeetingCreateRoute) {
+        if (!isChallengeActionRoute && !isUiEventRoute && !isTaskSelfServiceRoute && !isChallengeJoinRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isNotificationSelfRoute && !isGroupInviteRoute && !isModuleWriteRoute) {
           return respond(NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }
@@ -374,6 +381,10 @@ export const config = {
     '/api/evaluation-runs/:path*',
     '/api/github-oauth/:path*',
     '/api/integrations/:path*',
+    '/api/events/:path*',
+    // Module meetings. Écrit en dur : Next lit le matcher à la compilation et
+    // refuse une valeur calculée depuis distribution/mytwin.proxy.ts, qui
+    // vérifie en test que chacune de ses routes figure ici.
     '/api/sync-meetings/:path*',
   ],
 };

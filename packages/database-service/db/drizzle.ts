@@ -911,6 +911,19 @@ export const onboarding_progress = pgTable("onboarding_progress", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
+// --- ONBOARDING_QUEST_PROGRESS ---
+// Une quête d'onboarding accomplie par ligne (challenge 020, L6) ; une quête
+// sans ligne n'est pas encore accomplie. Les quêtes sont déclarées par leurs
+// propriétaires et enregistrées par le module onboarding. Remplace les 5
+// booléens d'onboarding_progress, supprimée en L7.
+export const onboarding_quest_progress = pgTable("onboarding_quest_progress", {
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  quest_key: varchar("quest_key", { length: 64 }).notNull(),
+  completed_at: timestamp("completed_at").defaultNow().notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.user_id, table.quest_key] }),
+}));
+
 // --- APP SETTINGS (singleton) ---
 export const app_settings = pgTable("app_settings", {
   id: integer("id").primaryKey().default(1),
@@ -1018,11 +1031,10 @@ export const digests = pgTable("digests", {
 export const sandboxes = pgTable("sandboxes", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
-  // 'code' | 'ml'. Choisi à la création et immuable : il pilote les champs
-  // attendus, la grille d'évaluation, et le type du challenge issu de la
-  // promotion. 'validation' est exclu — un challenge de validation dérive
-  // d'un challenge ML existant, il ne peut pas naître d'une proposition.
-  type: varchar("type", { length: 10 }).notNull(),
+  // La clé d'un flow proposable (`code`, `ml`…). Choisie à la création et
+  // immuable : le flow déclare les champs attendus, l'évaluation formative et
+  // la promotion (`FlowDefinition.proposable`).
+  type: varchar("type", { length: 64 }).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   // Le segment de l'URL publique : /sandbox/<slug>. Mêmes règles que
   // challenges.slug, dans un espace de noms séparé : un challenge promu peut

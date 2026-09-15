@@ -43,6 +43,9 @@ function makeDeps() {
   return { deps, collect, sourceRelease, handle, agentEvaluate };
 }
 
+// Sans abonné simulé : l'émission par défaut écrirait dans la vraie base.
+const noEmit = async () => null;
+
 describe("evaluate", () => {
   it("notes the collected bundle with the grid and traces a succeeded run", async () => {
     const { deps, handle, agentEvaluate } = makeDeps();
@@ -116,6 +119,9 @@ function makeRepositories() {
       create: vi.fn(async () => ({ uuid: "link-1" }) as any),
       updateStatus: vi.fn(async () => ({}) as any),
     },
+    contributions: {
+      findById: vi.fn(async () => ({ uuid: "c-1", user_id: "alice", challenge_id: "ch-1" }) as any),
+    },
   };
 }
 
@@ -125,7 +131,7 @@ describe("databaseRunRecorder", () => {
   it("records the owner, its handler and the evaluated contribution", async () => {
     const repos = makeRepositories();
 
-    const handle = await databaseRunRecorder(repos).start(REQUEST);
+    const handle = await databaseRunRecorder(repos, noEmit).start(REQUEST);
     await handle!.succeed({ durationMs: 10, globalScore: 4.5 });
 
     expect(repos.runs.create).toHaveBeenCalledWith(
@@ -147,7 +153,7 @@ describe("databaseRunRecorder", () => {
   it("keeps the subject in meta when no contribution is evaluated", async () => {
     const repos = makeRepositories();
 
-    await databaseRunRecorder(repos).start({
+    await databaseRunRecorder(repos, noEmit).start({
       ...REQUEST,
       origin: { owner: "sandbox", handler: "formative", payload: { sandboxId: "sb-1" }, challengeId: null },
     });
@@ -161,11 +167,55 @@ describe("databaseRunRecorder", () => {
   it("marks the run and its contribution failed with the error", async () => {
     const repos = makeRepositories();
 
-    const handle = await databaseRunRecorder(repos).start(REQUEST);
+    const handle = await databaseRunRecorder(repos, noEmit).start(REQUEST);
     await handle!.fail(new Error("boom"));
 
     expect(repos.links.updateStatus).toHaveBeenCalledWith("link-1", "skipped", { skipReason: "boom" });
     expect(repos.runs.markFailed).toHaveBeenCalledWith("run-1", "Error", "boom");
+  });
+
+  it("announces the evaluated contribution, credited to its author", async () => {
+    const repos = makeRepositories();
+    const emit = vi.fn(async () => 1);
+
+    const handle = await databaseRunRecorder(repos, emit).start(REQUEST);
+    await handle!.succeed({ durationMs: 10, globalScore: 4.5 });
+
+    expect(repos.contributions.findById).toHaveBeenCalledWith("c-1");
+    expect(emit).toHaveBeenCalledWith("contribution.evaluated", {
+      contributionId: "c-1",
+      challengeId: "ch-1",
+      userId: "alice",
+      runId: "run-1",
+    });
+  });
+
+  it("announces nothing for a failed run, nor for a subject without contribution", async () => {
+    const repos = makeRepositories();
+    const emit = vi.fn(async () => 1);
+
+    const failed = await databaseRunRecorder(repos, emit).start(REQUEST);
+    await failed!.fail(new Error("boom"));
+    const subject = await databaseRunRecorder(repos, emit).start({
+      ...REQUEST,
+      origin: { owner: "sandbox", handler: "formative", payload: { sandboxId: "sb-1" }, challengeId: null },
+    });
+    await subject!.succeed({ durationMs: 10, globalScore: 4.5 });
+
+    expect(emit).not.toHaveBeenCalled();
+  });
+
+  it("keeps the run succeeded when the event cannot be written", async () => {
+    const repos = makeRepositories();
+    const emit = vi.fn(async () => {
+      throw new Error("outbox down");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const handle = await databaseRunRecorder(repos, emit).start(REQUEST);
+    await expect(handle!.succeed({ durationMs: 10, globalScore: 4.5 })).resolves.toBeUndefined();
+
+    expect(repos.runs.markSucceeded).toHaveBeenCalled();
   });
 
   it("gives up tracing, without throwing, when the run cannot be written", async () => {
@@ -173,7 +223,7 @@ describe("databaseRunRecorder", () => {
     repos.runs.create.mockRejectedValueOnce(new Error("column does not exist"));
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    expect(await databaseRunRecorder(repos).start(REQUEST)).toBeNull();
+    expect(await databaseRunRecorder(repos, noEmit).start(REQUEST)).toBeNull();
   });
 });
 

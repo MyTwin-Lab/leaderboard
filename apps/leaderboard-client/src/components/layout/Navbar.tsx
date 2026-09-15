@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { ContributorBadge } from "@/components/contributor/ContributorBadge";
+import { useModuleSlots } from "@/distribution/mytwin.modules";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
@@ -77,8 +78,10 @@ export const Navbar = ({ session }: NavbarProps) => {
     return () => { document.body.style.overflow = "unset"; };
   }, [mobileMenuOpen]);
 
+  // Les entrées des modules actifs d'abord (la sandbox), puis celles du core.
+  const { slots } = useModuleSlots();
   const navLinks = [
-    { name: "Sandbox", path: "/sandbox" },
+    ...slots.flatMap((slot) => slot.publicNav ?? []).map((item) => ({ name: item.label, path: item.href })),
     { name: "Leaderboard", path: "/leaderboard" },
     { name: "Challenges", path: "/challenges" },
   ];

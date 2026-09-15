@@ -50,11 +50,11 @@ beforeEach(() => {
     modules: [
       {
         key: "onboarding",
-        events: [{ type: "task.created" }],
+        events: [{ type: "task.archived" }],
         subscriptions: [
           {
             key: "onboarding.assigned-task",
-            event: "task.created",
+            event: "task.archived",
             async handle(event) {
               if (event.id === failingOn.id) throw new Error("quest store down");
               quests.push(event);
@@ -77,8 +77,8 @@ describe("events.emit", () => {
     const executor = { insert: vi.fn() } as never;
     const events = createEvents({ events: store, deliveries: memoryDeliveries() });
 
-    expect(await events.emit("task.created", { taskId: "t-1" }, { executor })).toBe(1);
-    expect(append).toHaveBeenCalledWith("task.created", { taskId: "t-1" }, executor);
+    expect(await events.emit("task.archived", { taskId: "t-1" }, { executor })).toBe(1);
+    expect(append).toHaveBeenCalledWith("task.archived", { taskId: "t-1" }, executor);
   });
 
   it("writes nothing for an event nobody subscribes to", async () => {
@@ -96,14 +96,14 @@ describe("events.distribute", () => {
     const store = memoryEvents();
     const deliveries = memoryDeliveries();
     const events = createEvents({ events: store, deliveries, isOwnerEnabled: async () => true });
-    await store.append("task.created", { taskId: "t-1" });
+    await store.append("task.archived", { taskId: "t-1" });
     await store.append("evaluation.requested", {});
-    await store.append("task.created", { taskId: "t-2" });
+    await store.append("task.archived", { taskId: "t-2" });
 
     const summary = await events.distribute();
 
     expect(quests.map((e) => e.payload.taskId)).toEqual(["t-1", "t-2"]);
-    expect(summary).toEqual([{ key: "onboarding.assigned-task", owner: "module:onboarding", event: "task.created", delivered: 2 }]);
+    expect(summary).toEqual([{ key: "onboarding.assigned-task", owner: "module:onboarding", event: "task.archived", delivered: 2 }]);
     expect(deliveries.cursors.get("onboarding.assigned-task")).toEqual({ last_event_id: 3, last_error: null });
 
     await events.distribute();
@@ -114,8 +114,8 @@ describe("events.distribute", () => {
     const store = memoryEvents();
     const deliveries = memoryDeliveries();
     const events = createEvents({ events: store, deliveries, isOwnerEnabled: async () => true });
-    await store.append("task.created", { taskId: "t-1" });
-    await store.append("task.created", { taskId: "t-2" });
+    await store.append("task.archived", { taskId: "t-1" });
+    await store.append("task.archived", { taskId: "t-2" });
     failingOn.id = 2;
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -134,10 +134,10 @@ describe("events.distribute", () => {
     const store = memoryEvents();
     const deliveries = memoryDeliveries();
     const events = createEvents({ events: store, deliveries, isOwnerEnabled: async (owner) => owner !== "module:onboarding" });
-    await store.append("task.created", { taskId: "t-1" });
+    await store.append("task.archived", { taskId: "t-1" });
 
     expect(await events.distribute()).toEqual([
-      { key: "onboarding.assigned-task", owner: "module:onboarding", event: "task.created", delivered: 0, skipped: "owner_disabled" },
+      { key: "onboarding.assigned-task", owner: "module:onboarding", event: "task.archived", delivered: 0, skipped: "owner_disabled" },
     ]);
     expect(quests).toEqual([]);
     expect(deliveries.cursors.size).toBe(0);

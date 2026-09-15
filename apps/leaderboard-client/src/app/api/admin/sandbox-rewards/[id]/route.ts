@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { SandboxRewardRepository } from "@packages/database-service/repositories";
 import { fetchContributorSession } from "@/lib/contributor";
+import { moduleNotFoundResponse } from "@/lib/server/modules";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,9 @@ const rewardRepo = new SandboxRewardRepository();
  * ensemble.
  */
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const disabled = await moduleNotFoundResponse("sandbox");
+  if (disabled) return disabled;
+
   const session = await fetchContributorSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });

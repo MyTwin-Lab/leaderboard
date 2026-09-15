@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const {
   mockGetSessionUser, mockVerifyAdmin, mockCanAccessChallengeInternals,
@@ -36,7 +36,15 @@ vi.mock('../../../../../../../packages/services/sync-meeting/sync-meeting.servic
   },
 }));
 
+// Actif par défaut dans ces tests ; le cas désactivé a son describe.
+const { mockModuleNotFoundResponse } = vi.hoisted(() => ({ mockModuleNotFoundResponse: vi.fn() }));
+vi.mock('@/lib/server/modules', () => ({ moduleNotFoundResponse: mockModuleNotFoundResponse }));
+
 import { GET, DELETE } from './route';
+
+beforeEach(() => {
+  mockModuleNotFoundResponse.mockResolvedValue(null);
+});
 
 const MEETING_ID = 'meeting-1';
 const VIEWER = { id: 'u1', role: 'viewer', fullName: 'Ada', githubUsername: '', email: 'a@b.com' };
@@ -156,5 +164,20 @@ describe('DELETE /api/sync-meetings/[id]', () => {
     expect(res.status).toBe(500);
     const body = await res.json();
     expect(body.error).toBe('Failed to cancel meeting');
+  });
+});
+
+describe('when the meetings module is disabled', () => {
+  beforeEach(() => {
+    mockModuleNotFoundResponse.mockResolvedValue(NextResponse.json({ error: 'Not found' }, { status: 404 }));
+  });
+
+  it('answers 404 to GET and DELETE, before reading the session', async () => {
+    expect((await getMeeting()).status).toBe(404);
+    expect((await deleteMeeting()).status).toBe(404);
+    expect(mockModuleNotFoundResponse).toHaveBeenCalledWith('meetings');
+    expect(mockGetSessionUser).not.toHaveBeenCalled();
+    expect(mockVerifyAdmin).not.toHaveBeenCalled();
+    expect(mockCancelMeeting).not.toHaveBeenCalled();
   });
 });

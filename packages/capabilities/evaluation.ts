@@ -2,12 +2,14 @@ import { OpenAIAgentEvaluator } from "../evaluator/evaluator.js";
 import { EvaluationGridRegistry, type Grid } from "../evaluator/grids/index.js";
 import type { CriterionScore, SnapshotInfo } from "../evaluator/types.js";
 import {
+  ContributionRepository,
   EvaluationRunContributionsRepository,
   EvaluationRunsRepository,
 } from "../database-service/repositories/index.js";
 import type { EvaluationRun, EvaluationRunMeta } from "../database-service/domain/entities.js";
 import { PlatformRegistry, type EvaluationRetryOutcome } from "../registry/platform.js";
 import { prepareBundle, releaseBundle } from "./bundle.js";
+import { events as platformEvents, type Events } from "./events.js";
 
 /**
  * Capacité `evaluate`
@@ -215,6 +217,7 @@ export async function evaluate(request: EvaluateRequest, deps?: Partial<Evaluati
 interface RunRepositories {
   runs: Pick<EvaluationRunsRepository, "create" | "markSucceeded" | "markFailed">;
   links: Pick<EvaluationRunContributionsRepository, "create" | "updateStatus">;
+  contributions: Pick<ContributionRepository, "findById">;
 }
 
 /**
@@ -223,14 +226,22 @@ interface RunRepositories {
  *
  * Chaque écriture est protégée : une base qui refuse la trace (schéma pas
  * encore appliqué, par exemple) laisse l'évaluation se faire, avec un log.
+ *
+ * Une contribution évaluée avec succès émet `contribution.evaluated`
+ * (`{ contributionId, challengeId, userId, runId }`), `userId` étant l'auteur
+ * de la contribution.
  */
-export function databaseRunRecorder(repositories?: RunRepositories): RunRecorder {
+export function databaseRunRecorder(
+  repositories?: RunRepositories,
+  emit: Events["emit"] = (type, payload, options) => platformEvents.emit(type, payload, options),
+): RunRecorder {
   return {
     async start(request) {
       const { origin, subject, gridSlug, bundle } = request;
       const repos = repositories ?? {
         runs: new EvaluationRunsRepository(),
         links: new EvaluationRunContributionsRepository(),
+        contributions: new ContributionRepository(),
       };
 
       const baseMeta: EvaluationRunMeta = {
@@ -276,11 +287,28 @@ export function databaseRunRecorder(repositories?: RunRepositories): RunRecorder
 
       return {
         runId,
-        succeed: (meta) =>
-          safely("succeeded", async () => {
+        succeed: async (meta) => {
+          await safely("succeeded", async () => {
             if (linkId) await repos.links.updateStatus(linkId, "evaluated");
             await repos.runs.markSucceeded(runId, { ...baseMeta, ...meta });
-          }),
+          });
+          if (!origin.contributionId) return;
+          const contributionId = origin.contributionId;
+          // Aucune transaction à rejoindre : le run est déjà marqué. Un
+          // événement perdu coûte une quête, jamais l'évaluation.
+          try {
+            const contribution = await repos.contributions.findById(contributionId);
+            if (!contribution) return;
+            await emit("contribution.evaluated", {
+              contributionId,
+              challengeId: contribution.challenge_id,
+              userId: contribution.user_id,
+              runId,
+            });
+          } catch (error) {
+            console.error(`[evaluate] Could not announce the evaluation of contribution ${contributionId}:`, error);
+          }
+        },
         fail: (error) =>
           safely("failed", async () => {
             const message = error instanceof Error ? error.message : String(error);

@@ -7,7 +7,7 @@ import { fetchJson } from '@/lib/fetchJson';
 import { challengeManagePath, challengePath } from '@/lib/paths';
 import {
   ArrowLeft, Users, CalendarDays, Activity,
-  Medal, ChevronDown, Loader2, Plus, FileText, Pencil, Info,
+  Medal, ChevronDown, Loader2, FileText, Pencil, Info,
 } from 'lucide-react';
 import { CreateChallengeDrawer } from '@/components/admin/CreateChallengeDrawer';
 import type { MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
@@ -16,15 +16,14 @@ import { ContributionRewardBreakdown } from '@/components/contributor/Contributi
 import { Badge } from '@/components/ui/Badge';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 import { FlowIcon } from '@/components/ui/FlowIcon';
-import { CreateMeetingDrawer } from '@/components/admin/CreateMeetingDrawer';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
-import { MeetingsSection } from '@/components/challenges/MeetingsSection';
 import { HeroStats } from '@/components/challenges/HeroStats';
 import { TeamAvatars } from '@/components/ui/TeamAvatars';
 import { fmt, sectionHeader } from '@/components/challenges/shared/format';
 import { flowCatalog } from '@/distribution/mytwin.flows';
 import { flowSlots } from '@/distribution/mytwin.client';
+import { useModuleSlots } from '@/distribution/mytwin.modules';
 import type {
   ChallengeRewards,
   ManageContribution as Contribution,
@@ -45,11 +44,6 @@ interface Challenge {
   roadmap?: string;
   reward_rules?: MlRewardRules | null;
   flow_config?: unknown;
-}
-
-interface Meeting {
-  uuid: string; title: string; status: string;
-  start_time: string; end_time: string; meet_link?: string;
 }
 
 interface RankEntry { userId: string; name: string; totalCP: number; count: number; }
@@ -304,8 +298,9 @@ function TabRankings({ contributions, team }: { contributions: Contribution[]; t
 
 /**
  * Shared challenge control-room view rendered by two routes:
- *   - /admin/challenges/[id]     (isAdmin = true)  — no manager guard, meetings always on
- *   - /challenges/[slug]/manage  (isAdmin = false) — guarded by project managership + meetings module flag
+ *   - /admin/challenges/[id]     (isAdmin = true)  — no manager guard
+ *   - /challenges/[slug]/manage  (isAdmin = false) — guarded by project managership
+ * Module sections (meetings…) follow the module state on both routes.
  * The two routes are kept distinct on purpose (separate URLs for logs/analytics).
  *
  * `challengeId` is the UUID either way — the manager route resolves its slug on
@@ -321,12 +316,11 @@ export function ChallengeManageView({ challengeId, isAdmin = false }: { challeng
   const [status, setStatus] = useState('');
   // Admins are authorized up front; managers must be verified against the project.
   const [isManager, setIsManager] = useState<boolean | null>(isAdmin ? true : null);
-  const [meetingDrawerOpen, setMeetingDrawerOpen] = useState(false);
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
   const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
 
-  // Challenge, team, tasks, meetings and contributions come from one
+  // Challenge, team, tasks and contributions come from one
   // aggregated request, shared (same key + raw shape) with the public
   // /challenges/[slug] page — visiting one view warms the cache for the other.
   const overviewQuery = useQuery({
@@ -335,7 +329,6 @@ export function ChallengeManageView({ challengeId, isAdmin = false }: { challeng
       challenge: Challenge;
       team: any[];
       tasks: any[];
-      meetings: Meeting[];
       repos: any[];
       contributions: Contribution[];
       participants: Participant[];
@@ -369,13 +362,9 @@ export function ChallengeManageView({ challengeId, isAdmin = false }: { challeng
     queryFn: () => fetchJson('/api/integrations/scaleway/status'),
   });
 
-  // Not challenge-specific — shared across every page that needs it.
-  const modulesQuery = useQuery({
-    queryKey: ['modules'],
-    queryFn: () => fetchJson('/api/modules'),
-    enabled: !isAdmin,
-    staleTime: 5 * 60_000,
-  });
+  // Les slots des modules actifs (la section meetings…), pour l'admin comme
+  // pour un manager : un module désactivé n'a plus de routes à lire.
+  const moduleSlots = useModuleSlots();
 
   // Only used to name the (locked) project in the edit drawer.
   const projectsQuery = useQuery({
@@ -399,11 +388,8 @@ export function ChallengeManageView({ challengeId, isAdmin = false }: { challeng
   const participants: Participant[] = overviewQuery.data?.participants ?? [];
   const contributions = overviewQuery.data?.contributions ?? [];
   const contributionMembers = overviewQuery.data?.contribution_members ?? [];
-  const meetings = overviewQuery.data?.meetings ?? [];
   const repoActivity = repoActivityQuery.data ?? null;
   const computeConnected = !!scalewayStatusQuery.data?.connected;
-  // Admin view always shows meetings; manager view respects the global module flag.
-  const meetingsEnabled = isAdmin || modulesQuery.data?.meetings_enabled !== false;
   const projects = (projectsQuery.data ?? []).map((p: any) => ({ id: p.uuid, name: p.title }));
 
   useEffect(() => {
@@ -424,7 +410,7 @@ export function ChallengeManageView({ challengeId, isAdmin = false }: { challeng
   // repo-activity is excluded on purpose — see the /overview route comment;
   // the panels that read it already render their own skeleton while it's null.
   const loading = overviewQuery.isLoading
-    || scalewayStatusQuery.isLoading || modulesQuery.isLoading || projectsQuery.isLoading;
+    || scalewayStatusQuery.isLoading || moduleSlots.isLoading || projectsQuery.isLoading;
 
   if (loading) return <Skeleton />;
   if (isManager !== true) return null;
@@ -468,13 +454,6 @@ export function ChallengeManageView({ challengeId, isAdmin = false }: { challeng
   // Actually distributed, not the pool/cap set at creation — reward is already
   // reconciled with the ledger (ML/validation) or the cached column (code).
   const awardedTotal = contributions.reduce((sum, c) => sum + (c.reward ?? 0), 0);
-
-  const upcomingMeetings = meetings
-    .filter(m => ['scheduled', 'in_progress'].includes(m.status))
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-  const pastMeetings = meetings
-    .filter(m => ['completed', 'processed'].includes(m.status))
-    .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
   return (
     <>
@@ -576,39 +555,18 @@ export function ChallengeManageView({ challengeId, isAdmin = false }: { challeng
         {/* Tabs */}
         <ContributorTabs
           tabs={tabs}
-          extra={meetingsEnabled && (
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-end">
-                <button
-                  onClick={() => setMeetingDrawerOpen(true)}
-                  className="flex items-center gap-1 rounded-full bg-brandCP/10 px-2.5 py-1 text-[11px] font-semibold text-brandCP transition-all hover:bg-brandCP/20"
-                >
-                  <Plus className="h-3 w-3" />
-                  New meeting
-                </button>
-              </div>
-              <MeetingsSection
-                meetings={meetings}
-                upcomingMeetings={upcomingMeetings}
-                pastMeetings={pastMeetings}
-                onOpen={id => router.push(`/sync-meetings/${id}`)}
-                onJoin={link => window.open(link, '_blank')}
-              />
-            </div>
+          extra={moduleSlots.slots.some(slot => slot.ManageSection) && (
+            <>
+              {moduleSlots.slots.map(({ key, ManageSection }) => ManageSection && (
+                <ManageSection key={key} challengeId={challengeId} />
+              ))}
+            </>
           )}
         />
       </div>
 
       {/* Drawers rendered OUTSIDE the animate-fade-up div — CSS animations with
           transform create a new containing block that breaks position:fixed */}
-      {meetingDrawerOpen && (
-        <CreateMeetingDrawer
-          open={meetingDrawerOpen}
-          onClose={() => setMeetingDrawerOpen(false)}
-          challengeId={challengeId}
-          onCreated={() => queryClient.invalidateQueries({ queryKey: ['challenge-overview', challengeId] })}
-        />
-      )}
       <DocumentsDrawer
         challengeId={challengeId}
         isAdmin={true}

@@ -1,5 +1,6 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
+import { modules } from "@packages/capabilities/modules";
 import { GET as getSandbox } from "@/app/api/sandboxes/[id]/route";
 import { sandboxPath, withSearchParams } from "@/lib/paths";
 import { resolveSandboxRef } from "@/lib/server/pageRefs";
@@ -22,6 +23,9 @@ export default async function SandboxDetailPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // Le module désactivé, la page n'existe pas.
+  if (!(await modules.enabled("sandbox"))) notFound();
+
   const { slug } = await params;
   const ref = await resolveSandboxRef(slug);
   if (ref.kind === "missing") notFound();

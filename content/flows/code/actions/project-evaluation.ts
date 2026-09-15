@@ -1,5 +1,6 @@
 import type { ActionContext } from "../../../../packages/registry/platform.js";
 import { CodeRewardsService } from "../../../../packages/services/challenge/code-rewards.service.js";
+import { events } from "../../../../packages/capabilities/events.js";
 
 function refusal(reason: string | undefined) {
   const status = reason === "already_running" ? 409 : 400;
@@ -24,5 +25,12 @@ export async function startProjectEvaluation({ challenge, user }: ActionContext)
   if (!claim.ok) return refusal(claim.reason);
 
   service.scheduleRun(event);
+  // Un lancement accepté, jamais un refus. Hors transaction (le run vit dans
+  // le service) : un événement perdu coûte une quête, pas le lancement.
+  try {
+    await events.emit("evaluation.requested", event);
+  } catch (error) {
+    console.warn("[code] evaluation.requested not recorded:", error);
+  }
   return Response.json({ scheduled: true }, { status: 202 });
 }

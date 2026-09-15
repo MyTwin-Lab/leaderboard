@@ -429,28 +429,6 @@ export const meetingAnalysisSchema = z.object({
   created_at: z.coerce.date(),
 });
 
-// --- ONBOARDING PROGRESS ---
-
-export const onboardingStepSchema = z.enum([
-  'clicked_challenge',
-  'assigned_task',
-  'evaluated_contribution',
-  'validated_task',
-  'joined_meeting',
-]);
-
-export const onboardingProgressSchema = z.object({
-  user_id: z.string().uuid(),
-  clicked_challenge: z.boolean(),
-  assigned_task: z.boolean(),
-  evaluated_contribution: z.boolean(),
-  validated_task: z.boolean(),
-  joined_meeting: z.boolean(),
-  completed_at: z.coerce.date().optional(),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date(),
-});
-
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
 export const appSettingsSchema = z.object({
@@ -484,7 +462,7 @@ export const digestSchema = z.object({
  * qui accepte `mailto:` ou `ftp:` — un repo ou un dataset se visite dans un
  * navigateur.
  */
-const httpUrl = z
+export const httpUrlSchema = z
   .string()
   .trim()
   .url()
@@ -510,37 +488,29 @@ export const sandboxStarTiersSchema = z
     { message: "Les paliers doivent être ordonnés par seuil strictement croissant" }
   );
 
-/**
- * Création d'un sandbox. Le type pilote les champs requis :
- *   - `code` : un repo suffit ;
- *   - `ml`   : un repo et au moins un dataset ; le modèle reste optionnel,
- *              un sandbox ML pouvant démarrer avant d'avoir un artefact.
- */
-export const sandboxCreateSchema = z
-  .object({
-    type: z.enum(["code", "ml"]),
-    title: z.string().trim().min(3).max(255),
-    /** Absent : dérivé du titre par le repository. */
-    slug: slugSchema.optional(),
-    context: z.string().trim().max(20000).optional(),
-    goals: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
-    why: z.string().trim().max(20000).optional(),
-    repo_url: httpUrl,
-    model_url: httpUrl.optional(),
-    dataset_urls: z.array(httpUrl).max(10).default([]),
-  })
-  .refine((input) => input.type !== "ml" || input.dataset_urls.length > 0, {
-    message: "Un sandbox ML demande au moins une URL de dataset",
-    path: ["dataset_urls"],
-  })
-  .refine((input) => input.type !== "code" || (!input.model_url && input.dataset_urls.length === 0), {
-    message: "Modèle et datasets n'existent que sur un sandbox ML",
-    path: ["type"],
-  });
+/** Le bonus de promotion : plafonné, une faute de frappe crédite l'auteur d'un coup et rien ne la reprend. */
+export const sandboxPromotionBonusSchema = z.number().int().nonnegative().max(100000);
 
 /**
- * Édition par l'auteur. Le `type` n'y figure pas : il est figé à la création,
- * parce qu'il a déjà déterminé la grille d'évaluation et les champs saisis.
+ * Création d'un sandbox : ce que toutes les propositions partagent.
+ *
+ * `type` est la clé du flow proposé. Qu'il soit installé et proposable, et les
+ * champs propres à la proposition (`repo_url`, datasets…), c'est le schéma
+ * `proposable.fields` de ce flow qui le dit, lu par `SandboxService`.
+ */
+export const sandboxCreateSchema = z.object({
+  type: z.string().trim().min(1).max(64),
+  title: z.string().trim().min(3).max(255),
+  /** Absent : dérivé du titre par le repository. */
+  slug: slugSchema.optional(),
+  context: z.string().trim().max(20000).optional(),
+  goals: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
+  why: z.string().trim().max(20000).optional(),
+});
+
+/**
+ * Édition par l'auteur, hors champs du flow. Le `type` n'y figure pas : il est
+ * figé à la création, parce qu'il a déjà déterminé les champs et l'évaluation.
  */
 export const sandboxUpdateSchema = z.object({
   title: z.string().trim().min(3).max(255).optional(),
@@ -549,25 +519,10 @@ export const sandboxUpdateSchema = z.object({
   context: z.string().trim().max(20000).nullable().optional(),
   goals: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
   why: z.string().trim().max(20000).nullable().optional(),
-  repo_url: httpUrl.optional(),
-  model_url: httpUrl.nullable().optional(),
-  dataset_urls: z.array(httpUrl).max(10).optional(),
 });
+
+/** Les clés d'un corps de création ou d'édition qui ne sont pas des champs de proposition. */
+export const SANDBOX_COMMON_KEYS = ["type", "title", "slug", "context", "goals", "why", "status"] as const;
 
 export type SandboxCreateInput = z.infer<typeof sandboxCreateSchema>;
 export type SandboxUpdateInput = z.infer<typeof sandboxUpdateSchema>;
-
-/**
- * Réglages de l'économie sandbox, patch partiel façon `digest-settings`.
- *
- * Les deux champs sont indépendants : l'admin peut régler le bonus de promotion
- * sans toucher aux paliers, et inversement.
- */
-export const sandboxSettingsPatchSchema = z.object({
-  sandbox_star_tiers: sandboxStarTiersSchema.optional(),
-  // Plafonné : une faute de frappe sur ce champ crédite l'auteur d'un coup, et
-  // aucune reprise automatique n'existe pour la rattraper.
-  sandbox_promotion_bonus_cp: z.number().int().nonnegative().max(100000).optional(),
-});
-
-export type SandboxSettingsPatch = z.infer<typeof sandboxSettingsPatchSchema>;

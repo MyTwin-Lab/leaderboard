@@ -386,7 +386,7 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
       CREATE TABLE IF NOT EXISTS sandboxes (
         uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
-        type varchar(10) NOT NULL,
+        type varchar(64) NOT NULL,
         title varchar(255) NOT NULL,
         context text,
         goals jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -970,6 +970,16 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
         )`,
   },
 
+  // --- Type des sandboxes (challenge 020, L6) ---
+  //
+  // `sandboxes.type` porte la clé d'un flow proposable, plus seulement
+  // `code` ou `ml`. Élargir un varchar ne réécrit pas la table ; rejoué sur
+  // une colonne déjà en varchar(64), l'ALTER ne change rien.
+  {
+    label: "sandboxes.type (clé de flow)",
+    sql: `ALTER TABLE sandboxes ALTER COLUMN type TYPE varchar(64)`,
+  },
+
   // --- Store des connexions (challenge 020, L5) ---
   //
   // `integration_credentials` reprend les colonnes de connexion d'app_settings,
@@ -1072,6 +1082,37 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
       ) AS v(key, enabled, settings)
       WHERE s.id = 1
       ON CONFLICT (key) DO NOTHING`,
+  },
+  // Les quêtes d'onboarding (challenge 020, L6), une ligne par quête
+  // accomplie. La reprise recopie les 5 booléens d'onboarding_progress, datés
+  // du jour de la reprise faute d'historique. Rejouée, elle n'ajoute que ce
+  // que l'ancien code a validé entre-temps : ON CONFLICT ne touche pas une
+  // quête déjà reprise.
+  {
+    label: "onboarding_quest_progress",
+    sql: `
+      CREATE TABLE IF NOT EXISTS onboarding_quest_progress (
+        user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        quest_key varchar(64) NOT NULL,
+        completed_at timestamp NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, quest_key)
+      )`,
+  },
+  {
+    label: "onboarding_quest_progress (reprise d'onboarding_progress)",
+    sql: `
+      INSERT INTO onboarding_quest_progress (user_id, quest_key, completed_at)
+      SELECT p.user_id, v.quest_key, now()
+      FROM onboarding_progress p
+      CROSS JOIN LATERAL (VALUES
+        ('clicked_challenge', p.clicked_challenge),
+        ('assigned_task', p.assigned_task),
+        ('evaluated_contribution', p.evaluated_contribution),
+        ('validated_task', p.validated_task),
+        ('joined_meeting', p.joined_meeting)
+      ) AS v(quest_key, done)
+      WHERE v.done
+      ON CONFLICT (user_id, quest_key) DO NOTHING`,
   },
   {
     label: "platform_events",

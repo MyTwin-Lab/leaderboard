@@ -6,7 +6,6 @@ import {
   ChallengeRepoRepository,
   ContributionRepository,
   ContributionMemberRepository,
-  SyncMeetingRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import { verifyRequestToken } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
@@ -20,16 +19,12 @@ const taskRepo = new TaskRepository();
 const challengeRepoRepo = new ChallengeRepoRepository();
 const contributionRepo = new ContributionRepository();
 const contributionMemberRepo = new ContributionMemberRepository();
-// Le repository et non SyncMeetingService : le service instancie les clients
-// Google Calendar/Meet dans son constructeur, qui lèvent sans compte de service
-// configuré — et toute la page challenge tombait en 500 avec eux.
-const syncMeetingRepo = new SyncMeetingRepository();
 
 // GET /api/challenges/[id]/overview
 //
 // Aggregates the challenge-scoped reads that both /challenges/[id] (public)
 // and /challenges/[id]/manage (ChallengeManageView) need — challenge, team,
-// tasks+assignees, meetings, repos, contributions, participants — into a
+// tasks+assignees, repos, contributions, participants — into a
 // single response. Shared by both pages/components with the same
 // react-query key, so navigating between them reuses the cache instead of
 // re-fetching.
@@ -37,8 +32,9 @@ const syncMeetingRepo = new SyncMeetingRepository();
 // La réponse dépend du visiteur, jamais de la page : `toPublicOverview` sans
 // session, `toSignedInOverview` sinon (voir lib/public/overview.ts pour ce que
 // voit un membre, un non-membre, un manager ou un admin). La vue manager n'est
-// ouverte qu'aux admins et managers, qui reçoivent tasks, participants et
-// meetings entiers.
+// ouverte qu'aux admins et managers, qui reçoivent tasks et participants
+// entiers. Les meetings ont leur route (`/api/challenges/[id]/meetings`) : ils
+// appartiennent au module meetings, que l'overview ne connaît pas.
 //
 // repo-activity is intentionally NOT included: it calls external connectors
 // (GitHub/Kaggle) and can be slow or flaky, so it stays its own request and
@@ -71,11 +67,9 @@ export async function GET(
       ? await challengeRepo.findById(challenge.source_challenge_id)
       : null;
 
-    const [team, tasks, meetings, repos, contributions, participants] = await Promise.all([
+    const [team, tasks, repos, contributions, participants] = await Promise.all([
       challengeTeamRepo.findTeamMembers(id),
       taskRepo.findByChallenge(id),
-      // `toPublicOverview` les écarte de toute façon : inutile de les lire.
-      session ? syncMeetingRepo.findByChallengeId(id) : Promise.resolve([]),
       challengeRepoRepo.findByChallengeWithRepo(id),
       contributionRepo.findByChallenge(id),
       challengeTeamRepo.findByChallenge(id),
@@ -113,7 +107,7 @@ export async function GET(
       : [];
 
     const payload = {
-      challenge, team, tasks, meetings, repos, contributions,
+      challenge, team, tasks, repos, contributions,
       participants: safeParticipants,
       my_workspace_owner_id: myWorkspaceOwnerId,
       contribution_members: contributionMembers,
@@ -132,7 +126,6 @@ export async function GET(
       userId: session.userId,
       role: session.role,
       workspaceOwnerId: myWorkspaceOwnerId,
-      isMember: participants.some(p => p.user_id === session.userId),
       privileged,
     }));
   } catch (error) {

@@ -23,7 +23,6 @@ import {
   sync_meetings,
   meeting_participants,
   meeting_analyses,
-  onboarding_progress,
   app_settings,
   challenge_documents,
   challenge_signals,
@@ -87,7 +86,6 @@ import type {
   MeetingParticipant,
   MeetingAnalysis,
   MeetingAnalysisStatus,
-  OnboardingProgress,
   AppSettings,
   ContributionEvaluationStatus,
   RewardEntry,
@@ -106,7 +104,6 @@ import type {
   SandboxRewardRuleKey,
   Notification,
   NotificationType,
-  SandboxStarTier,
 } from "../domain/entities.js";
 import { sandboxProposalOf } from "../domain/legacyProposalFields.js";
 
@@ -644,26 +641,6 @@ export function toDbMeetingAnalysis(entity: Omit<MeetingAnalysis, "uuid" | "crea
 }
 
 // ============================================================
-// ONBOARDING PROGRESS MAPPERS
-// ============================================================
-
-type DbOnboardingProgress = InferSelectModel<typeof onboarding_progress>;
-
-export function toDomainOnboardingProgress(row: DbOnboardingProgress): OnboardingProgress {
-  return {
-    user_id: row.user_id,
-    clicked_challenge: row.clicked_challenge,
-    assigned_task: row.assigned_task,
-    evaluated_contribution: row.evaluated_contribution,
-    validated_task: row.validated_task,
-    joined_meeting: row.joined_meeting,
-    completed_at: row.completed_at ?? undefined,
-    created_at: row.created_at!,
-    updated_at: row.updated_at!,
-  };
-}
-
-// ============================================================
 // CHALLENGE DOCUMENTS MAPPERS
 // ============================================================
 
@@ -997,14 +974,6 @@ export function toDomainAppSettings(row: InferSelectModel<typeof app_settings>):
     background_color: row.background_color ?? null,
     theme_mode: row.theme_mode ?? "light",
     updated_at: row.updated_at ?? undefined,
-    modules_meetings_enabled: row.modules_meetings_enabled ?? false,
-    modules_onboarding_enabled: row.modules_onboarding_enabled ?? false,
-    digest_enabled: row.digest_enabled ?? false,
-    digest_frequency_days: row.digest_frequency_days ?? 7,
-    // Défauts inertes : une instance dont les colonnes viennent d'être ajoutées
-    // ne paie ni palier ni bonus tant que l'admin n'a rien saisi.
-    sandbox_star_tiers: (row.sandbox_star_tiers as SandboxStarTier[] | null) ?? [],
-    sandbox_promotion_bonus_cp: row.sandbox_promotion_bonus_cp ?? 0,
   };
 }
 

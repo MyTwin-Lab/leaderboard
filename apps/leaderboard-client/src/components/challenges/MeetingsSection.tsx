@@ -37,7 +37,7 @@ export function MeetingsSection({
   upcomingMeetings: SectionMeeting[];
   pastMeetings: SectionMeeting[];
   onOpen: (meetingId: string) => void;
-  onJoin: (meetLink: string) => void;
+  onJoin: (meetLink: string, meetingId: string) => void;
 }) {
   if (meetings.length === 0) return null;
 
@@ -84,7 +84,7 @@ export function MeetingsSection({
               {next.meet_link && (
                 <span
                   role="button"
-                  onClick={e => { e.stopPropagation(); onJoin(next.meet_link!); }}
+                  onClick={e => { e.stopPropagation(); onJoin(next.meet_link!, next.uuid); }}
                   style={{ color: '#fff' }}
                   className="shrink-0 flex items-center gap-1.5 rounded-full bg-brandCP px-4 py-2 text-xs font-semibold"
                 >

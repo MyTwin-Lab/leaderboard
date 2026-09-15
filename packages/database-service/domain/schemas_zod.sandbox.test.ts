@@ -1,62 +1,31 @@
 import { describe, it, expect } from "vitest";
 import {
   sandboxCreateSchema,
+  sandboxPromotionBonusSchema,
   sandboxUpdateSchema,
   sandboxStarTiersSchema,
-  sandboxSettingsPatchSchema,
 } from "./schemas_zod.js";
 
-const codeBase = {
-  type: "code" as const,
+const base = {
+  type: "code",
   title: "Prédiction de réadmission",
   repo_url: "https://github.com/acme/readmission",
 };
 
-const mlBase = {
-  type: "ml" as const,
-  title: "Segmentation pulmonaire",
-  repo_url: "https://github.com/acme/lungs",
-};
-
 describe("sandboxCreateSchema", () => {
-  it("accepte un sandbox code avec le seul repo", () => {
-    const parsed = sandboxCreateSchema.parse(codeBase);
-    expect(parsed.goals).toEqual([]);
-    expect(parsed.dataset_urls).toEqual([]);
+  it("lit ce que toutes les propositions partagent, et laisse les champs au flow", () => {
+    const parsed = sandboxCreateSchema.parse(base);
+    expect(parsed).toEqual({ type: "code", title: "Prédiction de réadmission", goals: [] });
   });
 
-  it("refuse modèle et datasets sur un sandbox code", () => {
-    // Ces champs n'existent que pour le type ml : les accepter ici les rendrait
-    // invisibles dans l'UI tout en polluant le contexte d'évaluation.
-    expect(
-      sandboxCreateSchema.safeParse({ ...codeBase, model_url: "https://kaggle.com/m/x" }).success
-    ).toBe(false);
-    expect(
-      sandboxCreateSchema.safeParse({ ...codeBase, dataset_urls: ["https://kaggle.com/d/x"] }).success
-    ).toBe(false);
+  it("accepte n'importe quelle clé de flow : c'est le registre qui dit s'il est proposable", () => {
+    expect(sandboxCreateSchema.safeParse({ ...base, type: "journey-validation" }).success).toBe(true);
+    expect(sandboxCreateSchema.safeParse({ ...base, type: "" }).success).toBe(false);
+    expect(sandboxCreateSchema.safeParse({ title: base.title }).success).toBe(false);
   });
 
-  it("exige au moins un dataset sur un sandbox ml", () => {
-    expect(sandboxCreateSchema.safeParse(mlBase).success).toBe(false);
-    expect(
-      sandboxCreateSchema.safeParse({ ...mlBase, dataset_urls: ["https://kaggle.com/d/lungs"] })
-        .success
-    ).toBe(true);
-  });
-
-  it("laisse le modèle optionnel sur un sandbox ml", () => {
-    // Un sandbox ML peut démarrer avant d'avoir produit un artefact.
-    const parsed = sandboxCreateSchema.parse({
-      ...mlBase,
-      dataset_urls: ["https://kaggle.com/d/lungs"],
-    });
-    expect(parsed.model_url).toBeUndefined();
-  });
-
-  it("refuse une URL qui n'est pas en http(s)", () => {
-    for (const repo_url of ["ftp://example.org/repo", "mailto:a@b.c", "pas une url"]) {
-      expect(sandboxCreateSchema.safeParse({ ...codeBase, repo_url }).success).toBe(false);
-    }
+  it("refuse un titre trop court", () => {
+    expect(sandboxCreateSchema.safeParse({ ...base, title: "ab" }).success).toBe(false);
   });
 });
 
@@ -68,8 +37,8 @@ describe("sandboxUpdateSchema", () => {
   });
 
   it("distingue l'absence d'un null : null vide le champ", () => {
-    expect(sandboxUpdateSchema.parse({ model_url: null }).model_url).toBeNull();
-    expect(sandboxUpdateSchema.parse({}).model_url).toBeUndefined();
+    expect(sandboxUpdateSchema.parse({ context: null }).context).toBeNull();
+    expect(sandboxUpdateSchema.parse({}).context).toBeUndefined();
   });
 });
 
@@ -111,17 +80,11 @@ describe("sandboxStarTiersSchema", () => {
   });
 });
 
-describe("sandboxSettingsPatchSchema", () => {
-  it("accepte un patch partiel", () => {
-    expect(sandboxSettingsPatchSchema.parse({ sandbox_promotion_bonus_cp: 200 })).toEqual({
-      sandbox_promotion_bonus_cp: 200,
-    });
-  });
-
+describe("sandboxPromotionBonusSchema", () => {
   it("plafonne le bonus de promotion", () => {
     // Aucune reprise automatique n'existe : une faute de frappe se paie.
-    expect(
-      sandboxSettingsPatchSchema.safeParse({ sandbox_promotion_bonus_cp: 1_000_000 }).success
-    ).toBe(false);
+    expect(sandboxPromotionBonusSchema.safeParse(200).success).toBe(true);
+    expect(sandboxPromotionBonusSchema.safeParse(1_000_000).success).toBe(false);
+    expect(sandboxPromotionBonusSchema.safeParse(-1).success).toBe(false);
   });
 });

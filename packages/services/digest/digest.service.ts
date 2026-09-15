@@ -1,5 +1,4 @@
 import {
-  AppSettingsRepository,
   ChallengeRepository,
   ContributionMemberRepository,
   ContributionRepository,
@@ -14,6 +13,7 @@ import type {
   Challenge, Contribution, ContributionMember, Digest, DigestTriggerSource,
   Project, RewardEntry, Sandbox, User,
 } from "../../database-service/domain/entities.js";
+import { modules } from "../../capabilities/modules.js";
 import { buildDigestPayload } from "./digest-payload.js";
 import { digestWindow } from "./digest-schedule.js";
 
@@ -23,7 +23,8 @@ export interface DigestServiceDeps {
     findLatest(): Promise<Digest | null>;
     create(entry: Parameters<DigestRepository["create"]>[0]): Promise<Digest>;
   };
-  appSettingsRepo: { get(): Promise<{ digest_frequency_days: number }> };
+  /** La fréquence du digest, lue dans ses réglages de module. */
+  settings: { frequencyDays(): Promise<number> };
   contributionRepo: { findCreatedBetween(start: Date, end: Date): Promise<Contribution[]> };
   contributionMemberRepo: { findByContributions(ids: string[]): Promise<ContributionMember[]> };
   challengeRepo: {
@@ -44,6 +45,12 @@ export interface DigestServiceDeps {
   sandboxStarRepo: { countActiveBySandboxIds(ids: string[]): Promise<Map<string, number>> };
 }
 
+/** La fréquence du digest, lue dans ses réglages de module ; 7 jours s'ils ne la portent pas. */
+export async function digestFrequencyDays(): Promise<number> {
+  const days = (await modules.settings("digest")).frequency_days;
+  return typeof days === "number" && Number.isInteger(days) && days >= 1 ? days : 7;
+}
+
 /**
  * DigestService
  * -------------
@@ -60,7 +67,7 @@ export class DigestService {
   constructor(deps?: Partial<DigestServiceDeps>) {
     this.deps = {
       digestRepo: new DigestRepository(),
-      appSettingsRepo: new AppSettingsRepository(),
+      settings: { frequencyDays: digestFrequencyDays },
       contributionRepo: new ContributionRepository(),
       contributionMemberRepo: new ContributionMemberRepository(),
       challengeRepo: new ChallengeRepository(),
@@ -93,12 +100,12 @@ export class DigestService {
     } = {},
   ): Promise<Digest> {
     const now = opts.now ?? new Date();
-    const settings = await this.deps.appSettingsRepo.get();
+    const frequencyDays = await this.deps.settings.frequencyDays();
     const last = await this.deps.digestRepo.findLatest();
     const { start: cursorStart, end } = digestWindow(
       last?.period_end ?? null,
       now,
-      settings.digest_frequency_days,
+      frequencyDays,
     );
 
     const start = opts.periodStart ?? cursorStart;

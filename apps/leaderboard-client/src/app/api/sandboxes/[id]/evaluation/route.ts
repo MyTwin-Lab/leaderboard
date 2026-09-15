@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SandboxEvaluationService } from "../../../../../../../../packages/services/sandbox";
+import { SANDBOX_MODULE, SandboxEvaluationService } from "../../../../../../../../packages/services/sandbox";
 import { verifyRequestToken } from "@/lib/auth";
+import { moduleNotFoundResponse } from "@/lib/server/modules";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,9 @@ const service = new SandboxEvaluationService();
  * paliers de stars et de sa promotion, jamais de sa note.
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const disabled = await moduleNotFoundResponse(SANDBOX_MODULE);
+  if (disabled) return disabled;
+
   try {
     const session = await verifyRequestToken(request);
     if (!session) return NextResponse.json({ error: "Authentication required" }, { status: 401 });

@@ -2,6 +2,7 @@ import type { FlowDefinition } from "../../../packages/registry/platform.js";
 import { codeFlowDescriptor } from "./descriptor.js";
 import { CODE_FLOW_CONFIG_VERSION, codeFlowConfigSchema, codeFlowRules } from "./config.js";
 import { codeCreationRepos } from "./repos.js";
+import { codeProposable } from "./proposable.js";
 
 export { codeFlowDescriptor } from "./descriptor.js";
 export { codeConfigOf, type CodeFlowConfig } from "./config.js";
@@ -36,6 +37,19 @@ export const codeFlow: FlowDefinition = {
   deliverables: [{ contributionType: "project", capabilities: ["deployed_app"] }],
   // Un board personnel, condition de l'évaluation ; le travail à plusieurs sur une même branche.
   uses: { board: true, groups: true },
+  // `{ challengeId, userId }` — un lancement accepté de l'évaluation du projet.
+  events: [{ type: "evaluation.requested", description: "A contributor launched the evaluation of their project." }],
+  quests: [
+    {
+      key: "validated_task",
+      label: "Validate a task",
+      order: 4,
+      event: "evaluation.requested",
+      userOf: (event) => (typeof event.payload.userId === "string" ? event.payload.userId : null),
+    },
+  ],
+  // La sandbox accepte des propositions code : un dépôt, évalué par la grille `code`.
+  proposable: codeProposable,
   hooks: {
     onCreate: codeCreationRepos,
     onJoin: async (ctx) => (await joinHooks()).provisionWorkspace(ctx),

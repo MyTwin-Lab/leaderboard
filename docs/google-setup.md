@@ -343,7 +343,7 @@ Sync Meetings Flow:
 ```
 
 **Services involved:**
-- `packages/services/google-workspace/google-auth.service.ts` — OAuth login
+- `packages/capabilities/identity/google-auth.ts` — OAuth login
 - `packages/services/google-workspace/google-calendar.service.ts` — Calendar events (Service Account)
 - `packages/services/google-workspace/google-meet.service.ts` — Meet records & transcripts (Service Account)
 - `packages/config/index.ts` — Environment variable validation

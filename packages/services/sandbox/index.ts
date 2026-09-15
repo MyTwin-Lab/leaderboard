@@ -9,7 +9,27 @@ export {
   StarRateLimitedError,
   InvalidRewardRulesError,
 } from "./sandbox.service.js";
-export type { SandboxServiceDeps, StarIdentity, StarState } from "./sandbox.service.js";
+export type {
+  SandboxServiceDeps,
+  SandboxCreateCommand,
+  SandboxEditCommand,
+  StarIdentity,
+  StarState,
+} from "./sandbox.service.js";
+
+// Propositions — le lien entre un sandbox et la déclaration `proposable` de son flow.
+export {
+  InvalidProposalError,
+  SandboxFlowUnavailableError,
+  installedProposable,
+  parseProposalFields,
+  proposalFieldsInput,
+  proposalFieldsOf,
+} from "./proposal.js";
+
+// Réglages du module sandbox : l'économie des étoiles.
+export { SANDBOX_MODULE, readSandboxSettings } from "./settings.js";
+export type { SandboxEconomySettings } from "./settings.js";
 
 // Paliers — purs, réutilisés par l'UI pour la progression.
 export { sortTiers, tiersToPay, nextTier, tierProgress } from "./starTiers.js";
@@ -31,10 +51,11 @@ export type { HeaderSource } from "./starPolicy.js";
 export { planAnonAttach } from "./starAttach.js";
 export type { AnonAttachPlan } from "./starAttach.js";
 
-// Évaluation formative — grille `code` pour les deux types (§1.3), zéro CP.
+// Évaluation formative — déclarée par le flow (`proposable.evaluation`), zéro CP.
 export {
   SandboxEvaluationService,
-  SANDBOX_EVALUATION_GRID,
+  SANDBOX_EVALUATION_OWNER,
+  SANDBOX_EVALUATION_HANDLER,
   buildEvaluationContext,
 } from "./sandbox-evaluation.service.js";
 export type {
@@ -52,16 +73,11 @@ export type {
 } from "./sandbox-promotion.service.js";
 export {
   buildPromotedChallengeDraft,
-  promotedChallengeType,
   buildPromotedDescription,
   buildAuthorParticipation,
-  buildAuthorContributions,
-  seedMlWorkspaceMeta,
 } from "./promotion.js";
 export type {
   PromotionInput,
   PromotedChallengeDraft,
-  PromotedContributionDraft,
   AuthorParticipation,
-  MlWorkspaceMetaSeed,
 } from "./promotion.js";

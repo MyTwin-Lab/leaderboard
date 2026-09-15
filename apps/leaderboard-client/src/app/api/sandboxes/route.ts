@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  AppSettingsRepository,
   ChallengeRepository,
   SandboxRepository,
   SandboxRewardRepository,
   SandboxStarRepository,
   UserRepository,
 } from "../../../../../../packages/database-service/repositories";
-import { SandboxService } from "../../../../../../packages/services/sandbox";
+import {
+  SANDBOX_MODULE,
+  SandboxService,
+  proposalFieldsInput,
+  readSandboxSettings,
+} from "../../../../../../packages/services/sandbox";
 import { sandboxCreateSchema } from "../../../../../../packages/database-service/domain/schemas_zod";
 import { verifyRequestToken } from "@/lib/auth";
 import { readAnonId } from "@/lib/server/anonVisitor";
+import { moduleNotFoundResponse } from "@/lib/server/modules";
 import { canCreateSandbox, canSeeSandbox, sandboxViewer, starIdentity } from "@/lib/server/sandboxAuth";
 import { sandboxErrorResponse } from "@/lib/server/sandboxErrors";
 import { toSandboxView } from "@/lib/public/sandbox";
@@ -22,7 +27,6 @@ const challengeRepo = new ChallengeRepository();
 const starRepo = new SandboxStarRepository();
 const rewardRepo = new SandboxRewardRepository();
 const userRepo = new UserRepository();
-const appSettingsRepo = new AppSettingsRepository();
 const sandboxService = new SandboxService();
 
 /**
@@ -42,6 +46,9 @@ const sandboxService = new SandboxService();
  * connecté au jeton expiré passerait pour un anonyme.
  */
 export async function GET(request: NextRequest) {
+  const disabled = await moduleNotFoundResponse(SANDBOX_MODULE);
+  if (disabled) return disabled;
+
   try {
     const session = await verifyRequestToken(request);
     const viewer = sandboxViewer(
@@ -63,7 +70,7 @@ export async function GET(request: NextRequest) {
       starRepo.countActiveBySandboxIds(ids),
       rewardRepo.paidTierThresholdsBySandboxIds(ids),
       userRepo.findByIds([...new Set(visible.map((sandbox) => sandbox.user_id))]),
-      appSettingsRepo.get(),
+      readSandboxSettings(),
       // La carte d'une proposition promue mène au challenge : il faut son slug.
       challengeRepo.findByIds(promotedIds),
     ]);
@@ -88,8 +95,8 @@ export async function GET(request: NextRequest) {
       ),
       // Les paliers et le bonus sont la règle du jeu affichée : publics, et
       // inertes tant que l'admin n'a rien configuré.
-      tiers: settings.sandbox_star_tiers ?? [],
-      promotion_bonus_cp: settings.sandbox_promotion_bonus_cp ?? 0,
+      tiers: settings.star_tiers,
+      promotion_bonus_cp: settings.promotion_bonus_cp,
     });
   } catch (error) {
     console.error("[sandbox] listing failed", error);
@@ -103,8 +110,14 @@ export async function GET(request: NextRequest) {
  * `admin` et `contributor` (§1.6). `viewer` est exclu : c'est le
  * rôle sans aucun droit d'écriture. Un manager n'a rien de particulier ici — il
  * crée en tant que contributeur, comme tout le monde.
+ *
+ * `type` est la clé d'un flow proposable ; le reste du corps (dépôt, datasets…)
+ * est validé par le schéma de ce flow, dans le service.
  */
 export async function POST(request: NextRequest) {
+  const disabled = await moduleNotFoundResponse(SANDBOX_MODULE);
+  if (disabled) return disabled;
+
   const session = await verifyRequestToken(request);
   if (!session) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   if (!canCreateSandbox(session.role)) {
@@ -129,9 +142,7 @@ export async function POST(request: NextRequest) {
       context: parsed.data.context ?? null,
       goals: parsed.data.goals,
       why: parsed.data.why ?? null,
-      repo_url: parsed.data.repo_url,
-      model_url: parsed.data.model_url ?? null,
-      dataset_urls: parsed.data.dataset_urls,
+      fields: proposalFieldsInput(body),
     });
 
     const viewer = sandboxViewer({ userId: session.userId, role: session.role }, null);

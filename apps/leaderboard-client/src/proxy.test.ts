@@ -243,6 +243,8 @@ describe('proxy — non-admin write exceptions', () => {
     `/api/challenges/${CHALLENGE_ID}/ext/compute/request`,
     `/api/challenges/${CHALLENGE_ID}/ext/compute/requests/req-1/decision`,
     '/api/sync-meetings',
+    // Événements d'interface : le handler vérifie le type et ce que l'appelant voit.
+    '/api/events/ui',
   ])('lets a contributor POST %s', async (path) => {
     stubCheckSession(200, { valid: true });
 
@@ -257,6 +259,7 @@ describe('proxy — non-admin write exceptions', () => {
     ['DELETE', `/api/challenges/${CHALLENGE_ID}/flow`],
     ['POST', '/api/sync-meetings/meeting-1/analyze'],
     ['DELETE', '/api/sync-meetings'],
+    ['POST', '/api/events/other'],
   ])('still requires admin for %s %s', async (method, path) => {
     stubCheckSession(200, { valid: true });
 

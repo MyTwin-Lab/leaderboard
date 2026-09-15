@@ -7,7 +7,7 @@ import { challengeInvitePath, challengePath, challengeSignInPath } from '@/lib/p
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import { ArrowLeft, CalendarDays, FileText, Info, Users, UserPlus } from 'lucide-react';
 import type { TeamMember } from '@/lib/types';
-import { trackOnboardingStep } from '@/lib/onboarding-track';
+import { emitUiEvent } from '@/lib/uiEvents';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
 import { ChallengeBrief, type GroupInvite } from '@/components/challenges/ChallengeBrief';
 import { GroupInviteModal } from '@/components/challenges/GroupInviteModal';
@@ -17,7 +17,6 @@ import { JoinModal } from '@/components/challenges/JoinModal';
 import { GROUP_MAX_SIZE } from '../../../../../../packages/database-service/domain/groupPolicy';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
 import type { CodeParticipation, ProjectContribution } from '@/components/challenges/CodeChallengePanel';
-import { MeetingsSection } from '@/components/challenges/MeetingsSection';
 import { HeroStats, type HeroStat } from '@/components/challenges/HeroStats';
 import { fetchJson } from '@/lib/fetchJson';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
@@ -26,6 +25,7 @@ import { showJoinInHeader } from '@/lib/joinGate';
 import { useJoinChallenge } from '@/lib/useJoinChallenge';
 import { flowCatalog } from '@/distribution/mytwin.flows';
 import { flowSlots } from '@/distribution/mytwin.client';
+import { useModuleSlots } from '@/distribution/mytwin.modules';
 import type {
   BoardContribution,
   ChallengeRewards,
@@ -44,17 +44,6 @@ interface Challenge {
   contribution_points_reward: number;
   project_id: string;
   flow_config?: unknown;
-}
-
-interface SyncMeeting {
-  uuid: string;
-  title: string;
-  description?: string;
-  challenge_id: string;
-  start_time: string;
-  end_time: string;
-  meet_link?: string;
-  status: string;
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -144,11 +133,11 @@ export default function ChallengeDetailClient({
   // array, which is evaluated on every render, so reading it above would hit
   // its temporal dead zone.
   useEffect(() => {
-    // trackOnboardingStep posts to a protected route — pointless without a session.
-    if (challengeId && !isAnonymous) trackOnboardingStep('clicked_challenge');
+    // `/api/events/ui` n'accepte qu'un compte connecté : inutile sans session.
+    if (challengeId && !isAnonymous) emitUiEvent('ui.challenge_opened', { challengeId });
   }, [challengeId, isAnonymous]);
 
-  // Challenge, team, tasks, meetings, repos and contributions all come from
+  // Challenge, team, tasks, repos and contributions all come from
   // one aggregated request instead of 6 separate ones — see the route for why
   // repo-activity stays its own call. Shared query key + shape with
   // ChallengeManageView, so navigating manage <-> public for the same
@@ -159,7 +148,6 @@ export default function ChallengeDetailClient({
       challenge: Challenge;
       team: any[];
       tasks: any[];
-      meetings: SyncMeeting[];
       repos: any[];
       contributions: BoardContribution[];
       participants: CodeParticipation[];
@@ -206,20 +194,15 @@ export default function ChallengeDetailClient({
     enabled: !!challengeId && !!challengeType && flowSlots(challengeType).readsRewards === true,
   });
 
-  // Not challenge-specific — shared across every page that needs it.
-  const modulesQuery = useQuery({
-    queryKey: ['modules'],
-    queryFn: () => fetchJson('/api/modules'),
-    staleTime: 5 * 60_000,
-  });
+  // Les slots des modules actifs (la section meetings…). Pré-rempli par la
+  // page serveur : un module désactivé n'apparaît pas, même un instant.
+  const moduleSlots = useModuleSlots();
 
   const challenge = overviewQuery.data?.challenge ?? null;
   const team: TeamMember[] = (overviewQuery.data?.team ?? []).map((m: any) => ({
     id: m.uuid, fullName: m.full_name, avatarUrl: m.avatar_url ?? undefined,
   }));
   const tasks: ContributorTask[] = overviewQuery.data?.tasks ?? [];
-  const meetings = overviewQuery.data?.meetings ?? [];
-  const meetingsEnabled = modulesQuery.data?.meetings_enabled !== false;
   const contributions = overviewQuery.data?.contributions ?? [];
   const repoActivity = repoActivityQuery.data ?? null;
   const currentUserId = meQuery.data?.user?.id ?? null;
@@ -305,7 +288,7 @@ export default function ChallengeDetailClient({
   // The brief only holds the page for the visitor it can actually redirect:
   // rendering the workspace first and swapping it for the brief a tick later
   // would be a visible flash.
-  const loading = overviewQuery.isLoading || modulesQuery.isLoading
+  const loading = overviewQuery.isLoading || moduleSlots.isLoading
     || (meQuery.isLoading && !meQuery.isError)
     || (briefNeeded && briefQuery.isLoading);
 
@@ -358,14 +341,6 @@ export default function ChallengeDetailClient({
     challengeType: challenge.type,
     challengeStatus: challenge.status,
   });
-
-  const upcomingMeetings = meetings
-    .filter(m => ['scheduled', 'in_progress'].includes(m.status))
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-
-  const pastMeetings = meetings
-    .filter(m => ['completed', 'processed', 'cancelled'].includes(m.status))
-    .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
   // ── KPI ──
   // Extraits en variables parce que deux dispositions les consomment : la
@@ -568,16 +543,14 @@ export default function ChallengeDetailClient({
       {/* ── Tabs ─────────────────────────────────────────── */}
       {!isAnonymous && !showBrief && (
       <ContributorTabs
-        // Membres et admins seulement : l'overview ne sert le lien Meet qu'à
-        // eux, un non-membre verrait des réunions qu'il ne peut pas rejoindre.
-        extra={meetingsEnabled && (isMember || isAdmin) && (
-          <MeetingsSection
-            meetings={meetings}
-            upcomingMeetings={upcomingMeetings}
-            pastMeetings={pastMeetings}
-            onOpen={id => router.push(`/sync-meetings/${id}`)}
-            onJoin={link => { trackOnboardingStep('joined_meeting'); window.open(link, '_blank'); }}
-          />
+        // Les sections des modules actifs, au-dessus de l'onglet affiché.
+        // Chacune décide de ce qu'elle montre à qui (`canSeeInternals`).
+        extra={moduleSlots.slots.some(slot => slot.ChallengeSection) && (
+          <>
+            {moduleSlots.slots.map(({ key, ChallengeSection }) => ChallengeSection && (
+              <ChallengeSection key={key} challengeId={challengeId} canSeeInternals={isMember || isAdmin} />
+            ))}
+          </>
         )}
         tabs={slots.contributorTabs(slotContext)} />
       )}

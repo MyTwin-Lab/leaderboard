@@ -27,8 +27,8 @@ function makeDeps(opts: {
         return { uuid: "d-1", generated_at: new Date(), ...entry } as Digest;
       }),
     },
-    appSettingsRepo: {
-      get: vi.fn(async () => ({ digest_frequency_days: opts.frequencyDays ?? 7 })),
+    settings: {
+      frequencyDays: vi.fn(async () => opts.frequencyDays ?? 7),
     },
     contributionRepo: {
       findCreatedBetween: vi.fn(async () => opts.contributions ?? []),

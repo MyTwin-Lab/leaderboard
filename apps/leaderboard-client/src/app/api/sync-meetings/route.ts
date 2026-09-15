@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SyncMeetingService } from '../../../../../../packages/services/sync-meeting/sync-meeting.service.js';
 import { getSessionUser } from '@/lib/auth';
+import { moduleNotFoundResponse } from '@/lib/server/modules';
 import { isManagerOfChallenge, canAccessChallengeInternals } from '@/lib/server/managerAuth';
 import { toMeetingView } from './meetingAccess';
 import { z } from 'zod';
@@ -16,6 +17,10 @@ const createMeetingSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    // Module désactivé : la route n'existe pas.
+    const disabled = await moduleNotFoundResponse('meetings');
+    if (disabled) return disabled;
+
     // Rôle relu en base : un rôle retiré ne survit pas jusqu'à l'expiration du JWT.
     const user = await getSessionUser();
     if (!user) {
@@ -48,6 +53,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Module désactivé : la route n'existe pas.
+    const disabled = await moduleNotFoundResponse('meetings');
+    if (disabled) return disabled;
+
     // Même raison que le GET : le rôle admin se relit en base.
     const user = await getSessionUser();
     if (!user) {

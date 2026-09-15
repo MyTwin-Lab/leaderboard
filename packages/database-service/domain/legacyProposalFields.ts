@@ -53,6 +53,19 @@ export function proposalFieldsPatch(patch: Partial<LegacySandboxColumns>): Recor
   return fields;
 }
 
+/** Les colonnes à écrire en miroir de champs de proposition validés par le flow. */
+export function legacyColumnsFromProposalFields(
+  fields: Record<string, unknown>,
+): { repo_url: string; model_url: string | null; dataset_urls: string[] } {
+  return {
+    repo_url: typeof fields.repo_url === "string" ? fields.repo_url : "",
+    model_url: typeof fields.model_url === "string" ? fields.model_url : null,
+    dataset_urls: Array.isArray(fields.dataset_urls)
+      ? fields.dataset_urls.filter((url): url is string => typeof url === "string")
+      : [],
+  };
+}
+
 /** La proposition d'une ligne : le jsonb d'abord, les colonnes pour chaque clé qu'il ne porte pas. */
 export function sandboxProposalOf(row: LegacySandboxColumns & { proposal_fields?: unknown }): SandboxProposal {
   const stored = asRecord(row.proposal_fields);

@@ -13,6 +13,20 @@ afterAll(() => {
 });
 
 describe("PlatformRegistry — events and subscriptions", () => {
+  it("seeds the events the core emits, owned by core", () => {
+    PlatformRegistry.install({ flows: [] });
+
+    for (const type of ["user.created", "task.created", "contribution.evaluated", "ui.challenge_opened"]) {
+      expect(PlatformRegistry.event(type)).toMatchObject({ owner: "core" });
+    }
+  });
+
+  it("refuses an owner re-declaring an event the core emits", () => {
+    expect(() =>
+      PlatformRegistry.install({ flows: [{ descriptor: descriptor("code"), events: [{ type: "task.created" }] }] }),
+    ).toThrow('Event "task.created" is declared by both core and flow:code');
+  });
+
   it("lists events with their emitter, and subscriptions with their owner", () => {
     PlatformRegistry.install({
       flows: [{ descriptor: descriptor("code"), events: [{ type: "evaluation.requested" }] }],
@@ -29,10 +43,10 @@ describe("PlatformRegistry — events and subscriptions", () => {
   it("refuses an event declared by two owners", () => {
     expect(() =>
       PlatformRegistry.install({
-        flows: [{ descriptor: descriptor("code"), events: [{ type: "task.created" }] }],
-        modules: [{ key: "onboarding", events: [{ type: "task.created" }] }],
+        flows: [{ descriptor: descriptor("code"), events: [{ type: "task.archived" }] }],
+        modules: [{ key: "onboarding", events: [{ type: "task.archived" }] }],
       }),
-    ).toThrow('Event "task.created" is declared by both flow:code and module:onboarding');
+    ).toThrow('Event "task.archived" is declared by both flow:code and module:onboarding');
     expect(PlatformRegistry.isInstalled()).toBe(false);
   });
 

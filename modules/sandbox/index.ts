@@ -1,4 +1,7 @@
 import type { ModuleDefinition } from "../../packages/registry/platform.js";
+import { sandboxSettingsSchema } from "./settings.js";
+
+export { sandboxSettingsSchema, type SandboxSettings } from "./settings.js";
 
 /**
  * Module sandbox — propositions de la communauté, étoiles et promotion en
@@ -6,8 +9,9 @@ import type { ModuleDefinition } from "../../packages/registry/platform.js";
  * challenge ni contribution : le module les apporte au classement comme source
  * de CP.
  *
- * Sont déclarés ici la source de CP et le rejeu de l'évaluation formative ; le
- * reste du module rejoint ce dossier avec le lot L6.
+ * Ce qu'une proposition porte et comment elle s'évalue ne sont pas ici : chaque
+ * flow proposable le déclare (`proposable`). Le module règle l'économie des
+ * étoiles ; désactivé, ses routes et ses pages répondent 404.
  */
 export const sandboxModule: ModuleDefinition = {
   key: "sandbox",
@@ -15,6 +19,7 @@ export const sandboxModule: ModuleDefinition = {
   description: "Open proposals that the community stars, and that an admin can promote into challenges.",
   // Toujours actif avant les modules : une instance existante le garde.
   defaultEnabled: true,
+  settings: { schema: sandboxSettingsSchema },
   jobs: [
     {
       // Les hachés d'IP des étoiles ne se gardent que 30 jours, digest activé ou non.

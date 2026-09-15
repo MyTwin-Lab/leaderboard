@@ -3,6 +3,7 @@ import { TaskRepository, ChallengeRepository, ChallengeTeamRepository } from '..
 import { repositories } from '@/lib/db';
 import { resolveWorkspaceOwner } from '../../../../../../packages/capabilities/groups';
 import { usesBoard } from '../../../../../../packages/capabilities/board';
+import { events } from '../../../../../../packages/capabilities/events';
 import { verifyRequestToken } from '@/lib/auth';
 import { canAccessChallengeInternals } from '@/lib/server/managerAuth';
 import { z } from 'zod';
@@ -128,6 +129,18 @@ export async function POST(request: NextRequest) {
       description: validated.description,
       status: 'todo',
     });
+    // Hors transaction (le repository n'en ouvre pas) : un événement perdu
+    // coûte une quête, jamais la tâche.
+    try {
+      await events.emit('task.created', {
+        taskId: task.uuid,
+        challengeId: validated.challenge_id,
+        userId: session.userId,
+        boardOwnerId,
+      });
+    } catch (error) {
+      console.warn('[events] task.created not recorded:', error);
+    }
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

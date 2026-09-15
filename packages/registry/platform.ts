@@ -331,7 +331,7 @@ export interface EventSubscriptionDeclaration {
  * enregistrée par le module qui déclare `questRecorder`.
  */
 export interface QuestDeclaration {
-  /** Clé stable, conservée dans `onboarding_progress`. */
+  /** Clé stable, conservée dans `onboarding_quest_progress`. */
   key: string;
   label: string;
   description?: string;
@@ -347,14 +347,40 @@ export interface QuestDeclaration {
  * proposition (`sandboxes.proposal_fields`) et son évaluation formative.
  */
 export interface ProposableDeclaration {
-  /** Le schéma des champs de la proposition. */
-  fields: ConfigSchema;
+  /**
+   * Le schéma des champs de la proposition, validé à la création et, champs
+   * existants fusionnés, à chaque édition. Il rend les champs à stocker.
+   */
+  fields: ConfigSchema<Record<string, unknown>>;
   /** La source de bundle et la grille de l'évaluation formative, et l'entrée tirée des champs. */
   evaluation?: {
     bundleSource: string;
     grid: string;
-    input(fields: Record<string, unknown>): unknown;
+    /** L'entrée de la source ; `null` quand les champs ne la permettent pas (un dépôt illisible…). */
+    input(fields: Record<string, unknown>): unknown | null;
+    /** Des lignes de contexte pour l'agent, tirées des champs (les artefacts d'un sandbox ML…). */
+    context?(fields: Record<string, unknown>): string[];
   };
+  /** Le challenge que devient la proposition. Sans lui, la promotion pose une configuration vide. */
+  promote?: ProposalPromotion;
+}
+
+/** Ce que le flow décide à la promotion d'une proposition. */
+export interface ProposalPromotion {
+  /** La configuration candidate du challenge, validée ensuite par `config` du flow. */
+  flowConfig?(options: { compute_enabled?: boolean; api_packaging_enabled?: boolean }): Record<string, unknown>;
+  /** Le `workspace_meta` initial de chaque rôle de repo créé par `onCreate`, tiré des champs. */
+  workspaceMeta?(fields: Record<string, unknown>, authorId: string): Record<string, Record<string, unknown>>;
+  /**
+   * Après le commit, hors transaction : reprendre le travail déjà déposé
+   * (contributions, scoring). Son échec ne défait pas la promotion.
+   */
+  afterPromote?(context: {
+    challengeId: string;
+    authorId: string;
+    fields: Record<string, unknown>;
+    repoIdsByRole: Record<string, string>;
+  }): Promise<void>;
 }
 
 interface Declarations {
@@ -421,7 +447,16 @@ export interface ModuleDefinition extends Declarations {
  * Les événements que le core émet lui-même (identité, board, évaluation). Un
  * type n'y entre qu'avec le lot qui lui ajoute son premier abonné.
  */
-export const CORE_EVENTS: readonly EventDeclaration[] = [];
+export const CORE_EVENTS: readonly EventDeclaration[] = [
+  // `{ userId }` — à la première connexion Google (`/api/google-auth/callback`).
+  { type: "user.created", description: "An account was created, at its first sign-in." },
+  // `{ taskId, challengeId, userId, boardOwnerId }` — une tâche d'un board personnel (`POST /api/tasks`).
+  { type: "task.created", description: "A contributor created a task on a personal board." },
+  // `{ contributionId, challengeId, userId, runId }` — un run réussi sur une contribution (capacité `evaluate`).
+  { type: "contribution.evaluated", description: "A contribution was evaluated successfully." },
+  // `{ challengeId, userId }` — ne prouve qu'un clic, vérifié par `/api/events/ui`.
+  { type: "ui.challenge_opened", description: "A signed-in user opened a challenge they can see." },
+];
 
 export interface PlatformDefinitions {
   flows: readonly FlowDefinition[];
