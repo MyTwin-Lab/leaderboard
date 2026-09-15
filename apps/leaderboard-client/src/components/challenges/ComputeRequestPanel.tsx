@@ -72,7 +72,7 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      fetch('/api/scaleway/status').then(r => (r.ok ? r.json() : { connected: false })),
+      fetch('/api/integrations/scaleway/status').then(r => (r.ok ? r.json() : { connected: false })),
       fetch(`/api/challenges/${challengeId}`).then(r => (r.ok ? r.json() : null)),
     ])
       .then(([status, challenge]) => {

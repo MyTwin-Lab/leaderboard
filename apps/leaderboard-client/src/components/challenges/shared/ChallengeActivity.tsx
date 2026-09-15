@@ -1,24 +1,11 @@
 'use client';
 
-import {
-  Trophy, GitBranch, GitPullRequest, GitCommit, MessageSquare, ExternalLink,
-} from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 import { Badge } from '@/components/ui/Badge';
 import { ContributionRewardBreakdown } from '@/components/contributor/ContributionRewardBreakdown';
 import { fmt, sectionHeader } from './format';
-
-/** Only this view renders relative times, so it travels with the component. */
-function relativeDate(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return fmt(iso, { month: 'short', day: 'numeric' });
-}
+import { RepoActivityFeed } from '@/distribution/mytwin.activity';
 
 interface TeamMember {
   id: string;
@@ -36,13 +23,6 @@ interface Contribution {
   evaluation?: { globalScore?: number } | null;
   evaluation_status?: string;
 }
-
-const GITHUB_EVENT_CONFIG = {
-  commit:         { label: 'Commit',       badge: 'bg-white/15 text-white/50' },
-  pull_request:   { label: 'Pull Request', badge: 'bg-purple-500/20 text-purple-300' },
-  pr_review:      { label: 'Review',       badge: 'bg-blue-500/20 text-blue-300' },
-  branch_created: { label: 'Branch',       badge: 'bg-green-500/20 text-green-300' },
-} as const;
 
 /**
  * Challenge activity: ledger contributions plus the linked repo's events.
@@ -89,75 +69,8 @@ export function ChallengeActivity({ contributions, team, repoActivity, showRewar
         )}
       </div>
 
-      {/* GitHub Activity */}
-      <div className="space-y-3">
-        {sectionHeader(<GitBranch className="h-3.5 w-3.5" />, 'GitHub Activity')}
-        {repoActivity === null ? (
-          <div className="space-y-1.5">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-12 animate-pulse rounded-xl bg-white/[0.03]" />
-            ))}
-          </div>
-        ) : (() => {
-          const githubEntry = Object.values(repoActivity).find((a: any) => a?.type === 'github');
-          const events: any[] = githubEntry?.events ?? [];
-
-          if (events.length === 0) {
-            return (
-              <div className="rounded-xl border border-dashed border-white/[0.06] bg-white/[0.01] px-5 py-10 text-center space-y-2">
-                <div className="flex items-center justify-center gap-3 text-white/20">
-                  <GitBranch className="h-5 w-5" />
-                  <GitPullRequest className="h-5 w-5" />
-                </div>
-                <p className="text-sm text-white/25">No GitHub activity found</p>
-              </div>
-            );
-          }
-
-          return (
-            <div className="space-y-1.5">
-              {events.slice(0, 50).map((event: any, i: number) => {
-                const config = GITHUB_EVENT_CONFIG[event.type as keyof typeof GITHUB_EVENT_CONFIG]
-                  ?? { label: event.type, badge: 'bg-white/10 text-white/40' };
-                const Icon =
-                  event.type === 'pull_request' ? GitPullRequest
-                  : event.type === 'pr_review'  ? MessageSquare
-                  : event.type === 'branch_created' ? GitBranch
-                  : GitCommit;
-
-                return (
-                  <div
-                    key={event.id}
-                    className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 animate-fade-up hover:bg-white/[0.04] transition-colors"
-                    style={{ animationDelay: `${i * 20}ms` }}
-                  >
-                    <Icon className="h-3.5 w-3.5 shrink-0 text-white/30" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-white/80">{event.title}</p>
-                      <p className="text-[11px] text-white/30">
-                        {event.author} · {relativeDate(event.date)}
-                      </p>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${config.badge}`}>
-                      {config.label}
-                    </span>
-                    {event.url && (
-                      <a
-                        href={event.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 text-white/20 hover:text-white/50 transition-colors"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
-      </div>
+      {/* Repository activity, rendered by each connector's feed */}
+      <RepoActivityFeed activities={repoActivity} />
     </div>
   );
 }

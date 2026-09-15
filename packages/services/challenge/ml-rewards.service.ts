@@ -18,7 +18,7 @@ import type {
 } from "../../database-service/domain/entities.js";
 import { parseMlRewardRules, type MlRewardRules } from "../../database-service/domain/mlRewardRules.js";
 import { ConnectorRegistry } from "../../connectors/registry.js";
-import type { KaggleRepoActivity } from "../../connectors/interfaces.js";
+import type { KaggleActivityPayload } from "../../../content/connectors/kaggle/activity.js";
 import {
   MODEL_METRIC_META_FIELD,
   MODEL_METRIC_RULE_KEY,
@@ -280,7 +280,7 @@ export class MlRewardsService {
 
     await connector.connect();
     try {
-      const activity = await connector.fetchRepoActivity() as KaggleRepoActivity;
+      const activity = (await connector.fetchRepoActivity()).payload as KaggleActivityPayload;
       const versions = activity.modelVersions?.flatMap(m => m.versions) ?? [];
       const metricName = rules.model.metric.name;
 

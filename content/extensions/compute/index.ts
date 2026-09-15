@@ -37,6 +37,26 @@ export const computeExtension: ExtensionDefinition = {
   key: COMPUTE_EXTENSION_KEY,
   appliesTo: ["ml"],
   config: { schema: computeConfigSchema, editableKeys: ["enabled"] },
+  jobs: [
+    {
+      // Passe à `ready` les instances que Scaleway a fini de préparer.
+      key: "compute.provisioning",
+      schedule: "* * * * *",
+      async run() {
+        const { checkComputeProvisioning } = await import("../../../packages/services/compute/cron-check-provisioning.js");
+        await checkComputeProvisioning();
+      },
+    },
+    {
+      // Coupe les instances au-delà de leur fenêtre de 24 h.
+      key: "compute.expiration",
+      schedule: "* * * * *",
+      async run() {
+        const { expireComputeInstances } = await import("../../../packages/services/compute/cron-expire-instances.js");
+        await expireComputeInstances();
+      },
+    },
+  ],
   hooks: {
     // Un challenge clos coupe ses instances encore actives, quel que soit le
     // temps restant sur leur fenêtre. Sans attendre : la clôture ne dépend pas

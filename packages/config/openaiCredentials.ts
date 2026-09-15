@@ -1,18 +1,16 @@
-import { decryptToken, encryptToken } from './githubToken.js';
+import { encryptToken } from './githubToken.js';
 import { config } from './index.js';
 
 export { encryptToken };
 
+/** La clé de la connexion OpenAI (store des credentials), sinon `OPENAI_API_KEY`. */
 export async function getOpenAIApiKey(): Promise<string | null> {
   try {
-    const { db, app_settings } = await import('../database-service/db/drizzle.js');
-    const { eq } = await import('drizzle-orm');
-    const [row] = await db.select().from(app_settings).where(eq(app_settings.id, 1));
-    if (row?.openai_key_enc && row?.openai_key_iv) {
-      return decryptToken(row.openai_key_enc, row.openai_key_iv);
-    }
+    const { credentials } = await import('../capabilities/credentials.js');
+    const stored = await credentials.get('openai');
+    if (stored?.secret) return stored.secret;
   } catch {
-    // DB unavailable or no credentials stored — fall through to .env
+    // Base indisponible ou secret illisible : repli sur l'environnement.
   }
 
   return config.openai.apiKey ?? null;

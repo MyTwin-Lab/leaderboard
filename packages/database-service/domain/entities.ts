@@ -587,34 +587,25 @@ export interface AppSettings {
   background_color?: string | null;
   theme_mode: string; // "dark" | "light"
   updated_at?: Date;
-  github_org?: string | null;
-  github_connected_at?: Date | null;
-  github_connected_by?: string | null;
-  github_is_connected: boolean; // derived: !!github_token_enc in DB
-  kaggle_username?: string | null;
-  kaggle_connected_at?: Date | null;
-  kaggle_connected_by?: string | null;
-  kaggle_is_connected: boolean; // derived: !!kaggle_key_enc in DB
-  openai_connected_at?: Date | null;
-  openai_connected_by?: string | null;
-  openai_is_connected: boolean; // derived: !!openai_key_enc in DB
-  slack_team_name?: string | null;
-  slack_connected_at?: Date | null;
-  slack_connected_by?: string | null;
-  slack_is_connected: boolean; // derived: !!slack_token_enc in DB
   modules_meetings_enabled: boolean;
   modules_onboarding_enabled: boolean;
-  scaleway_project_id?: string | null;
-  scaleway_zone?: string | null;
-  scaleway_connected_at?: Date | null;
-  scaleway_connected_by?: string | null;
-  scaleway_is_connected: boolean; // derived: !!scaleway_secret_key_enc && !scaleway_disconnect_requested_at
-  scaleway_disconnect_requested_at?: Date | null;
   digest_enabled: boolean;
   digest_frequency_days: number;
   /** Vide = l'économie des stars ne paie rien. Voir SandboxStarTier. */
   sandbox_star_tiers: SandboxStarTier[];
   sandbox_promotion_bonus_cp: number;
+}
+
+// --- INTEGRATION CREDENTIALS ---
+/** Une connexion à un service tiers, secret chiffré. Lue par la capacité `credentials`. */
+export interface IntegrationCredential {
+  key: string;
+  secret_enc: string | null;
+  secret_iv: string | null;
+  /** Ce qui se lit sans le secret : organisation, équipe, projet… */
+  meta: Record<string, unknown>;
+  connected_at: Date | null;
+  connected_by: string | null;
 }
 
 // --- SANDBOX ---

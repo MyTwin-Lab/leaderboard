@@ -11,6 +11,14 @@ import type { ModuleDefinition } from "../../packages/registry/platform.js";
  */
 export const sandboxModule: ModuleDefinition = {
   key: "sandbox",
+  jobs: [
+    {
+      // Les hachés d'IP des étoiles ne se gardent que 30 jours, digest activé ou non.
+      key: "sandbox.ip-hashes.purge",
+      schedule: "0 5 * * *",
+      run: async () => (await import("./retention.js")).purgeIpHashes(),
+    },
+  ],
   cpSource: {
     key: "sandbox",
     // Import à la demande : déclarer le module ne doit pas ouvrir la base.

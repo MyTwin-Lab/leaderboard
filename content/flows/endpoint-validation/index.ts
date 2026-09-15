@@ -5,6 +5,7 @@ import { endpointValidationActions } from "./actions/index.js";
 import { endpointValidationFlowDescriptor } from "./descriptor.js";
 
 export { ENDPOINT_VALIDATION_FLOW_KEY, endpointValidationFlowDescriptor } from "./descriptor.js";
+// `retention.ts` n'est pas ré-exporté : il charge les repositories, et déclarer le flow ne doit pas ouvrir la base.
 export { reviewerQualificationOf } from "../../kits/validation/index.js";
 
 /**
@@ -34,5 +35,13 @@ export const endpointValidationFlow: FlowDefinition = {
   descriptor: endpointValidationFlowDescriptor,
   config: { version: 1, schema: endpointValidationConfigSchema },
   requires: { deliverableCapability: "endpoint" },
+  jobs: [
+    {
+      // Les pièces (entrées, réponses) d'un challenge fermé depuis 12 mois.
+      key: "endpoint-validation.evidence.purge",
+      schedule: "0 5 * * *",
+      run: async () => (await import("./retention.js")).purgeValidationEvidence(),
+    },
+  ],
   actions: [...validationKitActions, ...endpointValidationActions],
 };

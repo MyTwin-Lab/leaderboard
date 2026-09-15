@@ -1,6 +1,7 @@
 import type { ConnectorDefinition } from "../../../packages/connectors/registry.js";
 import { getGithubToken } from "../../../packages/config/githubToken.js";
 import { GitHubExternalConnector } from "./connector.js";
+import { toPublicGithubActivity } from "./activity.js";
 
 export { GitHubExternalConnector } from "./connector.js";
 
@@ -15,6 +16,8 @@ export { GitHubExternalConnector } from "./connector.js";
 export const githubConnector: ConnectorDefinition = {
   key: "github",
   repoTypes: ["github"],
+  // Un visiteur anonyme ne voit ni les branches perso ni leurs noms.
+  activity: { toPublic: toPublicGithubActivity },
   async create(repo, options) {
     if (!repo.external_repo_id) {
       console.error(`[github connector] Missing external_repo_id for GitHub repo: ${repo.title ?? "(untitled)"}`);

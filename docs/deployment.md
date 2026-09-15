@@ -158,21 +158,30 @@ GPU compute has no env fallback at all — Scaleway credentials are only ever se
 
 ## Cron jobs
 
-Five endpoints must be hit on a schedule, all secured by `Authorization: Bearer $CRON_SECRET`:
-
-| Endpoint | Schedule | Purpose |
-|----------|----------|---------|
-| `/api/cron/check-meetings` | every minute | Detect completed meetings and trigger analysis |
-| `/api/cron/slack-signals` | daily, 06:00 UTC | Detect Slack contribution signals (see [`slack-signals.md`](./slack-signals.md)) |
-| `/api/cron/compute-provisioning` | every minute | Flip GPU instances to `ready` once Scaleway answers (see [`compute-power.md`](./compute-power.md)) |
-| `/api/cron/compute-expiration` | every minute | Terminate GPU instances past their 24h window |
-| `/api/cron/digest` | daily, 05:00 UTC | Generate an activity digest when one is due (see [`digest.md`](./digest.md)) |
-
-On **Vercel**, `vercel.json` declares all five crons and nothing else is needed. On **Scalingo / PM2**, there is no built-in scheduler: use the Scalingo Scheduler addon, a system crontab, or an external service (e.g. cron-job.org) to `curl` the endpoints:
+One endpoint is hit **every minute**, secured by `Authorization: Bearer $CRON_SECRET`:
 
 ```bash
-curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/slack-signals
+curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/tick
 ```
+
+The tick runs every job whose schedule has come due since its last start (UTC cron expressions), one at a time. Each job is taken through a lock in `cron_runs` (last start, last status, last error), so two ticks never run the same job twice, and a failing job does not stop the others. Jobs are declared by their owner:
+
+| Job | Owner | Schedule | Purpose |
+|-----|-------|----------|---------|
+| `meetings.check` | module meetings | every minute | Detect completed meetings and trigger analysis |
+| `slack-signals.detect` | extension slack-signals | daily, 06:00 UTC | Detect Slack contribution signals (see [`slack-signals.md`](./slack-signals.md)) |
+| `compute.provisioning` | extension compute | every minute | Flip GPU instances to `ready` once Scaleway answers (see [`compute-power.md`](./compute-power.md)) |
+| `compute.expiration` | extension compute | every minute | Terminate GPU instances past their 24h window |
+| `digest.generate` | module digest | daily, 05:00 UTC | Generate an activity digest when one is due (see [`digest.md`](./digest.md)) |
+| `core.refresh-tokens.cleanup` | core | daily, 05:00 UTC | Delete expired refresh tokens |
+| `sandbox.ip-hashes.purge` | module sandbox | daily, 05:00 UTC | Erase star IP hashes older than 30 days |
+| `endpoint-validation.evidence.purge` | flow endpoint-validation | daily, 05:00 UTC | Erase validation evidence 12 months after the challenge closed |
+
+A job with no row in `cron_runs` only catches an occurrence from the last 5 minutes: deploying a daily job at 14:00 runs it the next day, not immediately.
+
+**Scalingo.** Since challenge 020 (L5) the Scalingo Scheduler needs a single entry, `* * * * *`, calling `/api/cron/tick`. Switch it when deploying L5. The five former endpoints (`/api/cron/check-meetings`, `slack-signals`, `compute-provisioning`, `compute-expiration`, `digest`) still answer until L7, each running its job under the same lock, so an old scheduler entry cannot double a run while both coexist.
+
+**Vercel.** `vercel.json` still lists the five former endpoints; whether a Vercel deployment exists is checked in L7.
 
 ---
 
@@ -187,3 +196,9 @@ OTEL_SERVICE_NAME=leaderboard-api
 ```
 
 These are optional — the app runs fine without them.
+
+## Integrations (challenge 020, L5)
+
+Admin connections (GitHub, Kaggle, Slack, OpenAI, Scaleway) are stored in `integration_credentials`, encrypted with `GITHUB_TOKEN_ENCRYPTION_KEY`. `db:apply-schema` copies the existing `app_settings` connections on the first deploy; nothing has to be reconnected.
+
+The routes are `/api/integrations/[key]/{connection,status,authorize,callback}`. The GitHub OAuth app keeps `GITHUB_OAUTH_REDIRECT_URI=<origin>/api/github-oauth/callback`: that route is kept as a compatibility alias of `/api/integrations/github/callback`. To move to the new URL, add it to the GitHub OAuth app's callback URLs, then update `GITHUB_OAUTH_REDIRECT_URI` on Scalingo; the alias is removed in L7.

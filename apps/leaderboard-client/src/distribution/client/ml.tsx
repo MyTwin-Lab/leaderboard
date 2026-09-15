@@ -1,6 +1,7 @@
 import { BrainCircuit } from 'lucide-react';
 import { flowConfigView } from '@/lib/flowConfig';
 import type { FlowUiSlots } from '@/lib/flowSlots';
+import { kaggleModelOf } from '../mytwin.activity';
 import { MLChallengeFlow } from '@/components/challenges/MLChallengeFlow';
 import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
 import { ComputeRequestsPanel } from '@/components/challenges/ComputeRequestsPanel';
@@ -38,8 +39,7 @@ const METRIC_LABELS: Record<(typeof METRIC_PRIORITY)[number], string> = { auc: '
  * whichever of the three is present, in that priority order.
  */
 function bestKaggleMetric(repoActivity: Record<string, any> | null): { value: number | null; label: string | null } {
-  const modelEntry = repoActivity ? Object.values(repoActivity).find((a: any) => a?.type === 'kaggle_model') : undefined;
-  const versions: any[] = ((modelEntry as any)?.modelVersions ?? []).flatMap((m: any) => m.versions ?? []);
+  const versions: any[] = (kaggleModelOf(repoActivity)?.modelVersions ?? []).flatMap((m) => m.versions ?? []);
   const key = METRIC_PRIORITY.find(k => versions.some(v => v.metrics?.[k] !== undefined && v.metrics?.[k] !== null));
   if (!key) return { value: null, label: null };
   const value = versions.reduce((best: number | null, v: any) => {

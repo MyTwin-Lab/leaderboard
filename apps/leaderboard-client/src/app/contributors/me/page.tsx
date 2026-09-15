@@ -13,11 +13,7 @@ import { LogoutButton } from "@/components/contributor/LogoutButton";
 import { AdminButton } from "@/components/contributor/AdminButton";
 import { ProfileEditForm } from "@/components/contributor/ProfileEditForm";
 import { ClickableAvatarUpload } from "@/components/contributor/ClickableAvatarUpload";
-import { GitHubConnectionCard } from "@/components/contributor/GitHubConnectionCard";
-import { KaggleConnectionCard } from "@/components/contributor/KaggleConnectionCard";
-import { SlackConnectionCard } from "@/components/contributor/SlackConnectionCard";
-import { OpenAIConnectionCard } from "@/components/contributor/OpenAIConnectionCard";
-import { ScalewayConnectionCard } from "@/components/contributor/ScalewayConnectionCard";
+import { IntegrationsPanel } from "@/components/contributor/IntegrationsPanel";
 import { AppSettingsRepository, OnboardingProgressRepository, UserRepository } from "@packages/database-service/repositories";
 import { AccountMergePanel } from "@/components/contributor/AccountMergePanel";
 import { isValidThemeKey, DEFAULT_THEME_KEY } from "@/lib/themes";
@@ -39,7 +35,7 @@ const userRepo = new UserRepository();
 export default async function ContributorSelfPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ github_error?: string; tab?: string }>;
+  searchParams?: Promise<Record<string, string | undefined>>;
 }) {
   const session = await fetchContributorSession();
 
@@ -54,7 +50,12 @@ export default async function ContributorSelfPage({
   }
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const githubError = resolvedSearchParams.github_error ?? null;
+  // `<clé>_error` : le code d'un OAuth refusé (`github_error=no_org_admin`…).
+  const integrationErrors = Object.fromEntries(
+    Object.entries(resolvedSearchParams)
+      .filter((entry): entry is [string, string] => entry[0].endsWith("_error") && typeof entry[1] === "string")
+      .map(([name, code]) => [name.slice(0, -"_error".length), code]),
+  );
   const initialTab = resolvedSearchParams.tab ?? undefined;
 
   const [firstName, ...lastNameParts] = session.fullName.split(" ");
@@ -148,13 +149,7 @@ export default async function ContributorSelfPage({
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
               Integrations
             </h2>
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
-              <GitHubConnectionCard initialError={githubError} />
-              <KaggleConnectionCard />
-              <SlackConnectionCard />
-              <OpenAIConnectionCard />
-              <ScalewayConnectionCard />
-            </div>
+            <IntegrationsPanel errors={integrationErrors} />
           </div>
         </div>
       ),

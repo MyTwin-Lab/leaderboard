@@ -366,7 +366,7 @@ export function ChallengeManageView({ challengeId, isAdmin = false }: { challeng
 
   const scalewayStatusQuery = useQuery({
     queryKey: ['scaleway-status'],
-    queryFn: () => fetchJson('/api/scaleway/status'),
+    queryFn: () => fetchJson('/api/integrations/scaleway/status'),
   });
 
   // Not challenge-specific — shared across every page that needs it.

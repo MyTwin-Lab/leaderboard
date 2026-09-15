@@ -1,6 +1,7 @@
 'use client';
 
 import { Database, Cpu, BrainCircuit, ExternalLink } from 'lucide-react';
+import { kaggleDatasetOf, kaggleModelOf } from '@/distribution/mytwin.activity';
 
 /**
  * Dataset and model metrics for an ML challenge.
@@ -74,8 +75,8 @@ export function ChallengeMetrics({ repoActivity }: { repoActivity: Record<string
     );
   }
 
-  const datasetEntry = Object.values(repoActivity).find((a: any) => a?.type === 'kaggle_dataset');
-  const modelEntry   = Object.values(repoActivity).find((a: any) => a?.type === 'kaggle_model');
+  const datasetEntry = kaggleDatasetOf(repoActivity);
+  const modelEntry   = kaggleModelOf(repoActivity);
 
   return (
     <div className="space-y-8">
@@ -99,7 +100,7 @@ export function ChallengeMetrics({ repoActivity }: { repoActivity: Record<string
                 )}
               </div>
               {meta.description && <p className="text-xs text-white/40 line-clamp-3">{meta.description}</p>}
-              {meta.tags?.length > 0 && (
+              {meta.tags && meta.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {meta.tags.slice(0, 8).map((tag: string) => (
                     <span key={tag} className="rounded-full bg-white/[0.05] px-2 py-0.5 text-[10px] text-white/40">{tag}</span>

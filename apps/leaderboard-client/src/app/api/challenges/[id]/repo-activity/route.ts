@@ -5,13 +5,16 @@ import { isPubliclyVisible } from '@/lib/public/challengeVisibility';
 import { toPublicRepoActivity } from '@/lib/public/repoActivity';
 import { ConnectorRegistry } from '../../../../../../../../packages/connectors/registry.js';
 import { extractArtifactRef } from '../../../../../../../../packages/services/challenge/artifactUrl.js';
-import type { RepoActivity, KaggleRepoActivity } from '../../../../../../../../packages/connectors/interfaces.js';
+import type { ConnectorActivity } from '../../../../../../../../packages/connectors/interfaces.js';
 
 const challengeRepoRepo = new ChallengeRepoRepository();
 const challengeRepo = new ChallengeRepository();
 
+const NO_ACTIVITY = { error: 'No activity method available' };
+
 // GET /api/challenges/[id]/repo-activity
-// Returns fetchRepoActivity() results for all repos in the challenge, keyed by repo_id.
+// L'activité de chaque dépôt du challenge, par repo_id, dans l'enveloppe
+// `{ connectorKey, payload }` : seul le connecteur connaît la forme du payload.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -33,14 +36,15 @@ export async function GET(
 
     const results = await Promise.allSettled(
       repos.map(async (repo) => {
-        // Datasets are not displayed in the Metrics tab — skip them entirely.
-        if (repo.repo_type === 'kaggle_dataset') {
-          return { repo_id: repo.repo_id, result: { error: 'No activity method available' } };
+        // Le connecteur dit quels types de dépôt ont une activité à lire.
+        const definition = ConnectorRegistry.definitionFor(repo.repo_type);
+        const readable = definition?.activity?.repoTypes ?? definition?.repoTypes ?? [];
+        if (!definition || !readable.includes(repo.repo_type)) {
+          return { repo_id: repo.repo_id, result: NO_ACTIVITY };
         }
 
-        // If no external_repo_id but users have submitted URLs, derive refs from those URLs.
-        // This covers any repo type where contributors each submit their own artifact URL
-        // (e.g. Kaggle models in ML challenges) rather than sharing a single repo ref.
+        // Sans référence partagée, chaque contributeur soumet son propre
+        // artefact : on lit chacun, puis le connecteur fusionne leurs activités.
         if (!repo.repo_external_id) {
           const userUrls = (repo.workspace_meta as { userUrls?: Record<string, string> } | null)?.userUrls ?? {};
           const uniqueRefs = new Set<string>();
@@ -49,12 +53,11 @@ export async function GET(
             if (ref) uniqueRefs.add(ref);
           }
 
-          if (uniqueRefs.size === 0) {
-            return { repo_id: repo.repo_id, result: { error: 'No activity method available' } };
+          if (uniqueRefs.size === 0 || !definition.activity?.merge) {
+            return { repo_id: repo.repo_id, result: NO_ACTIVITY };
           }
 
-          const aggregated: KaggleRepoActivity = { type: repo.repo_type as KaggleRepoActivity['type'], modelVersions: [] };
-
+          const payloads: unknown[] = [];
           await Promise.allSettled(
             [...uniqueRefs].map(async (ref) => {
               const connector = await ConnectorRegistry.createConnector({
@@ -64,49 +67,46 @@ export async function GET(
               } as any);
               if (!connector || typeof connector.fetchRepoActivity !== 'function') return;
               try {
-                const activity = await connector.fetchRepoActivity!() as KaggleRepoActivity;
-                if (activity.datasetMeta) {
-                  aggregated.datasetMeta = activity.datasetMeta;
-                }
-                if (activity.modelVersions) {
-                  aggregated.modelVersions = [...(aggregated.modelVersions ?? []), ...activity.modelVersions];
-                }
+                payloads.push((await connector.fetchRepoActivity()).payload);
               } catch {
                 // skip failed refs silently
               }
             })
           );
 
-          return { repo_id: repo.repo_id, result: aggregated };
+          const merged: ConnectorActivity = { connectorKey: definition.key, payload: definition.activity.merge(payloads) };
+          return { repo_id: repo.repo_id, result: merged };
         }
 
         // Repo has a fixed external_repo_id: use it directly.
-        const repoForConnector = {
+        const connector = await ConnectorRegistry.createConnector({
           ...repo,
           type: repo.repo_type,
           external_repo_id: repo.repo_external_id,
-        };
-        const connector = await ConnectorRegistry.createConnector(repoForConnector as any);
+        } as any);
         if (!connector || typeof connector.fetchRepoActivity !== 'function') {
-          return { repo_id: repo.repo_id, result: { error: 'No activity method available' } };
+          return { repo_id: repo.repo_id, result: NO_ACTIVITY };
         }
         try {
-          const activity: RepoActivity = await connector.fetchRepoActivity!();
-          return { repo_id: repo.repo_id, result: activity };
+          return { repo_id: repo.repo_id, result: await connector.fetchRepoActivity() };
         } catch (err: any) {
           return { repo_id: repo.repo_id, result: { error: err?.message ?? 'Unknown error' } };
         }
       })
     );
 
-    const activities: Record<string, RepoActivity | { error: string }> = {};
+    const activities: Record<string, ConnectorActivity | { error: string }> = {};
     for (const settled of results) {
       if (settled.status === 'fulfilled') {
         activities[settled.value.repo_id] = settled.value.result;
       }
     }
 
-    return NextResponse.json({ activities: session ? activities : toPublicRepoActivity(activities) });
+    return NextResponse.json({
+      activities: session
+        ? activities
+        : toPublicRepoActivity(activities, (connectorKey) => ConnectorRegistry.get(connectorKey)?.activity?.toPublic),
+    });
   } catch (error) {
     console.error('Error fetching repo activity:', error);
     return NextResponse.json({ error: 'Failed to fetch repo activity' }, { status: 500 });

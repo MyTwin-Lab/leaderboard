@@ -33,6 +33,7 @@ const protectedApiRoutes = [
   '/api/evaluation-grids',
   '/api/evaluation-runs',
   '/api/github-oauth',
+  '/api/integrations',
   '/api/sync-meetings',
 ];
 
@@ -372,6 +373,7 @@ export const config = {
     '/api/evaluation-grids/:path*',
     '/api/evaluation-runs/:path*',
     '/api/github-oauth/:path*',
+    '/api/integrations/:path*',
     '/api/sync-meetings/:path*',
   ],
 };

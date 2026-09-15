@@ -1,38 +1,23 @@
+import { isConnectorActivity } from '../../../../../packages/connectors/activity';
+
 /**
  * Reduces repo activity to what an anonymous visitor may see.
  *
- * Two things must not go out. `metadata.branchName` names the
- * `contrib/<index>-<username>` branch the provisioner creates per contributor,
- * and a `branch_created` event exists only to announce such a branch — the
- * field and the event type both go. Connector failures are reported as a fixed
- * string, because a connector's own error text can name internal hosts or
- * carry a token.
+ * What a payload may not publish belongs to its connector (a GitHub
+ * contributor branch name, for instance): each connector declares its own
+ * `activity.toPublic`, looked up by `filterFor`. A payload whose connector
+ * declares no filter describes public artifacts and passes through.
  *
- * Kaggle activity describes public Kaggle artifacts and passes through.
+ * Connector failures are reported as a fixed string, because a connector's
+ * own error text can name internal hosts or carry a token.
  */
-const PUBLIC_EVENT_TYPES = new Set(['commit', 'pull_request', 'pr_review']);
+export type PublicActivityFilter = (connectorKey: string) => ((payload: unknown) => unknown) | undefined;
 
-function toPublicEvent(event: any) {
-  return {
-    type: event.type,
-    id: event.id,
-    title: event.title,
-    author: event.author,
-    date: event.date,
-    url: event.url,
-    metadata: {
-      ...(event.metadata?.sha !== undefined && { sha: event.metadata.sha }),
-      ...(event.metadata?.additions !== undefined && { additions: event.metadata.additions }),
-      ...(event.metadata?.deletions !== undefined && { deletions: event.metadata.deletions }),
-      ...(event.metadata?.prNumber !== undefined && { prNumber: event.metadata.prNumber }),
-      ...(event.metadata?.state !== undefined && { state: event.metadata.state }),
-      ...(event.metadata?.reviewState !== undefined && { reviewState: event.metadata.reviewState }),
-    },
-  };
-}
-
-export function toPublicRepoActivity(activities: Record<string, any> | null | undefined): Record<string, any> {
-  const out: Record<string, any> = {};
+export function toPublicRepoActivity(
+  activities: Record<string, unknown> | null | undefined,
+  filterFor: PublicActivityFilter,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
 
   for (const [repoId, activity] of Object.entries(activities ?? {})) {
     if (!activity || typeof activity !== 'object') continue;
@@ -42,17 +27,10 @@ export function toPublicRepoActivity(activities: Record<string, any> | null | un
       continue;
     }
 
-    if (activity.type === 'github') {
-      out[repoId] = {
-        type: 'github',
-        events: (activity.events ?? [])
-          .filter((e: any) => PUBLIC_EVENT_TYPES.has(e?.type))
-          .map(toPublicEvent),
-      };
-      continue;
+    if (isConnectorActivity(activity)) {
+      const toPublic = filterFor(activity.connectorKey);
+      out[repoId] = toPublic ? { connectorKey: activity.connectorKey, payload: toPublic(activity.payload) } : activity;
     }
-
-    out[repoId] = activity;
   }
 
   return out;

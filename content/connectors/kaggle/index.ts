@@ -1,6 +1,7 @@
 import type { ConnectorDefinition } from "../../../packages/connectors/registry.js";
 import { getKaggleCredentials } from "../../../packages/config/kaggleCredentials.js";
 import { KaggleConnector } from "./connector.js";
+import { mergeKaggleActivities } from "./activity.js";
 
 export { KaggleConnector, parseMetrics } from "./connector.js";
 
@@ -13,6 +14,9 @@ export { KaggleConnector, parseMetrics } from "./connector.js";
 export const kaggleConnector: ConnectorDefinition = {
   key: "kaggle",
   repoTypes: ["kaggle_dataset", "kaggle_model"],
+  // Seuls les modèles publient une activité (leurs versions et métriques) ; un
+  // dépôt de modèle sans référence partagée fusionne l'artefact de chaque contributeur.
+  activity: { repoTypes: ["kaggle_model"], merge: mergeKaggleActivities },
   async create(repo) {
     if (!repo.external_repo_id) {
       console.error(`[kaggle connector] Missing external_repo_id for Kaggle repo: ${repo.title ?? "(untitled)"}`);

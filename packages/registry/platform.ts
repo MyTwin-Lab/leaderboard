@@ -281,8 +281,23 @@ export interface FlowRewardsDeclaration {
   publicFields?: readonly string[];
 }
 
+/**
+ * Un job planifié, lancé par le tick (`packages/capabilities/cron.ts`) quand
+ * son horaire est échu. Sa clé est unique sur toute la plateforme.
+ */
+export interface JobDeclaration {
+  /** `compute.expiration`, `digest.generate`… */
+  key: string;
+  /** Expression cron à 5 champs, en UTC. */
+  schedule: string;
+  /** Durée du verrou pris pendant l'exécution. 10 minutes par défaut. */
+  lockSeconds?: number;
+  run(): Promise<unknown>;
+}
+
 interface Declarations {
   ruleKeys?: readonly RuleKeyDeclaration[];
+  jobs?: readonly JobDeclaration[];
   contributionTypes?: readonly ContributionTypeDeclaration[];
   evaluationHandlers?: readonly EvaluationHandlerDeclaration[];
 }
@@ -345,6 +360,7 @@ interface PlatformState {
   qualifications: Map<string, QualificationDeclaration>;
   ruleKeys: Map<string, Owned<RuleKeyDeclaration>>;
   contributionTypes: Map<string, Owned<ContributionTypeDeclaration>>;
+  jobs: Map<string, Owned<JobDeclaration>>;
   /** Par clé de propriétaire (`code`, `sandbox`…), telle qu'inscrite dans `evaluation_runs.trigger_type`. */
   evaluationHandlers: Map<string, { owner: string; handlers: Map<string, EvaluationHandlerDeclaration> }>;
 }
@@ -468,6 +484,7 @@ export class PlatformRegistry {
       qualifications: new Map(),
       ruleKeys: new Map(),
       contributionTypes: new Map(),
+      jobs: new Map(),
       evaluationHandlers: new Map(),
     };
 
@@ -508,6 +525,7 @@ export class PlatformRegistry {
     for (const { key, owner, declarations } of owners) {
       claim(state.ruleKeys, "Rule key", owner, declarations.ruleKeys);
       claim(state.contributionTypes, "Contribution type", owner, declarations.contributionTypes);
+      claim(state.jobs, "Job", owner, declarations.jobs);
       claimEvaluationHandlers(state.evaluationHandlers, key, owner, declarations.evaluationHandlers);
     }
 
@@ -579,6 +597,11 @@ export class PlatformRegistry {
 
   static contributionTypes(): Owned<ContributionTypeDeclaration>[] {
     return [...current().contributionTypes.values()];
+  }
+
+  /** Les jobs planifiés de la distribution, avec leur propriétaire. */
+  static jobs(): Owned<JobDeclaration>[] {
+    return [...current().jobs.values()];
   }
 
   /** Le handler d'évaluation `handlerKey` du propriétaire `ownerKey` (flow, extension, kit ou module). */

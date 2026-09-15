@@ -5,7 +5,9 @@ import {
   ConnectorAuthConfig,
   ExternalItem,
   ConnectorType,
+  ConnectorActivity,
 } from "../../../packages/connectors/interfaces.js";
+import { GITHUB_CONNECTOR_KEY, type GitHubEvent } from "./activity.js";
 
 /**
  * Options pour le connecteur GitHub externe
@@ -428,7 +430,7 @@ export class GitHubExternalConnector implements ExternalConnector {
    * commits, pull requests, PR reviews, and branches.
    * Returns up to 100 items per category, sorted newest first.
    */
-  async fetchRepoActivity(): Promise<import('../../../packages/connectors/interfaces.js').GitHubRepoActivity> {
+  async fetchRepoActivity(): Promise<ConnectorActivity> {
     const [commitsResp, prsResp, branchesResp] = await Promise.all([
       this.octokit.rest.repos.listCommits({
         owner: this.owner,
@@ -451,7 +453,7 @@ export class GitHubExternalConnector implements ExternalConnector {
       }).catch(() => ({ data: [] as any[] })),
     ]);
 
-    const events: import('../../../packages/connectors/interfaces.js').GitHubEvent[] = [];
+    const events: GitHubEvent[] = [];
 
     // ── Commits ────────────────────────────────────────────────────────────
     for (const c of commitsResp.data) {
@@ -551,6 +553,6 @@ export class GitHubExternalConnector implements ExternalConnector {
     // ── Sort newest first ──────────────────────────────────────────────────
     events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    return { type: 'github', events };
+    return { connectorKey: GITHUB_CONNECTOR_KEY, payload: { events } };
   }
 }

@@ -1,4 +1,5 @@
-export type ConnectorType = 'github' | 'kaggle_dataset' | 'kaggle_model' | 'slack' | string;
+/** Un type de repo, validé par le registre des connecteurs installés (`ConnectorRegistry.isKnownRepoType`). */
+export type ConnectorType = string;
 
 export interface ConnectorAuthConfig {
   apiKey?: string;
@@ -17,62 +18,17 @@ export interface ExternalItem {
   metadata?: Record<string, any>;
 }
 
-// ─── Repo Activity types ──────────────────────────────────────────────────────
+// ─── Activité ─────────────────────────────────────────────────────────────────
 
-export type GitHubEventType = 'commit' | 'pull_request' | 'pr_review' | 'branch_created';
-
-export interface GitHubEvent {
-  type: GitHubEventType;
-  id: string;
-  title: string;
-  author: string;       // GitHub login
-  date: string;         // ISO 8601
-  url: string;
-  metadata: {
-    sha?: string;
-    additions?: number;
-    deletions?: number;
-    prNumber?: number;
-    state?: 'open' | 'closed' | 'merged';
-    reviewState?: 'approved' | 'changes_requested' | 'commented';
-    branchName?: string;
-  };
+/**
+ * L'activité d'un dépôt, opaque pour le core : seul le connecteur `connectorKey`
+ * connaît la forme de `payload`, et déclare de quoi la lire (fusion, filtrage
+ * public côté serveur ; rendus et extracteurs typés dans la distribution).
+ */
+export interface ConnectorActivity {
+  connectorKey: string;
+  payload: unknown;
 }
-
-export interface GitHubRepoActivity {
-  type: 'github';
-  events: GitHubEvent[]; // sorted newest to oldest
-}
-
-export interface KaggleModelMetrics {
-  auc?: number;
-  f1?: number;
-  accuracy?: number;
-  [key: string]: number | undefined;
-}
-
-export interface KaggleModelVersion {
-  versionNumber: number;
-  createdAt: string; // ISO 8601
-  metrics: KaggleModelMetrics;
-}
-
-export interface KaggleRepoActivity {
-  type: 'kaggle_dataset' | 'kaggle_model';
-  datasetMeta?: {
-    title: string;
-    description?: string;
-    tags?: string[];
-    url: string;
-    lastUpdated?: string;
-  };
-  modelVersions?: Array<{
-    ref: string; // "owner/slug"
-    versions: KaggleModelVersion[];
-  }>;
-}
-
-export type RepoActivity = GitHubRepoActivity | KaggleRepoActivity;
 
 // ─── Connector interface ──────────────────────────────────────────────────────
 
@@ -98,8 +54,8 @@ export interface ExternalConnector {
   /** Récupère le contenu détaillé d'un élément */
   fetchItemContent(itemId: string): Promise<any>;
 
-  /** Récupère l'activité du repo (commits, PRs, reviews, branches / métriques Kaggle) */
-  fetchRepoActivity?(): Promise<RepoActivity>;
+  /** Récupère l'activité du repo, dans l'enveloppe du connecteur */
+  fetchRepoActivity?(): Promise<ConnectorActivity>;
 
   /** Nettoyage éventuel */
   disconnect?(): Promise<void>;

@@ -4,8 +4,14 @@ import {
   ConnectorAuthConfig,
   ExternalItem,
   ConnectorType,
-  KaggleModelMetrics,
+  ConnectorActivity,
 } from "../../../packages/connectors/interfaces.js";
+import {
+  KAGGLE_CONNECTOR_KEY,
+  type KaggleActivityPayload,
+  type KaggleModelMetrics,
+  type KaggleModelVersion,
+} from "./activity.js";
 
 /**
  * Best-effort metric extraction from a Kaggle model version's overview/description field.
@@ -180,18 +186,18 @@ export class KaggleConnector implements ExternalConnector {
 
   // ─── fetchRepoActivity ────────────────────────────────────────────────────
 
-  async fetchRepoActivity(): Promise<import('../../../packages/connectors/interfaces.js').KaggleRepoActivity> {
-    if (this.subtype === 'kaggle_dataset') {
-      return this.fetchDatasetActivity();
-    }
-    return this.fetchModelActivity();
+  async fetchRepoActivity(): Promise<ConnectorActivity> {
+    const payload = this.subtype === 'kaggle_dataset'
+      ? await this.fetchDatasetActivity()
+      : await this.fetchModelActivity();
+    return { connectorKey: KAGGLE_CONNECTOR_KEY, payload };
   }
 
-  private async fetchDatasetActivity(): Promise<import('../../../packages/connectors/interfaces.js').KaggleRepoActivity> {
+  private async fetchDatasetActivity(): Promise<KaggleActivityPayload> {
     const metadata = await this.kaggleFetch(`/datasets/view/${this.owner}/${this.slug}`);
 
     return {
-      type: 'kaggle_dataset',
+      kind: 'dataset',
       datasetMeta: {
         title: metadata.title || this.slug,
         description: metadata.description,
@@ -202,7 +208,7 @@ export class KaggleConnector implements ExternalConnector {
     };
   }
 
-  private async fetchModelActivity(): Promise<import('../../../packages/connectors/interfaces.js').KaggleRepoActivity> {
+  private async fetchModelActivity(): Promise<KaggleActivityPayload> {
     // The Kaggle API has no working "list instances" / "list versions" endpoints
     // (both 404 in practice) — `/models/{owner}/{slug}/get` already returns
     // everything available: the model's own description and each instance's
@@ -212,7 +218,7 @@ export class KaggleConnector implements ExternalConnector {
     try {
       metadata = await this.kaggleFetch(`/models/${this.owner}/${this.slug}/get`);
     } catch {
-      return { type: 'kaggle_model', modelVersions: [] };
+      return { kind: 'model', modelVersions: [] };
     }
 
     const instances: any[] = Array.isArray(metadata.instances) ? metadata.instances : [];
@@ -226,14 +232,14 @@ export class KaggleConnector implements ExternalConnector {
       ...instances.map((inst: any) => [inst.overview, inst.usage].filter(Boolean).join('\n')),
     ].filter(Boolean).join('\n');
 
-    const version: import('../../../packages/connectors/interfaces.js').KaggleModelVersion = {
+    const version: KaggleModelVersion = {
       versionNumber: instances[0]?.versionNumber ?? 0,
       createdAt: metadata.updateTime ?? metadata.publishTime ?? new Date(0).toISOString(),
       metrics: parseMetrics(combinedText),
     };
 
     return {
-      type: 'kaggle_model',
+      kind: 'model',
       modelVersions: [
         { ref: `${this.owner}/${this.slug}`, versions: [version] },
       ],

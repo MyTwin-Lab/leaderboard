@@ -21,6 +21,19 @@ const load = () => import("./actions.js");
 export const slackSignalsExtension: ExtensionDefinition = {
   key: SLACK_SIGNALS_EXTENSION_KEY,
   appliesTo: "*",
+  jobs: [
+    {
+      // Détecte les signaux de la veille dans les canaux des challenges.
+      key: "slack-signals.detect",
+      schedule: "0 6 * * *",
+      // Un appel au modèle par canal : le verrou couvre une détection lente.
+      lockSeconds: 1800,
+      async run() {
+        const { runSlackSignalsCron } = await import("../../../packages/services/slack/cron-slack-signals.js");
+        return runSlackSignalsCron();
+      },
+    },
+  ],
   ruleKeys: [
     {
       key: SLACK_SIGNAL_RULE_KEY,

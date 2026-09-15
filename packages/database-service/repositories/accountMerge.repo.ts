@@ -18,6 +18,7 @@ import {
   meeting_participants,
   sync_meetings,
   app_settings,
+  integration_credentials,
   onboarding_progress,
   sandboxes,
   sandbox_stars,
@@ -295,6 +296,7 @@ export class AccountMergeRepository {
       await tx.update(app_settings).set({ openai_connected_by: p }).where(eq(app_settings.openai_connected_by, g));
       await tx.update(app_settings).set({ slack_connected_by: p }).where(eq(app_settings.slack_connected_by, g));
       await tx.update(app_settings).set({ scaleway_connected_by: p }).where(eq(app_settings.scaleway_connected_by, g));
+      await tx.update(integration_credentials).set({ connected_by: p }).where(eq(integration_credentials.connected_by, g));
 
       // notifications — index unique partiel (user_id, type, dedupe_key) :
       // la même invitation reçue par les deux comptes n'en fait plus qu'une.

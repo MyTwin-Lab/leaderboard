@@ -965,6 +965,22 @@ export const app_settings = pgTable("app_settings", {
   sandbox_promotion_bonus_cp: integer("sandbox_promotion_bonus_cp").notNull().default(0),
 });
 
+// --- INTEGRATION_CREDENTIALS ---
+// Le store des connexions aux services tiers (challenge 020, L5) : une ligne
+// par intégration (`github`, `kaggle`, `openai`, `slack`, `scaleway`…), déclarée
+// par son connecteur. Le secret est chiffré (capacité `crypto`) ; `meta` porte
+// ce qui s'affiche ou se relit sans lui (l'organisation GitHub, l'équipe Slack,
+// le projet et la zone Scaleway). Remplace les colonnes `*_token_enc`,
+// `*_key_enc`… d'app_settings, supprimées en L7.
+export const integration_credentials = pgTable("integration_credentials", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  secret_enc: text("secret_enc"),
+  secret_iv: varchar("secret_iv", { length: 64 }),
+  meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+  connected_at: timestamp("connected_at"),
+  connected_by: uuid("connected_by").references(() => users.uuid, { onDelete: "set null" }),
+});
+
 // --- DIGESTS ---
 // Snapshot périodique et immuable de l'activité de la plateforme.
 //
@@ -1289,6 +1305,22 @@ export const onboardingProgressRelations = relations(onboarding_progress, ({ one
     references: [users.uuid],
   }),
 }));
+
+// --- CRON_RUNS ---
+// Un job planifié par ligne (challenge 020, L5) : son dernier passage et son
+// verrou. Le tick prend un job dû par un INSERT … ON CONFLICT DO UPDATE
+// conditionnel sur `locked_until` et `last_started_at`, ce qui l'empêche de
+// tourner deux fois (`CronRunRepository.claim`).
+export const cron_runs = pgTable("cron_runs", {
+  job_key: varchar("job_key", { length: 128 }).primaryKey(),
+  last_started_at: timestamp("last_started_at"),
+  last_finished_at: timestamp("last_finished_at"),
+  // 'running' | 'succeeded' | 'failed'
+  last_status: varchar("last_status", { length: 16 }),
+  last_error: text("last_error"),
+  // NULL ou passé : le job est libre.
+  locked_until: timestamp("locked_until"),
+});
 
 // --- DATABASE CLIENT ---
 

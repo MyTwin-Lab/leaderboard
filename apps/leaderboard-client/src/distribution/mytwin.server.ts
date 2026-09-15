@@ -4,7 +4,13 @@ import { BundleSourceRegistry, type BundleSource } from '../../../../packages/ca
 import { ProvisionerRegistry } from '../../../../packages/provisioner/src/registry';
 import { PlatformRegistry } from '../../../../packages/registry/platform';
 import { DatabaseGridProvider } from '../../../../packages/services/database-grid-provider';
+import { IntegrationRegistry, type IntegrationDefinition } from '../../../../packages/connectors/integrations';
 import { githubConnector } from '../../../../content/connectors/github';
+import { githubIntegration } from '../../../../content/connectors/github/integration';
+import { kaggleIntegration } from '../../../../content/connectors/kaggle/integration';
+import { slackIntegration } from '../../../../content/connectors/slack/integration';
+import { openaiIntegration } from '../../../../content/integrations/openai/integration';
+import { scalewayIntegration } from '../../../../content/extensions/compute/integration';
 import { kaggleConnector } from '../../../../content/connectors/kaggle';
 import { slackConnector } from '../../../../content/connectors/slack';
 import { githubSnapshotSource } from '../../../../content/bundle-sources/github-snapshot';
@@ -26,6 +32,15 @@ import { platform } from './mytwin.platform';
 
 export const connectors = [githubConnector, kaggleConnector, slackConnector];
 
+/** Les connexions qu'un admin établit depuis ses réglages, dans l'ordre de leurs cartes. */
+export const integrations: IntegrationDefinition[] = [
+  githubIntegration,
+  kaggleIntegration,
+  slackIntegration,
+  openaiIntegration,
+  scalewayIntegration,
+];
+
 /** Ce que la capacité `evaluate` sait noter : un dépôt GitHub, un artefact soumis. */
 export const bundleSources: BundleSource[] = [githubSnapshotSource, kaggleArtifactSource];
 
@@ -37,6 +52,7 @@ export function installServerDistribution(): void {
 
   PlatformRegistry.install(platform);
   for (const connector of connectors) ConnectorRegistry.register(connector);
+  for (const integration of integrations) IntegrationRegistry.register(integration);
   for (const source of bundleSources) BundleSourceRegistry.register(source);
 
   // Les grilles sont servies par la base : celles qu'éditent les admins, et

@@ -33,6 +33,16 @@ export interface ConnectorCreateOptions {
   allowAnonymous?: boolean;
 }
 
+/** Ce que le core fait de l'activité d'un connecteur, sans jamais lire son payload. */
+export interface ConnectorActivityDeclaration {
+  /** Les types de repo dont l'activité se lit. Défaut : tous ceux du connecteur. */
+  repoTypes?: readonly string[];
+  /** Fusionne les activités de plusieurs artefacts d'un même repo (un par contributeur). */
+  merge?(payloads: unknown[]): unknown;
+  /** Ce qu'un visiteur anonyme peut voir. Défaut : l'activité telle quelle. */
+  toPublic?(payload: unknown): unknown;
+}
+
 export interface ConnectorDefinition {
   /** Identifiant unique du connecteur. */
   key: string;
@@ -40,6 +50,7 @@ export interface ConnectorDefinition {
   repoTypes: readonly string[];
   /** `null` quand le connecteur ne peut pas être construit (credentials absents, référence invalide). */
   create(repo: ConnectorRepoRef, options?: ConnectorCreateOptions): Promise<ExternalConnector | null>;
+  activity?: ConnectorActivityDeclaration;
 }
 
 interface RegistryState {
@@ -82,6 +93,20 @@ export class ConnectorRegistry {
 
   static keys(): string[] {
     return [...state().byKey.keys()];
+  }
+
+  static get(key: string): ConnectorDefinition | undefined {
+    return state().byKey.get(key);
+  }
+
+  /** Le connecteur qui lit ce type de repo. */
+  static definitionFor(repoType: string): ConnectorDefinition | undefined {
+    return state().byRepoType.get(repoType);
+  }
+
+  /** Un type de repo n'est valide que si un connecteur installé le lit. */
+  static isKnownRepoType(repoType: string): boolean {
+    return state().byRepoType.has(repoType);
   }
 
   /** Vide le registre — réservé aux tests. */

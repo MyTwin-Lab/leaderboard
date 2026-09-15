@@ -75,7 +75,7 @@ export function ChallengeSlackSignalsEditor({ challengeId, open }: { challengeId
     setLoading(true);
     setError('');
     try {
-      const statusRes = await fetch('/api/slack/status');
+      const statusRes = await fetch('/api/integrations/slack/status');
       const status = statusRes.ok ? await statusRes.json() : { connected: false };
       setSlackConnected(!!status.connected);
       if (!status.connected) return;
@@ -85,7 +85,7 @@ export function ChallengeSlackSignalsEditor({ challengeId, open }: { challengeId
         fetch(extensionActionUrl(challengeId, SLACK_SIGNALS, 'config')).then(r => r.ok && r.json()).then(d => {
           setConfig(d ?? null);
         }),
-        fetch('/api/slack/channels').then(r => r.ok && r.json()).then(d => {
+        fetch('/api/integrations/slack/extras/channels').then(r => r.ok && r.json()).then(d => {
           if (Array.isArray(d)) setChannels(d);
         }),
       ]);

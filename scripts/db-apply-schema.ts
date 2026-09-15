@@ -970,6 +970,73 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
         )`,
   },
 
+  // --- Store des connexions (challenge 020, L5) ---
+  //
+  // `integration_credentials` reprend les colonnes de connexion d'app_settings,
+  // qui ne sont plus lues et partent en L7. Idempotent : une connexion n'est
+  // recopiée que si elle est plus récente que celle du store, ce qui rattrape
+  // une reconnexion faite par l'ancien code pendant le déploiement sans jamais
+  // écraser ce que le nouveau code a écrit. Une déconnexion faite par l'ancien
+  // code dans cette fenêtre n'est pas recopiée : elle se refait à la main.
+  {
+    label: "integration_credentials",
+    sql: `
+      CREATE TABLE IF NOT EXISTS integration_credentials (
+        key varchar(64) PRIMARY KEY,
+        secret_enc text,
+        secret_iv varchar(64),
+        meta jsonb NOT NULL DEFAULT '{}'::jsonb,
+        connected_at timestamp,
+        connected_by uuid REFERENCES users(uuid) ON DELETE SET NULL
+      )`,
+  },
+  {
+    label: "integration_credentials (reprise d'app_settings)",
+    sql: `
+      INSERT INTO integration_credentials (key, secret_enc, secret_iv, meta, connected_at, connected_by)
+      SELECT v.key, v.secret_enc, v.secret_iv, v.meta, v.connected_at, v.connected_by
+      FROM app_settings s
+      CROSS JOIN LATERAL (VALUES
+        ('github', s.github_token_enc, s.github_token_iv,
+          jsonb_build_object('org', s.github_org), s.github_connected_at, s.github_connected_by),
+        ('kaggle', s.kaggle_key_enc, s.kaggle_key_iv,
+          jsonb_build_object('username', s.kaggle_username), s.kaggle_connected_at, s.kaggle_connected_by),
+        ('openai', s.openai_key_enc, s.openai_key_iv,
+          '{}'::jsonb, s.openai_connected_at, s.openai_connected_by),
+        ('slack', s.slack_token_enc, s.slack_token_iv,
+          jsonb_build_object('team_name', s.slack_team_name), s.slack_connected_at, s.slack_connected_by),
+        ('scaleway', s.scaleway_secret_key_enc, s.scaleway_secret_key_iv,
+          jsonb_build_object('project_id', s.scaleway_project_id, 'zone', s.scaleway_zone,
+            'disconnect_requested_at', s.scaleway_disconnect_requested_at),
+          s.scaleway_connected_at, s.scaleway_connected_by)
+      ) AS v(key, secret_enc, secret_iv, meta, connected_at, connected_by)
+      WHERE s.id = 1 AND v.secret_enc IS NOT NULL
+      ON CONFLICT (key) DO UPDATE SET
+        secret_enc = excluded.secret_enc,
+        secret_iv = excluded.secret_iv,
+        meta = excluded.meta,
+        connected_at = excluded.connected_at,
+        connected_by = excluded.connected_by
+      WHERE excluded.connected_at > COALESCE(integration_credentials.connected_at, 'epoch'::timestamp)`,
+  },
+
+  // --- Crons (challenge 020, L5) ---
+  //
+  // Le dernier passage et le verrou de chaque job planifié, lus par
+  // /api/cron/tick. Les lignes se créent au premier passage de chaque job.
+  {
+    label: "cron_runs",
+    sql: `
+      CREATE TABLE IF NOT EXISTS cron_runs (
+        job_key varchar(128) PRIMARY KEY,
+        last_started_at timestamp,
+        last_finished_at timestamp,
+        last_status varchar(16),
+        last_error text,
+        locked_until timestamp
+      )`,
+  },
+
   // --- Slugs des URLs publiques (docs/superpowers/plans/2026-09-15-slug-urls.md) ---
   //
   // En toute fin de tableau, volontairement : le SET NOT NULL rend la colonne
