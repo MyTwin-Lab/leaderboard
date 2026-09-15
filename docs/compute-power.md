@@ -2,7 +2,7 @@
 
 An `ml` challenge can offer its contributors a **temporary GPU instance** (Scaleway) to train their model, without anyone handing out cloud credentials. A contributor asks, a manager approves, the platform provisions a JupyterLab instance and hands back a one-click link. The instance dies 24 hours later, automatically.
 
-**Requires:** a Scaleway account connected by an admin (see [`admin-settings.md`](./admin-settings.md#scaleway)) and `compute_enabled` turned on for the challenge (a setting of the `compute` extension, held in `flow_config`).
+**Requires:** a Scaleway account connected by an admin (see [`admin-settings.md`](./admin-settings.md#integrations)) and `compute_enabled` turned on for the challenge (a setting of the `compute` extension, held in `flow_config`).
 
 ---
 
@@ -64,7 +64,7 @@ Closing or deleting the challenge also terminates its instances (`expire_reason:
 - **The access token never leaves the row unencrypted.** It is stored AES-256-GCM-encrypted (`access_token_enc` / `access_token_iv`); `jupyter_base_url` deliberately never contains the token. The admin/manager listing of requests excludes the token entirely.
 - **Default instance:** `L4-1-24G`. The ML toolchain is expected to already be on the marketplace image — nothing is installed at provisioning time.
 - The panel is hidden entirely when no Scaleway account is connected, rather than offering a button that cannot work.
-- **Disconnecting Scaleway is a soft disconnect.** It blocks new requests and approvals immediately, but instances already running live out their 24h and are still terminated by the cron — `getScalewayCredentials()` deliberately ignores the disconnect flag for exactly that reason, while `isScalewayUserFacingConnected()` honours it. See [`admin-settings.md`](./admin-settings.md#scaleway).
+- **Disconnecting Scaleway is a soft disconnect.** It blocks new requests and approvals immediately, but instances already running live out their 24h and are still terminated by the cron — `getScalewayCredentials()` deliberately ignores the disconnect flag for exactly that reason, while `isScalewayUserFacingConnected()` honours it. See [`admin-settings.md`](./admin-settings.md#integrations).
 
 ---
 

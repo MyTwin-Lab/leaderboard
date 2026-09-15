@@ -39,7 +39,7 @@ MyTwin Leaderboard is an internal platform for **MyTwin Lab** that tracks contri
 | **Database** | PostgreSQL 14+, Drizzle ORM |
 | **Authentication** | Google OAuth (identity provider) + JWT (jose library), HTTP-only cookies |
 | **AI / Evaluation** | OpenAI API (Agents) |
-| **Google integrations** | Google Workspace (Calendar, Meet), Google Drive (OAuth2) |
+| **Google integrations** | Google Workspace (Calendar, Meet) |
 | **GitHub integration** | Octokit (commits, repos, branch provisioning, activity feed) — via a static token or an admin-connected OAuth account |
 | **Slack integration** | Slack Web API (channel history, user lookup) — for discussion contribution signals |
 | **GPU compute** | Scaleway Instances API — temporary JupyterLab GPU instances for ML challenges |

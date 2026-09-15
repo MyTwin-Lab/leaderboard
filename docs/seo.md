@@ -11,7 +11,7 @@ The site has two jobs in search: rank its own pages (home, the `/about` landing,
 | `/` | ✅ | brand-first title, `Organization` + `WebSite` JSON-LD |
 | `/about` | ✅ | the Lab landing (institutions + contributors), `AboutPage` JSON-LD |
 | `/challenges`, `/challenges/<slug>` | ✅ public ones | `BreadcrumbList` JSON-LD on detail |
-| `/sandbox`, `/sandbox/<slug>` | ✅ visible ones | `BreadcrumbList` JSON-LD on detail |
+| `/sandbox`, `/sandbox/<slug>` | ✅ visible ones | `BreadcrumbList` JSON-LD on detail; `404` and out of the sitemap while the `sandbox` module is disabled |
 | `/leaderboard` | ✅ | |
 | `/terms-of-use`, `/privacy-policy` | ✅ | markdown in `apps/leaderboard-client/content/legal/` |
 | `/contributors/<id>` | ❌ `noindex, follow` | public, but a person's name is not a search result |
@@ -29,7 +29,7 @@ Where things live:
 - `src/lib/server/pageRefs.ts` — resolves a page's URL segment: current slug, moved (UUID, former slug, capitalised slug) or missing.
 - `packages/database-service/domain/slug.ts` — what a slug may be, `slugify`, collision numbering, the deploy-time backfill plan.
 - `src/app/robots.ts`, `src/app/sitemap.ts`, `src/app/opengraph-image.tsx`.
-- `src/components/layout/Footer.tsx` — site-wide links, including the editorial link to mytwin.care and the legal pages.
+- `src/components/layout/Footer.tsx` — site-wide links, including the editorial link to mytwin.care and the legal pages. The entries of product modules (the Sandbox link, in `Navbar` too) come from their `publicNav` slot through `ModuleNavLinks`.
 
 ## Gotchas
 
@@ -39,7 +39,8 @@ Where things live:
 - **The canonical origin is a constant**, `SITE_URL` in `lib/seo.ts`, not `NEXT_PUBLIC_APP_URL`. That variable is inlined at build time: a build made before it was changed on Scalingo served canonicals, sitemap and robots.txt on `*.scalingo.io`, a domain that 301s to mytwinlab.care — a canonical pointing at a redirect, which Google cannot consolidate. `NEXT_PUBLIC_APP_URL` is still the fallback for post-login redirects (`lib/url.ts`).
 - **Only `/admin` is `Disallow`ed.** A `Disallow` blocks crawling, so the engine never reads the page's `noindex`, and a blocked URL linked from elsewhere (the navbar's "Sign in" is on every page) can still be indexed without a description. Private pages stay crawlable and carry the header instead. Listing them in robots.txt would make them *less* safe.
 - **`/api` is not disallowed either.** Challenge and sandbox detail pages are client components that fetch their content from `/api/...`; Googlebot honours robots.txt for those requests while rendering.
-- **The sitemap lists indexable URLs only.** A `noindex` URL in it lowers the trust Google gives the whole file — which is why contributor profiles left it when they went `noindex`.
+- **The sitemap lists indexable URLs only.** A `noindex` URL in it lowers the trust Google gives the whole file — which is why contributor profiles left it when they went `noindex`. For the same reason `fetchSitemap` leaves out `/sandbox` and every sandbox while the `sandbox` module is disabled (`buildSitemap({ sandboxEnabled })`): those pages answer `404`.
+- **Module links are in the server HTML.** The navbar and footer show a module's `publicNav` entries only while it is enabled, read from the `['modules']` query. The root layout (`app/layout.tsx`) prefills that query from `GET /api/modules` for every visitor, so the Sandbox link is a real `<a href>` in the initial HTML instead of appearing after a client fetch.
 - **Challenge and Sandbox pages are client components, server-rendered for cookieless visitors.** `ChallengeDetailClient`, `SandboxDetailClient` and `SandboxExplorer` read their data from the API after `/api/contributors/me`; rendered as-is they ship a skeleton. For a visitor with no `access_token`, `refresh_token` or `sb_anon` cookie — every crawler — the server `page.tsx` prefills the React Query cache and the page arrives complete in the HTML (`lib/server/publicSsr.ts`). Anyone holding one of those cookies gets the client-loaded page, unchanged: their view depends on a session only the client can refresh.
 - **The prefill calls the API route handlers in-process** (`readPublicRoute`) instead of re-implementing them: the field allowlists in `lib/public/*` stay the single place deciding what an anonymous visitor sees, so the HTML can never publish more than the public API. The query keys prefilled must match the client's `useQuery` keys.
 - **A disabled query stays `isPending`.** The client components skip `meQuery` for a known-anonymous visitor, so they test a `sessionKnown` flag rather than `meQuery.isPending` — testing the latter would bring the skeleton back.

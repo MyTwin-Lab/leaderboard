@@ -267,7 +267,7 @@ Quests complete server-side, from the platform events that complete them (see [`
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | `GET` | `/api/onboarding` | The installed quests and their state for the authenticated user. | Contributor+ |
-| `GET` | `/api/onboarding/all` | Every contributor's completed quests. | Admin |
+| `GET` | `/api/onboarding/all` | Every contributor's completed quests. `404` while the `onboarding` module is disabled. | Admin |
 
 ---
 

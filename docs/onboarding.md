@@ -35,7 +35,7 @@ So a quest can take **up to about a minute** to show as done.
 - **Quests are declared by their owner**, not by the onboarding module: a flow or a module adds `quests` to its definition, each naming the event that completes it and how to read the user from it (`userOf`). The platform turns each quest into a subscription of the one module that declares a `questRecorder` — here, onboarding.
 - **Core events** (`CORE_EVENTS` in `packages/registry/platform.ts`): `user.created`, `task.created`, `contribution.evaluated`, `ui.challenge_opened`. Flows and modules declare their own (`evaluation.requested`, `ui.meeting_link_opened`).
 - **UI events** go through `POST /api/events/ui`: signed-in accounts only, only declared `ui.*` types, only on a challenge or meeting the caller can see. The `userId` comes from the session, never from the body.
-- **Disabled module:** nothing is consumed — events wait in the outbox (30 days), the drawer disappears and `GET /api/onboarding` answers 404. A quest whose owner is disabled (the meetings module, for instance) is not shown.
+- **Disabled module:** nothing is consumed — events wait in the outbox (30 days), the drawer disappears and `GET /api/onboarding` and `GET /api/onboarding/all` answer 404. A quest whose owner is disabled (the meetings module, for instance) is not shown.
 
 The app reads progress at:
 - `GET /api/onboarding` — the installed quests, in order, and their state for the authenticated user

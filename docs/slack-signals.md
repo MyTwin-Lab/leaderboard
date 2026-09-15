@@ -23,7 +23,7 @@ Every attribution is auditable: the ledger row's `meta` carries the signal, the 
 
 ## Setting it up
 
-1. **Connect Slack** — an admin pastes a bot token in the Integrations tab of `/contributors/me`. Scopes and app creation are covered in [`admin-settings.md`](./admin-settings.md#slack). Don't forget to invite the bot to the channel.
+1. **Connect Slack** — an admin pastes a bot token in the Integrations tab of `/contributors/me`. Scopes and app creation are covered in [`admin-settings.md`](./admin-settings.md#integrations). Don't forget to invite the bot to the channel.
 2. **Configure the challenge** — in the challenge edit drawer (admins and project managers), the **Discussion signals** section lets you pick the channel and define signals: an icon (from a predefined set), a label, a CP reward, and a written definition. The definition is what the AI matches against — the more precise, the better the detections.
 3. **Wait for the daily job** (or trigger it manually — `/api/cron/slack-signals` runs just this job, kept until challenge 020 L7):
 

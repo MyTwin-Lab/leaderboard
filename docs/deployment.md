@@ -4,7 +4,7 @@ The app is a single Next.js process. Three deployment shapes are in use:
 
 - **PM2 on a VPS** — the setup this document describes in detail.
 - **Scalingo** — driven by `Procfile` (see [Deploying on Scalingo](#deploying-on-scalingo)).
-- **Vercel** — `vercel.json` declares the cron schedules.
+- **Vercel** — `vercel.json` still lists the five former cron routes; the only scheduler target is now `/api/cron/tick`, and the file goes once no Vercel project deploys the repo (challenge 020 L7.2 bis).
 
 ---
 

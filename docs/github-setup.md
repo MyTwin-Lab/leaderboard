@@ -3,7 +3,7 @@
 Complete step-by-step guide to configure GitHub for the Leaderboard application. There are two ways to give the app a GitHub token, and you only need one:
 
 - **Static token (`.env`)** — a Fine-Grained Personal Access Token set as `GITHUB_TOKEN`. Simple, works everywhere, but shared by the whole instance and must be rotated manually.
-- **In-app OAuth connection (recommended)** — an admin connects a GitHub organization account from the UI (`/contributors/me` → Appearance tab). The resulting token is encrypted and stored in the database, and can be swapped or disconnected without touching server config. See [`admin-settings.md`](./admin-settings.md) for how it behaves; this guide covers registering the GitHub OAuth App it needs.
+- **In-app OAuth connection (recommended)** — an admin connects a GitHub organization account from the UI (`/contributors/me` → Integrations tab). The resulting token is encrypted and stored in the database, and can be swapped or disconnected without touching server config. See [`admin-settings.md`](./admin-settings.md) for how it behaves; this guide covers registering the GitHub OAuth App it needs.
 
 If both are configured, the app prefers the in-app connection and only falls back to `GITHUB_TOKEN` when nothing is connected.
 
@@ -113,7 +113,7 @@ Copy to `apps/leaderboard-client/.env.local` as well.
 
 ### Step D: Connect via the UI
 
-Log in as an admin → `/contributors/me` → **Appearance** tab → **Connect GitHub Account**. GitHub will ask you to authorize the app. The account must be an **owner or admin of a GitHub organization** — personal accounts without an org are rejected with a clear error.
+Log in as an admin → `/contributors/me` → **Integrations** tab → **Connect** on the GitHub card. GitHub will ask you to authorize the app. The account must be an **owner or admin of a GitHub organization** — personal accounts without an org are rejected with a clear error.
 
 ---
 
@@ -149,7 +149,7 @@ Both sets of variables are optional at startup — the app runs fine with neithe
 
 ### Test the OAuth Connection specifically
 
-1. Log in as an admin, go to `/contributors/me` → Appearance
+1. Log in as an admin, go to `/contributors/me` → Integrations
 2. Click **Connect GitHub Account**, authorize on GitHub
 3. You should be redirected back with the connection showing as active (org name, masked token, connected-by)
 4. Click **Disconnect** — connectors should fall back to `GITHUB_TOKEN` (or fail gracefully if that isn't set either)
