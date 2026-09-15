@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MYTWIN } from "@/lib/seo";
 import { ArrowIcon } from "./ArrowIcon";
 
 export function HomeHero() {
@@ -15,7 +16,16 @@ export function HomeHero() {
       {/* H1 */}
       <h1 className="text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.25rem]">
         <span className="text-brandCP">Together,</span> we’re building the world’s most
-        advanced digital twin of the human body.
+        advanced{" "}
+        {/* Lien éditorial dofollow (pas de rel="nofollow") : l'ancre « human
+            digital twin » renvoie ce territoire vers mytwin.care. */}
+        <a
+          href={MYTWIN.url}
+          className="transition-colors hover:text-brandCP"
+        >
+          human digital twin
+        </a>
+        .
       </h1>
 
       {/* Body — le lien vers /about vit ici, à droite du paragraphe en desktop
