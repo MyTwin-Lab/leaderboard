@@ -3,31 +3,18 @@ set -euo pipefail
 
 # Production build + run (PM2) for the Next.js app.
 #
-# Two supported modes:
-# - full: enables all features (connectors/evaluator) -> requires real API keys in .env
-# - min : minimal start (client + DB). Sets safe placeholder API keys so `next build` doesn't fail.
+# The optional integrations (evaluator, connectors, sync meetings) read their
+# credentials when they are called: the build needs no API key, and a feature
+# whose key is missing is simply unavailable.
 #
 # Run from repo root:
-#   npm run prod         # full (default)
-#   npm run prod:full
-#   npm run prod:min
+#   npm run prod
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 APP_NAME="leaderboard-client"
 DEFAULT_PORT="3014"
-
-MODE="${1:-full}"
-case "$MODE" in
-  full|min|minimal)
-    ;;
-  *)
-    echo "ERROR: Unknown mode: $MODE"
-    echo "Usage: bash ./scripts/prod.sh [full|min]"
-    exit 1
-    ;;
-esac
 
 if [[ -f "$ROOT_DIR/.env" ]]; then
   # Export all vars from .env into the current shell for build + PM2.
@@ -42,21 +29,6 @@ fi
 export NODE_ENV="${NODE_ENV:-production}"
 export PORT="${PORT:-$DEFAULT_PORT}"
 
-if [[ "$MODE" == "min" || "$MODE" == "minimal" ]]; then
-  # IMPORTANT:
-  # Next.js `next build` may import API routes that import evaluator/connectors code.
-  # Some optional integrations instantiate SDK clients at import time and crash if keys are missing.
-  # In "minimal" mode we set placeholders so the build/start works without enabling those features.
-  export OPENAI_API_KEY="${OPENAI_API_KEY:-__disabled__}"
-  export GITHUB_TOKEN="${GITHUB_TOKEN:-__disabled__}"
-  export GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-__disabled__}"
-  export GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-__disabled__}"
-  export GOOGLE_REFRESH_TOKEN="${GOOGLE_REFRESH_TOKEN:-__disabled__}"
-  export GOOGLE_REDIRECT_URI="${GOOGLE_REDIRECT_URI:-http://localhost/disabled}"
-  export GOOGLE_FOLDER_ID="${GOOGLE_FOLDER_ID:-__disabled__}"
-fi
-
-echo "Production mode: $MODE"
 echo "Resyncing reward caches (contributions.reward, challenges.completion)..."
 npx tsx "$ROOT_DIR/scripts/db-resync-rewards.ts"
 
@@ -84,5 +56,3 @@ echo "Tips:"
 echo "  - Logs:   npm run prod:logs"
 echo "  - Stop:   npm run prod:stop"
 echo "  - Restart npm run prod:restart"
-
-

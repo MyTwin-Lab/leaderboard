@@ -2,7 +2,7 @@
 
 The digest is a periodic, **immutable** snapshot of platform activity — generated automatically on a configurable schedule, browsable by admins from their profile page.
 
-**Requires:** nothing beyond the database. Pure SQL aggregation, no AI agent, no external integration — it works on a `prod:min` instance.
+**Requires:** nothing beyond the database. Pure SQL aggregation, no AI agent, no external integration — it works on an instance with no integration connected.
 
 ---
 

@@ -1,13 +1,13 @@
-// packages/provisioner/src/providers/github-branch.provider.ts
+// content/workspace-providers/github-branch/provider.ts
 
 import { Octokit } from 'octokit';
-import type { WorkspaceProvider, ProvisionRequest, ProvisionResult, WorkspaceStatus } from '../types.js';
+import type { WorkspaceProvider, ProvisionRequest, ProvisionResult, WorkspaceStatus } from '../../../packages/provisioner/src/types.js';
 import { 
   WorkspaceAlreadyExistsError, 
   ProviderAuthenticationError, 
   ParentResourceNotFoundError,
   MissingConfigurationError 
-} from '../errors.js';
+} from '../../../packages/provisioner/src/errors.js';
 
 /**
  * Provider pour créer des branches GitHub

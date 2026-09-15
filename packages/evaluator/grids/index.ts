@@ -58,6 +58,27 @@ export interface GridProvider {
   getGrid(type: string): Promise<EvaluationGridTemplate | DetailedEvaluationGridTemplate | null>;
 }
 
+type Grid = EvaluationGridTemplate | DetailedEvaluationGridTemplate;
+
+interface GridRegistryState {
+  grids: Map<string, Grid>;
+  dbProvider: GridProvider | null;
+  warnedWithoutProvider: boolean;
+}
+
+/*
+ * L'état vit sur `globalThis` : le provider de grilles en base est branché une
+ * fois par la distribution au démarrage du serveur, et Next peut charger ce
+ * module plusieurs fois.
+ */
+const STATE_KEY = '__leaderboardEvaluationGridRegistry';
+
+function state(): GridRegistryState {
+  const holder = globalThis as unknown as Record<string, GridRegistryState | undefined>;
+  holder[STATE_KEY] ??= { grids: new Map(), dbProvider: null, warnedWithoutProvider: false };
+  return holder[STATE_KEY]!;
+}
+
 /**
  * EvaluationGridRegistry
  * ----------------------
@@ -65,29 +86,27 @@ export interface GridProvider {
  * Supporte les grilles statiques (fichiers) et dynamiques (base de données).
  */
 export class EvaluationGridRegistry {
-  private static grids = new Map<string, EvaluationGridTemplate | DetailedEvaluationGridTemplate>();
-  private static dbProvider: GridProvider | null = null;
-
   /**
-   * Configure le fournisseur de grilles depuis la base de données
+   * Configure le fournisseur de grilles depuis la base de données.
+   * Appelé une fois par la distribution installée.
    */
   static setDatabaseProvider(provider: GridProvider): void {
-    this.dbProvider = provider;
+    state().dbProvider = provider;
   }
 
   /**
    * Enregistre une grille statique (fichier)
    */
-  static register(grid: EvaluationGridTemplate | DetailedEvaluationGridTemplate): void {
-    this.grids.set(grid.type, grid);
+  static register(grid: Grid): void {
+    state().grids.set(grid.type, grid);
   }
 
   /**
    * Récupère une grille (sync) - uniquement les grilles statiques
    * @deprecated Utiliser getGridAsync pour supporter les grilles DB
    */
-  static getGrid(type: string): EvaluationGridTemplate | DetailedEvaluationGridTemplate {
-    const grid = this.grids.get(type);
+  static getGrid(type: string): Grid {
+    const grid = state().grids.get(type);
     if (!grid) {
       throw new Error(`[EvaluationGridRegistry] No grid found for type: "${type}"`);
     }
@@ -97,11 +116,13 @@ export class EvaluationGridRegistry {
   /**
    * Récupère une grille (async) - DB en priorité, puis fallback sur statique
    */
-  static async getGridAsync(type: string): Promise<EvaluationGridTemplate | DetailedEvaluationGridTemplate> {
+  static async getGridAsync(type: string): Promise<Grid> {
+    const current = state();
+
     // 1. Essayer la base de données en priorité
-    if (this.dbProvider) {
+    if (current.dbProvider) {
       try {
-        const dbGrid = await this.dbProvider.getGrid(type);
+        const dbGrid = await current.dbProvider.getGrid(type);
         if (dbGrid) {
           console.log(`[EvaluationGridRegistry] Using DB grid for type: ${type}`);
           return dbGrid;
@@ -109,10 +130,14 @@ export class EvaluationGridRegistry {
       } catch (error) {
         console.warn(`[EvaluationGridRegistry] DB provider error for type ${type}:`, error);
       }
+    } else if (!current.warnedWithoutProvider) {
+      // Sans provider, une grille publiée en base serait ignorée sans bruit.
+      console.warn('[EvaluationGridRegistry] No database grid provider installed: only built-in grids are served');
+      current.warnedWithoutProvider = true;
     }
 
     // 2. Fallback sur les grilles statiques
-    const staticGrid = this.grids.get(type);
+    const staticGrid = current.grids.get(type);
     if (staticGrid) {
       console.log(`[EvaluationGridRegistry] Using static grid for type: ${type}`);
       return staticGrid;
@@ -122,11 +147,11 @@ export class EvaluationGridRegistry {
   }
 
   static hasGrid(type: string): boolean {
-    return this.grids.has(type);
+    return state().grids.has(type);
   }
 
   static getAvailableTypes(): string[] {
-    return Array.from(this.grids.keys());
+    return Array.from(state().grids.keys());
   }
 }
 

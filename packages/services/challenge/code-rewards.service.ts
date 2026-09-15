@@ -13,11 +13,7 @@ import { splitShares } from "../../database-service/domain/share.js";
 import { getGroupContext, type GroupContext } from "../../capabilities/groups.js";
 import type { Challenge, ChallengeTeam, Contribution } from "../../database-service/domain/entities.js";
 import { parseCodeRewardRules } from "../../database-service/domain/codeRewardRules.js";
-import {
-  ensureDatabaseGridProvider,
-  evaluateGithubRepo,
-  parseGithubRepoUrl,
-} from "./repo-evaluation.js";
+import { evaluateGithubRepo, parseGithubRepoUrl } from "./repo-evaluation.js";
 
 /** Une contribution "projet global" par (challenge, user) — le pendant code de dataset/model/api_packaging. */
 export const PROJECT_CONTRIBUTION_TYPE = "project";
@@ -97,9 +93,6 @@ export class CodeRewardsService {
   private deps: CodeRewardsDeps;
 
   constructor(deps?: Partial<CodeRewardsDeps>) {
-    // Le registre de grilles est statique : l'installer une fois suffit, et
-    // `repo-evaluation.ts` porte le drapeau pour tous ses appelants.
-    ensureDatabaseGridProvider();
     this.deps = {
       challengeRepo: new ChallengeRepository(),
       challengeTeamRepo: new ChallengeTeamRepository(),

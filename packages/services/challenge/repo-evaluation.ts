@@ -9,7 +9,6 @@ import type { ExternalConnector } from "../../connectors/interfaces.js";
 import type { Repo } from "../../database-service/domain/entities.js";
 import { ConnectorRegistry } from "../../connectors/registry.js";
 import { SnapshotService } from "./snapshot.service.js";
-import { DatabaseGridProvider } from "../database-grid-provider.js";
 import { toScore10 } from "./repo-score.js";
 
 /**
@@ -26,6 +25,10 @@ import { toScore10 } from "./repo-score.js";
  *
  * Ce module ne connaît ni challenge, ni sandbox, ni ledger : il rend une note
  * et le détail des critères, et c'est à l'appelant de décider ce qu'il en fait.
+ *
+ * Les grilles publiées en base sont servies par le provider que la
+ * distribution branche au démarrage : une grille `code` publiée en base sert
+ * au sandbox comme au challenge, sans une ligne de code de plus (§1.3).
  *
  * Les deux helpers purs vivent dans `repo-score.ts` et sont ré-exportés ici :
  * l'UI les importe de là-bas, ce fichier n'étant pas bundlable côté navigateur.
@@ -80,21 +83,6 @@ export interface RepoEvaluationResult {
 const defaultSnapshotService = new SnapshotService();
 const defaultEvaluator = new OpenAIAgentEvaluator();
 
-let databaseGridProviderInstalled = false;
-
-/**
- * Branche le fournisseur de grilles en base sur le registre.
- *
- * Le registre est statique : une seule installation suffit pour tout le
- * processus. C'est ce qui fait qu'une grille `code` publiée en base est servie
- * au sandbox comme au challenge, sans une ligne de code de plus (§1.3).
- */
-export function ensureDatabaseGridProvider(): void {
-  if (databaseGridProviderInstalled) return;
-  EvaluationGridRegistry.setDatabaseProvider(new DatabaseGridProvider());
-  databaseGridProviderInstalled = true;
-}
-
 /**
  * Snapshot agrégé (≤ `maxCommits`) sur la branche/le repo, grille chargée par
  * slug, note ramenée /10.
@@ -112,12 +100,7 @@ export async function evaluateGithubRepo(
     deps?.createConnector ??
     ((repo: Repo, options?: { branch?: string }) => ConnectorRegistry.createConnector(repo, options));
   const snapshotService = deps?.snapshotService ?? defaultSnapshotService;
-  const loadGrid =
-    deps?.loadGrid ??
-    ((type: string) => {
-      ensureDatabaseGridProvider();
-      return EvaluationGridRegistry.getGridAsync(type);
-    });
+  const loadGrid = deps?.loadGrid ?? ((type: string) => EvaluationGridRegistry.getGridAsync(type));
   const evaluator = deps?.evaluator ?? defaultEvaluator;
 
   const connector = await createConnector(

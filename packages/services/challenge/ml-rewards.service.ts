@@ -21,7 +21,6 @@ import { parseMlRewardRules, type MlRewardRules } from "../../database-service/d
 import { ConnectorRegistry } from "../../connectors/registry.js";
 import type { KaggleRepoActivity } from "../../connectors/interfaces.js";
 import { SnapshotService } from "./snapshot.service.js";
-import { DatabaseGridProvider } from "../database-grid-provider.js";
 import { extractArtifactRef, normalizeArtifactUrl } from "./artifactUrl.js";
 import { resolveLineage } from "./lineage.js";
 import { ML_ROLE_RULE } from "./mlRoles.js";
@@ -76,14 +75,8 @@ export class MlRewardsService {
   private deps: MlRewardsDeps;
   private snapshotService = new SnapshotService();
   private evaluator = new OpenAIAgentEvaluator();
-  private static dbProviderInitialized = false;
 
   constructor(deps?: Partial<MlRewardsDeps>) {
-    if (!MlRewardsService.dbProviderInitialized) {
-      EvaluationGridRegistry.setDatabaseProvider(new DatabaseGridProvider());
-      MlRewardsService.dbProviderInitialized = true;
-    }
-
     this.deps = {
       challengeRepo: new ChallengeRepository(),
       challengeRepoRepo: new ChallengeRepoRepository(),

@@ -17,16 +17,9 @@ The app is a single Next.js process. Three deployment shapes are in use:
 
 ---
 
-## Two production modes
+## Optional integrations
 
-The optional packages (evaluator, connectors, sync meetings) require API keys. If those keys are not available, the build will fail. To handle this, there are two production modes:
-
-| Mode | Command | When to use |
-|------|---------|-------------|
-| **Full** | `npm run prod:full` | You have all API keys (`OPENAI_API_KEY`, Google credentials, etc.) |
-| **Minimal** | `npm run prod:min` | You only need the UI + database. No AI, no connectors. |
-
-`prod:min` injects placeholder values for optional env vars so `next build` doesn't crash, then runs the app without those features active.
+The evaluator, the connectors and the sync meetings read their credentials when they are called — from the admin connections, or from the environment as a fallback. A missing key makes the feature that needs it unavailable; it does not break `next build`. There is therefore a single production mode.
 
 ---
 
@@ -35,11 +28,7 @@ The optional packages (evaluator, connectors, sync meetings) require API keys. I
 From the repo root on the server:
 
 ```bash
-# Full mode (all features enabled)
-npm run prod:full
-
-# Or minimal mode (UI + DB only)
-npm run prod:min
+npm run prod
 ```
 
 This runs:
@@ -70,7 +59,7 @@ npm run prod:delete    # Remove the process from PM2
 
 ```bash
 git pull
-npm run prod:restart   # or prod:full / prod:min to rebuild
+npm run prod:restart   # or npm run prod to rebuild
 ```
 
 If you changed the database schema:

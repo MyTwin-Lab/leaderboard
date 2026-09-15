@@ -3,36 +3,19 @@
 import type {
   ProvisionResult,
   ChallengeProvisionContext,
-  WorkspaceType
 } from './types.js';
 import { ProvisionerRegistry } from './registry.js';
-import { GitHubBranchProvider } from './providers/github-branch.provider.js';
 import {
   generateChallengeBranchName,
   generateContributorBranchName,
   mapRepoTypeToWorkspaceType
 } from './utils.js';
-import { ProviderNotFoundError } from './errors.js';
 
-// Enregistrer les providers par défaut
-let initialized = false;
-
-function initializeProviders(): void {
-  if (initialized) return;
-  
-  try {
-    // Enregistrer le provider GitHub si le token est disponible
-    if (process.env.GITHUB_TOKEN) {
-      ProvisionerRegistry.register(new GitHubBranchProvider());
-    } else {
-      console.warn('[Provisioner] GITHUB_TOKEN not set, GitHub provider not available');
-    }
-    
-    initialized = true;
-  } catch (error) {
-    console.error('[Provisioner] Error initializing providers:', error);
-  }
-}
+/*
+ * Les providers ne sont pas enregistrés ici : c'est la distribution installée
+ * qui les apporte (`apps/leaderboard-client/src/distribution/mytwin.server.ts`).
+ * Sans provider pour un type de workspace, le provisioning répond `failed`.
+ */
 
 /**
  * Provisionne un workspace pour un challenge
@@ -41,13 +24,11 @@ function initializeProviders(): void {
 export async function provisionChallengeWorkspace(
   context: ChallengeProvisionContext
 ): Promise<ProvisionResult> {
-  initializeProviders();
-  
   const { challengeIndex, challengeTitle, repoExternalId, repoType } = context;
-  
+
   // Déterminer le type de workspace
   const workspaceType = mapRepoTypeToWorkspaceType(repoType);
-  
+
   // Vérifier si un provider existe
   if (!ProvisionerRegistry.hasProvider(workspaceType)) {
     console.warn(`[Provisioner] No provider for workspace type: ${workspaceType}`);
@@ -60,13 +41,13 @@ export async function provisionChallengeWorkspace(
       error: `No provider available for workspace type: ${workspaceType}`,
     };
   }
-  
+
   // Récupérer le provider
   const provider = ProvisionerRegistry.getProvider(workspaceType);
-  
+
   // Générer le nom de branche
   const branchName = generateChallengeBranchName(challengeIndex, challengeTitle);
-  
+
   // Provisionner
   return provider.provision({
     workspaceType,
@@ -88,8 +69,6 @@ export async function provisionContributorWorkspace(context: {
   repoType: string;
   challengeBranchRef?: string;
 }): Promise<ProvisionResult> {
-  initializeProviders();
-
   const workspaceType = mapRepoTypeToWorkspaceType(context.repoType);
   if (!ProvisionerRegistry.hasProvider(workspaceType)) {
     return {
@@ -114,7 +93,6 @@ export async function provisionContributorWorkspace(context: {
 
 // Exports
 export { ProvisionerRegistry } from './registry.js';
-export { GitHubBranchProvider } from './providers/github-branch.provider.js';
 export * from './types.js';
 export * from './errors.js';
 export * from './utils.js';

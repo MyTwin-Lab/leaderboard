@@ -101,7 +101,7 @@ flowchart LR
 ## Key design decisions
 
 - **No separate API server.** All backend logic lives in Next.js Route Handlers. This simplifies deployment to a single PM2 process.
-- **Optional packages.** The evaluator, connectors, services, and provisioner are all opt-in. The app runs fine with only `config` + `database-service`. This is why there are two prod modes (`prod:full` vs `prod:min`).
+- **Optional integrations.** The evaluator, connectors and provisioner read their credentials when they are called, so the app builds and runs without them; a feature whose credentials are missing is simply unavailable. What is installed on the platform — flows, extensions, connectors, providers — is declared by one distribution manifest (`apps/leaderboard-client/src/distribution/`), and an architecture test (`packages/registry/architecture.test.ts`) keeps the core free of flow, connector and module code.
 - **Drizzle over raw SQL.** The schema is defined in TypeScript (`packages/database-service/db/drizzle.ts`) and pushed to Postgres with `npm run db:push`. Migrations are generated but the primary workflow is schema-push in development.
 - **Four roles, one of which is a qualification.** `admin` / `contributor` / `viewer` are permission levels; `medical_pro` is not "more than a contributor", it marks someone qualified to judge a validation challenge. See [`auth.md`](./auth.md#roles).
 - **Tasks as a personal, organizational board — for code challenges.** Challenges are containers; each contributor's tasks are their own kanban and never influence the score directly. The old global/claimable task model and the old challenge-level identify/merge service are no longer used.

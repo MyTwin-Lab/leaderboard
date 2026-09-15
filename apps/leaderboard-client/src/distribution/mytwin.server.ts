@@ -1,16 +1,21 @@
 import { ConnectorRegistry } from '../../../../packages/connectors/registry';
+import { EvaluationGridRegistry } from '../../../../packages/evaluator/grids';
+import { ProvisionerRegistry } from '../../../../packages/provisioner/src/registry';
 import { PlatformRegistry } from '../../../../packages/registry/platform';
+import { DatabaseGridProvider } from '../../../../packages/services/database-grid-provider';
 import { githubConnector } from '../../../../content/connectors/github';
 import { kaggleConnector } from '../../../../content/connectors/kaggle';
 import { slackConnector } from '../../../../content/connectors/slack';
+import { GitHubBranchProvider } from '../../../../content/workspace-providers/github-branch';
 import { platform } from './mytwin.platform';
 
 /**
  * Distribution MyTwin — côté serveur
  * ----------------------------------
  * Le seul endroit qui dit ce qui est installé sur cette plateforme. Le core
- * ne connaît aucun flow, extension ni connecteur : il lit ce que ce manifeste
- * enregistre. Un connecteur ou un flow client suivrait le même chemin.
+ * ne connaît aucun flow, extension, connecteur ni provider : il lit ce que ce
+ * manifeste enregistre. Un connecteur ou un flow client suivrait le même
+ * chemin.
  *
  * Installée une fois au démarrage du serveur (`src/instrumentation.ts`).
  * Idempotente, pour les tests et les scripts qui l'installent eux-mêmes.
@@ -26,6 +31,18 @@ export function installServerDistribution(): void {
 
   PlatformRegistry.install(platform);
   for (const connector of connectors) ConnectorRegistry.register(connector);
+
+  // Les grilles publiées depuis l'admin priment sur les grilles intégrées.
+  EvaluationGridRegistry.setDatabaseProvider(new DatabaseGridProvider());
+
+  // Branches perso des challenges code. Le token vient encore de
+  // l'environnement ; il passera par la connexion GitHub, lu à chaque appel
+  // (challenge 020, lot L5).
+  if (process.env.GITHUB_TOKEN) {
+    ProvisionerRegistry.register(new GitHubBranchProvider());
+  } else {
+    console.warn('[distribution] GITHUB_TOKEN not set, GitHub branch provider not available');
+  }
 
   holder[INSTALLED_KEY] = true;
 }

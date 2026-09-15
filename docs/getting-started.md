@@ -152,7 +152,7 @@ The app runs at [http://localhost:3000](http://localhost:3000).
 | `Invalid environment configuration: JWT_SECRET…` | Make sure `JWT_SECRET` is at least 32 characters in your `.env` |
 | Drizzle or seed can't connect | Check that Postgres is running, `DATABASE_URL` is correct, and the DB/user exist |
 | API calls fail but app starts | Make sure you copied `.env` to `apps/leaderboard-client/.env.local` |
-| `next build` fails with missing `OPENAI_API_KEY` | Use `npm run prod:min` for production, or set the key in `.env` |
+| An AI evaluation fails with "OpenAI API key is not configured" | Connect OpenAI in the admin Integrations, or set `OPENAI_API_KEY` in `.env` — the build itself never needs the key |
 
 ---
 
