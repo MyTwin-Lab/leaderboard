@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SparkBars } from "@/components/ui/SparkBars";
 import { TeamAvatars } from "@/components/ui/TeamAvatars";
 import { formatCP } from "@/lib/formatters";
+import { challengePath } from "@/lib/paths";
 import type { HomeTrendingChallenge } from "@/lib/types";
 import { ArrowIcon } from "./ArrowIcon";
 
@@ -12,7 +13,7 @@ interface HomeChallengesPreviewProps {
 function ChallengeCard({ ch, index }: { ch: HomeTrendingChallenge; index: number }) {
   return (
     <Link
-      href={`/challenges/${ch.id}`}
+      href={challengePath(ch.slug)}
       className="animate-fade-up group flex min-w-0 flex-col gap-3.5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-[0_14px_40px_-26px_rgba(0,0,0,0.6)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brandCP/25 hover:bg-white/[0.06] sm:p-5"
       style={{ animationDelay: `${index * 50}ms` }}
     >

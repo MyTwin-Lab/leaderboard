@@ -1,12 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { repositories } from "@/lib/db";
-import { challengeJsonLd, challengeMetadata, contributorMetadata, fetchSitemap, sandboxMetadata } from "./seo";
+import { challengeJsonLd, challengeMetadata, contributorMetadata, fetchSitemap, sandboxJsonLd, sandboxMetadata } from "./seo";
 
 const NOINDEX = { index: false, follow: false };
 
 const challenge = (overrides: Record<string, unknown> = {}) => ({
   uuid: "c1",
   title: "Predict glucose",
+  slug: "predict-glucose",
   status: "active",
   type: "ml",
   description: "Build a **model** from CGM data.",
@@ -19,6 +20,7 @@ const sandbox = (overrides: Record<string, unknown> = {}) => ({
   uuid: "s1",
   user_id: "u1",
   title: "Sleep tracker",
+  slug: "sleep-tracker",
   status: "open",
   context: "Track sleep with a wearable.",
   why: null,
@@ -28,29 +30,17 @@ const sandbox = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe("challengeMetadata", () => {
-  beforeEach(() => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("titles a public challenge with its name and description", async () => {
-    vi.spyOn(repositories.challenge, "findById").mockResolvedValue(challenge() as any);
-
-    const metadata = await challengeMetadata("c1");
+  it("titles a public challenge with its name and description, canonical at its slug", () => {
+    const metadata = challengeMetadata(challenge() as any);
 
     expect(metadata.title).toBe("Predict glucose");
     expect(metadata.description).toBe("Build a model from CGM data.");
-    expect(metadata.alternates?.canonical).toBe("/challenges/c1");
+    expect(metadata.alternates?.canonical).toBe("/challenges/predict-glucose");
     expect(metadata.robots).toBeUndefined();
   });
 
-  it("writes a description when the challenge has none", async () => {
-    vi.spyOn(repositories.challenge, "findById").mockResolvedValue(challenge({ description: undefined }) as any);
-
-    const metadata = await challengeMetadata("c1");
+  it("writes a description when the challenge has none", () => {
+    const metadata = challengeMetadata(challenge({ description: undefined }) as any);
 
     expect(metadata.description).toBe(
       "Machine learning challenge at MyTwin Lab: contribute, get evaluated and earn contribution points (CP).",
@@ -61,76 +51,49 @@ describe("challengeMetadata", () => {
     ["a draft", { status: "draft" }],
     ["an archived challenge", { status: "archived" }],
     ["a validation challenge", { type: "validation" }],
-  ])("does not publish the title of %s", async (_label, overrides) => {
-    vi.spyOn(repositories.challenge, "findById").mockResolvedValue(challenge(overrides) as any);
-
-    const metadata = await challengeMetadata("c1");
-
-    expect(metadata).toEqual({ title: "Challenges", robots: NOINDEX });
-  });
-
-  it("does not index an unknown challenge", async () => {
-    vi.spyOn(repositories.challenge, "findById").mockResolvedValue(null);
-
-    expect(await challengeMetadata("missing")).toEqual({ title: "Challenges", robots: NOINDEX });
-  });
-
-  it("falls back instead of failing when the lookup throws", async () => {
-    vi.spyOn(repositories.challenge, "findById").mockRejectedValue(new Error("invalid input syntax for type uuid"));
-
-    expect(await challengeMetadata("not-a-uuid")).toEqual({ title: "Challenges", robots: NOINDEX });
+  ])("does not publish the title of %s", (_label, overrides) => {
+    expect(challengeMetadata(challenge(overrides) as any)).toEqual({ title: "Challenges", robots: NOINDEX });
   });
 });
 
 describe("sandboxMetadata", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("titles an open proposal with its name and context", async () => {
-    vi.spyOn(repositories.sandbox, "findById").mockResolvedValue(sandbox() as any);
-
-    const metadata = await sandboxMetadata("s1");
+  it("titles an open proposal with its name and context, canonical at its slug", () => {
+    const metadata = sandboxMetadata(sandbox() as any);
 
     expect(metadata.title).toBe("Sleep tracker");
     expect(metadata.description).toBe("Track sleep with a wearable.");
-    expect(metadata.alternates?.canonical).toBe("/sandbox/s1");
+    expect(metadata.alternates?.canonical).toBe("/sandbox/sleep-tracker");
   });
 
-  it("falls back on the goals when there is no context nor why", async () => {
-    vi.spyOn(repositories.sandbox, "findById").mockResolvedValue(
-      sandbox({ context: null, goals: ["Detect apnea", "Score sleep"] }) as any,
-    );
-
-    expect((await sandboxMetadata("s1")).description).toBe("Detect apnea. Score sleep");
+  it("falls back on the goals when there is no context nor why", () => {
+    expect(sandboxMetadata(sandbox({ context: null, goals: ["Detect apnea", "Score sleep"] }) as any).description)
+      .toBe("Detect apnea. Score sleep");
   });
 
-  it("does not publish the title of an archived proposal", async () => {
-    vi.spyOn(repositories.sandbox, "findById").mockResolvedValue(sandbox({ status: "archived" }) as any);
-
-    expect(await sandboxMetadata("s1")).toEqual({ title: "Sandbox", robots: NOINDEX });
+  it("does not publish the title of an archived proposal", () => {
+    expect(sandboxMetadata(sandbox({ status: "archived" }) as any)).toEqual({ title: "Sandbox", robots: NOINDEX });
   });
 });
 
 describe("challengeJsonLd", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("gives a public challenge a breadcrumb ending on its title", async () => {
-    vi.spyOn(repositories.challenge, "findById").mockResolvedValue(challenge() as any);
-
-    const graph = (await challengeJsonLd("c1")) as { "@graph": { itemListElement: { name: string; item: string }[] }[] };
+  it("gives a public challenge a breadcrumb ending on its title, at its slug", () => {
+    const graph = challengeJsonLd(challenge() as any) as { "@graph": { itemListElement: { name: string; item: string }[] }[] };
     const items = graph["@graph"][0].itemListElement;
 
     expect(items.map((item) => item.name)).toEqual(["MyTwin Lab", "Challenges", "Predict glucose"]);
-    expect(items[2].item).toBe("https://mytwinlab.care/challenges/c1");
+    expect(items[2].item).toBe("https://mytwinlab.care/challenges/predict-glucose");
   });
 
-  it("describes nothing for a challenge an anonymous visitor cannot open", async () => {
-    vi.spyOn(repositories.challenge, "findById").mockResolvedValue(challenge({ status: "draft" }) as any);
+  it("describes nothing for a challenge an anonymous visitor cannot open", () => {
+    expect(challengeJsonLd(challenge({ status: "draft" }) as any)).toBeNull();
+  });
+});
 
-    expect(await challengeJsonLd("c1")).toBeNull();
+describe("sandboxJsonLd", () => {
+  it("gives an open proposal a breadcrumb at its slug", () => {
+    const graph = sandboxJsonLd(sandbox() as any) as { "@graph": { itemListElement: { item: string }[] }[] };
+
+    expect(graph["@graph"][0].itemListElement[2].item).toBe("https://mytwinlab.care/sandbox/sleep-tracker");
   });
 });
 
@@ -163,19 +126,21 @@ describe("fetchSitemap", () => {
 
   it("lists only what an anonymous visitor can open, and no contributor profile", async () => {
     vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([
-      challenge({ uuid: "public" }),
-      challenge({ uuid: "draft", status: "draft" }),
-      challenge({ uuid: "validation", type: "validation" }),
+      challenge({ slug: "public-one" }),
+      challenge({ slug: "hidden-draft", status: "draft" }),
+      challenge({ slug: "hidden-validation", type: "validation" }),
     ] as any);
     vi.spyOn(repositories.sandbox, "findAll").mockResolvedValue([
-      sandbox({ uuid: "open" }),
-      sandbox({ uuid: "archived", status: "archived" }),
+      sandbox({ slug: "open-one" }),
+      sandbox({ slug: "hidden-archived", status: "archived" }),
     ] as any);
 
     const urls = (await fetchSitemap()).map((entry) => entry.url);
 
-    expect(urls).toContain("https://mytwinlab.care/challenges/public");
-    expect(urls).toContain("https://mytwinlab.care/sandbox/open");
-    expect(urls.some((url) => /draft|validation|archived|contributors/.test(url))).toBe(false);
+    expect(urls).toContain("https://mytwinlab.care/challenges/public-one");
+    expect(urls).toContain("https://mytwinlab.care/sandbox/open-one");
+    // Les slugs de fixture portent « hidden » : ni brouillon, ni validation,
+    // ni archivé, ni profil ne doit apparaître.
+    expect(urls.some((url) => /hidden|contributors/.test(url))).toBe(false);
   });
 });

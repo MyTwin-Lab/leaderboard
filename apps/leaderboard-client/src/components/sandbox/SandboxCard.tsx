@@ -6,6 +6,7 @@ import type { SandboxView } from "@/lib/public/sandbox";
 import { SandboxTypeBadge } from "./SandboxTypeBadge";
 import { StarButton, type StarState } from "./StarButton";
 import { toScore10 } from "../../../../../packages/services/challenge/repo-score";
+import { challengePath, sandboxPath } from "@/lib/paths";
 
 interface SandboxCardProps {
   sandbox: SandboxView;
@@ -75,8 +76,8 @@ export function SandboxCard({ sandbox, currentUserId, index = 0, onStarState }: 
   // d'ouvrir le détail du sandbox.
   const ctaHref =
     promoted && sandbox.promoted_challenge_id
-      ? `/challenges/${sandbox.promoted_challenge_id}`
-      : `/sandbox/${sandbox.uuid}`;
+      ? challengePath(sandbox.promoted_challenge_slug ?? sandbox.promoted_challenge_id)
+      : sandboxPath(sandbox.slug);
   const ctaLabel = promoted && sandbox.promoted_challenge_id ? "See challenge" : "Open";
 
   return (
@@ -102,7 +103,7 @@ export function SandboxCard({ sandbox, currentUserId, index = 0, onStarState }: 
             </span>
           </div>
           <Link
-            href={`/sandbox/${sandbox.uuid}`}
+            href={sandboxPath(sandbox.slug)}
             className="text-lg font-semibold leading-snug tracking-tight text-white transition-colors duration-200 hover:text-brandCP"
           >
             {sandbox.title}

@@ -160,8 +160,8 @@ async function checkSessionStillValid(userId: string): Promise<boolean> {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  // Les allowlists priment sur les gardes par préfixe : /challenges/<id> et ses
-  // trois routes de lecture sont publiques, tandis que /challenges/<id>/manage
+  // Les allowlists priment sur les gardes par préfixe : /challenges/<slug> et ses
+  // trois routes de lecture sont publiques, tandis que /challenges/<slug>/manage
   // et tous les autres /api/challenges/* restent derrière les préfixes.
   const matchedProtectedPage = isPublicPage(pathname)
     ? undefined

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { challengePath } from '@/lib/paths';
 import { fetchJson } from '@/lib/fetchJson';
 import {
   ArrowLeft, CheckCircle2, Circle, ChevronRight,
@@ -28,6 +29,8 @@ interface TaskDetails {
   subTasks: TaskRecord[];
   /** Porteur du board — le visiteur lui-même en solo, le créateur du groupe sinon. */
   board_owner_id?: string | null;
+  /** Pour « View challenge ». `null` si le challenge a disparu : l'UUID redirige alors, ou répond 404. */
+  challenge_slug?: string | null;
 }
 
 const STATUS_OPTIONS: { key: TaskStatus; label: string; dot: string }[] = [
@@ -253,7 +256,7 @@ export default function TaskDetailPage() {
         setDeletingTask(false);
         return;
       }
-      router.push(`/challenges/${task.challenge_id}`);
+      router.push(challengePath(data.challenge_slug ?? task.challenge_id));
     } catch {
       alert('Network error');
       setDeletingTask(false);
@@ -299,7 +302,7 @@ export default function TaskDetailPage() {
             );
           })}
           <Link
-            href={`/challenges/${task.challenge_id}`}
+            href={challengePath(data.challenge_slug ?? task.challenge_id)}
             className="ml-auto text-xs text-white/30 transition-colors hover:text-brandCP"
           >
             View challenge

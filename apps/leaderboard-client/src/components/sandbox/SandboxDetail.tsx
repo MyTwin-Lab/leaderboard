@@ -206,7 +206,7 @@ export function SandboxDetail({
 
       {promoted && (
         <PromotedBanner
-          challengeId={sandbox.promoted_challenge_id}
+          challengeRef={sandbox.promoted_challenge_slug ?? sandbox.promoted_challenge_id}
           promotionBonusCp={promotionBonusCp}
         />
       )}

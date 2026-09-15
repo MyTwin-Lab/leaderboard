@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Sparkles, Star, Trophy } from "lucide-react";
 import { formatCP } from "@/lib/formatters";
+import { sandboxPath } from "@/lib/paths";
 import type { ContributorSandbox } from "@/lib/types";
 
 interface SandboxRewardsListProps {
@@ -40,7 +41,7 @@ export function SandboxRewardsList({ sandboxes }: SandboxRewardsListProps) {
         {sandboxes.map((sandbox) => (
           <Link
             key={sandbox.id}
-            href={`/sandbox/${sandbox.id}`}
+            href={sandboxPath(sandbox.slug)}
             className="block rounded-2xl border border-white/6 bg-white/[0.02] px-4 py-3 transition-colors hover:border-white/10 hover:bg-white/[0.04]"
           >
             <div className="flex items-baseline justify-between gap-3">

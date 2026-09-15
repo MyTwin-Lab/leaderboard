@@ -41,6 +41,7 @@ interface Project {
 export interface EditableChallenge {
   uuid: string;
   title: string;
+  slug: string;
   status: string;
   type: string;
   start_date?: string | Date | null;
@@ -64,6 +65,8 @@ export interface EditableChallenge {
 export interface PromotableSandbox {
   uuid: string;
   title: string;
+  /** Proposé tel quel comme slug du challenge : les deux espaces de noms sont séparés. */
+  slug: string;
   /** 'code' | 'ml'. Hérité, jamais choisi : le sélecteur de type est verrouillé. */
   type: string;
   context?: string | null;
@@ -75,7 +78,8 @@ interface CreateChallengeDrawerProps {
   open: boolean;
   onClose: () => void;
   projects: Project[];
-  onCreated: (challengeId: string) => void;
+  /** Le challenge créé, promu ou enregistré : `uuid` pour les URLs admin, `slug` pour les pages publiques. */
+  onCreated: (challenge: SavedChallenge) => void;
   /**
    * Present = edit mode. The project, the reward pool and the repo are locked:
    * they define the challenge's shape and its budget, and contributors are
@@ -89,6 +93,11 @@ interface CreateChallengeDrawerProps {
    * poste vers `/api/sandboxes/:id/promote` au lieu de `/api/challenges`.
    */
   promotion?: PromotableSandbox;
+}
+
+export interface SavedChallenge {
+  uuid: string;
+  slug: string;
 }
 
 /** Date inputs need YYYY-MM-DD; the API hands back ISO strings or Dates. */
@@ -161,7 +170,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   // Set only when the challenge saved but one or more template tasks failed
   // to flush — the submit button turns into an explicit "Continue" the admin
   // must click, so the failure banner isn't wiped by an auto-navigate.
-  const [pendingChallengeId, setPendingChallengeId] = useState<string | null>(null);
+  const [pendingChallenge, setPendingChallenge] = useState<SavedChallenge | null>(null);
 
   // Fires on the false → true transition only. Callers pass a freshly spread
   // `challenge` object, so keying this on its identity would refill the form —
@@ -174,7 +183,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
     setSuccess(false);
     setError('');
-    setPendingChallengeId(null);
+    setPendingChallenge(null);
     setTimeout(() => titleRef.current?.focus(), 80);
 
     if (challenge) {
@@ -292,7 +301,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     setApiPackagingEnabled(true);
     setPendingTasks([]);
     setPendingTaskTitle('');
-    setPendingChallengeId(null);
+    setPendingChallenge(null);
     setBrief('');
     setExistingBriefId(null);
     setShowBrief(false);
@@ -312,10 +321,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
   /** Admin has read the partial-failure banner and clicked Continue. */
   const handleAcknowledgeFailure = () => {
-    const id = pendingChallengeId;
-    if (!id) return;
+    const saved = pendingChallenge;
+    if (!saved) return;
     resetForm();
-    onCreated(id);
+    onCreated(saved);
     onClose();
   };
 
@@ -403,10 +412,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       );
 
       if (res.ok) {
+        // Création, promotion et édition renvoient toutes la ligne complète.
         const data = await res.json();
-        const newChallengeId = data.uuid ?? data.id;
-
-        const targetId: string | null = newChallengeId ?? challenge?.uuid ?? null;
+        const saved: SavedChallenge = { uuid: data.uuid, slug: data.slug };
+        const targetId = saved.uuid;
 
         // Create mode + code challenge: flush the buffered template tasks now
         // that the challenge exists. Sequential, and non-fatal — the challenge
@@ -437,11 +446,11 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           // see this. Hold here — no resetForm/onCreated/onClose — until they
           // click Continue in the footer.
           setError(`Challenge ${isEdit ? 'updated' : 'created'}, but ${problems.join(' and ')} - fix ${problems.length > 1 ? 'them' : 'it'} from the edit drawer.`);
-          setPendingChallengeId(targetId);
+          setPendingChallenge(saved);
         } else {
           setTimeout(() => {
             if (!isEdit) resetForm();
-            onCreated(newChallengeId ?? challenge!.uuid);
+            onCreated(saved);
             onClose();
           }, 900);
         }
@@ -1035,8 +1044,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           </button>
 
           <button
-            onClick={pendingChallengeId ? handleAcknowledgeFailure : handleSubmit}
-            disabled={saving || (success && !pendingChallengeId)}
+            onClick={pendingChallenge ? handleAcknowledgeFailure : handleSubmit}
+            disabled={saving || (success && !pendingChallenge)}
             className={`flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60
               ${success
                 ? 'bg-green-500/20 text-green-400'
@@ -1045,7 +1054,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {success && <CheckCircle2 className="h-4 w-4" />}
-            {pendingChallengeId
+            {pendingChallenge
               ? 'Continue'
               : isPromotion
                 ? (success ? 'Promoted!' : saving ? 'Promoting…' : 'Promote to challenge')

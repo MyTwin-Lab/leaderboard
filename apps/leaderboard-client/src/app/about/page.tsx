@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, Eyebrow, PrimaryCta, SecondaryCta, SectionHeading, TextLink } from "@/components/about/primitives";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { challengePath } from "@/lib/paths";
 import { fetchLabChallenges, type LabChallenge } from "@/lib/server/publicPages";
 import {
   LAB_ORGANIZATION_ID,
@@ -333,7 +334,7 @@ export default async function AboutPage() {
             {challenges.map((challenge) => (
               <Link
                 key={challenge.id}
-                href={`/challenges/${challenge.id}`}
+                href={challengePath(challenge.slug)}
                 className="group flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-brandCP/25 hover:bg-white/[0.06]"
               >
                 <span className="w-fit rounded-full bg-brandCP/10 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-brandCP">

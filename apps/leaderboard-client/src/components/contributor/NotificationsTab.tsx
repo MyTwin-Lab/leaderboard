@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, Check, Loader2, Users, X } from 'lucide-react';
+import { challengePath } from '@/lib/paths';
 
 interface NotificationView {
   uuid: string;
@@ -82,7 +83,9 @@ export function NotificationsTab() {
       // L'invitation est consommée : la garder ferait revenir une ligne qui ne
       // mène plus nulle part. Non bloquant, la navigation prime.
       fetch(`/api/notifications/${item.uuid}`, { method: 'DELETE' }).catch(() => {});
-      router.push(`/challenges/${challengeId}`);
+      // Les invitations écrites avant les slugs n'ont que l'UUID : son URL
+      // redirige vers le slug, le lien marche dans les deux cas.
+      router.push(challengePath(String(item.payload.challengeSlug ?? challengeId)));
     } catch {
       fail(item.uuid, 'Network error.');
     } finally {

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Check, Copy, Loader2, Search, UserPlus, Users, X } from 'lucide-react';
 import { useJoinChallenge } from '@/lib/useJoinChallenge';
 import { canSelectMore, joinAction, MAX_INVITEES } from '@/lib/joinGate';
+import { challengeInvitePath } from '@/lib/paths';
 
 interface SearchResult {
   uuid: string;
@@ -26,9 +27,12 @@ interface SearchResult {
  * et la copie de cet écran ne doit pas laisser croire le contraire.
  */
 export function JoinModal({
-  challengeId, challengeType, onClose, onJoined,
+  challengeId, challengeSlug, challengeType, onClose, onJoined,
 }: {
+  /** Pour les routes d'API. */
   challengeId: string;
+  /** Pour le lien d'invitation, qui mène à la page du challenge. */
+  challengeSlug: string;
   challengeType: string;
   onClose: () => void;
   onJoined: () => Promise<void> | void;
@@ -99,7 +103,7 @@ export function JoinModal({
       }
     }));
     setSentCount(outcomes.filter(Boolean).length);
-    setInviteUrl(`${window.location.origin}/challenges/${challengeId}?group=${token}`);
+    setInviteUrl(`${window.location.origin}${challengeInvitePath(challengeSlug, token)}`);
   };
 
   const copy = async () => {

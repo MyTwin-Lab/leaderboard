@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { challengeInvitePath, challengePath } from '@/lib/paths';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
 import {
   ArrowLeft, CheckCircle2, CalendarDays, BrainCircuit,
@@ -122,16 +123,26 @@ function Skeleton() {
 // ─── Page ─────────────────────────────────────────────────────────────────
 
 /**
+ * `challengeId` et `challengeSlug` viennent de la page serveur, qui a résolu
+ * le segment d'URL : l'UUID pour toutes les routes d'API et les clés de cache,
+ * le slug pour tous les liens vers cette page.
+ *
  * `knownAnonymous` : la page serveur sait que le visiteur n'a aucun cookie et a
  * pré-rempli le cache (voir `page.tsx`). Inutile d'attendre `/api/contributors/me`
  * pour lui — la réponse ne peut être qu'un 401 — et c'est justement cette
  * attente qui réduisait le HTML serveur à un squelette.
  */
-export default function ChallengeDetailClient({ knownAnonymous = false }: { knownAnonymous?: boolean }) {
+export default function ChallengeDetailClient({
+  challengeId,
+  challengeSlug,
+  knownAnonymous = false,
+}: {
+  challengeId: string;
+  challengeSlug: string;
+  knownAnonymous?: boolean;
+}) {
   const router = useRouter();
-  const params = useParams();
   const queryClient = useQueryClient();
-  const challengeId = params.id as string;
 
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
   const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
@@ -302,7 +313,7 @@ export default function ChallengeDetailClient({ knownAnonymous = false }: { know
       alert(`${result.missingGithub.join(', ')} has no GitHub account connected and will not be able to push to the branch.`);
     }
     // Le jeton a fait son office : le laisser rouvrirait l'écran d'invitation.
-    router.replace(`/challenges/${challengeId}`);
+    router.replace(challengePath(challengeSlug));
   };
 
   // Le brief s'adresse à qui n'a pas encore rejoint, connecté ou non — un
@@ -485,7 +496,7 @@ export default function ChallengeDetailClient({ knownAnonymous = false }: { know
                 // Aucun chemin ne doit permettre à un non-connecté de lancer
                 // une requête de join : on l'envoie se connecter.
                 <a
-                  href={`/signin?from=/challenges/${challengeId}`}
+                  href={`/signin?from=${challengePath(challengeSlug)}`}
                   title="Join this challenge"
                   style={{ color: '#fff' }}
                   className="flex shrink-0 items-center gap-1.5 rounded-full bg-brandCP px-4 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(10,247,193,0.2)] active:translate-y-0"
@@ -673,7 +684,7 @@ export default function ChallengeDetailClient({ knownAnonymous = false }: { know
             Sign in to join this challenge and start your own board.
           </p>
           <a
-            href={`/signin?from=/challenges/${challengeId}`}
+            href={`/signin?from=${challengePath(challengeSlug)}`}
             className="inline-flex items-center justify-center rounded-xl bg-brandCP/20 px-6 py-3 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCP/40"
           >
             Continue with Google
@@ -700,6 +711,7 @@ export default function ChallengeDetailClient({ knownAnonymous = false }: { know
     {joinModalOpen && (
       <JoinModal
         challengeId={challengeId}
+        challengeSlug={challengeSlug}
         challengeType={challenge.type ?? 'code'}
         onClose={() => setJoinModalOpen(false)}
         onJoined={reloadBoard}
@@ -707,7 +719,7 @@ export default function ChallengeDetailClient({ knownAnonymous = false }: { know
     )}
     {inviteOpen && myGroupId && (
       <GroupInviteModal
-        inviteUrl={`${window.location.origin}/challenges/${challengeId}?group=${myGroupId}`}
+        inviteUrl={`${window.location.origin}${challengeInvitePath(challengeSlug, myGroupId)}`}
         memberCount={Math.max(1, myGroupSize)}
         maxSize={GROUP_MAX_SIZE}
         onClose={() => setInviteOpen(false)}

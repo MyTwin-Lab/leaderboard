@@ -8,6 +8,7 @@ import { ChallengesFiltersBar } from "@/components/public/ChallengesFiltersBar";
 import { ChallengesHero } from "@/components/public/ChallengesHero";
 import { CreateChallengeDrawer } from "@/components/admin/CreateChallengeDrawer";
 import { ManagerRolePopup } from "@/components/challenges/ManagerRolePopup";
+import { challengeManagePath } from "@/lib/paths";
 import { formatCP } from "@/lib/formatters";
 import { Plus } from "lucide-react";
 
@@ -22,6 +23,7 @@ type StatusFilter = 'all' | 'active' | 'completed' | 'draft' | 'manage';
 
 type FlatChallenge = {
   id: string;
+  slug: string;
   index: number;
   title: string;
   status: string;
@@ -46,7 +48,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [managerDrawerOpen, setManagerDrawerOpen] = useState(false);
-  const [popup, setPopup] = useState<{ x: number; y: number; challengeId: string } | null>(null);
+  const [popup, setPopup] = useState<{ x: number; y: number; challengeId: string; challengeSlug: string } | null>(null);
 
   const joinedSet = useMemo(() => new Set(joinedChallengeIds), [joinedChallengeIds]);
 
@@ -55,6 +57,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
       .flatMap((project) =>
         project.challenges.map((challenge) => ({
           id: challenge.id,
+          slug: challenge.slug,
           index: challenge.index,
           title: challenge.title,
           status: challenge.status,
@@ -174,6 +177,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
                 key={challenge.id}
                 index={i}
                 challengeId={challenge.id}
+                challengeSlug={challenge.slug}
                 challengeTitle={challenge.title}
                 challengeType={challenge.type}
                 challengeStatus={challenge.status}
@@ -188,7 +192,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
                 activeContributors={challenge.activeContributors}
                 spark={challenge.spark}
                 onCardClick={(isAdmin || managedSet.has(challenge.projectId))
-                  ? (e) => setPopup({ x: e.clientX, y: e.clientY, challengeId: challenge.id })
+                  ? (e) => setPopup({ x: e.clientX, y: e.clientY, challengeId: challenge.id, challengeSlug: challenge.slug })
                   : undefined}
               />
             ))}
@@ -202,7 +206,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
           projects={projectOptions}
-          onCreated={(id) => router.push(`/admin/challenges/${id}`)}
+          onCreated={(created) => router.push(`/admin/challenges/${created.uuid}`)}
         />
       )}
 
@@ -212,7 +216,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
           open={managerDrawerOpen}
           onClose={() => setManagerDrawerOpen(false)}
           projects={managedProjectOptions}
-          onCreated={(id) => router.push(`/challenges/${id}/manage`)}
+          onCreated={(created) => router.push(challengeManagePath(created.slug))}
         />
       )}
 
@@ -222,6 +226,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
           x={popup.x}
           y={popup.y}
           challengeId={popup.challengeId}
+          challengeSlug={popup.challengeSlug}
           isAdmin={isAdmin}
           onClose={() => setPopup(null)}
         />

@@ -73,7 +73,7 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
    * n'y joue, et un access_token expiré y ferait passer un connecté pour un
    * anonyme — plus de « Mine », plus de « my_star », plus de bouton de
    * création. `/api/contributors/me`, lui, est dans le matcher : c'est ce
-   * fetch-là qui renouvelle le jeton, exactement comme sur `challenges/[id]`.
+   * fetch-là qui renouvelle le jeton, exactement comme sur `challenges/[slug]`.
    *
    * `retry: false` : un 401 est ici un état normal (visiteur non connecté), pas
    * une panne à réessayer trois fois.

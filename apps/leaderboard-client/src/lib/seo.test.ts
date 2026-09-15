@@ -105,10 +105,10 @@ describe("buildSitemap", () => {
     const sitemap = buildSitemap({
       baseUrl: "https://lab.example.com",
       challenges: [
-        { uuid: "c1", created_at: created, closed_at: null },
-        { uuid: "c2", created_at: created, closed_at: closed },
+        { slug: "predict-glucose", created_at: created, closed_at: null },
+        { slug: "segment-lesions", created_at: created, closed_at: closed },
       ],
-      sandboxes: [{ uuid: "s1", updated_at: updated }],
+      sandboxes: [{ slug: "sleep-tracker", updated_at: updated }],
     });
 
     expect(sitemap.map((entry) => entry.url)).toEqual([
@@ -119,9 +119,9 @@ describe("buildSitemap", () => {
       "https://lab.example.com/leaderboard",
       "https://lab.example.com/terms-of-use",
       "https://lab.example.com/privacy-policy",
-      "https://lab.example.com/challenges/c1",
-      "https://lab.example.com/challenges/c2",
-      "https://lab.example.com/sandbox/s1",
+      "https://lab.example.com/challenges/predict-glucose",
+      "https://lab.example.com/challenges/segment-lesions",
+      "https://lab.example.com/sandbox/sleep-tracker",
     ]);
     expect(sitemap[7].lastModified).toBe(created);
     expect(sitemap[8].lastModified).toBe(closed);

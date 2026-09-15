@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter, useParams } from 'next/navigation';
 import { fetchJson } from '@/lib/fetchJson';
+import { challengePath } from '@/lib/paths';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -28,6 +29,8 @@ interface SyncMeeting {
   title: string;
   description?: string;
   challenge_id: string;
+  /** Pour « Back to Challenge ». `null` si le challenge a disparu. */
+  challenge_slug: string | null;
   start_time: string;
   end_time: string;
   meet_link?: string;
@@ -175,7 +178,7 @@ export default function SyncMeetingDetailPage() {
       <Button
         variant="secondary"
         className="mb-6 flex items-center gap-2"
-        onClick={() => router.push(`/challenges/${meeting.challenge_id}`)}
+        onClick={() => router.push(challengePath(meeting.challenge_slug ?? meeting.challenge_id))}
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Challenge

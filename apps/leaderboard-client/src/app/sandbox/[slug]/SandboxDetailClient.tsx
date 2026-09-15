@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { fetchJson } from "@/lib/fetchJson";
+import { challengePath, sandboxPath } from "@/lib/paths";
 import type { SandboxDetailResponse, SandboxListResponse, SandboxView } from "@/lib/public/sandbox";
 import type { SandboxStarTier } from "../../../../../../packages/database-service/domain/entities";
 import { CreateChallengeDrawer } from "@/components/admin/CreateChallengeDrawer";
@@ -35,7 +36,7 @@ function Skeleton() {
 
 /**
  * La page d'une proposition — **publique**, sur le motif de
- * `challenges/[id]/ChallengeDetailClient.tsx`.
+ * `challenges/[slug]/ChallengeDetailClient.tsx`.
  *
  * `knownAnonymous` : `page.tsx` sait que le visiteur n'a aucun cookie et a
  * pré-rempli le détail. Pour lui, pas de `meQuery` à attendre — il ne peut
@@ -48,11 +49,15 @@ function Skeleton() {
  * jeton expiré passerait pour un anonyme : plus de bouton Edit, plus de score,
  * et son étoile disparaîtrait sous ses yeux.
  */
-export default function SandboxDetailClient({ knownAnonymous = false }: { knownAnonymous?: boolean }) {
-  const params = useParams();
+export default function SandboxDetailClient({
+  sandboxId,
+  knownAnonymous = false,
+}: {
+  sandboxId: string;
+  knownAnonymous?: boolean;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const sandboxId = params.id as string;
 
   const [editOpen, setEditOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
@@ -137,12 +142,16 @@ export default function SandboxDetailClient({ knownAnonymous = false }: { knownA
   };
 
   const onSaved = (saved: SandboxView) => {
+    const previousSlug = sandbox?.slug;
     queryClient.setQueryData<SandboxDetailResponse>(["sandbox", sandboxId], (current) =>
       current ? { ...current, sandbox: saved } : current,
     );
     // Le listing porte la même proposition — le laisser périmé afficherait
     // l'ancien titre au retour.
     void queryClient.invalidateQueries({ queryKey: ["sandboxes"] });
+    // Slug modifié : l'ancienne adresse redirige, mais la barre d'adresse doit
+    // montrer la nouvelle — c'est celle qu'on copie pour partager.
+    if (previousSlug && saved.slug !== previousSlug) router.replace(sandboxPath(saved.slug));
   };
 
   const archive = async () => {
@@ -227,17 +236,18 @@ export default function SandboxDetailClient({ knownAnonymous = false }: { knownA
           promotion={{
             uuid: sandbox.uuid,
             title: sandbox.title,
+            slug: sandbox.slug,
             type: sandbox.type,
             context: sandbox.context,
             goals: sandbox.goals,
             why: sandbox.why,
           }}
-          onCreated={(challengeId) => {
+          onCreated={(created) => {
             // La proposition est désormais `promoted` : laisser son détail et
             // le listing en cache afficherait encore « Open » et le bouton.
             void queryClient.invalidateQueries({ queryKey: ["sandbox", sandboxId] });
             void queryClient.invalidateQueries({ queryKey: ["sandboxes"] });
-            router.push(`/challenges/${challengeId}`);
+            router.push(challengePath(created.slug));
           }}
         />
       )}

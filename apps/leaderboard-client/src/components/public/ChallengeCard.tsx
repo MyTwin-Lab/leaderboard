@@ -7,10 +7,14 @@ import { BrainCircuit, Code2, ShieldCheck } from "lucide-react";
 import { TeamAvatars } from "../ui/TeamAvatars";
 import { SparkBars } from "@/components/ui/SparkBars";
 import { formatCP } from "@/lib/formatters";
+import { challengePath } from "@/lib/paths";
 import type { TeamMember } from "@/lib/types";
 
 interface ChallengeCardProps {
+  /** Pour l'URL admin, qui reste sur l'UUID. */
   challengeId: string;
+  /** Pour la page publique. */
+  challengeSlug: string;
   challengeTitle: string;
   challengeType?: string;
   /** Drives the "Delivered and evaluated" vs "N contributions this week" copy. */
@@ -54,6 +58,7 @@ const ArrowIcon = () => (
 
 export function ChallengeCard({
   challengeId,
+  challengeSlug,
   challengeTitle,
   challengeType,
   challengeStatus,
@@ -73,7 +78,7 @@ export function ChallengeCard({
   const normalizedType = (challengeType ?? 'code').toLowerCase();
   const done = challengeStatus === 'completed';
   const router = useRouter();
-  const dest = isAdmin ? `/admin/challenges/${challengeId}` : `/challenges/${challengeId}`;
+  const dest = isAdmin ? `/admin/challenges/${challengeId}` : challengePath(challengeSlug);
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (onCardClick) { onCardClick(e); } else { router.push(dest); }
   };

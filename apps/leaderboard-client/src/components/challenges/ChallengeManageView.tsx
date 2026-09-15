@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { fetchJson } from '@/lib/fetchJson';
+import { challengeManagePath, challengePath } from '@/lib/paths';
 import {
   ArrowLeft, Users, Trophy, CalendarDays, Code2, BrainCircuit, ShieldCheck,
   CheckCircle2, Circle, Clock3, BarChart2, Activity,
@@ -38,7 +39,7 @@ import { fmt, sectionHeader } from '@/components/challenges/shared/format';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Challenge {
-  uuid: string; title: string; description?: string;
+  uuid: string; title: string; slug: string; description?: string;
   status: string; type: string;
   start_date?: string | null; end_date?: string | null;
   contribution_points_reward: number; completion: number;
@@ -405,13 +406,15 @@ function TabRankings({ contributions, team }: { contributions: Contribution[]; t
 
 /**
  * Shared challenge control-room view rendered by two routes:
- *   - /admin/challenges/[id]   (isAdmin = true)  — no manager guard, meetings always on
- *   - /challenges/[id]/manage  (isAdmin = false) — guarded by project managership + meetings module flag
+ *   - /admin/challenges/[id]     (isAdmin = true)  — no manager guard, meetings always on
+ *   - /challenges/[slug]/manage  (isAdmin = false) — guarded by project managership + meetings module flag
  * The two routes are kept distinct on purpose (separate URLs for logs/analytics).
+ *
+ * `challengeId` is the UUID either way — the manager route resolves its slug on
+ * the server — so the API calls and the cache shared with the public page match.
  */
-export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) {
+export function ChallengeManageView({ challengeId, isAdmin = false }: { challengeId: string; isAdmin?: boolean }) {
   const router = useRouter();
-  const { id: challengeId } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
 
   const [status, setStatus] = useState('');
@@ -424,7 +427,7 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
 
   // Challenge, team, tasks, meetings and contributions come from one
   // aggregated request, shared (same key + raw shape) with the public
-  // /challenges/[id] page — visiting one view warms the cache for the other.
+  // /challenges/[slug] page — visiting one view warms the cache for the other.
   const overviewQuery = useQuery({
     queryKey: ['challenge-overview', challengeId],
     queryFn: () => fetchJson(`/api/challenges/${challengeId}/overview`) as Promise<{
@@ -522,10 +525,10 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
 
   useEffect(() => {
     if (isAdmin || !challenge || meQuery.isLoading) return;
-    if (meQuery.isError || !meQuery.data) { router.replace(`/challenges/${challengeId}`); return; }
+    if (meQuery.isError || !meQuery.data) { router.replace(challengePath(challenge.slug)); return; }
     const managed: string[] = meQuery.data.managedProjectIds ?? [];
     if (!managed.includes(challenge.project_id)) {
-      router.replace(`/challenges/${challengeId}`);
+      router.replace(challengePath(challenge.slug));
     } else {
       setIsManager(true);
     }
@@ -832,7 +835,12 @@ export function ChallengeManageView({ isAdmin = false }: { isAdmin?: boolean }) 
         // challenge.status is stale after a status change and saving would
         // silently revert it.
         challenge={{ ...challenge, status }}
-        onCreated={() => queryClient.invalidateQueries({ queryKey: ['challenge-overview', challengeId] })}
+        onCreated={(saved) => {
+          void queryClient.invalidateQueries({ queryKey: ['challenge-overview', challengeId] });
+          // Un slug modifié depuis la vue manager : l'ancienne URL redirigerait
+          // encore, mais la barre d'adresse doit montrer la nouvelle.
+          if (!isAdmin && saved.slug !== challenge.slug) router.replace(challengeManagePath(saved.slug));
+        }}
       />
     </>
   );

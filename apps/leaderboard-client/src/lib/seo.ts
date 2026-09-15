@@ -1,4 +1,5 @@
 import type { Metadata, MetadataRoute } from "next";
+import { challengePath, sandboxPath } from "@/lib/paths";
 
 /**
  * Ce que les moteurs de recherche et les aperçus de lien lisent : nom du site,
@@ -133,9 +134,9 @@ export function unindexedMetadata(title: string): Metadata {
 export type SitemapInput = {
   baseUrl: string;
   /** Déjà filtrés sur ce qu'un visiteur anonyme peut ouvrir. */
-  challenges: { uuid: string; created_at: Date; closed_at?: Date | null }[];
+  challenges: { slug: string; created_at: Date; closed_at?: Date | null }[];
   /** Déjà filtrés sur ce qu'un visiteur anonyme peut ouvrir. */
-  sandboxes: { uuid: string; updated_at: Date }[];
+  sandboxes: { slug: string; updated_at: Date }[];
 };
 
 /**
@@ -156,13 +157,13 @@ export function buildSitemap({ baseUrl, challenges, sandboxes }: SitemapInput): 
     { url: url("/terms-of-use"), changeFrequency: "yearly", priority: 0.2 },
     { url: url("/privacy-policy"), changeFrequency: "yearly", priority: 0.2 },
     ...challenges.map((challenge) => ({
-      url: url(`/challenges/${challenge.uuid}`),
+      url: url(challengePath(challenge.slug)),
       lastModified: challenge.closed_at ?? challenge.created_at,
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),
     ...sandboxes.map((sandbox) => ({
-      url: url(`/sandbox/${sandbox.uuid}`),
+      url: url(sandboxPath(sandbox.slug)),
       lastModified: sandbox.updated_at,
       changeFrequency: "weekly" as const,
       priority: 0.7,
@@ -228,10 +229,9 @@ export function jsonLdGraph(...nodes: JsonLdNode[]): JsonLdNode {
 }
 
 /**
- * Le fil d'Ariane d'une page de détail. Les URLs des challenges et des
- * sandboxes finissent par un UUID : sans lui, Google afficherait
- * « mytwinlab.care › challenges › 8e53bee5-… » sous le résultat, au lieu du
- * nom de la section et du titre.
+ * Le fil d'Ariane d'une page de détail : Google affiche le nom de la section et
+ * le titre sous le résultat (« MyTwin Lab › Challenges › Mammography… »), plus
+ * lisible que le chemin, même à slug.
  */
 export function breadcrumbJsonLd(items: { name: string; path: string }[]): JsonLdNode {
   return {

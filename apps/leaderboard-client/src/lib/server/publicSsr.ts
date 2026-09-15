@@ -6,7 +6,7 @@ import { SITE_URL } from "@/lib/seo";
 
 /**
  * Le rendu serveur des pages publiques dont le contenu vit côté client
- * (`/challenges/<id>`, `/sandbox`, `/sandbox/<id>`).
+ * (`/challenges/<slug>`, `/sandbox`, `/sandbox/<slug>`).
  *
  * Ces pages sont des composants client qui lisent leurs données dans l'API
  * après une première requête `/api/contributors/me`. Rendues telles quelles,

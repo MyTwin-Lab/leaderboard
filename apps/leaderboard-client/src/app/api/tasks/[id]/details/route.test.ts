@@ -3,12 +3,14 @@ import { NextRequest } from 'next/server';
 
 const {
   mockFindById, mockFindSubTasks, mockTeamFindByChallenge, mockVerifyRequestToken, mockCanAccessChallengeInternals,
+  mockChallengeFindById,
 } = vi.hoisted(() => ({
   mockFindById: vi.fn(),
   mockFindSubTasks: vi.fn(),
   mockTeamFindByChallenge: vi.fn(),
   mockVerifyRequestToken: vi.fn(),
   mockCanAccessChallengeInternals: vi.fn(),
+  mockChallengeFindById: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ verifyRequestToken: mockVerifyRequestToken }));
@@ -20,6 +22,9 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   TaskRepository: class {
     findById = mockFindById;
     findSubTasks = mockFindSubTasks;
+  },
+  ChallengeRepository: class {
+    findById = mockChallengeFindById;
   },
   ChallengeTeamRepository: class {
     // Lue par resolveWorkspaceOwner : vide = personne en groupe.
@@ -40,6 +45,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockFindById.mockResolvedValue({ uuid: TASK_ID, title: 'Do the thing', challenge_id: 'challenge-1' });
   mockFindSubTasks.mockResolvedValue([]);
+  mockChallengeFindById.mockResolvedValue({ uuid: 'challenge-1', slug: 'the-challenge' });
   mockTeamFindByChallenge.mockResolvedValue([]);
   mockVerifyRequestToken.mockResolvedValue(null); // visiteur anonyme par défaut
   mockCanAccessChallengeInternals.mockResolvedValue(false);
@@ -119,6 +125,8 @@ describe('GET /api/tasks/[id]/details', () => {
       task: { uuid: TASK_ID, title: 'Do the thing', challenge_id: 'challenge-1' },
       subTasks: [{ uuid: 'sub-1', title: 'Sub task' }],
       board_owner_id: null, // visiteur anonyme
+      // Pour « View challenge », qui mène à la page du challenge à son slug.
+      challenge_slug: 'the-challenge',
     });
     expect(mockFindSubTasks).toHaveBeenCalledWith(TASK_ID);
   });

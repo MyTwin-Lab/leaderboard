@@ -1,8 +1,9 @@
 import "server-only";
 
-import { cache } from "react";
 import type { Metadata, MetadataRoute } from "next";
 import { repositories } from "@/lib/db";
+import { challengePath, sandboxPath } from "@/lib/paths";
+import type { Challenge, Sandbox } from "../../../../../packages/database-service/domain/entities";
 import { isPubliclyVisible } from "@/lib/public/challengeVisibility";
 import { canSeeSandbox, sandboxViewer } from "@/lib/server/sandboxAuth";
 import {
@@ -17,6 +18,10 @@ import {
 
 /**
  * Métadonnées des pages dont le titre dépend de la base, et contenu du sitemap.
+ *
+ * Les pages de challenge et de sandbox résolvent d'abord leur segment d'URL
+ * (`lib/server/pageRefs.ts`, qui redirige UUID et anciens slugs) et passent
+ * ici l'entité trouvée : les fonctions correspondantes ne lisent pas la base.
  *
  * Tout est décidé du point de vue d'un visiteur anonyme, session ou non : le
  * `<head>` est servi à quiconque demande la page, et les moteurs n'ont jamais
@@ -44,21 +49,12 @@ async function safely<T>(read: () => Promise<T>): Promise<T | null> {
   }
 }
 
-// `cache` : `generateMetadata` et le JSON-LD du layout lisent la même ligne
-// pendant le même rendu — une seule requête pour les deux.
-const publicChallenge = cache(async (id: string) => {
-  const challenge = await safely(() => repositories.challenge.findById(id));
-  return challenge && isPubliclyVisible(challenge) ? challenge : null;
-});
-
-const publicSandbox = cache(async (id: string) => {
-  const sandbox = await safely(() => repositories.sandbox.findById(id));
-  return sandbox && canSeeSandbox(sandbox, ANONYMOUS) ? sandbox : null;
-});
-
-export async function challengeMetadata(id: string): Promise<Metadata> {
-  const challenge = await publicChallenge(id);
-  if (!challenge) return unindexedMetadata("Challenges");
+/**
+ * Les métadonnées d'un challenge déjà résolu par sa page
+ * (`lib/server/pageRefs.ts`). Son slug fait le canonical.
+ */
+export function challengeMetadata(challenge: Challenge): Metadata {
+  if (!isPubliclyVisible(challenge)) return unindexedMetadata("Challenges");
 
   const typeLabel = CHALLENGE_TYPE_LABELS[challenge.type] ?? "Open";
   return pageMetadata({
@@ -66,13 +62,12 @@ export async function challengeMetadata(id: string): Promise<Metadata> {
     description:
       toMetaDescription(challenge.description)
       ?? `${typeLabel} challenge at MyTwin Lab: contribute, get evaluated and earn contribution points (CP).`,
-    path: `/challenges/${challenge.uuid}`,
+    path: challengePath(challenge.slug),
   });
 }
 
-export async function sandboxMetadata(id: string): Promise<Metadata> {
-  const sandbox = await publicSandbox(id);
-  if (!sandbox) return unindexedMetadata("Sandbox");
+export function sandboxMetadata(sandbox: Sandbox): Metadata {
+  if (!canSeeSandbox(sandbox, ANONYMOUS)) return unindexedMetadata("Sandbox");
 
   return pageMetadata({
     title: sandbox.title,
@@ -81,33 +76,31 @@ export async function sandboxMetadata(id: string): Promise<Metadata> {
       ?? toMetaDescription(sandbox.why)
       ?? toMetaDescription(sandbox.goals.join(". "))
       ?? "A community project on the MyTwin Lab Sandbox: star it if you want it built.",
-    path: `/sandbox/${sandbox.uuid}`,
+    path: sandboxPath(sandbox.slug),
   });
 }
 
 /** `null` quand la page n'est pas publique : rien à décrire aux moteurs. */
-export async function challengeJsonLd(id: string) {
-  const challenge = await publicChallenge(id);
-  if (!challenge) return null;
+export function challengeJsonLd(challenge: Challenge) {
+  if (!isPubliclyVisible(challenge)) return null;
 
   return jsonLdGraph(
     breadcrumbJsonLd([
       { name: "MyTwin Lab", path: "/" },
       { name: "Challenges", path: "/challenges" },
-      { name: challenge.title, path: `/challenges/${challenge.uuid}` },
+      { name: challenge.title, path: challengePath(challenge.slug) },
     ]),
   );
 }
 
-export async function sandboxJsonLd(id: string) {
-  const sandbox = await publicSandbox(id);
-  if (!sandbox) return null;
+export function sandboxJsonLd(sandbox: Sandbox) {
+  if (!canSeeSandbox(sandbox, ANONYMOUS)) return null;
 
   return jsonLdGraph(
     breadcrumbJsonLd([
       { name: "MyTwin Lab", path: "/" },
       { name: "Sandbox", path: "/sandbox" },
-      { name: sandbox.title, path: `/sandbox/${sandbox.uuid}` },
+      { name: sandbox.title, path: sandboxPath(sandbox.slug) },
     ]),
   );
 }

@@ -10,7 +10,7 @@ import { SITE_URL } from "@/lib/seo";
  * `noindex` de la page, et une URL bloquée qui circule ailleurs — le lien
  * « Sign in » de la navbar est sur toutes les pages — peut rester indexée
  * « sans description ». Les autres pages privées (`/signin`,
- * `/contributors/me`, `/challenges/<id>/manage`, `/tasks`, `/sync-meetings`)
+ * `/contributors/me`, `/challenges/<slug>/manage`, `/tasks`, `/sync-meetings`)
  * restent donc crawlables et portent un `X-Robots-Tag: noindex` posé dans
  * next.config.ts. Les lister ici les rendrait *moins* sûres.
  *
