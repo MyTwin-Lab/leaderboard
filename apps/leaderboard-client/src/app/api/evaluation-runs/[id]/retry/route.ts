@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EvaluationRunsRepository } from '../../../../../../../../packages/database-service/repositories';
+import { retryEvaluationRun } from '../../../../../../../../packages/capabilities/evaluation';
 import { verifyRequestToken } from '@/lib/auth';
 
 const runsRepo = new EvaluationRunsRepository();
@@ -10,12 +11,17 @@ async function getSession(request: NextRequest): Promise<{ userId: string; role:
   return payload ? { userId: payload.userId, role: payload.role } : null;
 }
 
+const REFUSALS: Record<string, string> = {
+  not_failed: 'Only a failed evaluation run can be retried',
+  no_handler: 'No installed flow or module can replay this evaluation run',
+  already_running: 'An evaluation is already running for this subject',
+};
+
 // POST /api/evaluation-runs/[id]/retry
 //
-// Le rejeu passait par le pipeline sync legacy, supprimé (challenge 020, lot L0).
-// Il revient quand la capacité d'évaluation du core écrit les runs et sait
-// rappeler le handler du flow qui les a lancés (lot L2). D'ici là, un run
-// existant répond 409 plutôt que de relancer un pipeline qui n'existe plus.
+// Rappelle le handler que le flow, l'extension ou le module propriétaire du
+// run déclare, avec le payload inscrit dans le run. L'évaluation repart en
+// tâche de fond : un nouveau run apparaît à côté de celui-ci.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -36,7 +42,15 @@ export async function POST(
       return NextResponse.json({ error: 'Run not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ error: 'This evaluation run cannot be retried' }, { status: 409 });
+    const outcome = await retryEvaluationRun(result.run);
+    if (!outcome.ok) {
+      return NextResponse.json(
+        { error: REFUSALS[outcome.reason] ?? `This evaluation run cannot be retried (${outcome.reason})`, reason: outcome.reason },
+        { status: 409 }
+      );
+    }
+
+    return NextResponse.json({ retried: true }, { status: 202 });
   } catch (error) {
     console.error('Error retrying evaluation run:', error);
     return NextResponse.json({ error: 'Failed to retry evaluation run' }, { status: 500 });

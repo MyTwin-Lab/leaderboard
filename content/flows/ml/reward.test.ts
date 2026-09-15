@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { computeMlAward, normalizeMetric, simulateMaxDistribution } from "../ml-reward.js";
-import type { MlAwardInput } from "../ml-reward.js";
-import type { MlRewardRules } from "../../database-service/domain/mlRewardRules.js";
+import { computeMlAward, normalizeMetric, simulateMaxDistribution } from "./reward.js";
+import type { MlAwardInput } from "./reward.js";
+import type { MlRewardRules } from "../../../packages/database-service/domain/mlRewardRules.js";
 
 const RULES: MlRewardRules = {
   version: 1,

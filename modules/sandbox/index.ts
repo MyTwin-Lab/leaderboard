@@ -6,8 +6,8 @@ import type { ModuleDefinition } from "../../packages/registry/platform.js";
  * challenge ni contribution : le module les apporte au classement comme source
  * de CP.
  *
- * Seule la source de CP est déclarée ici ; le reste du module rejoint ce
- * dossier avec le lot L6.
+ * Sont déclarés ici la source de CP et le rejeu de l'évaluation formative ; le
+ * reste du module rejoint ce dossier avec le lot L6.
  */
 export const sandboxModule: ModuleDefinition = {
   key: "sandbox",
@@ -19,4 +19,27 @@ export const sandboxModule: ModuleDefinition = {
       return new SandboxRewardRepository().findAll();
     },
   },
+  evaluationHandlers: [
+    {
+      // `SANDBOX_EVALUATION_HANDLER` du service d'évaluation.
+      key: "formative",
+      async retry(payload) {
+        const { sandboxId, userId } = payload;
+        if (typeof sandboxId !== "string" || typeof userId !== "string") {
+          return { ok: false, reason: "invalid_payload" };
+        }
+
+        const { SandboxEvaluationService } = await import(
+          "../../packages/services/sandbox/sandbox-evaluation.service.js"
+        );
+        const service = new SandboxEvaluationService();
+        const event = { sandboxId, userId };
+
+        const claimed = await service.claim(event);
+        if (!claimed.ok) return { ok: false, reason: claimed.reason ?? "cannot_evaluate" };
+        service.scheduleRun(event);
+        return { ok: true };
+      },
+    },
+  ],
 };

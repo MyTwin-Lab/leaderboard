@@ -29,6 +29,9 @@ fi
 export NODE_ENV="${NODE_ENV:-production}"
 export PORT="${PORT:-$DEFAULT_PORT}"
 
+echo "Seeding the evaluation grids missing from the database..."
+npx tsx "$ROOT_DIR/scripts/db-seed-grids.ts"
+
 echo "Resyncing reward caches (contributions.reward, challenges.completion)..."
 npx tsx "$ROOT_DIR/scripts/db-resync-rewards.ts"
 

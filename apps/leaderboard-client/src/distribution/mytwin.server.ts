@@ -1,11 +1,14 @@
 import { ConnectorRegistry } from '../../../../packages/connectors/registry';
 import { EvaluationGridRegistry } from '../../../../packages/evaluator/grids';
+import { BundleSourceRegistry, type BundleSource } from '../../../../packages/capabilities/evaluation';
 import { ProvisionerRegistry } from '../../../../packages/provisioner/src/registry';
 import { PlatformRegistry } from '../../../../packages/registry/platform';
 import { DatabaseGridProvider } from '../../../../packages/services/database-grid-provider';
 import { githubConnector } from '../../../../content/connectors/github';
 import { kaggleConnector } from '../../../../content/connectors/kaggle';
 import { slackConnector } from '../../../../content/connectors/slack';
+import { githubSnapshotSource } from '../../../../content/bundle-sources/github-snapshot';
+import { kaggleArtifactSource } from '../../../../content/bundle-sources/kaggle-artifact';
 import { GitHubBranchProvider } from '../../../../content/workspace-providers/github-branch';
 import { platform } from './mytwin.platform';
 
@@ -23,6 +26,9 @@ import { platform } from './mytwin.platform';
 
 export const connectors = [githubConnector, kaggleConnector, slackConnector];
 
+/** Ce que la capacité `evaluate` sait noter : un dépôt GitHub, un artefact soumis. */
+export const bundleSources: BundleSource[] = [githubSnapshotSource, kaggleArtifactSource];
+
 const INSTALLED_KEY = '__leaderboardServerDistributionInstalled';
 
 export function installServerDistribution(): void {
@@ -31,8 +37,10 @@ export function installServerDistribution(): void {
 
   PlatformRegistry.install(platform);
   for (const connector of connectors) ConnectorRegistry.register(connector);
+  for (const source of bundleSources) BundleSourceRegistry.register(source);
 
-  // Les grilles publiées depuis l'admin priment sur les grilles intégrées.
+  // Les grilles sont servies par la base : celles qu'éditent les admins, et
+  // les seeds de la distribution (`mytwin.grids.ts`), insérées au déploiement.
   EvaluationGridRegistry.setDatabaseProvider(new DatabaseGridProvider());
 
   // Branches perso des challenges code. Le token vient encore de

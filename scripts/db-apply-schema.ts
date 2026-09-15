@@ -750,6 +750,19 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
       EXECUTE FUNCTION sync_contribution_reward()`,
   },
 
+  // --- Runs d'évaluation écrits par la capacité evaluate (challenge 020, L2) ---
+  // Chaque évaluation trace un run : celle d'un sandbox n'a pas de challenge,
+  // et aucune n'a la fenêtre temporelle de l'ancien pipeline de synchro.
+  // DROP NOT NULL sur une colonne déjà nullable est un no-op, sans erreur.
+  {
+    label: "evaluation_runs.challenge_id, window_start, window_end (drop NOT NULL)",
+    sql: `
+      ALTER TABLE evaluation_runs
+        ALTER COLUMN challenge_id DROP NOT NULL,
+        ALTER COLUMN window_start DROP NOT NULL,
+        ALTER COLUMN window_end DROP NOT NULL`,
+  },
+
   // --- Slugs des URLs publiques (docs/superpowers/plans/2026-09-15-slug-urls.md) ---
   //
   // En toute fin de tableau, volontairement : le SET NOT NULL rend la colonne

@@ -69,16 +69,14 @@ Repositories available:
 The evaluator exposes one active agent:
 - **Evaluate** (`openai/evaluate.agent.ts`) — scores a contribution against a grid (0–9 per criterion, `globalScore` a weighted sum on that same ~0–9 scale since the grid's weights sum to ~1)
 
-Scoring grids (in `grids/`):
-- `code.grid.ts` — technical quality, architecture, security, maintainability, documentation, impact. Used by the code challenge project evaluation **and** by the ML `model code` and `API packaging` steps.
-- `dataset.grid.ts` — ML `dataset` submissions
-- `model.grid.ts` — kept but currently unused (see [`ml-rewards.md`](./ml-rewards.md) — Kaggle models are scored from their reported metric, not by an agent)
+`grids/index.ts` holds the grid registry, which serves the grids of the installed provider (the database) and has no built-in grid. The grids themselves are content seeds inserted at deploy time (`npm run db:seed-grids`):
+- `content/grids/code` — technical quality, architecture, security, maintainability, documentation, impact. Used by the code challenge project evaluation, the ML `model code` and `API packaging` steps, and the sandbox.
+- `content/grids/dataset` — ML `dataset` submissions
+- `content/grids/model` — kept but currently unused (see [`ml-rewards.md`](./ml-rewards.md) — Kaggle models are scored from their reported metric, not by an agent)
 
-Each agent call is wrapped with 3-retry logic (1-second backoff).
+Each agent call is wrapped with 3-retry logic (1-second backoff). Callers go through the core capability `evaluate()` (`packages/capabilities/evaluation.ts`), which prepares the bundle, loads the grid and records the run.
 
-`code-reward.ts` computes a code challenge's live award (`computeCodeAward()` — fixed + quality, positive delta, pool-clamped; see [`challenges-and-tasks.md`](./challenges-and-tasks.md#rewards)). `ml-reward.ts` computes live, absolute point awards for ML challenges (caps, metric normalization, lead bonus, reuse deductions) — see [`ml-rewards.md`](./ml-rewards.md). Neither splits a pool at challenge close any more.
-
-> The package also contains `openai/identify.agent.ts` and `openai/merge.agent.ts` from the old challenge-level pipeline — these are **no longer used**.
+The reward math belongs to the flows: `content/flows/code/reward.ts` (`computeCodeAward()` — fixed + quality, positive delta, pool-clamped; see [`challenges-and-tasks.md`](./challenges-and-tasks.md#rewards)) and `content/flows/ml/reward.ts` (caps, metric normalization, lead bonus, reuse deductions — see [`ml-rewards.md`](./ml-rewards.md)).
 
 **Key file:** `packages/evaluator/evaluator.ts` (`OpenAIAgentEvaluator` class)
 
@@ -112,7 +110,7 @@ Key services:
 - **`challenge/code-rewards.service.ts`** (`CodeRewardsService`) — live evaluation of a code challenge's personal boards: preconditions (board complete, workspace ready, no run already in progress) → resolve the contributor's branch/repo → snapshot → agent score → ledger award, project-scoped rather than per-task — see [`evaluation.md`](./evaluation.md)
 - **`challenge/challenge.service.ts`** — challenge CRUD and state transitions
 - **`challenge/ml-rewards.service.ts`** — orchestrates ML challenge scoring and the point ledger; **`challenge/artifactUrl.ts`** and **`challenge/lineage.ts`** support reuse detection — see [`ml-rewards.md`](./ml-rewards.md)
-- **`challenge/snapshot.service.ts`** — builds the aggregated code snapshot handed to the evaluator
+- **`challenge/repo-evaluation.ts`** — evaluates a GitHub repository through the core `evaluate()` capability and the `github-snapshot` bundle source, for code challenges and sandboxes
 - **`challenge/validation-challenge.service.ts`** + **`challenge/reference-case.service.ts`** + **`challenge/endpoint-proxy.ts`** + **`challenge/ssrf-guard.ts`** — the validation challenge flow — see [`validation-challenges.md`](./validation-challenges.md)
 - **`compute/`** — GPU compute requests: `compute-request.service.ts` plus the two cron entry points — see [`compute-power.md`](./compute-power.md)
 - **`google-workspace/`** — `google-auth.service.ts` (OAuth2 tokens, used for login too), `google-calendar.service.ts`, `google-meet.service.ts`
@@ -120,7 +118,6 @@ Key services:
 - **`sync-meeting/`** — full sync meeting lifecycle (creation → polling → ingestion → analysis)
 - **`slack/`** — daily Slack signal ingestion: `slack-signals.service.ts` (per-challenge cursor, author resolution, LLM detection, ledger writes) and `cron-slack-signals.ts` (loops over configured challenges) — see [`slack-signals.md`](./slack-signals.md)
 - **`digest/`** — periodic activity snapshots: `digest-schedule.ts` (the cursor and the UTC day-boundary comparison) and `digest-payload.ts` (the five sections, group resolution, ledger aggregation) are pure and hold everything worth testing; `digest.service.ts` windows the reads and inserts, `cron-digest.ts` decides whether one is due — see [`digest.md`](./digest.md)
-- **`run-logger.ts`** — shared evaluation-run logging
 
 > `challenge/challenge-context.service.ts` and `challenge/sync-evaluation.service.ts` are still in the codebase but are **no longer used** — they belonged to the old challenge-level identify/merge/evaluate pipeline (the `/sync` route is their remaining surface). `webhook.service.ts` also remains but is orphaned: the `POST /api/webhooks/github` route that used to call it has been removed, so nothing in the app invokes it anymore.
 

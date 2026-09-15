@@ -28,6 +28,14 @@ import { evaluateGithubRepo, parseGithubRepoUrl } from "../challenge/repo-evalua
  */
 export const SANDBOX_EVALUATION_GRID = "code";
 
+/**
+ * Le module et le handler au nom desquels le run est tracé, et que le rejeu
+ * rappelle (`modules/sandbox`). Littéraux des deux côtés : le module ne charge
+ * pas ce service à sa déclaration ; `mytwin.test.ts` vérifie qu'ils concordent.
+ */
+export const SANDBOX_EVALUATION_OWNER = "sandbox";
+export const SANDBOX_EVALUATION_HANDLER = "formative";
+
 export type CannotEvaluateSandboxReason =
   | "not_found"
   | "not_author"
@@ -200,6 +208,14 @@ export class SandboxEvaluationService {
           userId: sandbox.user_id,
         },
         hasPriorEvaluation: !!sandbox.evaluation,
+        // Rejouable par le handler `formative` du module sandbox. Aucun
+        // challenge ni contribution : le sujet reste dans le `meta` du run.
+        origin: {
+          owner: SANDBOX_EVALUATION_OWNER,
+          handler: SANDBOX_EVALUATION_HANDLER,
+          payload: { sandboxId, userId },
+          challengeId: null,
+        },
       });
 
       // `storeEvaluation` pose `evaluated_at` en même temps que le statut :

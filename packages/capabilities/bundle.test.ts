@@ -2,18 +2,17 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SnapshotService } from "./snapshot.service.js";
+import { prepareBundle, releaseBundle } from "./bundle.js";
 
-const service = new SnapshotService();
 
 async function snapshotDirs(): Promise<Set<string>> {
   return new Set((await fs.readdir(os.tmpdir())).filter((name) => name.startsWith("eval_agent-")));
 }
 
-describe("SnapshotService.prepareSnapshot", () => {
+describe("prepareBundle", () => {
   it("écrit dans un dossier mkdtemp court, même pour 50 commits (plus d'ENAMETOOLONG)", async () => {
     const shas = Array.from({ length: 50 }, (_, i) => `${"a".repeat(38)}${String(i).padStart(2, "0")}`);
-    const prepared = await service.prepareSnapshot({
+    const prepared = await prepareBundle({
       snapshotId: shas.join("_"),
       commitShas: shas,
       modifiedFiles: [{ path: "src/deep/a.ts", content: "export const a = 1;" } as any],
@@ -27,19 +26,19 @@ describe("SnapshotService.prepareSnapshot", () => {
       // Le contenu ne ressort pas dans le snapshot allégé.
       expect((prepared.modifiedFiles[0] as any).content).toBeUndefined();
     } finally {
-      await service.cleanup(prepared);
+      await releaseBundle(prepared);
     }
   });
 
   it("donne deux dossiers distincts à deux préparations du même commit", async () => {
     const snapshot = { commitSha: "abc", modifiedFiles: [{ path: "a.txt", content: "x" } as any] };
-    const first = await service.prepareSnapshot(snapshot);
-    const second = await service.prepareSnapshot(snapshot);
+    const first = await prepareBundle(snapshot);
+    const second = await prepareBundle(snapshot);
     try {
       expect(first.workspacePath).not.toBe(second.workspacePath);
     } finally {
-      await service.cleanup(first);
-      await service.cleanup(second);
+      await releaseBundle(first);
+      await releaseBundle(second);
     }
   });
 
@@ -51,8 +50,8 @@ describe("SnapshotService.prepareSnapshot", () => {
     const before = await snapshotDirs();
 
     await expect(
-      service.prepareSnapshot({ modifiedFiles: [{ path: badPath, content: "pwned" } as any] })
-    ).rejects.toThrow(/outside the snapshot/);
+      prepareBundle({ modifiedFiles: [{ path: badPath, content: "pwned" } as any] })
+    ).rejects.toThrow(/outside the bundle/);
 
     const leftovers = [...(await snapshotDirs())].filter((name) => !before.has(name));
     expect(leftovers).toEqual([]);
@@ -61,24 +60,24 @@ describe("SnapshotService.prepareSnapshot", () => {
   });
 });
 
-describe("SnapshotService.cleanup", () => {
+describe("releaseBundle", () => {
   it("supprime le workspace et reste idempotent", async () => {
-    const prepared = await service.prepareSnapshot({ modifiedFiles: [{ path: "a.txt", content: "x" } as any] });
+    const prepared = await prepareBundle({ modifiedFiles: [{ path: "a.txt", content: "x" } as any] });
 
-    await service.cleanup(prepared);
+    await releaseBundle(prepared);
     await expect(fs.stat(prepared.workspacePath!)).rejects.toThrow();
-    await expect(service.cleanup(prepared)).resolves.toBeUndefined();
+    await expect(releaseBundle(prepared)).resolves.toBeUndefined();
   });
 
   it("ne fait rien sans workspace", async () => {
-    await expect(service.cleanup(undefined)).resolves.toBeUndefined();
-    await expect(service.cleanup({ workspacePath: undefined })).resolves.toBeUndefined();
+    await expect(releaseBundle(undefined)).resolves.toBeUndefined();
+    await expect(releaseBundle({ workspacePath: undefined })).resolves.toBeUndefined();
   });
 
   it("refuse de supprimer un dossier qu'il n'a pas créé", async () => {
     const foreign = await fs.mkdtemp(path.join(os.tmpdir(), "not-a-snapshot-"));
     try {
-      await service.cleanup({ workspacePath: foreign });
+      await releaseBundle({ workspacePath: foreign });
       expect((await fs.stat(foreign)).isDirectory()).toBe(true);
     } finally {
       await fs.rm(foreign, { recursive: true, force: true });

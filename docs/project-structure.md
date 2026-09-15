@@ -88,20 +88,20 @@ leaderboard/
 │   │   │   └── codeRewardRules.ts     # code reward rules shape
 │   │   └── repositories/              # one file per table/domain area
 │   │
-│   ├── evaluator/                     # AI evaluation + pure reward scoring
+│   ├── evaluator/                     # AI evaluation agent
 │   │   ├── evaluator.ts               # OpenAIAgentEvaluator class
-│   │   ├── code-reward.ts             # computeCodeAward() — code challenges
-│   │   ├── ml-reward.ts               # ML point scoring (see ml-rewards.md)
-│   │   ├── grids/                     # scoring grids (code, dataset, model)
+│   │   ├── grids/                     # grid registry (grids come from the database)
 │   │   └── openai/                    # client + evaluate agent
-│   │                                  # (identify/merge agents remain, unused)
+│   │
+│   ├── capabilities/                  # core capabilities: evaluate + runs, bundle,
+│   │                                  # grid seeds, pool, economy, groups
 │   │
 │   ├── connectors/                    # external data source connectors
 │   │   ├── implementation/            # Github, Kaggle, GD (Drive), Slack
 │   │   ├── registry.ts  interfaces.ts  connectors.orchestrator.ts
 │   │
 │   ├── services/                      # orchestration and business logic
-│   │   ├── challenge/                 # challenge, code rewards, ML rewards, snapshot,
+│   │   ├── challenge/                 # code rewards, ML rewards, repo evaluation,
 │   │   │                              # validation + reference cases, SSRF guard,
 │   │   │                              # endpoint proxy, artifactUrl, lineage
 │   │   ├── compute/                   # GPU compute requests + its two crons
@@ -110,7 +110,7 @@ leaderboard/
 │   │   ├── google-workspace/          # auth, calendar, meet
 │   │   ├── slack/                     # signal ingestion + cron
 │   │   ├── sync-meeting/              # meeting lifecycle (create → poll → ingest → analyze)
-│   │   ├── evaluation-grid.service.ts  database-grid-provider.ts  run-logger.ts
+│   │   ├── evaluation-grid.service.ts  database-grid-provider.ts
 │   │   └── webhook.service.ts         # orphaned — nothing calls it
 │   │
 │   ├── provisioner/                   # workspace + instance provisioning
@@ -130,6 +130,7 @@ leaderboard/
 ├── scripts/
 │   ├── db-apply-schema.ts             # idempotent schema apply (deploy postdeploy)
 │   ├── db-resync-rewards.ts           # rebuild reward/completion caches
+│   ├── db-seed-grids.ts               # insert missing evaluation grids (deploy postdeploy)
 │   ├── prod.sh
 │   └── macos/  windows/               # init + launch helpers
 ├── docs/                              # this documentation
@@ -154,7 +155,7 @@ leaderboard/
 | DB repositories | `packages/database-service/repositories/` |
 | Seed data | `db_data/seed.ts` + `db_data/*.json` |
 | AI evaluation (code challenges) | `packages/evaluator/` + `packages/services/challenge/code-rewards.service.ts` |
-| ML challenge rewards | `packages/evaluator/ml-reward.ts` + `packages/services/challenge/` (see [`ml-rewards.md`](./ml-rewards.md)) |
+| ML challenge rewards | `content/flows/ml/reward.ts` + `packages/services/challenge/` (see [`ml-rewards.md`](./ml-rewards.md)) |
 | Validation challenges | `packages/services/challenge/reference-case.service.ts` + `validation-challenge.service.ts` (see [`validation-challenges.md`](./validation-challenges.md)) |
 | GPU compute | `packages/services/compute/` + `packages/scaleway/` (see [`compute-power.md`](./compute-power.md)) |
 | Google integrations | `packages/services/google-workspace/` |

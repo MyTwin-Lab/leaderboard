@@ -5,8 +5,9 @@ const {
   mockVerifyAdmin,
   mockFindFullById,
   mockConvertGridToEvaluatorFormat,
-  mockBuildAggregatedSnapshot,
-  mockPrepareSnapshot,
+  mockAggregateItems,
+  mockPrepareBundle,
+  mockReleaseBundle,
   mockParseGitHubUrl,
   mockResolveGitHubCommitShas,
   mockExtractArtifactRef,
@@ -17,13 +18,13 @@ const {
   mockKaggleFetchItems,
   mockKaggleFetchItemContent,
   mockEvaluate,
-  mockFsRm,
 } = vi.hoisted(() => ({
   mockVerifyAdmin: vi.fn(),
   mockFindFullById: vi.fn(),
   mockConvertGridToEvaluatorFormat: vi.fn(),
-  mockBuildAggregatedSnapshot: vi.fn(),
-  mockPrepareSnapshot: vi.fn(),
+  mockAggregateItems: vi.fn(),
+  mockPrepareBundle: vi.fn(),
+  mockReleaseBundle: vi.fn(),
   mockParseGitHubUrl: vi.fn(),
   mockResolveGitHubCommitShas: vi.fn(),
   mockExtractArtifactRef: vi.fn(),
@@ -34,7 +35,6 @@ const {
   mockKaggleFetchItems: vi.fn(),
   mockKaggleFetchItemContent: vi.fn(),
   mockEvaluate: vi.fn(),
-  mockFsRm: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ verifyAdmin: mockVerifyAdmin }));
@@ -49,11 +49,10 @@ vi.mock('../../../../../../../../packages/services/database-grid-provider.js', (
   convertGridToEvaluatorFormat: mockConvertGridToEvaluatorFormat,
 }));
 
-vi.mock('../../../../../../../../packages/services/challenge/snapshot.service.js', () => ({
-  SnapshotService: class {
-    buildAggregatedSnapshot = mockBuildAggregatedSnapshot;
-    prepareSnapshot = mockPrepareSnapshot;
-  },
+vi.mock('../../../../../../../../packages/capabilities/bundle.js', () => ({
+  aggregateItems: mockAggregateItems,
+  prepareBundle: mockPrepareBundle,
+  releaseBundle: mockReleaseBundle,
 }));
 
 vi.mock('../../../../../../../../packages/services/challenge/githubUrl.js', () => ({
@@ -77,11 +76,6 @@ vi.mock('../../../../../../../../packages/evaluator/evaluator.js', () => ({
   OpenAIAgentEvaluator: class {
     evaluate = mockEvaluate;
   },
-}));
-
-vi.mock('fs/promises', () => ({
-  default: { rm: mockFsRm },
-  rm: mockFsRm,
 }));
 
 import { POST } from './route';
@@ -123,8 +117,8 @@ beforeEach(() => {
   mockVerifyAdmin.mockResolvedValue({ userId: 'admin-1', role: 'admin', email: 'a@b.com' });
   mockFindFullById.mockResolvedValue(GRID_WITH_CATEGORIES);
   mockConvertGridToEvaluatorFormat.mockReturnValue({ slug: 'code-review', categories: [] });
-  mockPrepareSnapshot.mockResolvedValue({ commitShas: ['sha1'], workspacePath: '/tmp/workspace' });
-  mockFsRm.mockResolvedValue(undefined);
+  mockPrepareBundle.mockResolvedValue({ commitShas: ['sha1'], workspacePath: '/tmp/workspace' });
+  mockReleaseBundle.mockResolvedValue(undefined);
   mockEvaluate.mockResolvedValue(evaluation(80));
 
   mockCreateConnector.mockImplementation(async (repo: { type: string }) =>
@@ -135,7 +129,7 @@ beforeEach(() => {
   mockGetGithubToken.mockResolvedValue('gh-token');
   mockGithubConnect.mockResolvedValue(undefined);
   mockResolveGitHubCommitShas.mockResolvedValue(['sha1']);
-  mockBuildAggregatedSnapshot.mockResolvedValue({ commitSha: 'sha1', modifiedFiles: [] });
+  mockAggregateItems.mockResolvedValue({ commitSha: 'sha1', modifiedFiles: [] });
 
   mockExtractArtifactRef.mockReturnValue('acme/widgets');
   mockKaggleConnect.mockResolvedValue(undefined);
@@ -200,7 +194,7 @@ describe('POST /api/evaluation-grids/[id]/test-run', () => {
       { criterion: 'Correctness', mean: 80, stddev: 0, values: [80, 80, 80, 80, 80] },
     ]);
     expect(body.warning).toBeUndefined();
-    expect(mockFsRm).toHaveBeenCalledWith('/tmp/workspace', { recursive: true, force: true });
+    expect(mockReleaseBundle).toHaveBeenCalledWith(expect.objectContaining({ workspacePath: '/tmp/workspace' }));
   });
 
   it('adds a rate-limit warning when no GitHub token is configured', async () => {

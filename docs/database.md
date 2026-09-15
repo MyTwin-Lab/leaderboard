@@ -33,6 +33,7 @@ npm run db:setup:demo
 
 # Deployment-side (idempotent, run from the Procfile's postdeploy)
 npm run db:apply-schema     # explicit ALTER/CREATE ... IF NOT EXISTS
+npm run db:seed-grids       # insert the distribution's evaluation grids missing from the database
 npm run db:resync-rewards   # rebuild contributions.reward and challenges.completion
 npm run db:preview-slugs    # read-only: the slugs db:apply-schema would assign
 ```
@@ -218,7 +219,7 @@ Drizzle generates SQL migration files in `drizzle/` when you run `npm run db:gen
 
 If you change the schema in `packages/database-service/db/drizzle.ts`, always run `npm run db:push` to apply the changes to your local database before testing.
 
-**In production the schema is not pushed.** `drizzle-kit push` compares the schema to the live database and has to disambiguate moved columns (`workspace_*` moved from `task_workspaces` to `challenge_teams`, `user_id` from `task_assignees` to `tasks`), which it does through an interactive prompt — and a deploy has no TTY, so it fails. `scripts/db-apply-schema.ts` (`npm run db:apply-schema`) replaces it with explicit, idempotent `IF NOT EXISTS` statements, run from the `Procfile`'s `postdeploy` alongside `db:resync-rewards`. **A new column added to `drizzle.ts` must also be added there**, or it will exist locally and be missing in production.
+**In production the schema is not pushed.** `drizzle-kit push` compares the schema to the live database and has to disambiguate moved columns (`workspace_*` moved from `task_workspaces` to `challenge_teams`, `user_id` from `task_assignees` to `tasks`), which it does through an interactive prompt — and a deploy has no TTY, so it fails. `scripts/db-apply-schema.ts` (`npm run db:apply-schema`) replaces it with explicit, idempotent `IF NOT EXISTS` statements, run from the `Procfile`'s `postdeploy` before `db:seed-grids` and `db:resync-rewards`. **A new column added to `drizzle.ts` must also be added there**, or it will exist locally and be missing in production.
 
 **Slugs are backfilled there, in TypeScript.** `slugStatement()` adds the column nullable, then, in one transaction per table under a `SHARE ROW EXCLUSIVE` lock, computes the missing slugs with the application's own `slugify` (`planSlugBackfill`, oldest row first, collisions numbered), writes them — logging each `uuid → slug` — and only then sets `NOT NULL` and the unique index. The lock matters because the release still serving traffic during a Scalingo postdeploy creates rows without a slug; the transaction means a failure leaves the column nullable and that release working. Once the column is `NOT NULL` the step is a no-op. The slug steps sit at the very end of the script on purpose — see [`deployment.md`](./deployment.md#deploying-on-scalingo). To read what a backfill would write against any database (production through `scalingo db-tunnel`, say), run `npm run db:preview-slugs`: it writes nothing.
 

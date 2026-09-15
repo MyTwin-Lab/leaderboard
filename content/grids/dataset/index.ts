@@ -1,4 +1,5 @@
-import { EvaluationGridTemplate } from './index.js';
+import type { EvaluationGridTemplate } from '../../../packages/evaluator/grids/index.js';
+import type { GridSeed } from '../../../packages/capabilities/grid-seeds.js';
 
 export const datasetGrid: EvaluationGridTemplate = {
   type: "dataset",
@@ -21,4 +22,12 @@ export const datasetGrid: EvaluationGridTemplate = {
     Pour chaque critère, attribue un score entre 0 et 9.
     Fournis un commentaire justifiant chaque score.
   `.trim()
+};
+
+/** Seed de la grille `dataset` : insérée en base si aucune grille ne porte ce slug. */
+export const datasetGridSeed: GridSeed = {
+  slug: 'dataset',
+  name: 'Dataset',
+  description: 'Contribution de dataset : qualité, utilité, documentation.',
+  grid: datasetGrid,
 };

@@ -72,9 +72,22 @@ export interface CpSourceDefinition {
   listAll(): Promise<CpSourceEntry[]>;
 }
 
+/** Ce que rend le rejeu d'une évaluation : relancée, ou refusée avec une raison affichable. */
+export type EvaluationRetryOutcome = { ok: true } | { ok: false; reason: string };
+
+/**
+ * Un point d'entrée d'évaluation, que la capacité `evaluate` inscrit dans ses
+ * runs et que le rejeu d'un run échoué rappelle avec le même `payload`.
+ */
+export interface EvaluationHandlerDeclaration {
+  key: string;
+  retry(payload: Record<string, unknown>): Promise<EvaluationRetryOutcome>;
+}
+
 interface Declarations {
   ruleKeys?: readonly RuleKeyDeclaration[];
   contributionTypes?: readonly ContributionTypeDeclaration[];
+  evaluationHandlers?: readonly EvaluationHandlerDeclaration[];
 }
 
 export interface FlowDefinition extends Declarations {
@@ -114,6 +127,8 @@ interface PlatformState {
   modules: Map<string, ModuleDefinition>;
   ruleKeys: Map<string, Owned<RuleKeyDeclaration>>;
   contributionTypes: Map<string, Owned<ContributionTypeDeclaration>>;
+  /** Par clé de propriétaire (`code`, `sandbox`…), telle qu'inscrite dans `evaluation_runs.trigger_type`. */
+  evaluationHandlers: Map<string, { owner: string; handlers: Map<string, EvaluationHandlerDeclaration> }>;
 }
 
 const STATE_KEY = "__leaderboardPlatformRegistry";
@@ -154,6 +169,33 @@ function addUnique<T>(target: Map<string, T>, kind: string, key: string, value: 
   target.set(key, value);
 }
 
+/**
+ * Les handlers d'un propriétaire, rangés sous sa clé nue : c'est elle que le
+ * run garde. Deux propriétaires de même clé (un flow et un module `x`) ne
+ * peuvent donc pas tous deux en déclarer.
+ */
+function claimEvaluationHandlers(
+  target: PlatformState["evaluationHandlers"],
+  key: string,
+  owner: string,
+  declarations: readonly EvaluationHandlerDeclaration[] | undefined
+): void {
+  if (!declarations?.length) return;
+
+  const existing = target.get(key);
+  if (existing) {
+    throw new Error(
+      `[PlatformRegistry] Evaluation handlers under "${key}" are declared by both ${existing.owner} and ${owner}`
+    );
+  }
+
+  const handlers = new Map<string, EvaluationHandlerDeclaration>();
+  for (const declaration of declarations) {
+    addUnique(handlers, `Evaluation handler ${owner}/`, declaration.key, declaration);
+  }
+  target.set(key, { owner, handlers });
+}
+
 export class PlatformRegistry {
   /**
    * Installe une distribution. Tout est vérifié avant que rien ne soit visible :
@@ -171,17 +213,18 @@ export class PlatformRegistry {
       modules: new Map(),
       ruleKeys: new Map(),
       contributionTypes: new Map(),
+      evaluationHandlers: new Map(),
     };
 
-    const owners: Array<{ owner: string; declarations: Declarations }> = [];
+    const owners: Array<{ key: string; owner: string; declarations: Declarations }> = [];
 
     for (const flow of definitions.flows) {
       addUnique(state.flows, "Flow", flow.descriptor.key, flow);
-      owners.push({ owner: `flow:${flow.descriptor.key}`, declarations: flow });
+      owners.push({ key: flow.descriptor.key, owner: `flow:${flow.descriptor.key}`, declarations: flow });
     }
     for (const kit of definitions.kits ?? []) {
       addUnique(state.kits, "Kit", kit.key, kit);
-      owners.push({ owner: `kit:${kit.key}`, declarations: kit });
+      owners.push({ key: kit.key, owner: `kit:${kit.key}`, declarations: kit });
     }
     for (const extension of definitions.extensions ?? []) {
       addUnique(state.extensions, "Extension", extension.key, extension);
@@ -194,16 +237,17 @@ export class PlatformRegistry {
           }
         }
       }
-      owners.push({ owner: `extension:${extension.key}`, declarations: extension });
+      owners.push({ key: extension.key, owner: `extension:${extension.key}`, declarations: extension });
     }
     for (const module of definitions.modules ?? []) {
       addUnique(state.modules, "Module", module.key, module);
-      owners.push({ owner: `module:${module.key}`, declarations: module });
+      owners.push({ key: module.key, owner: `module:${module.key}`, declarations: module });
     }
 
-    for (const { owner, declarations } of owners) {
+    for (const { key, owner, declarations } of owners) {
       claim(state.ruleKeys, "Rule key", owner, declarations.ruleKeys);
       claim(state.contributionTypes, "Contribution type", owner, declarations.contributionTypes);
+      claimEvaluationHandlers(state.evaluationHandlers, key, owner, declarations.evaluationHandlers);
     }
 
     holder()[STATE_KEY] = state;
@@ -266,5 +310,12 @@ export class PlatformRegistry {
 
   static contributionTypes(): Owned<ContributionTypeDeclaration>[] {
     return [...current().contributionTypes.values()];
+  }
+
+  /** Le handler d'évaluation `handlerKey` du propriétaire `ownerKey` (flow, extension, kit ou module). */
+  static evaluationHandler(ownerKey: string, handlerKey: string): Owned<EvaluationHandlerDeclaration> | undefined {
+    const entry = current().evaluationHandlers.get(ownerKey);
+    const handler = entry?.handlers.get(handlerKey);
+    return entry && handler ? { ...handler, owner: entry.owner } : undefined;
   }
 }

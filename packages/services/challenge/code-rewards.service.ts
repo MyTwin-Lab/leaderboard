@@ -1,4 +1,5 @@
-import { computeCodeAward } from "../../evaluator/code-reward.js";
+import { computeCodeAward } from "../../../content/flows/code/reward.js";
+import { CODE_PROJECT_EVALUATION_HANDLER, codeFlowDescriptor } from "../../../content/flows/code/index.js";
 import {
   ChallengeRepository,
   ChallengeRepoRepository,
@@ -395,6 +396,14 @@ export class CodeRewardsService {
         userId: contribution.user_id,
       },
       hasPriorEvaluation: !!contribution.evaluation,
+      // Rejouable par le handler du flow code, au nom du porteur du workspace.
+      origin: {
+        owner: codeFlowDescriptor.key,
+        handler: CODE_PROJECT_EVALUATION_HANDLER,
+        payload: { challengeId: challenge.uuid, userId: contribution.user_id },
+        challengeId: challenge.uuid,
+        contributionId: contribution.uuid,
+      },
     });
   }
 }

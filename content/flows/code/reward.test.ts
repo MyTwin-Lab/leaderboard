@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeCodeAward, type CodeAwardInput } from "./code-reward.js";
+import { computeCodeAward, type CodeAwardInput } from "./reward.js";
 
 const RULES = { version: 1 as const, delivery: { fixed: 50, cap: 150 } };
 

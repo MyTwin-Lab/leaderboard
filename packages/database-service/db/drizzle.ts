@@ -554,13 +554,14 @@ export const refresh_tokens = pgTable("refresh_tokens", {
 // --- EVALUATION RUN ---
 export const evaluation_runs = pgTable('evaluation_runs', {
   uuid: uuid('id').primaryKey().defaultRandom(),
+  // Nullable : l'évaluation formative d'un sandbox n'a pas de challenge.
   challengeId: uuid('challenge_id')
-    .notNull()
     .references(() => challenges.uuid, { onDelete: 'cascade' }),
-  triggerType: varchar('trigger_type', { length: 50 }).notNull(), // 'manual' | 'sync' | 'github_pr'
-  triggerPayload: json('trigger_payload'), // exemple: { prNumber, mergedBy }
-  windowStart: timestamp('window_start').notNull(),
-  windowEnd: timestamp('window_end').notNull(),
+  triggerType: varchar('trigger_type', { length: 50 }).notNull(), // clé du flow, de l'extension ou du module
+  triggerPayload: json('trigger_payload'), // { handler, payload } : ce que le rejeu rappelle
+  // Fenêtre de l'ancien pipeline de synchronisation, nulle pour les évaluations actuelles.
+  windowStart: timestamp('window_start'),
+  windowEnd: timestamp('window_end'),
   status: varchar('status', { length: 20 }).notNull(), // pending | running | succeeded | failed | canceled
   startedAt: timestamp('started_at').defaultNow(),
   finishedAt: timestamp('finished_at'),

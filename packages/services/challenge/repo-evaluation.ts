@@ -1,34 +1,21 @@
-import { OpenAIAgentEvaluator } from "../../evaluator/evaluator.js";
-import {
-  EvaluationGridRegistry,
-  type DetailedEvaluationGridTemplate,
-  type EvaluationGridTemplate,
-} from "../../evaluator/grids/index.js";
-import type { EvaluateContext, SnapshotInfo } from "../../evaluator/types.js";
-import type { ExternalConnector } from "../../connectors/interfaces.js";
-import type { Repo } from "../../database-service/domain/entities.js";
-import { ConnectorRegistry } from "../../connectors/registry.js";
-import { SnapshotService } from "./snapshot.service.js";
+import { evaluate, type EvaluationOrigin } from "../../capabilities/evaluation.js";
+import { GITHUB_SNAPSHOT_SOURCE, type GithubSnapshotInput } from "../../../content/bundle-sources/github-snapshot/index.js";
 import { toScore10 } from "./repo-score.js";
 
 /**
  * repo-evaluation
  * ---------------
- * Le cœur partagé de l'évaluation d'un dépôt GitHub : cloner l'état du repo
- * dans un snapshot agrégé, charger une grille par son slug, appeler l'agent.
+ * Évaluer un dépôt GitHub : la capacité `evaluate` du core, nourrie par la
+ * source `github-snapshot`, et la note ramenée sur 10.
  *
- * Extrait de `CodeRewardsService.runAgentDefault`, dont il est la copie
- * conforme, parce que deux appelants en ont désormais besoin :
+ * Deux appelants :
  * - le challenge code, qui transforme la note en CP (`code-rewards.service.ts`) ;
  * - le sandbox, dont l'évaluation est **formative** et ne paie rien
  *   (`services/sandbox/sandbox-evaluation.service.ts`).
  *
  * Ce module ne connaît ni challenge, ni sandbox, ni ledger : il rend une note
  * et le détail des critères, et c'est à l'appelant de décider ce qu'il en fait.
- *
- * Les grilles publiées en base sont servies par le provider que la
- * distribution branche au démarrage : une grille `code` publiée en base sert
- * au sandbox comme au challenge, sans une ligne de code de plus (§1.3).
+ * Le run, lui, est tracé par la capacité, au nom de l'appelant (`origin`).
  *
  * Les deux helpers purs vivent dans `repo-score.ts` et sont ré-exportés ici :
  * l'UI les importe de là-bas, ce fichier n'étant pas bundlable côté navigateur.
@@ -62,14 +49,13 @@ export interface RepoEvaluationInput {
   hasPriorEvaluation: boolean;
   /** Plafond de commits agrégés dans le snapshot. */
   maxCommits?: number;
+  /** Qui évalue, et quel handler rejoue le run. */
+  origin: EvaluationOrigin;
 }
 
-/** Isole les accès réseau (GitHub, OpenAI) et disque — remplacés par des doublures en test. */
+/** Isole la capacité (réseau, disque, base) — remplacée par une doublure en test. */
 export interface RepoEvaluationDeps {
-  createConnector: (repo: Repo, options?: { branch?: string }) => Promise<ExternalConnector | null>;
-  snapshotService: Pick<SnapshotService, "buildAggregatedSnapshot" | "prepareSnapshot" | "cleanup">;
-  loadGrid: (slug: string) => Promise<EvaluationGridTemplate | DetailedEvaluationGridTemplate>;
-  evaluator: Pick<OpenAIAgentEvaluator, "evaluate">;
+  evaluate: typeof evaluate;
 }
 
 export interface RepoEvaluationResult {
@@ -79,75 +65,29 @@ export interface RepoEvaluationResult {
   evaluation: { scores: unknown; globalScore: number };
 }
 
-// Sans état, donc partagés : les instancier à chaque run ne servirait à rien.
-const defaultSnapshotService = new SnapshotService();
-const defaultEvaluator = new OpenAIAgentEvaluator();
-
-/**
- * Snapshot agrégé (≤ `maxCommits`) sur la branche/le repo, grille chargée par
- * slug, note ramenée /10.
- *
- * Le `disconnect` est dans un `finally` : le connecteur tient une ressource
- * réseau, et une évaluation qui échoue ne doit pas la laisser ouverte.
- */
 export async function evaluateGithubRepo(
   input: RepoEvaluationInput,
   deps?: Partial<RepoEvaluationDeps>,
 ): Promise<RepoEvaluationResult> {
-  const { slug, branch, gridSlug, subject, hasPriorEvaluation, maxCommits = 100 } = input;
+  const { slug, branch, gridSlug, subject, hasPriorEvaluation, maxCommits, origin } = input;
+  const bundleInput: GithubSnapshotInput = { slug, branch, maxCommits };
 
-  const createConnector =
-    deps?.createConnector ??
-    ((repo: Repo, options?: { branch?: string }) => ConnectorRegistry.createConnector(repo, options));
-  const snapshotService = deps?.snapshotService ?? defaultSnapshotService;
-  const loadGrid = deps?.loadGrid ?? ((type: string) => EvaluationGridRegistry.getGridAsync(type));
-  const evaluator = deps?.evaluator ?? defaultEvaluator;
+  const { evaluation } = await (deps?.evaluate ?? evaluate)({
+    bundle: { source: GITHUB_SNAPSHOT_SOURCE, input: bundleInput },
+    gridSlug,
+    subject: {
+      title: subject.title,
+      type: subject.type,
+      description: subject.description,
+      ref: subject.challengeId,
+      userId: subject.userId,
+    },
+    hasPriorEvaluation,
+    origin,
+  });
 
-  const connector = await createConnector(
-    { uuid: "", title: slug, type: "github", external_repo_id: slug, project_id: "" },
-    branch ? { branch } : undefined,
-  );
-  if (!connector) throw new Error(`[repo-evaluation] No GitHub connector for ${slug}`);
-
-  await connector.connect();
-  try {
-    const items = await connector.fetchItems();
-    const shas = items.slice(0, maxCommits).map((i) => i.id);
-    if (shas.length === 0) {
-      throw new Error(`[repo-evaluation] No commits found on ${slug}${branch ? `@${branch}` : ""}`);
-    }
-
-    const aggregated = await snapshotService.buildAggregatedSnapshot(() => connector, shas);
-    if (!aggregated) throw new Error(`[repo-evaluation] Unable to build snapshot for ${slug}`);
-    const prepared = await snapshotService.prepareSnapshot(aggregated);
-
-    // Le workspace contient le code du dépôt évalué : il est supprimé dès la
-    // fin de l'évaluation, qu'elle réussisse ou lève.
-    try {
-      const grid = await loadGrid(gridSlug);
-      const evalContext: EvaluateContext = { snapshot: prepared as SnapshotInfo, grid };
-
-      const evaluation = await evaluator.evaluate(
-        hasPriorEvaluation,
-        {
-          title: subject.title,
-          type: subject.type,
-          description: subject.description,
-          challenge_id: subject.challengeId,
-          userId: subject.userId,
-          commitShas: shas,
-        },
-        evalContext,
-      );
-
-      return {
-        score10: toScore10(evaluation.globalScore),
-        evaluation: { scores: evaluation.scores, globalScore: evaluation.globalScore },
-      };
-    } finally {
-      await snapshotService.cleanup(prepared);
-    }
-  } finally {
-    await connector.disconnect?.();
-  }
+  return {
+    score10: toScore10(evaluation.globalScore),
+    evaluation: { scores: evaluation.scores, globalScore: evaluation.globalScore },
+  };
 }

@@ -283,7 +283,8 @@ export const taskSchema = z.object({
 
 // --- EVALUATION RUNS ---
 
-export const evaluationRunTriggerTypeSchema = z.enum(['manual', 'sync', 'github_pr']);
+/** La clé du flow, de l'extension ou du module appelant. */
+export const evaluationRunTriggerTypeSchema = z.string().min(1).max(50);
 export const evaluationRunStatusSchema = z.enum(['pending', 'running', 'succeeded', 'failed', 'canceled']);
 
 export const evaluationRunMetaSchema = z.object({
@@ -295,18 +296,17 @@ export const evaluationRunMetaSchema = z.object({
 
 export const evaluationRunSchema = z.object({
   uuid: z.string().uuid(),
-  challenge_id: z.string().uuid(),
+  challenge_id: z.string().uuid().optional(),
   trigger_type: evaluationRunTriggerTypeSchema,
   trigger_payload: z.record(z.string(), z.unknown()).optional(),
-  window_start: z.coerce.date(),
-  window_end: z.coerce.date(),
+  window_start: z.coerce.date().optional(),
+  window_end: z.coerce.date().optional(),
   status: evaluationRunStatusSchema,
   started_at: z.coerce.date().optional(),
   finished_at: z.coerce.date().optional(),
   error_code: z.string().max(100).optional(),
   error_message: z.string().max(1000).optional(),
   created_by: z.string().uuid().optional(),
-  retry_of_run_id: z.string().uuid().optional(),
   meta: evaluationRunMetaSchema.optional(),
 });
 

@@ -1,5 +1,5 @@
-import type { CodeRewardRules } from "../database-service/domain/codeRewardRules.js";
-import type { RewardEntryDraft } from "../database-service/domain/entities.js";
+import type { CodeRewardRules } from "../../../packages/database-service/domain/codeRewardRules.js";
+import type { RewardEntryDraft } from "../../../packages/database-service/domain/entities.js";
 
 /** Les clés de ledger que ce calcul écrit — déclarées par le flow code. */
 type CodeRuleKey = "code_fixed" | "code_quality";

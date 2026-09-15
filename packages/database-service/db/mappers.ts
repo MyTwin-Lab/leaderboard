@@ -398,11 +398,11 @@ export function toDbTask(entity: Omit<Task, "uuid" | "created_at">): typeof task
 export function toDomainEvaluationRun(row: DbEvaluationRun): EvaluationRun {
   return {
     uuid: row.uuid,
-    challenge_id: row.challengeId,
+    challenge_id: row.challengeId ?? undefined,
     trigger_type: row.triggerType as EvaluationRunTriggerType,
     trigger_payload: (row.triggerPayload as Record<string, unknown>) ?? undefined,
-    window_start: new Date(row.windowStart),
-    window_end: new Date(row.windowEnd),
+    window_start: row.windowStart ? new Date(row.windowStart) : undefined,
+    window_end: row.windowEnd ? new Date(row.windowEnd) : undefined,
     status: row.status as EvaluationRunStatus,
     started_at: row.startedAt ? new Date(row.startedAt) : undefined,
     finished_at: row.finishedAt ? new Date(row.finishedAt) : undefined,
@@ -417,11 +417,11 @@ export function toDbEvaluationRun(
   entity: Omit<EvaluationRun, 'uuid'>
 ): typeof evaluation_runs.$inferInsert {
   return {
-    challengeId: entity.challenge_id,
+    challengeId: entity.challenge_id ?? null,
     triggerType: entity.trigger_type,
     triggerPayload: entity.trigger_payload ?? null,
-    windowStart: entity.window_start,
-    windowEnd: entity.window_end,
+    windowStart: entity.window_start ?? null,
+    windowEnd: entity.window_end ?? null,
     status: entity.status,
     startedAt: entity.started_at ?? null,
     finishedAt: entity.finished_at ?? null,

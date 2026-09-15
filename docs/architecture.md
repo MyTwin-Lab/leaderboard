@@ -53,12 +53,12 @@ Evaluation is **project-scoped**: a contributor's personal task board is purely 
 flowchart TD
   A["POST /api/challenges/:id/project-evaluation"] --> B["CodeRewardsService"]
   B --> C["Preconditions: board done, workspace ready, no run in progress"]
-  C --> D["ConnectorRegistry: connect to the branch (provided_repo) or contributor's repo (own_repo)"]
-  D --> E["fetch commits (up to 100)"]
-  E --> F["SnapshotService: build aggregated code snapshot"]
-  F --> G["EvaluationGridRegistry: load the 'code' grid"]
+  C --> D["evaluate(): record an evaluation_runs row for the 'code' flow"]
+  D --> E["EvaluationGridRegistry: load the 'code' grid from the database"]
+  E --> F["github-snapshot source: up to 100 commits of the branch or repo, aggregated"]
+  F --> G["bundle written to a temporary workspace"]
   G --> H["OpenAIAgentEvaluator: score against grid, normalize to /10"]
-  H --> I["computeCodeAward(): fixed + cap×score/10, positive delta, clamped to pool"]
+  H --> I["computeCodeAward() (flow code): fixed + cap×score/10, positive delta, clamped to pool"]
   I --> J["RewardEntryRepository: ledger rows + contribution.reward sync"]
   J --> K["leaderboard UI updated (polls evaluation_status)"]
 ```

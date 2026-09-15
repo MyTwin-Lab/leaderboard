@@ -1,4 +1,5 @@
-import { DetailedEvaluationGridTemplate } from './index.js';
+import type { DetailedEvaluationGridTemplate } from '../../../packages/evaluator/grids/index.js';
+import type { GridSeed } from '../../../packages/capabilities/grid-seeds.js';
 
 export const evaluationGrid: DetailedEvaluationGridTemplate = {
   type: "code",
@@ -314,4 +315,11 @@ Pour chaque sous-critère :
 - Admettre l'incertitude sur les critères subjectifs
 - Ne pas pénaliser un commit pour des problèmes pré-existants dans le code
   `.trim()
+};
+/** Seed de la grille `code` : insérée en base si aucune grille ne porte ce slug. */
+export const codeGridSeed: GridSeed = {
+  slug: 'code',
+  name: 'Code',
+  description: "Qualité d'un dépôt : technique, architecture, tests, documentation.",
+  grid: evaluationGrid,
 };

@@ -196,7 +196,7 @@ projects (manager_id → users, optional)
 - `packages/database-service/repositories/challengeTeam.repo.ts`
 - `packages/database-service/repositories/rewardEntry.repo.ts`
 - `packages/services/challenge/code-rewards.service.ts` — evaluation + ledger + completion for code challenges
-- `packages/evaluator/code-reward.ts` — `computeCodeAward()`, the pure delta/clamp calculation
+- `content/flows/code/reward.ts` — `computeCodeAward()`, the pure delta/clamp calculation
 - `packages/provisioner/src/index.ts` — `provisionContributorWorkspace()`, personal branch provisioning
 - `apps/leaderboard-client/src/lib/server/managerAuth.ts` — resolves project-manager authorization
 - `apps/leaderboard-client/src/app/challenges/[slug]/manage/` — the manager view (mirrors the admin challenge view, which stays at `/admin/challenges/[id]`)

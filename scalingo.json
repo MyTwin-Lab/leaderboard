@@ -1,6 +1,6 @@
 {
   "name": "leaderboard",
   "scripts": {
-    "postdeploy": "npm run db:apply-schema && npm run db:resync-rewards"
+    "postdeploy": "npm run db:apply-schema && npm run db:seed-grids && npm run db:resync-rewards"
   }
 }

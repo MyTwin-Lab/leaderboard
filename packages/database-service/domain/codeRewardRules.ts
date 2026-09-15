@@ -8,7 +8,7 @@ import { z } from "zod";
  * challenge aux règles invalides s'affiche au lieu de planter.
  *
  * Points d'un run d'évaluation = fixed (livrable recevable) + cap × note/10.
- * Le delta itératif est calculé ailleurs (evaluator/code-reward.ts).
+ * Le delta itératif est calculé ailleurs (content/flows/code/reward.ts).
  */
 export const codeRewardRulesV1Schema = z.object({
   version: z.literal(1),

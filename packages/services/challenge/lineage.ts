@@ -1,4 +1,4 @@
-import type { MlLineage } from "../../evaluator/ml-reward.js";
+import type { MlLineage } from "../../../content/flows/ml/reward.js";
 
 /** Le strict nécessaire pour décider d'une réutilisation. */
 export interface LineageContribution {

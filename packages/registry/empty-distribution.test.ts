@@ -3,6 +3,7 @@ import { PlatformRegistry } from "./platform.js";
 import { ConnectorRegistry } from "../connectors/registry.js";
 import { ProvisionerRegistry, provisionContributorWorkspace } from "../provisioner/src/index.js";
 import { EvaluationGridRegistry } from "../evaluator/grids/index.js";
+import { BundleSourceRegistry } from "../capabilities/evaluation.js";
 
 /**
  * Le core sans rien d'installé
@@ -56,12 +57,11 @@ describe("core with an empty distribution", () => {
     expect(result.error).toMatch(/No provider available/);
   });
 
-  it("still serves the built-in grids without a database provider", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    vi.spyOn(console, "log").mockImplementation(() => {});
+  it("serves no grid and no bundle source, naming what is missing", async () => {
+    EvaluationGridRegistry.reset();
+    BundleSourceRegistry.clear();
 
-    const grid = await EvaluationGridRegistry.getGridAsync("code");
-
-    expect(grid.type).toBe("code");
+    await expect(EvaluationGridRegistry.getGrid("code")).rejects.toThrow(/cannot load grid "code"/);
+    expect(BundleSourceRegistry.keys()).toEqual([]);
   });
 });

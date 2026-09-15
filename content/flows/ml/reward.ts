@@ -1,7 +1,5 @@
-import type { MlRewardRules } from "../database-service/domain/mlRewardRules.js";
-import type { RewardEntryDraft, RewardEntryMeta } from "../database-service/domain/entities.js";
-
-export type { RewardEntryDraft } from "../database-service/domain/entities.js";
+import type { MlRewardRules } from "../../../packages/database-service/domain/mlRewardRules.js";
+import type { RewardEntryDraft, RewardEntryMeta } from "../../../packages/database-service/domain/entities.js";
 
 /**
  * Reward des challenges ML.

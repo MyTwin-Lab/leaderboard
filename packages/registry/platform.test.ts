@@ -80,6 +80,28 @@ describe("PlatformRegistry", () => {
     ).toThrow(/applies to flow "beta", which is not installed/);
   });
 
+  it("finds an evaluation handler under the key of its owner", () => {
+    const retry = async () => ({ ok: true as const });
+    PlatformRegistry.install({
+      flows: [flow("alpha", { evaluationHandlers: [{ key: "project", retry }] })],
+      modules: [{ key: "lab", evaluationHandlers: [{ key: "formative", retry }] }],
+    });
+
+    expect(PlatformRegistry.evaluationHandler("alpha", "project")?.owner).toBe("flow:alpha");
+    expect(PlatformRegistry.evaluationHandler("lab", "formative")?.owner).toBe("module:lab");
+    expect(PlatformRegistry.evaluationHandler("alpha", "formative")).toBeUndefined();
+  });
+
+  it("refuses evaluation handlers under a key shared by two owners", () => {
+    const retry = async () => ({ ok: true as const });
+    expect(() =>
+      PlatformRegistry.install({
+        flows: [flow("lab", { evaluationHandlers: [{ key: "project", retry }] })],
+        modules: [{ key: "lab", evaluationHandlers: [{ key: "formative", retry }] }],
+      })
+    ).toThrow(/Evaluation handlers under "lab" are declared by both flow:lab and module:lab/);
+  });
+
   it("refuses a second distribution, and says when none is installed", () => {
     expect(() => PlatformRegistry.flows()).toThrow(/No distribution installed/);
 

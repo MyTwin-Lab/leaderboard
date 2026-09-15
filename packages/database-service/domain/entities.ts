@@ -390,7 +390,8 @@ export interface WorkspaceMeta {
 
 // --- EVALUATION RUNS ---
 
-export type EvaluationRunTriggerType = 'manual' | 'sync' | 'github_pr';
+/** La clé du flow, de l'extension ou du module qui a lancé l'évaluation (`code`, `ml`, `sandbox`…). */
+export type EvaluationRunTriggerType = string;
 export type EvaluationRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'canceled';
 
 export interface EvaluationRunMeta {
@@ -398,23 +399,31 @@ export interface EvaluationRunMeta {
   durationMs?: number;
   evaluatorVersion?: string;
   gridVersion?: number;
+  gridSlug?: string;
+  bundleSource?: string;
+  /** Note brute sur 0–9. */
+  globalScore?: number;
+  /** Le sujet évalué, quand aucune contribution ne le porte (évaluation formative d'un sandbox). */
+  subject?: { title: string; type: string; ref: string };
   [key: string]: unknown;
 }
 
 export interface EvaluationRun {
   uuid: string;
-  challenge_id: string;
+  /** Absent pour une évaluation sans challenge (sandbox). */
+  challenge_id?: string;
   trigger_type: EvaluationRunTriggerType;
+  /** `{ handler, payload }` : ce que le rejeu rappelle. */
   trigger_payload?: Record<string, unknown>;
-  window_start: Date;
-  window_end: Date;
+  /** Fenêtre de l'ancien pipeline de synchronisation ; les évaluations actuelles n'en ont pas. */
+  window_start?: Date;
+  window_end?: Date;
   status: EvaluationRunStatus;
   started_at?: Date;
   finished_at?: Date;
   error_code?: string;
   error_message?: string;
   created_by?: string;
-  retry_of_run_id?: string;
   meta?: EvaluationRunMeta;
 }
 

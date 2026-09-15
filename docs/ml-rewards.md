@@ -69,7 +69,7 @@ The regular leaderboard needs no special handling for this — each ledger entry
 | File | Purpose |
 |------|---------|
 | `packages/database-service/domain/mlRewardRules.ts` | Reward rules shape and validation |
-| `packages/evaluator/ml-reward.ts` | Pure scoring functions (cap, baseline, lead bonus, reuse deductions) |
+| `content/flows/ml/reward.ts` | Pure scoring functions (cap, baseline, lead bonus, reuse deductions) |
 | `packages/services/challenge/ml-rewards.service.ts` | Orchestrates scoring + the Kaggle metric read + ledger writes |
 | `packages/services/challenge/artifactUrl.ts` | Normalizes submitted URLs (the key used to detect reuse) |
 | `packages/services/challenge/lineage.ts` | Determines who originally authored a reused artifact |

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { OpenAIAgentEvaluator } from "../evaluator.js";
 import * as EvaluateAgent from "../openai/evaluate.agent.js";
-import { EvaluationGridRegistry } from "../grids/index.js";
 
 const contribution = {
   title: "Contribution",
@@ -12,7 +11,7 @@ const contribution = {
 };
 
 function context() {
-  return { snapshot: { modifiedFiles: [] }, grid: EvaluationGridRegistry.getGrid("code") };
+  return { snapshot: { modifiedFiles: [] }, grid: { type: "code", criteriaTemplate: [], instructions: "" } };
 }
 
 describe("OpenAIAgentEvaluator", () => {

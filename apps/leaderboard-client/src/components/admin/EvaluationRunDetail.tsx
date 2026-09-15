@@ -3,6 +3,7 @@
 import { X, AlertCircle, CheckCircle, Clock, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { runHandler } from '@/components/admin/EvaluationRunList';
 import type { EvaluationRun } from '../../../../../packages/database-service/domain/entities';
 
 interface EvaluationRunWithChallenge extends EvaluationRun {
@@ -23,8 +24,10 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+const empty = <span className="text-white/25 italic">-</span>;
+
 function formatDate(d?: Date | string) {
-  if (!d) return <span className="text-white/25 italic">-</span>;
+  if (!d) return empty;
   return new Date(d).toLocaleString('fr-FR', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
@@ -32,7 +35,7 @@ function formatDate(d?: Date | string) {
 }
 
 function formatDuration(ms?: number) {
-  if (!ms) return <span className="text-white/25 italic">-</span>;
+  if (!ms) return empty;
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(2)}s`;
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
@@ -47,6 +50,8 @@ const statusIcons: Record<string, React.ReactNode> = {
 };
 
 export function EvaluationRunDetail({ run, onClose }: EvaluationRunDetailProps) {
+  const handler = runHandler(run);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div className="w-full max-w-lg rounded-xl border border-white/10 bg-[#0f0f1a] shadow-2xl">
@@ -68,16 +73,39 @@ export function EvaluationRunDetail({ run, onClose }: EvaluationRunDetailProps) 
             <span className="font-mono text-xs text-white/60">{run.uuid}</span>
           </Row>
           <Row label="Challenge">
-            {run.challengeTitle ?? <span className="font-mono text-xs text-white/40">{run.challenge_id}</span>}
+            {run.challengeTitle ?? (run.challenge_id
+              ? <span className="font-mono text-xs text-white/40">{run.challenge_id}</span>
+              : empty)}
           </Row>
-          <Row label="Trigger">
-            <Badge label={run.trigger_type} variant="muted" />
-          </Row>
-          <Row label="Window">
-            <span className="font-mono text-xs">
-              {new Date(run.window_start).toLocaleDateString('fr-FR')} → {new Date(run.window_end).toLocaleDateString('fr-FR')}
+          {run.meta?.subject && (
+            <Row label="Subject">
+              {run.meta.subject.title}
+              <span className="ml-1.5 font-mono text-xs text-white/40">{run.meta.subject.ref.slice(0, 8)}…</span>
+            </Row>
+          )}
+          <Row label="Flow">
+            <span className="flex items-center justify-end gap-1.5">
+              <Badge label={run.trigger_type} variant="muted" />
+              {handler && <span className="font-mono text-xs text-white/50">{handler}</span>}
             </span>
           </Row>
+          {run.meta?.gridSlug && (
+            <Row label="Grid">
+              <span className="font-mono text-xs text-white/60">{run.meta.gridSlug}</span>
+            </Row>
+          )}
+          {run.meta?.bundleSource && (
+            <Row label="Bundle source">
+              <span className="font-mono text-xs text-white/60">{run.meta.bundleSource}</span>
+            </Row>
+          )}
+          {run.window_start && run.window_end && (
+            <Row label="Window">
+              <span className="font-mono text-xs">
+                {new Date(run.window_start).toLocaleDateString('fr-FR')} → {new Date(run.window_end).toLocaleDateString('fr-FR')}
+              </span>
+            </Row>
+          )}
           <Row label="Started at">{formatDate(run.started_at)}</Row>
           <Row label="Finished at">{formatDate(run.finished_at)}</Row>
           <Row label="Duration">
@@ -86,10 +114,15 @@ export function EvaluationRunDetail({ run, onClose }: EvaluationRunDetailProps) 
               {formatDuration(run.meta?.durationMs)}
             </span>
           </Row>
+          {run.meta?.globalScore !== undefined && (
+            <Row label="Score">
+              <span className="font-medium text-brandCP">{run.meta.globalScore.toFixed(2)} / 9</span>
+            </Row>
+          )}
           <Row label="Contributions">
             {run.meta?.contributionCount !== undefined
               ? <span className="font-medium text-brandCP">{run.meta.contributionCount}</span>
-              : <span className="text-white/25 italic">-</span>}
+              : empty}
           </Row>
           {run.meta?.evaluatorVersion && (
             <Row label="Evaluator version">
