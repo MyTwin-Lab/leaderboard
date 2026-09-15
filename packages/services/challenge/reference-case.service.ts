@@ -9,7 +9,8 @@ import {
 import type { ValidationReferenceCase, ValidationCaseClaim } from "../../database-service/domain/entities.js";
 import { proxyFileToEndpoint, EndpointCallError, type ProxyResult } from "./endpoint-proxy.js";
 import { SelfVoteError, ValidationTargetError } from "./validation-challenge.service.js";
-import { validationConfigOf } from "../../../content/flows/validation/config.js";
+import { validationConfigOf } from "../../../content/kits/validation/config.js";
+import { ENDPOINT_VALIDATION_FLOW_KEY } from "../../../content/flows/endpoint-validation/descriptor.js";
 
 export { EndpointCallError, SelfVoteError, ValidationTargetError };
 
@@ -78,7 +79,7 @@ export class ReferenceCaseService {
     const { validationChallengeId, authorUserId } = input;
 
     const challenge = await this.deps.challengeRepo.findById(validationChallengeId);
-    if (!challenge || challenge.type !== "validation") {
+    if (!challenge || challenge.type !== ENDPOINT_VALIDATION_FLOW_KEY) {
       throw new ValidationTargetError("Not a validation challenge");
     }
     const requiredValidations = validationConfigOf(challenge).required_validations ?? 0;
@@ -139,7 +140,7 @@ export class ReferenceCaseService {
     }
 
     const challenge = await this.deps.challengeRepo.findById(validationChallengeId);
-    if (!challenge || challenge.type !== "validation") {
+    if (!challenge || challenge.type !== ENDPOINT_VALIDATION_FLOW_KEY) {
       throw new ValidationTargetError("Not a validation challenge");
     }
 

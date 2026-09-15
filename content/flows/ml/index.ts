@@ -47,6 +47,8 @@ export const mlFlow: FlowDefinition = {
     { key: "model", countsAsContribution: true },
     { key: "api_packaging", countsAsContribution: true },
   ],
+  // Le packaging d'API expose un endpoint qu'une validation peut éprouver.
+  deliverables: [{ contributionType: "api_packaging", capabilities: ["endpoint"] }],
   evaluationHandlers: [
     {
       key: ML_SUBMISSION_EVALUATION_HANDLER,

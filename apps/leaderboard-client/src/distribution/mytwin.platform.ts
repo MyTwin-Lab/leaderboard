@@ -1,7 +1,9 @@
 import type { PlatformDefinitions } from '../../../../packages/registry/platform';
 import { codeFlow } from '../../../../content/flows/code';
 import { mlFlow } from '../../../../content/flows/ml';
-import { validationFlow } from '../../../../content/flows/validation';
+import { endpointValidationFlow } from '../../../../content/flows/endpoint-validation';
+import { journeyValidationFlow } from '../../../../content/flows/journey-validation';
+import { validationKit } from '../../../../content/kits/validation';
 import { slackSignalsExtension } from '../../../../content/extensions/slack-signals';
 import { computeExtension } from '../../../../content/extensions/compute';
 import { sandboxModule } from '../../../../modules/sandbox';
@@ -14,7 +16,8 @@ import { sandboxModule } from '../../../../modules/sandbox';
  * être vérifié sans charger les connecteurs ni leurs credentials.
  */
 export const platform: PlatformDefinitions = {
-  flows: [codeFlow, mlFlow, validationFlow],
+  flows: [codeFlow, mlFlow, endpointValidationFlow, journeyValidationFlow],
+  kits: [validationKit],
   extensions: [slackSignalsExtension, computeExtension],
   modules: [sandboxModule],
 };

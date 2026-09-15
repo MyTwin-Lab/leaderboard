@@ -126,10 +126,24 @@ interface Declarations {
   evaluationHandlers?: readonly EvaluationHandlerDeclaration[];
 }
 
+/**
+ * Un livrable qu'un flow produit : un type de contribution, et ce qu'il
+ * permet d'éprouver (`endpoint`, `deployed_app`…). Un flow de validation
+ * choisit ses cibles par capacité, sans connaître le flow source.
+ */
+export interface DeliverableDeclaration {
+  contributionType: string;
+  capabilities: readonly string[];
+}
+
 export interface FlowDefinition extends Declarations {
   descriptor: FlowDescriptor;
   config?: FlowConfigDeclaration;
   rules?: FlowRulesDeclaration;
+  /** Les livrables que ses contributions constituent. */
+  deliverables?: readonly DeliverableDeclaration[];
+  /** Pour un flow qui éprouve les livrables d'un challenge parent (`source_challenge_id`). */
+  requires?: { deliverableCapability: string };
 }
 
 export interface ExtensionDefinition extends Declarations {

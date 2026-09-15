@@ -351,7 +351,7 @@ async function main() {
     async () => ({
       title: "Validation clinique qualifiée — API Lésion Ligamentaire",
       status: "active",
-      type: "validation",
+      type: "endpoint-validation",
       description:
         "Validation par des professionnels de santé qualifiés (medical_pro) des API de détection de lésion ligamentaire exposées par le challenge ML associé — voir challenges/challenge-014-qualified_validation/SPEC.md.",
       contribution_points_reward: 300,

@@ -41,7 +41,7 @@ function callGet() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'validation' });
+  mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'endpoint-validation' });
 });
 
 describe('GET /api/challenges/[id]/validation-runs/[attemptId]/file', () => {

@@ -4,7 +4,9 @@ import { NextRequest } from 'next/server';
 const {
   mockVerifyRequestToken, mockChallengeFindAll, mockChallengeFindById, mockChallengeCreate,
   mockRepoCreate, mockChallengeRepoCreate, mockProjectFindByManagerId, mockProjectFindById,
+  MockParentFlowTakenError,
 } = vi.hoisted(() => ({
+  MockParentFlowTakenError: class MockParentFlowTakenError extends Error {},
   mockVerifyRequestToken: vi.fn(),
   mockChallengeFindAll: vi.fn(),
   mockChallengeFindById: vi.fn(),
@@ -23,6 +25,7 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 vi.mock('../../../../../../packages/database-service/repositories', () => ({
+  ParentFlowTakenError: MockParentFlowTakenError,
   ChallengeRepository: class {
     findAll = mockChallengeFindAll;
     findById = mockChallengeFindById;
@@ -309,7 +312,7 @@ describe('POST /api/challenges', () => {
       // il n'a aucun sens sans quorum, et une valeur non nulle en base
       // laisserait croire qu'un target peut se résoudre.
       expect(mockChallengeCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ flow_config: expect.objectContaining({ required_validations: null }) })
+        expect.objectContaining({ type: 'journey-validation', flow_config: { cp_per_validation: 5 } })
       );
     });
 
@@ -338,9 +341,8 @@ describe('POST /api/challenges', () => {
     });
 
     it('returns 409 when the ML challenge already has a linked validation challenge', async () => {
-      mockChallengeFindAll.mockResolvedValue([
-        { uuid: 'existing-validation', type: 'validation', source_challenge_id: mlSourceId },
-      ]);
+      // L'index unique partiel (source, flow) refuse le second challenge.
+      mockChallengeCreate.mockRejectedValueOnce(new MockParentFlowTakenError('taken'));
 
       const res = await postChallenge(validationBody(), 'valid-token');
 
@@ -349,9 +351,8 @@ describe('POST /api/challenges', () => {
 
     it('returns 409 when the code challenge already has a linked validation challenge', async () => {
       mockChallengeFindById.mockResolvedValue({ uuid: mlSourceId, type: 'code' });
-      mockChallengeFindAll.mockResolvedValue([
-        { uuid: 'existing-validation', type: 'validation', source_challenge_id: mlSourceId },
-      ]);
+      // L'index unique partiel (source, flow) refuse le second challenge.
+      mockChallengeCreate.mockRejectedValueOnce(new MockParentFlowTakenError('taken'));
 
       const res = await postChallenge(validationBody({ required_validations: undefined }), 'valid-token');
 
@@ -367,6 +368,7 @@ describe('POST /api/challenges', () => {
       expect(mockChallengeCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           source_challenge_id: mlSourceId,
+          type: 'endpoint-validation',
           flow_config: { cp_per_validation: 5, required_validations: 3 },
         })
       );

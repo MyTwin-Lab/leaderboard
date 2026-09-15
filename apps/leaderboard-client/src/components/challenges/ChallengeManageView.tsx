@@ -1,6 +1,7 @@
 'use client';
 
 import { flowConfigView } from '@/lib/flowConfig';
+import { isValidationFlow, validationModeOf } from '@/distribution/mytwin.validation';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -547,9 +548,9 @@ export function ChallengeManageView({ challengeId, isAdmin = false }: { challeng
   );
 
   const isML = challenge.type === 'ml';
-  const isValidation = challenge.type === 'validation';
+  const isValidation = isValidationFlow(challenge.type);
   // Le mode se lit sur le type du challenge source, comme partout ailleurs.
-  const isScenarioValidation = isValidation && overviewQuery.data?.source_challenge_type === 'code';
+  const isScenarioValidation = validationModeOf(challenge.type) === 'scenario';
   // A closed challenge is a record: its rules and dates decided points that
   // have already been awarded, so editing them would rewrite history.
   const isOpen = !['completed', 'archived'].includes(status);

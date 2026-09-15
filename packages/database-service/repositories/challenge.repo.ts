@@ -14,6 +14,16 @@ export type ChallengeDraft = Omit<Challenge, "uuid" | "created_at" | "slug"> & {
 /** Les contraintes qu'une écriture de slug peut heurter sous concurrence. */
 const SLUG_CONSTRAINTS = ["idx_challenges_slug", "challenge_slug_redirects_pkey"] as const;
 
+/** Un challenge parent ne porte qu'un challenge de chaque flow (index unique partiel). */
+const PARENT_FLOW_CONSTRAINT = "idx_challenges_source_type";
+
+/** Le challenge parent a déjà un challenge de ce flow. */
+export class ParentFlowTakenError extends Error {
+  constructor(readonly sourceChallengeId: string, readonly flowKey: string) {
+    super(`Challenge ${sourceChallengeId} already has a ${flowKey} challenge`);
+  }
+}
+
 /**
  * Décide si un update doit toucher `closed_at`.
  *
@@ -150,6 +160,9 @@ export class ChallengeRepository {
     } catch (error) {
       if (isSlugUniqueViolation(error, SLUG_CONSTRAINTS)) {
         throw new SlugTakenError(slug, await this.availableSlug(slug));
+      }
+      if (isSlugUniqueViolation(error, [PARENT_FLOW_CONSTRAINT])) {
+        throw new ParentFlowTakenError(entity.source_challenge_id ?? "", entity.type);
       }
       throw error;
     }

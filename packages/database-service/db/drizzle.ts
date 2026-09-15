@@ -93,6 +93,11 @@ export const challenges = pgTable("challenges", {
   projectIdIdx: index("idx_challenges_project_id").on(table.project_id),
   statusIdx: index("idx_challenges_status").on(table.status),
   slugIdx: uniqueIndex("idx_challenges_slug").on(table.slug),
+  // Un challenge parent ne porte qu'un challenge de chaque flow (une
+  // validation d'endpoints, un parcours de scénario…).
+  sourceTypeIdx: uniqueIndex("idx_challenges_source_type")
+    .on(table.source_challenge_id, table.type)
+    .where(sql`source_challenge_id IS NOT NULL`),
 }));
 
 // --- CHALLENGE_SLUG_REDIRECTS ---

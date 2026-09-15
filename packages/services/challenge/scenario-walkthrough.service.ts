@@ -17,10 +17,10 @@ import type {
 } from "../../database-service/domain/entities.js";
 import type { RewardEntryDraft } from "../../database-service/repositories/index.js";
 import type { Challenge } from "../../database-service/domain/entities.js";
-import { assertScenarioChallenge } from "./scenario-guard.js";
-import { findOrCreateValidatorContribution } from "./validatorContribution.js";
+import { assertJourneyValidationChallenge } from "../../../content/flows/journey-validation/guard.js";
+import { findOrCreateValidatorContribution } from "../../../content/kits/validation/validatorContribution.js";
 import { distributedFromPool, remainingPool } from "../../capabilities/pool.js";
-import { validationConfigOf } from "../../../content/flows/validation/config.js";
+import { validationConfigOf } from "../../../content/kits/validation/config.js";
 import {
   EmptyScenarioError,
   ForbiddenRunAccessError,
@@ -134,7 +134,7 @@ export class ScenarioWalkthroughService {
   }): Promise<WalkthroughState> {
     const { validationChallengeId, contributionId, validatorUserId } = input;
 
-    await assertScenarioChallenge(this.deps.challengeRepo, validationChallengeId);
+    await assertJourneyValidationChallenge(this.deps.challengeRepo, validationChallengeId);
     await this.assertExposed(validationChallengeId, contributionId);
     await this.assertValidatorRole(validatorUserId);
 
@@ -232,7 +232,7 @@ export class ScenarioWalkthroughService {
   }): Promise<WalkthroughState> {
     const { validationChallengeId, runId, stepId, validatorUserId, result } = input;
 
-    await assertScenarioChallenge(this.deps.challengeRepo, validationChallengeId);
+    await assertJourneyValidationChallenge(this.deps.challengeRepo, validationChallengeId);
     const run = await this.loadDraft(validationChallengeId, runId, validatorUserId);
 
     const steps = await this.deps.stepRepo.findByChallenge(validationChallengeId);
@@ -295,7 +295,7 @@ export class ScenarioWalkthroughService {
   }): Promise<CompleteWalkthroughResult> {
     const { validationChallengeId, runId, validatorUserId } = input;
 
-    const challenge = await assertScenarioChallenge(this.deps.challengeRepo, validationChallengeId);
+    const challenge = await assertJourneyValidationChallenge(this.deps.challengeRepo, validationChallengeId);
     const run = await this.loadDraft(validationChallengeId, runId, validatorUserId);
 
     const globalFeedback = blankToNull(input.globalFeedback);

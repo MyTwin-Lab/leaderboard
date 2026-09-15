@@ -4,7 +4,7 @@ import {
   ScenarioRunRepository,
 } from "../../database-service/repositories/index.js";
 import type { ValidationScenarioStep } from "../../database-service/domain/entities.js";
-import { assertScenarioChallenge } from "./scenario-guard.js";
+import { assertJourneyValidationChallenge } from "../../../content/flows/journey-validation/guard.js";
 import { ScenarioFrozenError, StepNotFoundError } from "./scenario-errors.js";
 
 export interface ScenarioStepsDeps {
@@ -46,7 +46,7 @@ export class ScenarioStepsService {
   }
 
   async listSteps(validationChallengeId: string): Promise<ValidationScenarioStep[]> {
-    await assertScenarioChallenge(this.deps.challengeRepo, validationChallengeId);
+    await assertJourneyValidationChallenge(this.deps.challengeRepo, validationChallengeId);
     return this.deps.stepRepo.findByChallenge(validationChallengeId);
   }
 
@@ -61,7 +61,7 @@ export class ScenarioStepsService {
     title: string;
     instructions: string | null;
   }): Promise<ValidationScenarioStep> {
-    await assertScenarioChallenge(this.deps.challengeRepo, input.validationChallengeId);
+    await assertJourneyValidationChallenge(this.deps.challengeRepo, input.validationChallengeId);
     await this.assertNotFrozen(input.validationChallengeId);
 
     const existing = await this.deps.stepRepo.findByChallenge(input.validationChallengeId);
@@ -80,7 +80,7 @@ export class ScenarioStepsService {
     instructions?: string | null;
     position?: number;
   }): Promise<ValidationScenarioStep> {
-    await assertScenarioChallenge(this.deps.challengeRepo, input.validationChallengeId);
+    await assertJourneyValidationChallenge(this.deps.challengeRepo, input.validationChallengeId);
     await this.assertNotFrozen(input.validationChallengeId);
 
     const steps = await this.deps.stepRepo.findByChallenge(input.validationChallengeId);
@@ -116,7 +116,7 @@ export class ScenarioStepsService {
   }
 
   async removeStep(input: { validationChallengeId: string; stepId: string }): Promise<void> {
-    await assertScenarioChallenge(this.deps.challengeRepo, input.validationChallengeId);
+    await assertJourneyValidationChallenge(this.deps.challengeRepo, input.validationChallengeId);
     await this.assertNotFrozen(input.validationChallengeId);
 
     const steps = await this.deps.stepRepo.findByChallenge(input.validationChallengeId);

@@ -21,6 +21,8 @@ function makeStep(over: Partial<ValidationScenarioStep> = {}): ValidationScenari
 }
 
 function makeDeps(opts: {
+  /** Le flow du challenge évalué. Défaut : un parcours de scénario. */
+  challengeType?: string;
   sourceType?: string | null;
   steps?: ValidationScenarioStep[];
   runs?: ValidationScenarioRun[];
@@ -35,7 +37,7 @@ function makeDeps(opts: {
       findById: vi.fn(async (id: string) => {
         if (id === VCH) {
           return {
-            uuid: VCH, title: "Usability walkthrough", status: "active", type: "validation",
+            uuid: VCH, title: "Usability walkthrough", status: "active", type: opts.challengeType ?? "journey-validation",
             contribution_points_reward: 12000, completion: 0, project_id: "proj-1",
             source_challenge_id: opts.sourceType === null ? null : CODE_SOURCE,
             flow_config: { cp_per_validation: 200, required_validations: null },
@@ -69,16 +71,16 @@ describe("ScenarioStepsService.listSteps", () => {
     expect(steps.map(s => s.uuid)).toEqual(["a", "b"]);
   });
 
-  it("refuses a validation challenge whose source is an ML challenge", async () => {
-    // Un challenge ML se valide par cas de référence : il n'a pas de scénario,
-    // et en servir un vide ferait croire à l'admin qu'il peut en écrire un.
-    const { deps } = makeDeps({ sourceType: "ml" });
+  it("refuses an endpoint validation challenge, which is tested with reference cases", async () => {
+    // Une validation d'endpoints n'a pas de scénario : en servir un vide ferait
+    // croire à l'admin qu'il peut en écrire un.
+    const { deps } = makeDeps({ challengeType: "endpoint-validation" });
 
     await expect(new ScenarioStepsService(deps).listSteps(VCH)).rejects.toThrow(ScenarioModeError);
   });
 
-  it("refuses a validation challenge with no source challenge at all", async () => {
-    const { deps } = makeDeps({ sourceType: null });
+  it("refuses a challenge of any other flow", async () => {
+    const { deps } = makeDeps({ challengeType: "code" });
 
     await expect(new ScenarioStepsService(deps).listSteps(VCH)).rejects.toThrow(ScenarioModeError);
   });

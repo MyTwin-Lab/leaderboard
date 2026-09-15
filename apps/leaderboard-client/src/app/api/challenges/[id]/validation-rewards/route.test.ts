@@ -63,7 +63,7 @@ describe('GET /api/challenges/[id]/validation-rewards', () => {
     mockGetSessionUser.mockResolvedValue({ id: 'u1', role: 'contributor' });
     mockIsManagerOfChallenge.mockResolvedValue(true);
     mockChallengeFindById.mockResolvedValue({
-      uuid: CHALLENGE_ID, type: 'validation', contribution_points_reward: 100,
+      uuid: CHALLENGE_ID, type: 'endpoint-validation', contribution_points_reward: 100,
       flow_config: { required_validations: 3, cp_per_validation: 5 },
     });
 
@@ -90,7 +90,7 @@ describe('GET /api/challenges/[id]/validation-rewards', () => {
 
   it('computes pool state and a per-validator breakdown sorted by points desc', async () => {
     mockChallengeFindById.mockResolvedValue({
-      uuid: CHALLENGE_ID, type: 'validation', contribution_points_reward: 100,
+      uuid: CHALLENGE_ID, type: 'endpoint-validation', contribution_points_reward: 100,
       flow_config: { required_validations: 3, cp_per_validation: 5 },
     });
     mockFindByChallenge.mockResolvedValue([
@@ -120,7 +120,7 @@ describe('GET /api/challenges/[id]/validation-rewards', () => {
 
   it('clamps remaining to 0 when distributed exceeds the pool', async () => {
     mockChallengeFindById.mockResolvedValue({
-      uuid: CHALLENGE_ID, type: 'validation', contribution_points_reward: 10,
+      uuid: CHALLENGE_ID, type: 'endpoint-validation', contribution_points_reward: 10,
       flow_config: {},
     });
     mockFindByChallenge.mockResolvedValue([{ user_id: 'u1', points: 50 }]);
@@ -136,7 +136,7 @@ describe('GET /api/challenges/[id]/validation-rewards', () => {
 
   it('falls back to "Unknown" for a user that cannot be resolved', async () => {
     mockChallengeFindById.mockResolvedValue({
-      uuid: CHALLENGE_ID, type: 'validation', contribution_points_reward: 10,
+      uuid: CHALLENGE_ID, type: 'endpoint-validation', contribution_points_reward: 10,
     });
     mockFindByChallenge.mockResolvedValue([{ user_id: 'u1', points: 5 }]);
     mockFindByIds.mockResolvedValue([]);

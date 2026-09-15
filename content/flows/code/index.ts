@@ -26,6 +26,8 @@ export const codeFlow: FlowDefinition = {
     { key: "code_quality", consumesPool: true },
   ],
   contributionTypes: [{ key: "project", countsAsContribution: true }],
+  // Le livrable `project`, une fois déployé par l'équipe, se parcourt en scénario.
+  deliverables: [{ contributionType: "project", capabilities: ["deployed_app"] }],
   evaluationHandlers: [
     {
       key: CODE_PROJECT_EVALUATION_HANDLER,

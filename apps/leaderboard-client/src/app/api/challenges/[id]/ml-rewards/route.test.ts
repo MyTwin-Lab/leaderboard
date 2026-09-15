@@ -64,7 +64,7 @@ describe('GET /api/challenges/[id]/ml-rewards', () => {
   });
 
   it('returns 400 when the challenge has no reward pool (e.g. validation)', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'validation' });
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'endpoint-validation' });
 
     const res = await getRewards();
 

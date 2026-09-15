@@ -1,5 +1,5 @@
-import { ContributionRepository } from "../../database-service/repositories/index.js";
-import type { Challenge, Contribution } from "../../database-service/domain/entities.js";
+import { ContributionRepository } from "../../../packages/database-service/repositories/index.js";
+import type { Challenge, Contribution } from "../../../packages/database-service/domain/entities.js";
 
 /**
  * La contribution `type: 'validation'` qui agrège le ledger d'un validateur

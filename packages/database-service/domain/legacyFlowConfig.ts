@@ -50,7 +50,11 @@ export function flowConfigFromLegacyColumns(
       return { workspace_mode: columns.workspace_mode ?? "provided_repo" };
     case "ml":
       return { extensions: { compute: { enabled: columns.compute_enabled === true } } };
+    // `validation` : une ligne écrite par l'ancien code, avant la scission en
+    // deux flows (challenge 020, L3).
     case "validation":
+    case "endpoint-validation":
+    case "journey-validation":
       return {
         ...(columns.cp_per_validation != null ? { cp_per_validation: columns.cp_per_validation } : {}),
         required_validations: columns.required_validations ?? null,

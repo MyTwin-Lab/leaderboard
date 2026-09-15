@@ -7,6 +7,7 @@ import {
 } from '../../../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
+import { isValidationFlow } from '@/distribution/mytwin.validation';
 import { buildSafeFileHeaders } from '@/lib/server/safeFileHeaders';
 
 const challengeRepo = new ChallengeRepository();
@@ -30,7 +31,7 @@ export async function GET(
     if (!isAdmin && !isManager) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const challenge = await challengeRepo.findById(challengeId);
-    if (!challenge || challenge.type !== 'validation') {
+    if (!challenge || !isValidationFlow(challenge.type)) {
       return NextResponse.json({ error: 'Not a validation challenge' }, { status: 400 });
     }
 

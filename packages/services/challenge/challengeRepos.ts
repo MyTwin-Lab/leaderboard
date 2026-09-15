@@ -21,7 +21,7 @@ export interface RepoDefinition {
 }
 
 export interface BuildRepoDefinitionsInput {
-  /** 'code' | 'ml' | 'validation'. */
+  /** La clé du flow du challenge. */
   type: string;
   /** Titre du challenge — préfixe le nom de chaque repo. */
   title: string;
@@ -62,7 +62,9 @@ export function buildRepoDefinitions({
     ];
   }
 
-  if (type === "validation") return [];
+  // Seul un challenge code possède un repo propre : une validation référence
+  // les livrables de son challenge parent.
+  if (type !== "code") return [];
 
   if ((workspaceMode ?? "provided_repo") === "own_repo") return [];
 

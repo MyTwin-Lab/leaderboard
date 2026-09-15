@@ -1,5 +1,7 @@
 import type { FlowDescriptor } from "../../../packages/registry/flows.js";
 
+export const ENDPOINT_VALIDATION_FLOW_KEY = "endpoint-validation";
+
 /**
  * Données pures : lues aussi par les composants client.
  *
@@ -7,10 +9,10 @@ import type { FlowDescriptor } from "../../../packages/registry/flows.js";
  * l'appartenance à l'équipe, et la page publique n'a rien à montrer d'un
  * challenge de validation (ni métriques, ni progression de board).
  */
-export const validationFlowDescriptor: FlowDescriptor = {
-  key: "validation",
+export const endpointValidationFlowDescriptor: FlowDescriptor = {
+  key: ENDPOINT_VALIDATION_FLOW_KEY,
   label: "Validation",
-  longLabel: "Validation",
+  longLabel: "Endpoint validation",
   icon: "shield",
   briefRequired: false,
   publiclyVisible: false,

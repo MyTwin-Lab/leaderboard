@@ -9,9 +9,10 @@ import {
 } from "../../database-service/repositories/index.js";
 import type { RewardEntryDraft } from "../../database-service/repositories/index.js";
 import type { Challenge, ValidationAttempt } from "../../database-service/domain/entities.js";
-import { findOrCreateValidatorContribution } from "./validatorContribution.js";
+import { findOrCreateValidatorContribution } from "../../../content/kits/validation/validatorContribution.js";
 import { distributedFromPool, remainingPool } from "../../capabilities/pool.js";
-import { validationConfigOf } from "../../../content/flows/validation/config.js";
+import { validationConfigOf } from "../../../content/kits/validation/config.js";
+import { ENDPOINT_VALIDATION_FLOW_KEY } from "../../../content/flows/endpoint-validation/descriptor.js";
 
 /** The submission isn't exposed on this validation challenge, or has no endpoint — a 4xx-shaped problem. */
 export class ValidationTargetError extends Error {}
@@ -112,7 +113,7 @@ export class ValidationChallengeService {
     const { validationChallengeId, contributionId, validatorUserId, verdict, description, referenceCaseClaimId } = input;
 
     const challenge = await this.deps.challengeRepo.findById(validationChallengeId);
-    if (!challenge || challenge.type !== "validation") {
+    if (!challenge || challenge.type !== ENDPOINT_VALIDATION_FLOW_KEY) {
       throw new ValidationTargetError("Not a validation challenge");
     }
     const requiredValidations = validationConfigOf(challenge).required_validations ?? 0;

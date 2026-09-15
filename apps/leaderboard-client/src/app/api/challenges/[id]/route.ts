@@ -82,7 +82,9 @@ export async function PUT(
     const body = await request.json();
     const validated = updateChallengeSchema.parse(body);
 
-    const { compute_enabled, ...fields } = validated;
+    // Le flow d'un challenge est fixé à sa création : `type` n'est jamais
+    // réécrit (les formulaires le renvoient tel qu'ils l'affichent).
+    const { compute_enabled, type: _type, ...fields } = validated;
     const updateData: any = { ...fields };
     // Present but empty means "clear the date"; absent means "leave it alone".
     if (validated.start_date !== undefined) updateData.start_date = validated.start_date ? new Date(validated.start_date) : null;

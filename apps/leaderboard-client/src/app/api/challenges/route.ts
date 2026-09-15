@@ -4,6 +4,7 @@ import {
   ChallengeRepository,
   RepoRepository,
   ChallengeRepoRepository,
+  ParentFlowTakenError,
 } from '../../../../../../packages/database-service/repositories';
 import { buildRepoDefinitions } from '../../../../../../packages/services/challenge/challengeRepos';
 import {
@@ -11,7 +12,14 @@ import {
   parseFlowRules,
   prepareFlowConfig,
 } from '../../../../../../packages/capabilities/flow-config';
-import { validationModeFor } from '../../../../../../packages/services/challenge/validation-mode';
+import { flowsValidating, requiresDeliverable } from '../../../../../../packages/capabilities/deliverables';
+
+/**
+ * Le type qu'envoient encore les formulaires pour « un challenge de
+ * validation », quel que soit son flow. Les formulaires par flow du lot L4 du
+ * challenge 020 le suppriment.
+ */
+const FORM_VALIDATION_TYPE = 'validation';
 import { repositories } from '@/lib/db';
 import { slugField, slugTakenResponse } from '@/lib/server/slugs';
 import { z } from 'zod';
@@ -85,12 +93,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = createChallengeSchema.parse(body);
 
-    // Les règles se lisent avec le parseur du flow du challenge.
-    const rewardRules = parseFlowRules(validated.type, validated.reward_rules);
-    if (!rewardRules.ok) {
-      return NextResponse.json({ error: 'Invalid reward_rules' }, { status: 400 });
-    }
-
     if (userRole !== 'admin') {
       const project = await repositories.project.findById(validated.project_id);
       if (!project || project.manager_id !== userId) {
@@ -98,12 +100,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Le mode se déduit du type du challenge source, il ne se stocke pas :
-    // `ml` -> flux cas de référence, `code` -> flux scénario. Les règles
-    // communes (source obligatoire, CP par validation, 1:1) valent dans les
-    // deux ; le quorum n'existe que côté ML.
-    let validationMode: ReturnType<typeof validationModeFor> = null;
-    if (validated.type === 'validation') {
+    // Un challenge de validation éprouve les livrables d'un challenge parent.
+    // Le formulaire envoie encore `validation` : le flow se déduit alors des
+    // livrables du challenge source (un endpoint, une application déployée).
+    // Un flow explicite reste accepté s'il sait éprouver ce source. Le quorum
+    // et le forfait sont vérifiés par le schéma du flow retenu.
+    let flowKey = validated.type;
+    if (validated.type === FORM_VALIDATION_TYPE || requiresDeliverable(validated.type)) {
       if (!validated.source_challenge_id) {
         return NextResponse.json({ error: 'source_challenge_id is required for validation challenges' }, { status: 400 });
       }
@@ -112,33 +115,23 @@ export async function POST(request: NextRequest) {
       }
 
       const source = await challengeRepo.findById(validated.source_challenge_id);
-      validationMode = validationModeFor(source?.type);
-      if (!validationMode) {
+      const candidates = source ? flowsValidating(source.type) : [];
+      const resolved = validated.type === FORM_VALIDATION_TYPE
+        ? (candidates.length === 1 ? candidates[0] : null)
+        : (candidates.includes(validated.type) ? validated.type : null);
+      if (!resolved) {
         return NextResponse.json(
-          { error: 'source_challenge_id must reference an ML or a Code challenge' },
+          { error: 'source_challenge_id must reference a challenge whose deliverables this validation can test' },
           { status: 400 }
         );
       }
+      flowKey = resolved;
+    }
 
-      // Le quorum n'a de sens que face à un endpoint qui répond works/broken.
-      // En mode scénario chaque walkthrough complétée paie, il n'y a rien à
-      // résoudre — le champ n'est donc ni demandé ni écrit.
-      if (validationMode === 'reference_case') {
-        if (!validated.required_validations) {
-          return NextResponse.json({ error: 'required_validations is required for validation challenges' }, { status: 400 });
-        }
-        if (validated.required_validations % 2 === 0) {
-          return NextResponse.json({ error: 'required_validations must be odd' }, { status: 400 });
-        }
-      }
-
-      const allChallenges = await challengeRepo.findAll();
-      const alreadyLinked = allChallenges.some(
-        c => c.type === 'validation' && c.source_challenge_id === validated.source_challenge_id
-      );
-      if (alreadyLinked) {
-        return NextResponse.json({ error: 'This challenge already has a validation challenge' }, { status: 409 });
-      }
+    // Les règles se lisent avec le parseur du flow du challenge.
+    const rewardRules = parseFlowRules(flowKey, validated.reward_rules);
+    if (!rewardRules.ok) {
+      return NextResponse.json({ error: 'Invalid reward_rules' }, { status: 400 });
     }
 
     const {
@@ -157,10 +150,10 @@ export async function POST(request: NextRequest) {
     // ses défauts, chaque extension attachée valide sa section.
     let storedConfig: ReturnType<typeof prepareFlowConfig>;
     try {
-      storedConfig = prepareFlowConfig(validated.type, {
+      storedConfig = prepareFlowConfig(flowKey, {
         workspace_mode,
         cp_per_validation,
-        required_validations: validationMode === 'reference_case' ? required_validations : null,
+        required_validations,
         extensions: { compute: { enabled: compute_enabled } },
       });
     } catch (error) {
@@ -170,15 +163,26 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
-    const challenge = await challengeRepo.create({
-      ...fields,
-      start_date: validated.start_date ? new Date(validated.start_date) : null,
-      end_date: validated.end_date ? new Date(validated.end_date) : null,
-      completion: 0,
-      reward_rules: rewardRules.rules,
-      source_challenge_id: validated.type === 'validation' ? source_challenge_id : null,
-      ...storedConfig,
-    });
+    let challenge;
+    try {
+      challenge = await challengeRepo.create({
+        ...fields,
+        type: flowKey,
+        start_date: validated.start_date ? new Date(validated.start_date) : null,
+        end_date: validated.end_date ? new Date(validated.end_date) : null,
+        completion: 0,
+        reward_rules: rewardRules.rules,
+        source_challenge_id: requiresDeliverable(flowKey) ? source_challenge_id : null,
+        ...storedConfig,
+      });
+    } catch (error) {
+      // Un challenge parent ne porte qu'un challenge de chaque flow : c'est
+      // l'index unique qui tranche, y compris entre deux créations concurrentes.
+      if (error instanceof ParentFlowTakenError) {
+        return NextResponse.json({ error: 'This challenge already has a validation challenge of this kind' }, { status: 409 });
+      }
+      throw error;
+    }
 
     // Extract owner/repo slug from a GitHub URL or plain slug
     const parseGithubSlug = (input: string): string | undefined => {

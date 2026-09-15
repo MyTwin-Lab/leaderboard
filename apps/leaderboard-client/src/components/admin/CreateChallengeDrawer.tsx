@@ -1,6 +1,7 @@
 'use client';
 
 import { flowConfigView } from '@/lib/flowConfig';
+import { formTypeOf } from '@/distribution/mytwin.validation';
 import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
@@ -195,7 +196,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       slugField.reset({ title: challenge.title, value: challenge.slug, saved: challenge.slug, excludeId: challenge.uuid });
       setProjectId(challenge.project_id);
       setStatus(challenge.status);
-      setType(challenge.type === 'ml' ? 'ml' : challenge.type === 'validation' ? 'validation' : 'code');
+      setType(formTypeOf(challenge.type));
       setStartDate(toDateInput(challenge.start_date));
       setEndDate(toDateInput(challenge.end_date));
       setCp(challenge.contribution_points_reward);

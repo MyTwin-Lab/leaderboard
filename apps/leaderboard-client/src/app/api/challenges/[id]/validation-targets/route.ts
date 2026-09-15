@@ -14,7 +14,8 @@ import { getSessionUser } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { flowConfigOf } from '../../../../../../../../packages/capabilities/flow-config';
 import { assertPublicHttpUrl } from '../../../../../../../../packages/services/challenge/ssrf-guard';
-import { validationModeFor, TARGET_CONTRIBUTION_TYPE } from '../../../../../../../../packages/services/challenge/validation-mode';
+import { eligibleDeliverableType } from '../../../../../../../../packages/capabilities/deliverables';
+import { isValidationFlow, validationModeOf } from '@/distribution/mytwin.validation';
 
 const challengeRepo = new ChallengeRepository();
 const contributionRepo = new ContributionRepository();
@@ -37,15 +38,15 @@ async function authorize(challengeId: string) {
 }
 
 /**
- * Le mode d'un challenge de validation, déduit du type de son challenge
- * source. Une requête de plus par appel, assumée : c'est le prix de ne pas
- * stocker une seconde source de vérité qui pourrait dériver.
+ * Le flow du challenge source, dont les livrables fournissent les cibles. Une
+ * requête de plus par appel : seul le lien vers le parent est stocké, ce qu'il
+ * offre se lit dans les déclarations de son flow.
  */
-async function resolveMode(challenge: { source_challenge_id?: string | null }) {
+async function sourceFlowOf(challenge: { source_challenge_id?: string | null }) {
   const source = challenge.source_challenge_id
     ? await challengeRepo.findById(challenge.source_challenge_id)
     : null;
-  return validationModeFor(source?.type);
+  return source?.type ?? null;
 }
 
 // GET /api/challenges/[id]/validation-targets
@@ -60,11 +61,11 @@ export async function GET(
   try {
     const { id: challengeId } = await params;
     const challenge = await challengeRepo.findById(challengeId);
-    if (!challenge || challenge.type !== 'validation') {
+    if (!challenge || !isValidationFlow(challenge.type)) {
       return NextResponse.json({ error: 'Not a validation challenge' }, { status: 400 });
     }
 
-    const mode = await resolveMode(challenge);
+    const mode = validationModeOf(challenge.type);
 
     if (req.nextUrl.searchParams.get('eligible') === 'true') {
       const auth = await authorize(challengeId);
@@ -79,7 +80,7 @@ export async function GET(
       // `api_packaging` quand la source est un challenge ML, `project` quand
       // c'est un challenge code : dans les deux cas, le livrable que l'équipe
       // a déployé et qu'un validateur va éprouver.
-      const eligibleType = mode ? TARGET_CONTRIBUTION_TYPE[mode] : null;
+      const eligibleType = eligibleDeliverableType(challenge.type, await sourceFlowOf(challenge));
       const eligible = eligibleType
         ? sourceContribs.filter(c => c.type === eligibleType && !targetedContributionIds.has(c.uuid))
         : [];
@@ -218,21 +219,20 @@ export async function POST(
     if ('error' in auth) return auth.error;
 
     const challenge = await challengeRepo.findById(challengeId);
-    if (!challenge || challenge.type !== 'validation') {
+    if (!challenge || !isValidationFlow(challenge.type)) {
       return NextResponse.json({ error: 'Not a validation challenge' }, { status: 400 });
     }
 
     const body = await req.json();
     const { contribution_id, live_endpoint_url } = addTargetSchema.parse(body);
 
-    const mode = await resolveMode(challenge);
-    if (!mode) {
+    const expectedType = eligibleDeliverableType(challenge.type, await sourceFlowOf(challenge));
+    if (!expectedType) {
       return NextResponse.json(
-        { error: 'This validation challenge has no ML or Code source challenge' },
+        { error: 'The source challenge of this validation challenge offers no deliverable it can test' },
         { status: 400 }
       );
     }
-    const expectedType = TARGET_CONTRIBUTION_TYPE[mode];
 
     const contribution = await contributionRepo.findById(contribution_id);
     if (

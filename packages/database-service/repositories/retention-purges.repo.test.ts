@@ -118,7 +118,7 @@ describe("ReferenceCaseRepository.purgeBytesForChallengesClosedBefore", () => {
     const subqueryWhere = h.calls.find((c) => c.op === "select" && c.method === "where")?.args[0];
     expect(subqueryWhere).toEqual({
       and: [
-        { eq: ["challenges.type", "validation"] },
+        { isNotNull: "challenges.source_challenge_id" },
         { isNotNull: "challenges.closed_at" },
         { lt: ["challenges.closed_at", CUTOFF] },
       ],

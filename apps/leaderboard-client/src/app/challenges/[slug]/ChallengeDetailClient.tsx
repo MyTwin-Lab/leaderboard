@@ -1,6 +1,7 @@
 'use client';
 
 import { flowConfigView } from '@/lib/flowConfig';
+import { isValidationFlow, validationModeOf } from '@/distribution/mytwin.validation';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -282,9 +283,9 @@ export default function ChallengeDetailClient({
     contributions.find(c => c.user_id === workspaceOwnerId && c.type === 'project') ?? null;
 
   const isML = challenge?.type === 'ml' || repoTypes.some(t => ML_REPO_TYPES.includes(t));
-  const isValidation = challenge?.type === 'validation';
+  const isValidation = isValidationFlow(challenge?.type);
   // Le mode se lit sur le type du challenge source, publié par /overview.
-  const isScenarioValidation = isValidation && overviewQuery.data?.source_challenge_type === 'code';
+  const isScenarioValidation = validationModeOf(challenge?.type) === 'scenario';
 
   // Silent refresh after a board mutation — no skeleton flash.
   const reloadBoard = async () => {

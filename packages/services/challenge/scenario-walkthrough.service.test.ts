@@ -34,6 +34,8 @@ function makeSteps(): ValidationScenarioStep[] {
 }
 
 interface Opts {
+  /** Le flow du challenge parcouru. Défaut : un parcours de scénario. */
+  challengeType?: string;
   sourceType?: string | null;
   steps?: ValidationScenarioStep[];
   targets?: Array<{ uuid: string; contribution_id: string }>;
@@ -61,7 +63,7 @@ function makeDeps(opts: Opts = {}) {
   let stored: ValidationScenarioRun | null = opts.existingRun ?? null;
 
   const challenge: Challenge = {
-    uuid: VCH, title: "Usability walkthrough", slug: "usability-walkthrough", status: "active", type: "validation",
+    uuid: VCH, title: "Usability walkthrough", slug: "usability-walkthrough", status: "active", type: opts.challengeType ?? "journey-validation",
     contribution_points_reward: opts.pool ?? 12000, completion: 0, project_id: "proj-1",
     source_challenge_id: opts.sourceType === null ? null : CODE_SOURCE,
     flow_config: { cp_per_validation: opts.cpPerValidation ?? 200, required_validations: null },
@@ -236,8 +238,8 @@ describe("openWalkthrough", () => {
     await expect(open(deps)).rejects.toThrow(EmptyScenarioError);
   });
 
-  it("refuses a validation challenge whose source is an ML challenge", async () => {
-    const { deps } = makeDeps({ sourceType: "ml" });
+  it("refuses an endpoint validation challenge, which has no scenario to walk", async () => {
+    const { deps } = makeDeps({ challengeType: "endpoint-validation" });
 
     await expect(open(deps)).rejects.toThrow(ScenarioModeError);
   });

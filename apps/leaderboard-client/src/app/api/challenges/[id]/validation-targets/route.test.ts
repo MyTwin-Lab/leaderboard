@@ -88,7 +88,7 @@ function postTarget(body: unknown) {
 }
 
 const VALIDATION_CHALLENGE = {
-  uuid: CHALLENGE_ID, type: 'validation', contribution_points_reward: 100,
+  uuid: CHALLENGE_ID, type: 'endpoint-validation', contribution_points_reward: 100,
   flow_config: { cp_per_validation: 5, required_validations: 3 }, source_challenge_id: 'ml-challenge-1',
 };
 
@@ -393,7 +393,7 @@ describe('POST /api/challenges/[id]/validation-targets', () => {
 describe('scenario mode (source challenge is a code challenge)', () => {
   const CODE_SOURCE_ID = 'code-challenge-1';
   const SCENARIO_CHALLENGE = {
-    uuid: CHALLENGE_ID, type: 'validation', contribution_points_reward: 12000,
+    uuid: CHALLENGE_ID, type: 'journey-validation', contribution_points_reward: 12000,
     flow_config: { cp_per_validation: 200, required_validations: null }, source_challenge_id: CODE_SOURCE_ID,
   };
 

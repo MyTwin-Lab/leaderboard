@@ -1,6 +1,7 @@
 'use client';
 
 import { flowConfigView } from '@/lib/flowConfig';
+import { formTypeOf } from '@/distribution/mytwin.validation';
 import { useState, useEffect } from 'react';
 import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/components/ui/FormField';
 import { ChallengeTasksEditor } from './ChallengeTasksEditor';
@@ -25,7 +26,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
   const [formData, setFormData] = useState({
     title: challenge?.title ?? '',
     status: challenge?.status ?? 'draft',
-    type: (challenge as any)?.type ?? 'code',
+    type: formTypeOf((challenge as any)?.type),
     start_date: challenge?.start_date ? new Date(challenge.start_date).toISOString().split('T')[0] : '',
     end_date: challenge?.end_date ? new Date(challenge.end_date).toISOString().split('T')[0] : '',
     description: challenge?.description ?? '',

@@ -236,7 +236,7 @@ async function findOrCreateValidationChallenge(
     title: VALIDATION_CHALLENGE_TITLE,
     slug: await freeChallengeSlug(VALIDATION_CHALLENGE_TITLE),
     status: "active",
-    type: "validation",
+    type: "journey-validation",
     description:
       "Parcourir le même scénario d'usage à travers chaque application livrée sur le challenge source, étape par étape, et clore sur un retour global.",
     contribution_points_reward: CP_POOL,

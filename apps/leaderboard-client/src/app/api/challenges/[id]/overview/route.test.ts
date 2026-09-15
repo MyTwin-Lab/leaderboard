@@ -147,14 +147,14 @@ describe('GET /api/challenges/[id]/overview', () => {
   it('hides a validation challenge from an anonymous visitor', async () => {
     // No public view applies to this type — neither metrics nor task progress.
     mockVerifyRequestToken.mockResolvedValue(null);
-    mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'validation' });
+    mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'endpoint-validation' });
 
     expect((await get()).status).toBe(404);
   });
 
   it('still serves a validation challenge to a signed-in visitor', async () => {
     mockVerifyRequestToken.mockResolvedValue({ userId: 'u9', role: 'contributor' });
-    mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'validation' });
+    mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'endpoint-validation' });
 
     expect((await get()).status).toBe(200);
   });
@@ -271,7 +271,7 @@ describe('validation mode derivation', () => {
     // deux coquilles de page, qui lisent déjà cet endpoint.
     mockFindById.mockImplementation(async (id: string) =>
       id === CHALLENGE_ID
-        ? { uuid: CHALLENGE_ID, type: 'validation', status: 'active', source_challenge_id: 'code-ch-1' }
+        ? { uuid: CHALLENGE_ID, type: 'journey-validation', status: 'active', source_challenge_id: 'code-ch-1' }
         : { uuid: 'code-ch-1', type: 'code' }
     );
 

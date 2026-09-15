@@ -794,6 +794,65 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
       WHERE flow_config IS NULL`,
   },
 
+  // --- Scission de la validation (challenge 020, L3) ---
+  // `validation` devient `endpoint-validation` (source ML : cas de référence)
+  // ou `journey-validation` (source code : parcours de scénario), et un
+  // parcours perd le quorum qu'il n'a jamais eu. Sans source lisible, le type
+  // se déduit des tables filles ; si aucune ne tranche (ni l'une ni l'autre, ou
+  // les deux), la reprise s'arrête et liste les challenges à décider à la main.
+  // Idempotent : plus aucune ligne `validation` au second passage.
+  {
+    label: "challenges.type (validation → endpoint-validation / journey-validation)",
+    run: async () => {
+      const decided = sql`CASE
+        WHEN (SELECT s.type FROM challenges s WHERE s.uuid = c.source_challenge_id) = 'ml' THEN 'endpoint-validation'
+        WHEN (SELECT s.type FROM challenges s WHERE s.uuid = c.source_challenge_id) = 'code' THEN 'journey-validation'
+        WHEN EXISTS (SELECT 1 FROM validation_reference_cases r WHERE r.validation_challenge_id = c.uuid)
+          AND NOT EXISTS (SELECT 1 FROM validation_scenario_steps st WHERE st.validation_challenge_id = c.uuid)
+          THEN 'endpoint-validation'
+        WHEN EXISTS (SELECT 1 FROM validation_scenario_steps st WHERE st.validation_challenge_id = c.uuid)
+          AND NOT EXISTS (SELECT 1 FROM validation_reference_cases r WHERE r.validation_challenge_id = c.uuid)
+          THEN 'journey-validation'
+      END`;
+
+      const { rows: undecidable } = await db.execute(sql`
+        SELECT c.uuid, c.title FROM challenges c
+        WHERE c.type = 'validation' AND (${decided}) IS NULL`);
+      if (undecidable.length > 0) {
+        const list = undecidable.map((row) => `${row.uuid} (${row.title})`).join(", ");
+        throw new Error(`Validation challenges whose flow cannot be decided, to settle by hand: ${list}`);
+      }
+
+      await db.execute(sql`
+        UPDATE challenges c SET
+          flow_config = CASE WHEN (${decided}) = 'journey-validation'
+            THEN COALESCE(c.flow_config, '{}'::jsonb) - 'required_validations'
+            ELSE c.flow_config END,
+          type = (${decided})
+        WHERE c.type = 'validation'`);
+    },
+  },
+  // Remplace la vérification applicative « un challenge de validation par
+  // source » : un parent ne porte qu'un challenge de chaque flow. Les doublons
+  // éventuels arrêtent la reprise avec leur liste plutôt qu'un échec d'index.
+  {
+    label: "idx_challenges_source_type (un challenge de chaque flow par parent)",
+    run: async () => {
+      const { rows: duplicates } = await db.execute(sql`
+        SELECT source_challenge_id, type, count(*)::int AS count FROM challenges
+        WHERE source_challenge_id IS NOT NULL
+        GROUP BY source_challenge_id, type
+        HAVING count(*) > 1`);
+      if (duplicates.length > 0) {
+        const list = duplicates.map((row) => `${row.source_challenge_id} × ${row.type} (${row.count})`).join(", ");
+        throw new Error(`Several challenges of the same flow share a parent, to settle by hand: ${list}`);
+      }
+      await db.execute(sql.raw(
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_challenges_source_type ON challenges (source_challenge_id, type) WHERE source_challenge_id IS NOT NULL`
+      ));
+    },
+  },
+
   // --- Slugs des URLs publiques (docs/superpowers/plans/2026-09-15-slug-urls.md) ---
   //
   // En toute fin de tableau, volontairement : le SET NOT NULL rend la colonne

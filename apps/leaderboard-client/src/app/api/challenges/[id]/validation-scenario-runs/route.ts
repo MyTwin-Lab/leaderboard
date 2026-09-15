@@ -12,6 +12,7 @@ import {
   StepFeedbackRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
+import { isValidationFlow } from '@/distribution/mytwin.validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,7 +89,7 @@ export async function GET(
 
     const challenge = await challengeRepo.findById(challengeId);
     if (!challenge) return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
-    if (challenge.type !== 'validation') {
+    if (!isValidationFlow(challenge.type)) {
       return NextResponse.json({ error: 'Not a validation challenge' }, { status: 400 });
     }
 

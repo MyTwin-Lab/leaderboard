@@ -1,6 +1,7 @@
 'use client';
 
 import { flowConfigView } from '@/lib/flowConfig';
+import { isValidationFlow } from '@/distribution/mytwin.validation';
 import { useEffect, useState } from 'react';
 import { Info, X, ArrowDown, Trophy, Lock, Loader2, Users, CheckCircle2, Star } from 'lucide-react';
 import { parseMlRewardRules, type MlRewardRules } from '../../../../../packages/database-service/domain/mlRewardRules';
@@ -81,7 +82,7 @@ export function RewardRulesDrawer({ challengeId, open, onClose }: RewardRulesDra
             <p className="py-8 text-center text-xs text-white/35">Could not load this challenge&apos;s rules.</p>
           ) : challenge.type === 'ml' ? (
             <MlRules challenge={challenge} />
-          ) : challenge.type === 'validation' ? (
+          ) : isValidationFlow(challenge.type) ? (
             <ValidationRules challenge={challenge} />
           ) : (
             <CodeRules challenge={challenge} />

@@ -50,7 +50,7 @@ describe("challengeMetadata", () => {
   it.each([
     ["a draft", { status: "draft" }],
     ["an archived challenge", { status: "archived" }],
-    ["a validation challenge", { type: "validation" }],
+    ["a validation challenge", { type: "endpoint-validation" }],
   ])("does not publish the title of %s", (_label, overrides) => {
     expect(challengeMetadata(challenge(overrides) as any)).toEqual({ title: "Challenges", robots: NOINDEX });
   });
@@ -128,7 +128,7 @@ describe("fetchSitemap", () => {
     vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([
       challenge({ slug: "public-one" }),
       challenge({ slug: "hidden-draft", status: "draft" }),
-      challenge({ slug: "hidden-validation", type: "validation" }),
+      challenge({ slug: "hidden-validation", type: "endpoint-validation" }),
     ] as any);
     vi.spyOn(repositories.sandbox, "findAll").mockResolvedValue([
       sandbox({ slug: "open-one" }),

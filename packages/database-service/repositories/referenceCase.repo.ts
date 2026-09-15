@@ -195,7 +195,8 @@ export function closedValidationChallengeIds(closedBefore: Date) {
     .from(challenges)
     .where(
       and(
-        eq(challenges.type, "validation"),
+        // Seuls les flows de validation ont un challenge parent.
+        isNotNull(challenges.source_challenge_id),
         isNotNull(challenges.closed_at),
         lt(challenges.closed_at, closedBefore)
       )

@@ -35,8 +35,8 @@ describe('isPubliclyVisible', () => {
   // Validation challenges have no public view: neither the metrics block nor
   // the per-contributor progress applies to them, so there is nothing to show.
   it('hides a validation challenge whatever its status', () => {
-    expect(isPubliclyVisible({ status: 'active', type: 'validation' })).toBe(false);
-    expect(isPubliclyVisible({ status: 'completed', type: 'validation' })).toBe(false);
+    expect(isPubliclyVisible({ status: 'active', type: 'endpoint-validation' })).toBe(false);
+    expect(isPubliclyVisible({ status: 'completed', type: 'endpoint-validation' })).toBe(false);
   });
 
   it('hides a type it does not recognise', () => {

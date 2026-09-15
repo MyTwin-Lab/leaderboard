@@ -118,7 +118,7 @@ describe('GET /api/challenges/[id]/validation-scenario-runs', () => {
   beforeEach(() => {
     mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
     mockIsManagerOfChallenge.mockResolvedValue(false);
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'validation', source_challenge_id: 'code-ch-1' });
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'journey-validation', source_challenge_id: 'code-ch-1' });
     mockStepFindByChallenge.mockResolvedValue([
       { uuid: 'step-1', position: 0, title: 'Create an account' },
       { uuid: 'step-2', position: 1, title: 'Log in' },

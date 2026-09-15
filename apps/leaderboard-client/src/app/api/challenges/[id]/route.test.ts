@@ -88,7 +88,7 @@ describe('PUT /api/challenges/[id] — validation evidence is no longer purged o
   // needed to stub a purge call again, that alone would fail to compile —
   // this test is the regression guard for staying that way.
   it('archives a validation challenge successfully without purging any evidence', async () => {
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'validation', status: 'active' });
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'endpoint-validation', status: 'active' });
 
     const res = await putStatus('archived');
 

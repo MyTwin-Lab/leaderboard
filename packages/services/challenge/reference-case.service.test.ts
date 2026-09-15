@@ -38,7 +38,7 @@ function makeChallenge(over: Partial<Challenge> = {}): Challenge {
     title: "Validate the sentiment API",
     slug: "validate-the-sentiment-api",
     status: "active",
-    type: "validation",
+    type: "endpoint-validation",
     contribution_points_reward: 100,
     completion: 0,
     project_id: "proj-1",
