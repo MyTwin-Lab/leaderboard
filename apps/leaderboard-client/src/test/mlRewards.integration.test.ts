@@ -172,12 +172,15 @@ class FakeDb {
         sumByChallenge: async (challengeId: string) =>
           db.entries.filter(e => e.challenge_id === challengeId).reduce((s, e) => s + e.points, 0),
 
-        bestMetricValue: async (challengeId: string, opts?: { excludeUserId?: string; onlyUserId?: string }) => {
+        maxMetaNumber: async (
+          challengeId: string,
+          opts: { ruleKey: string; field: string; excludeUserId?: string; onlyUserId?: string },
+        ) => {
           const values = db.entries
-            .filter(e => e.challenge_id === challengeId && e.rule_key === 'model_metric')
-            .filter(e => (opts?.excludeUserId ? e.user_id !== opts.excludeUserId : true))
-            .filter(e => (opts?.onlyUserId ? e.user_id === opts.onlyUserId : true))
-            .map(e => e.meta?.metricValue)
+            .filter(e => e.challenge_id === challengeId && e.rule_key === opts.ruleKey)
+            .filter(e => (opts.excludeUserId ? e.user_id !== opts.excludeUserId : true))
+            .filter(e => (opts.onlyUserId ? e.user_id === opts.onlyUserId : true))
+            .map(e => e.meta?.[opts.field])
             .filter((v): v is number => typeof v === 'number');
           return values.length ? Math.max(...values) : null;
         },

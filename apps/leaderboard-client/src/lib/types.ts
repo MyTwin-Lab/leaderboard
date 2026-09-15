@@ -31,8 +31,8 @@ export type ContributorContribution = {
   coMembers?: TeamMember[];
 };
 
-export type ContributorDiscussionSignal = {
-  signalId: string;
+export type ContributorAggregateChip = {
+  id: string;
   label: string;
   /** Clé d'icône lucide (voir components/ui/signalIcons) */
   icon: string | null;
@@ -40,10 +40,15 @@ export type ContributorDiscussionSignal = {
   totalCp: number;
 };
 
-export type ContributorDiscussion = {
+/**
+ * Une contribution agrégée (signaux de discussion…), résumée en chips par le
+ * flow ou l'extension qui en déclare le type.
+ */
+export type ContributorAggregate = {
   contributionId: string;
+  title: string;
   totalCp: number;
-  signals: ContributorDiscussionSignal[];
+  chips: ContributorAggregateChip[];
 };
 
 export type ContributorChallenge = {
@@ -53,8 +58,8 @@ export type ContributorChallenge = {
   reward: number;
   contributionShare: number;
   contributions: ContributorContribution[];
-  /** Signaux Slack agrégés — affichés en chips, pas dans la liste. */
-  discussion?: ContributorDiscussion;
+  /** Contributions agrégées — affichées en chips, pas dans la liste. */
+  aggregates?: ContributorAggregate[];
 };
 
 export type ContributorRankGap = {

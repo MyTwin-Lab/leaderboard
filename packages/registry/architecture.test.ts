@@ -78,7 +78,9 @@ function forbidden(from: Location, to: Location): boolean {
     case "shell":
       return to.category === "content" || to.category === "module";
     case "unsorted":
-      return to.category === "content" || to.category === "module" || to.category === "distribution" || to.category === "shell";
+      // Le code pas encore trié est surtout du code de flow : il peut appeler
+      // le contenu qu'il rejoindra, jamais la distribution ni le shell.
+      return to.category === "module" || to.category === "distribution" || to.category === "shell";
     case "distribution":
       return false;
   }

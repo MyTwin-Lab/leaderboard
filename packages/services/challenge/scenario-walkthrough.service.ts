@@ -19,6 +19,7 @@ import type { RewardEntryDraft } from "../../database-service/repositories/index
 import type { Challenge } from "../../database-service/domain/entities.js";
 import { assertScenarioChallenge } from "./scenario-guard.js";
 import { findOrCreateValidatorContribution } from "./validatorContribution.js";
+import { distributedFromPool, remainingPool } from "../../capabilities/pool.js";
 import {
   EmptyScenarioError,
   ForbiddenRunAccessError,
@@ -334,8 +335,8 @@ export class ScenarioWalkthroughService {
 
   /** Une seule ligne de ledger, écrêtée au reliquat. Même forme exactement que le paiement ML, donc `validation-rewards` et ValidationRewardsPanel n'ont rien à apprendre. */
   private async payWalkthrough(challenge: Challenge, run: ValidationScenarioRun): Promise<number> {
-    const distributed = await this.deps.rewardRepo.sumByChallenge(challenge.uuid);
-    const remaining = Math.max(0, challenge.contribution_points_reward - distributed);
+    const distributed = await distributedFromPool(this.deps.rewardRepo, challenge.uuid);
+    const remaining = remainingPool(challenge.contribution_points_reward, distributed);
     const grant = Math.min(challenge.cp_per_validation ?? 0, remaining);
     // Pool vide : la walkthrough est complétée quand même. Refuser ici
     // effacerait un parcours entier déjà effectué ; la bannière de pool est

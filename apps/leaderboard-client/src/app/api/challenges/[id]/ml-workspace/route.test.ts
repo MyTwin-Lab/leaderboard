@@ -62,7 +62,7 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
     findById = mockChallengeFindById;
   },
   RewardEntryRepository: class {
-    bestMetricValue = mockBestMetricValue;
+    maxMetaNumber = mockBestMetricValue;
   },
 }));
 

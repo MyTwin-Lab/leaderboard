@@ -70,7 +70,9 @@ export async function GET(
     // SQL MAX(...) rather than deriving from `metric.points[0]` computed above:
     // this is the exact same source the ml-workspace PATCH gate reads before
     // blocking a submission, so the two can never disagree on "is it reached".
-    const bestValue = mlRules ? await rewardRepo.bestMetricValue(challengeId) : null;
+    const bestValue = mlRules
+      ? await rewardRepo.maxMetaNumber(challengeId, { ruleKey: 'model_metric', field: 'metricValue' })
+      : null;
     const blockThreshold = mlRules?.model.metric.blockThreshold ?? null;
     const thresholdReached =
       blockThreshold != null && bestValue != null && bestValue >= blockThreshold;

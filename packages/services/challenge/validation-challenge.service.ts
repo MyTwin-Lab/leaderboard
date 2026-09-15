@@ -10,6 +10,7 @@ import {
 import type { RewardEntryDraft } from "../../database-service/repositories/index.js";
 import type { Challenge, ValidationAttempt } from "../../database-service/domain/entities.js";
 import { findOrCreateValidatorContribution } from "./validatorContribution.js";
+import { distributedFromPool, remainingPool } from "../../capabilities/pool.js";
 
 /** The submission isn't exposed on this validation challenge, or has no endpoint — a 4xx-shaped problem. */
 export class ValidationTargetError extends Error {}
@@ -250,8 +251,11 @@ export class ValidationChallengeService {
     return myCp;
   }
 
+  /** Le pool moins ce qu'en ont pris les clés qui le consomment. */
   private async remainingPool(challenge: Challenge): Promise<number> {
-    const distributed = await this.deps.rewardRepo.sumByChallenge(challenge.uuid);
-    return Math.max(0, challenge.contribution_points_reward - distributed);
+    return remainingPool(
+      challenge.contribution_points_reward,
+      await distributedFromPool(this.deps.rewardRepo, challenge.uuid)
+    );
   }
 }

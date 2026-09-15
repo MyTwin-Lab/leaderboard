@@ -2,10 +2,11 @@ import type {
   Contribution,
   ContributionMember,
   Challenge,
-  SandboxReward,
   User,
   Project,
 } from "../../../../packages/database-service/domain/entities.js";
+import type { CpSourceEntry } from "../../../../packages/registry/platform.js";
+import { countsAsContribution } from "../../../../packages/capabilities/economy.js";
 
 import type { LeaderboardEntry, ProjectFilter } from "./types";
 
@@ -20,7 +21,7 @@ export function aggregateUsersByContribution({
   challenges,
   users,
   contributionMembers,
-  sandboxRewards,
+  externalRewards,
   projectId,
   timePeriod,
 }: {
@@ -33,11 +34,12 @@ export function aggregateUsersByContribution({
    */
   contributionMembers?: ContributionMember[];
   /**
-   * Ledger des CP du sandbox (`sandbox_rewards`), séparé de `reward_entries`
-   * parce qu'un sandbox n'a ni challenge ni contribution. C'est le seul point
-   * d'injection de ces CP dans le classement : rangs et écarts en découlent.
+   * CP gagnés hors challenge, apportés par les sources déclarées des modules
+   * installés (le ledger du sandbox, par exemple), qui n'ont ni challenge ni
+   * contribution. C'est le seul point d'injection de ces CP dans le
+   * classement : rangs et écarts en découlent.
    */
-  sandboxRewards?: SandboxReward[];
+  externalRewards?: CpSourceEntry[];
   projectId?: string | null;
   timePeriod?: "all" | "month" | "week";
 }): AggregatedUser[] {
@@ -91,23 +93,24 @@ export function aggregateUsersByContribution({
     for (const { userId, cp } of credited) {
       if (!userById.has(userId)) continue;
       totals.set(userId, (totals.get(userId) ?? 0) + cp);
-      // Discussion (Slack signal) contributions aren't a "contribution" in the
-      // way a submission is — same exclusion fetchHomeOverview()/fetchContributorProfile() apply.
-      if (contribution.type !== "discussion") {
+      // Une contribution agrégée (signaux de discussion…) n'est pas une
+      // contribution de plus : c'est son type qui le déclare. Même règle
+      // que fetchHomeOverview() et fetchContributorProfile().
+      if (countsAsContribution(contribution.type)) {
         counts.set(userId, (counts.get(userId) ?? 0) + 1);
       }
     }
   }
 
-  // CP du sandbox : ils s'ajoutent aux totaux **sans toucher `counts`**, le
-  // traitement déjà réservé aux contributions `discussion`. Un palier de stars
+  // CP hors challenge : ils s'ajoutent aux totaux **sans toucher `counts`**, le
+  // traitement déjà réservé aux contributions agrégées. Un palier de stars
   // franchi paie une proposition, ce n'est pas une contribution de plus.
   //
-  // Un filtre projet les écarte en bloc : un sandbox n'a pas de projet, donc
+  // Un filtre projet les écarte en bloc : ces CP n'ont pas de projet, donc
   // aucun ne peut appartenir à celui qu'on regarde. Les inclure gonflerait le
   // total d'un contributeur avec des CP gagnés hors du périmètre demandé.
   if (!projectId) {
-    for (const reward of sandboxRewards ?? []) {
+    for (const reward of externalRewards ?? []) {
       // `user_id` est l'auteur au moment du paiement, dénormalisé : pas de
       // jointure ici. Un utilisateur absent du jeu de données (filtré en
       // amont, ou supprimé) est ignoré, comme pour une contribution.

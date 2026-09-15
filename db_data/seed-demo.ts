@@ -23,6 +23,12 @@ import {
 import type { RewardEntryDraft } from "../packages/database-service/repositories/index.js";
 import { ReferenceCaseService } from "../packages/services/challenge/reference-case.service.js";
 import { ValidationChallengeService } from "../packages/services/challenge/validation-challenge.service.js";
+import { PlatformRegistry } from "../packages/registry/platform.js";
+import { platform } from "../apps/leaderboard-client/src/distribution/mytwin.platform";
+
+// Le ledger n'accepte que les clés déclarées par la plateforme installée, et
+// les services de validation lisent leur pool dans ces déclarations.
+PlatformRegistry.install(platform);
 
 /**
  * Demo seed — ML challenge + qualified validation challenge (challenge-014),

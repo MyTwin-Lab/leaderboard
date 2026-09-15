@@ -63,7 +63,7 @@ describe("fetchHomeOverview", () => {
       { challenge_id: "c1", user_id: "u2" },
     ] as any);
     vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([] as any);
-    vi.spyOn(repositories.sandboxReward, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(Object.getPrototypeOf(repositories.sandboxReward), "findAll").mockResolvedValue([] as any);
 
     const overview = await fetchHomeOverview();
 
@@ -122,7 +122,7 @@ describe("fetchHomeOverview", () => {
     ] as any);
     vi.spyOn(repositories.challengeTeam, "findAll").mockResolvedValue([] as any);
     vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([] as any);
-    vi.spyOn(repositories.sandboxReward, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(Object.getPrototypeOf(repositories.sandboxReward), "findAll").mockResolvedValue([] as any);
 
     const overview = await fetchHomeOverview();
 
@@ -154,7 +154,7 @@ describe("fetchHomeOverview", () => {
     ] as any);
     vi.spyOn(repositories.challengeTeam, "findAll").mockResolvedValue([] as any);
     vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([] as any);
-    vi.spyOn(repositories.sandboxReward, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(Object.getPrototypeOf(repositories.sandboxReward), "findAll").mockResolvedValue([] as any);
 
     const overview = await fetchHomeOverview();
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { PlatformRegistry } from "./platform.js";
 import { ConnectorRegistry } from "../connectors/registry.js";
 import { ProvisionerRegistry, provisionContributorWorkspace } from "../provisioner/src/index.js";
@@ -13,6 +13,12 @@ import { EvaluationGridRegistry } from "../evaluator/grids/index.js";
  * `prod:min` prétendait apporter sans rien désactiver.
  */
 describe("core with an empty distribution", () => {
+  beforeEach(() => {
+    PlatformRegistry.reset();
+    ConnectorRegistry.clear();
+    ProvisionerRegistry.clear();
+  });
+
   afterEach(() => {
     PlatformRegistry.reset();
     ConnectorRegistry.clear();

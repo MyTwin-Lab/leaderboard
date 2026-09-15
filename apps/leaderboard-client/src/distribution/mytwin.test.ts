@@ -1,10 +1,25 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PlatformRegistry } from '../../../../packages/registry/platform';
-import { rewardRuleKeySchema } from '../../../../packages/database-service/domain/schemas_zod';
 import { flowCatalog } from './mytwin.flows';
 import { platform } from './mytwin.platform';
 
+/** Les clés déjà écrites dans les ledgers existants : chacune doit garder un propriétaire. */
+const HISTORICAL_RULE_KEYS = [
+  'api_packaging',
+  'beat_best',
+  'code_fixed',
+  'code_quality',
+  'dataset',
+  'model_code',
+  'model_metric',
+  'reuse_dataset',
+  'reuse_model',
+  'slack_signal',
+  'validation',
+];
+
 describe('distribution MyTwin', () => {
+  beforeEach(() => PlatformRegistry.reset());
   afterEach(() => PlatformRegistry.reset());
 
   it('installs without any rule key or contribution type claimed twice', () => {
@@ -15,10 +30,16 @@ describe('distribution MyTwin', () => {
     expect(flowCatalog.list()).toEqual(platform.flows.map((flow) => flow.descriptor));
   });
 
-  it('gives every rule key the ledger accepts an owner', () => {
+  it('gives an owner to every rule key already written in existing ledgers', () => {
     PlatformRegistry.install(platform);
 
-    expect(PlatformRegistry.ruleKeys().map((ruleKey) => ruleKey.key).sort())
-      .toEqual([...rewardRuleKeySchema.options].sort());
+    expect(PlatformRegistry.ruleKeys().map((ruleKey) => ruleKey.key).sort()).toEqual(HISTORICAL_RULE_KEYS);
+  });
+
+  it('keeps only the Slack signals out of the pool', () => {
+    PlatformRegistry.install(platform);
+
+    expect(PlatformRegistry.ruleKeys().filter((ruleKey) => !ruleKey.consumesPool).map((ruleKey) => ruleKey.key))
+      .toEqual(['slack_signal']);
   });
 });

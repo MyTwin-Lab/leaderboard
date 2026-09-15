@@ -121,26 +121,14 @@ export const contributionSchema = z.object({
   created_at: z.coerce.date(),
 });
 
-export const rewardRuleKeySchema = z.enum([
-  'dataset',
-  'model_metric',
-  'model_code',
-  'beat_best',
-  'api_packaging',
-  'reuse_dataset',
-  'reuse_model',
-  'slack_signal',
-  'validation',
-  'code_fixed',
-  'code_quality',
-]);
-
 export const rewardEntrySchema = z.object({
   uuid: z.string().uuid(),
   challenge_id: z.string().uuid(),
   user_id: z.string().uuid(),
   contribution_id: z.string().uuid().optional(),
-  rule_key: rewardRuleKeySchema,
+  // Liste ouverte : la clé est vérifiée contre les déclarations installées au
+  // moment de l'écriture (RewardEntryRepository).
+  rule_key: z.string().min(1),
   points: z.number().int(),
   source_user_id: z.string().uuid().optional(),
   meta: z.record(z.string(), z.any()).optional(),

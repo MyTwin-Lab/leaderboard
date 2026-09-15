@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { PlatformRegistry, type FlowDefinition, type PlatformDefinitions } from "./platform.js";
 
 function flow(key: string, declarations: Partial<FlowDefinition> = {}): FlowDefinition {
@@ -28,6 +28,8 @@ const DISTRIBUTION: PlatformDefinitions = {
 };
 
 describe("PlatformRegistry", () => {
+  // Le setup des tests installe la plateforme MyTwin : chaque cas repart à vide.
+  beforeEach(() => PlatformRegistry.reset());
   afterEach(() => PlatformRegistry.reset());
 
   it("exposes what the installed distribution declares, with its owner", () => {

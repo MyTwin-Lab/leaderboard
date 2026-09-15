@@ -11,6 +11,7 @@ import {
 import { isEvaluationRunning } from "../../database-service/repositories/contribution.repo.js";
 import { splitShares } from "../../database-service/domain/share.js";
 import { getGroupContext, type GroupContext } from "../../capabilities/groups.js";
+import { distributedFromPool, poolCompletion, remainingPool } from "../../capabilities/pool.js";
 import type { Challenge, ChallengeTeam, Contribution } from "../../database-service/domain/entities.js";
 import { parseCodeRewardRules } from "../../database-service/domain/codeRewardRules.js";
 import { evaluateGithubRepo, parseGithubRepoUrl } from "./repo-evaluation.js";
@@ -257,7 +258,7 @@ export class CodeRewardsService {
 
       const [existingEntries, distributed] = await Promise.all([
         this.deps.rewardRepo.findByUserAndChallenge(ownerId, challengeId),
-        this.deps.rewardRepo.sumByChallenge(challengeId, { excludeRuleKeys: ["slack_signal"] }),
+        distributedFromPool(this.deps.rewardRepo, challengeId),
       ]);
       const sumFor = (key: string) =>
         existingEntries.filter(e => e.rule_key === key).reduce((s, e) => s + e.points, 0);
@@ -269,7 +270,7 @@ export class CodeRewardsService {
         contributionId: contribution.uuid,
         score: score10,
         alreadyAwarded: { code_fixed: sumFor("code_fixed"), code_quality: sumFor("code_quality") },
-        remainingPool: Math.max(0, challenge.contribution_points_reward - distributed),
+        remainingPool: remainingPool(challenge.contribution_points_reward, distributed),
         groupMultiplier: group.multiplier,
       });
 
@@ -280,10 +281,8 @@ export class CodeRewardsService {
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation_status: "done" });
 
       // Complétion = fraction du pool drainé, comme en ML.
-      const newDistributed = await this.deps.rewardRepo.sumByChallenge(challengeId, { excludeRuleKeys: ["slack_signal"] });
-      const completion = challenge.contribution_points_reward > 0
-        ? Math.min(1, newDistributed / challenge.contribution_points_reward)
-        : 0;
+      const newDistributed = await distributedFromPool(this.deps.rewardRepo, challengeId);
+      const completion = poolCompletion(challenge.contribution_points_reward, newDistributed);
       await this.deps.challengeRepo.update(challenge.uuid, { completion });
 
       const net = drafts.reduce((s, d) => s + d.points, 0);

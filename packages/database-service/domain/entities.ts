@@ -136,20 +136,14 @@ export interface Contribution {
   created_at: Date;
 }
 
-// --- REWARD ENTRIES (ledger ML) ---
+// --- REWARD ENTRIES (ledger) ---
 
-export type RewardRuleKey =
-  | 'dataset'
-  | 'model_metric'
-  | 'model_code'
-  | 'beat_best'
-  | 'api_packaging'
-  | 'reuse_dataset'
-  | 'reuse_model'
-  | 'slack_signal'
-  | 'validation'
-  | 'code_fixed'
-  | 'code_quality';
+/**
+ * Clé d'une ligne de ledger. Les clés ne sont pas une liste fermée : chaque
+ * flow, extension ou kit installé déclare les siennes, et l'écriture refuse une
+ * clé que rien ne déclare (`packages/registry/platform.ts`).
+ */
+export type RewardRuleKey = string;
 
 export interface RewardEntryMeta {
   metricValue?: number;
@@ -171,6 +165,9 @@ export interface RewardEntry {
   meta?: RewardEntryMeta;
   created_at: Date;
 }
+
+/** Une ligne de ledger à écrire, sans les champs générés par la base. */
+export type RewardEntryDraft = Omit<RewardEntry, "uuid" | "created_at">;
 
 /**
  * Part de CP d'un membre de groupe sur une contribution.

@@ -144,7 +144,7 @@ export async function PATCH(
       const mlRules = parseMlRewardRules(challenge?.reward_rules);
       const threshold = mlRules?.model.metric.blockThreshold;
       if (threshold != null) {
-        const best = await rewardRepo.bestMetricValue(challengeId);
+        const best = await rewardRepo.maxMetaNumber(challengeId, { ruleKey: 'model_metric', field: 'metricValue' });
         if (best != null && best >= threshold) {
           return NextResponse.json(
             { error: 'Metric threshold reached - dataset and model submissions are closed, only API packaging is accepted' },

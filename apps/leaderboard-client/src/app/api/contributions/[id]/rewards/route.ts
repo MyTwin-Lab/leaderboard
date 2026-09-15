@@ -4,24 +4,13 @@ import {
   RewardEntryRepository,
   UserRepository,
 } from '../../../../../../../../packages/database-service/repositories';
+import { ruleKeyLabel } from '../../../../../../../../packages/capabilities/economy';
 
 export const dynamic = 'force-dynamic';
 
 const contributionRepo = new ContributionRepository();
 const rewardRepo = new RewardEntryRepository();
 const userRepo = new UserRepository();
-
-/** Human-readable label per rule, so the UI does not hardcode ledger keys. */
-const RULE_LABEL: Record<string, string> = {
-  dataset: 'Dataset quality',
-  model_metric: 'Model metric',
-  model_code: 'Model code',
-  beat_best: 'Best model bonus',
-  api_packaging: 'API packaging',
-  reuse_dataset: 'Dataset reuse',
-  reuse_model: 'Model reuse',
-  slack_signal: 'Slack signal',
-};
 
 // GET /api/contributions/[id]/rewards
 // The ledger rows behind one contribution's reward — what makes a bare "0 CP"
@@ -56,12 +45,9 @@ export async function GET(
         .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
         .map(e => ({
           ruleKey: e.rule_key,
-          // Slack signals are named by the manager — the ledger meta carries
-          // the label, unlike ML rules whose labels are static.
-          label:
-            e.rule_key === 'slack_signal' && typeof e.meta?.signal_label === 'string'
-              ? e.meta.signal_label
-              : RULE_LABEL[e.rule_key] ?? e.rule_key,
+          // The label is declared by whoever owns the key — a static label, or
+          // one read from the row (a signal named by the manager).
+          label: ruleKeyLabel(e.rule_key, e.meta),
           points: e.points,
           counterparty: e.source_user_id ? nameById[e.source_user_id] ?? null : null,
           // Pas de `meta` : il porte l'extrait Slack et la justification du LLM

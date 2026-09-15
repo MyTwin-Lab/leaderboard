@@ -12,6 +12,7 @@ import {
 } from "../../database-service/repositories/index.js";
 import { splitShares } from "../../database-service/domain/share.js";
 import { getGroupContext, type GroupContext } from "../../capabilities/groups.js";
+import { distributedFromPool, poolCompletion, remainingPool } from "../../capabilities/pool.js";
 import type {
   Challenge,
   ChallengeRepoRole,
@@ -20,6 +21,7 @@ import type {
 import { parseMlRewardRules, type MlRewardRules } from "../../database-service/domain/mlRewardRules.js";
 import { ConnectorRegistry } from "../../connectors/registry.js";
 import type { KaggleRepoActivity } from "../../connectors/interfaces.js";
+import { MODEL_METRIC_META_FIELD, MODEL_METRIC_RULE_KEY } from "../../../content/flows/ml/index.js";
 import { SnapshotService } from "./snapshot.service.js";
 import { extractArtifactRef, normalizeArtifactUrl } from "./artifactUrl.js";
 import { resolveLineage } from "./lineage.js";
@@ -48,7 +50,7 @@ export interface MlRewardsDeps {
   challengeRepo: Pick<ChallengeRepository, 'findById' | 'update'>;
   challengeRepoRepo: Pick<ChallengeRepoRepository, 'findByChallengeAndRepo' | 'findByChallengeAndRole'>;
   contributionRepo: Pick<ContributionRepository, 'findByChallenge' | 'update'>;
-  rewardRepo: Pick<RewardEntryRepository, 'sumByChallenge' | 'bestMetricValue' | 'createManyAndSyncRewards'>;
+  rewardRepo: Pick<RewardEntryRepository, 'sumByChallenge' | 'maxMetaNumber' | 'createManyAndSyncRewards'>;
   contributionMemberRepo: Pick<ContributionMemberRepository, 'addShares'>;
   /** Lue par getGroupContext pour résoudre le porteur du workspace. */
   challengeTeamRepo: Pick<ChallengeTeamRepository, 'findByChallenge'>;
@@ -67,9 +69,8 @@ export interface MlRewardsDeps {
  * ----------------
  * Attribution live des points sur les challenges ML.
  *
- * Séparé de RewardsService (challenges code) : là-bas un pool est distribué
- * proportionnellement au close, ici chaque soumission produit immédiatement des
- * lignes de ledger immuables. Rien n'est recalculé.
+ * Chaque soumission produit immédiatement des lignes de ledger immuables,
+ * clampées au reliquat du pool. Rien n'est recalculé.
  */
 export class MlRewardsService {
   private deps: MlRewardsDeps;
@@ -157,10 +158,11 @@ export class MlRewardsService {
           }
         : { metricValue: await this.deps.readMetric(url, rules) };
 
-      const [remainingPool, bestOtherMetricValue, myBestMetricValue] = await Promise.all([
+      const metric = { ruleKey: MODEL_METRIC_RULE_KEY, field: MODEL_METRIC_META_FIELD };
+      const [remaining, bestOtherMetricValue, myBestMetricValue] = await Promise.all([
         this.remainingPool(challenge),
-        this.deps.rewardRepo.bestMetricValue(challengeId, { excludeUserId: ownerId }),
-        this.deps.rewardRepo.bestMetricValue(challengeId, { onlyUserId: ownerId }),
+        this.deps.rewardRepo.maxMetaNumber(challengeId, { ...metric, excludeUserId: ownerId }),
+        this.deps.rewardRepo.maxMetaNumber(challengeId, { ...metric, onlyUserId: ownerId }),
       ]);
 
       const drafts = computeMlAward({
@@ -169,7 +171,7 @@ export class MlRewardsService {
         challengeId,
         userId: ownerId,
         contributionId: contribution.uuid,
-        remainingPool,
+        remainingPool: remaining,
         bestOtherMetricValue,
         myBestMetricValue,
         lineage,
@@ -181,10 +183,10 @@ export class MlRewardsService {
       await this.recordGroupShares(group, contribution.uuid, drafts);
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation_status: 'done' });
 
-      const newRemaining = await this.remainingPool(challenge);
-      const completion = challenge.contribution_points_reward > 0
-        ? 1 - newRemaining / challenge.contribution_points_reward
-        : 0;
+      const completion = poolCompletion(
+        challenge.contribution_points_reward,
+        await distributedFromPool(this.deps.rewardRepo, challenge.uuid)
+      );
       await this.deps.challengeRepo.update(challenge.uuid, { completion });
 
       const net = drafts.filter(d => d.user_id === ownerId).reduce((s, d) => s + d.points, 0);
@@ -233,14 +235,14 @@ export class MlRewardsService {
   }
 
   /**
-   * CP encore à prendre sur le challenge. Les récompenses de signaux Slack
-   * sont hors pool (montant fixe par signal), donc exclues du décompte.
+   * CP encore à prendre sur le challenge : le pool moins ce qu'en ont pris les
+   * clés qui le consomment (les récompenses fixes hors pool n'en font pas partie).
    */
   async remainingPool(challenge: Challenge): Promise<number> {
-    const distributed = await this.deps.rewardRepo.sumByChallenge(challenge.uuid, {
-      excludeRuleKeys: ['slack_signal'],
-    });
-    return Math.max(0, challenge.contribution_points_reward - distributed);
+    return remainingPool(
+      challenge.contribution_points_reward,
+      await distributedFromPool(this.deps.rewardRepo, challenge.uuid)
+    );
   }
 
   private async findContribution(

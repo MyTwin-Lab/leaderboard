@@ -20,6 +20,9 @@ import { defineConfig } from "vitest/config";
  */
 export default defineConfig({
   test: {
+    // Aussi au niveau racine : une version de Vitest qui ignore `projects`
+    // exécute les tests avec cette seule section.
+    setupFiles: ["./vitest.platform.setup.ts"],
     projects: [
       // L'app Next, avec sa propre config (alias `@`, mock server-only).
       "./apps/leaderboard-client",
@@ -30,6 +33,7 @@ export default defineConfig({
           name: "packages",
           globals: true,
           environment: "node",
+          setupFiles: ["./vitest.platform.setup.ts"],
           include: [
             "packages/**/*.test.{ts,tsx}",
             "content/**/*.test.{ts,tsx}",

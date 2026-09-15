@@ -1,5 +1,8 @@
 import { db } from "../packages/database-service/db/drizzle.js";
 import { sql } from "drizzle-orm";
+import { PlatformRegistry } from "../packages/registry/platform.js";
+import { outOfPoolRuleKeys, poolCompletion } from "../packages/capabilities/pool.js";
+import { platform } from "../apps/leaderboard-client/src/distribution/mytwin.platform";
 
 /**
  * Resynchronise les caches dérivés de la reward ledger. Idempotent, pensé
@@ -10,12 +13,11 @@ import { sql } from "drizzle-orm";
  *    écriture ledger, mais un UPDATE manuel de `reward` ou une période
  *    pré-trigger peuvent laisser un écart : on le détecte et on le corrige.
  *
- * 2. challenges.completion — cache mis à jour applicativement. Les trois
- *    types de challenge (ml, validation, code) partagent désormais la même
- *    formule à pool : completion = min(1, CP distribués / pool) — cf.
- *    MlRewardsService.remainingPool, ValidationChallengeService.remainingPool
- *    et CodeRewardsService.evaluate. Seuls les challenges ml excluent les
- *    lignes 'slack_signal' du décompte (signal Slack hors pool).
+ * 2. challenges.completion — cache mis à jour applicativement. Tous les
+ *    challenges suivent la même formule : completion = min(1, CP pris sur le
+ *    pool / pool). Les clés qui ne consomment pas le pool (signaux Slack…)
+ *    sont celles que la plateforme installée déclare `consumesPool: false` —
+ *    la même règle que les services (`packages/capabilities/pool.ts`).
  *    Toute écriture ledger hors de ces services (fix SQL, ligne corrective)
  *    laisse la completion stale : on recalcule et on corrige.
  *
@@ -46,9 +48,11 @@ async function resyncContributionRewards(): Promise<number> {
 }
 
 async function resyncChallengeCompletions(): Promise<number> {
-  // Challenges à pool (ml + validation + code) : completion = distribués / pool.
-  // Seule particularité : les signaux Slack sont hors pool pour les
-  // challenges ml (cf. MlRewardsService.remainingPool).
+  const outOfPool = outOfPoolRuleKeys();
+  const outOfPoolFilter = outOfPool.length
+    ? sql`AND re.rule_key NOT IN (${sql.join(outOfPool.map((key) => sql`${key}`), sql`, `)})`
+    : sql``;
+
   const { rows: poolRows } = await db.execute(sql`
     SELECT
       ch.uuid, ch.title, ch.type, ch.completion,
@@ -56,17 +60,16 @@ async function resyncChallengeCompletions(): Promise<number> {
       COALESCE((
         SELECT SUM(re.points) FROM reward_entries re
         WHERE re.challenge_id = ch.uuid
-          AND (ch.type <> 'ml' OR re.rule_key <> 'slack_signal')
+          ${outOfPoolFilter}
       ), 0)::int AS distributed
     FROM challenges ch
-    WHERE COALESCE(ch.type, 'code') IN ('ml', 'validation', 'code')
   `);
 
   let fixed = 0;
 
   for (const row of poolRows) {
     const pool = Number(row.pool ?? 0);
-    const expected = pool > 0 ? Math.min(1, Number(row.distributed) / pool) : 0;
+    const expected = poolCompletion(pool, Number(row.distributed));
     const stored = Number(row.completion ?? 0);
     if (Math.abs(stored - expected) <= COMPLETION_EPSILON) continue;
     console.log(
@@ -82,6 +85,9 @@ async function resyncChallengeCompletions(): Promise<number> {
 }
 
 async function main() {
+  // Les clés hors pool viennent des déclarations de la plateforme installée.
+  PlatformRegistry.install(platform);
+
   console.log("🔄 Resync reward caches\n");
 
   console.log("→ contributions.reward vs reward ledger…");
@@ -92,7 +98,7 @@ async function main() {
       : `  ${contributionsFixed} contribution(s) corrigée(s)`
   );
 
-  console.log("\n→ challenges.completion…");
+  console.log(`\n→ challenges.completion (hors pool : ${outOfPoolRuleKeys().join(", ") || "aucune clé"})…`);
   const challengesFixed = await resyncChallengeCompletions();
   console.log(
     challengesFixed === 0

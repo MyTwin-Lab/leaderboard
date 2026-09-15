@@ -2,6 +2,7 @@ import "server-only";
 
 import { repositories } from "@/lib/db";
 import { flowCatalog } from "@/distribution/mytwin.flows";
+import { countsAsContribution, listExternalRewards } from "../../../../../packages/capabilities/economy";
 import { aggregateUsersByContribution, rankEntries } from "@/lib/leaderboard";
 import type {
   HomeLeaderboardEntry,
@@ -47,14 +48,14 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * DAY_MS);
 
-  const [projects, challenges, contributions, users, challengeTeams, contributionMembers, sandboxRewards] = await Promise.all([
+  const [projects, challenges, contributions, users, challengeTeams, contributionMembers, externalRewards] = await Promise.all([
     repositories.project.findAll(),
     repositories.challenge.findAll(),
     repositories.contribution.findAll(),
     repositories.user.findAll(),
     repositories.challengeTeam.findAll(),
     repositories.contributionMember.findAll(),
-    repositories.sandboxReward.findAll(),
+    listExternalRewards(),
   ]);
 
   const projectsMap = new Map(projects.map((p) => [p.uuid, p]));
@@ -66,7 +67,7 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
     challenges,
     users,
     contributionMembers,
-    sandboxRewards,
+    externalRewards,
     projectId: null,
     timePeriod: "all",
   });
@@ -88,9 +89,9 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
   const earliestContributionByUser = new Map<string, Date>();
   for (const c of contributions) {
     for (const userId of creditedUsers.get(c.uuid) ?? [c.user_id]) {
-      // Discussion (Slack signal) contributions aren't a "contribution" in the
-      // way a submission is — same exclusion fetchContributorProfile applies.
-      if (c.type !== "discussion") {
+      // Une contribution agrégée (signaux de discussion…) n'est pas une
+      // contribution de plus — même règle que le classement et le profil.
+      if (countsAsContribution(c.type)) {
         contributionsCountByUser.set(userId, (contributionsCountByUser.get(userId) ?? 0) + 1);
       }
       const earliest = earliestContributionByUser.get(userId);
@@ -127,17 +128,18 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
 
   // ── Global stats + 7-day activity spark ──
   const recentContributions = contributions.filter((c) => c.submitted_at >= sevenDaysAgo);
-  // Les CP du sandbox comptent dans la statistique globale parce qu'ils
-  // comptent déjà dans le podium juste au-dessus : sans eux, un contributeur
-  // pourrait afficher plus de CP que la plateforme n'en aurait distribué.
-  const sandboxCpTotal = sandboxRewards.reduce((sum, r) => sum + r.points, 0);
-  const sandboxCpWeek = sandboxRewards
+  // Les CP gagnés hors challenge (sandbox…) comptent dans la statistique
+  // globale parce qu'ils comptent déjà dans le podium juste au-dessus : sans
+  // eux, un contributeur pourrait afficher plus de CP que la plateforme n'en
+  // aurait distribué.
+  const externalCpTotal = externalRewards.reduce((sum, r) => sum + r.points, 0);
+  const externalCpWeek = externalRewards
     .filter((r) => r.created_at >= sevenDaysAgo)
     .reduce((sum, r) => sum + r.points, 0);
   const cpDistributedTotal =
-    contributions.reduce((sum, c) => sum + (c.reward ?? 0), 0) + sandboxCpTotal;
+    contributions.reduce((sum, c) => sum + (c.reward ?? 0), 0) + externalCpTotal;
   const cpDistributedWeek =
-    recentContributions.reduce((sum, c) => sum + (c.reward ?? 0), 0) + sandboxCpWeek;
+    recentContributions.reduce((sum, c) => sum + (c.reward ?? 0), 0) + externalCpWeek;
   const activeChallenges = challenges.filter((c) => c.status === "active");
   const activeChallengesProjects = new Set(activeChallenges.map((c) => c.project_id)).size;
 

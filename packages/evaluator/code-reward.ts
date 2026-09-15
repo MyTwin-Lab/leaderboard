@@ -1,6 +1,8 @@
 import type { CodeRewardRules } from "../database-service/domain/codeRewardRules.js";
-import type { RewardRuleKey } from "../database-service/domain/entities.js";
-import type { RewardEntryDraft } from "./ml-reward.js";
+import type { RewardEntryDraft } from "../database-service/domain/entities.js";
+
+/** Les clés de ledger que ce calcul écrit — déclarées par le flow code. */
+type CodeRuleKey = "code_fixed" | "code_quality";
 
 /**
  * Reward des challenges code (boards personnels).
@@ -20,7 +22,7 @@ export interface CodeAwardInput {
   /** Note agent ramenée sur 0..10. */
   score: number;
   /** Σ des lignes déjà au ledger pour (challenge, user), par règle. */
-  alreadyAwarded: { code_fixed: number; code_quality: number };
+  alreadyAwarded: Record<CodeRuleKey, number>;
   /** CP encore disponibles sur le challenge. Les deltas sont clampés dessus. */
   remainingPool: number;
   /**
@@ -44,7 +46,7 @@ export function computeCodeAward(input: CodeAwardInput): RewardEntryDraft[] {
   // rouvre un delta positif — le groupe touche le complément au run suivant.
   // C'est voulu, et c'est le pendant naturel d'un ledger append-only : rien
   // n'est repris, seul l'écart restant est versé.
-  const gross: Array<{ rule_key: RewardRuleKey; raw: number; already: number }> = [
+  const gross: Array<{ rule_key: CodeRuleKey; raw: number; already: number }> = [
     { rule_key: "code_fixed", raw: Math.round(input.rules.delivery.fixed * multiplier), already: input.alreadyAwarded.code_fixed },
     { rule_key: "code_quality", raw: Math.round((input.rules.delivery.cap * score * multiplier) / 10), already: input.alreadyAwarded.code_quality },
   ];

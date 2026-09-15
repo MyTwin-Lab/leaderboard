@@ -69,6 +69,7 @@ function ChallengeRow({
   }, [isExpanded, challenge.contributions]);
 
   const sharePercent = Math.round(challenge.contributionShare * 100);
+  const aggregates = (challenge.aggregates ?? []).filter(aggregate => aggregate.chips.length > 0);
 
   return (
     <div
@@ -137,30 +138,30 @@ function ChallengeRow({
             ))
           )}
 
-          {/* Slack discussion signals — aggregated chips, not a list */}
-          {challenge.discussion && challenge.discussion.signals.length > 0 && (
-            <div className="pt-2">
+          {/* Contributions agrégées (signaux de discussion…) — chips, pas une liste */}
+          {aggregates.map(aggregate => (
+            <div key={aggregate.contributionId} className="pt-2">
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-white/20">
-                Discussion · <span className="text-brandCP/70">{formatCP(challenge.discussion.totalCp)} CP</span>
+                {aggregate.title} · <span className="text-brandCP/70">{formatCP(aggregate.totalCp)} CP</span>
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {challenge.discussion.signals.map(signal => {
-                  const SignalIcon = getSignalIcon(signal.icon);
+                {aggregate.chips.map(chip => {
+                  const ChipIcon = getSignalIcon(chip.icon);
                   return (
                     <span
-                      key={signal.signalId}
+                      key={chip.id}
                       className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-white/60"
                     >
-                      <SignalIcon className="h-3 w-3 text-brandCP/70" />
-                      <span>{signal.label}</span>
-                      {signal.count > 1 && <span className="text-white/30">×{signal.count}</span>}
-                      <span className="font-semibold text-brandCP">{formatCP(signal.totalCp)} CP</span>
+                      <ChipIcon className="h-3 w-3 text-brandCP/70" />
+                      <span>{chip.label}</span>
+                      {chip.count > 1 && <span className="text-white/30">×{chip.count}</span>}
+                      <span className="font-semibold text-brandCP">{formatCP(chip.totalCp)} CP</span>
                     </span>
                   );
                 })}
               </div>
             </div>
-          )}
+          ))}
         </div>
       </div>
     </div>

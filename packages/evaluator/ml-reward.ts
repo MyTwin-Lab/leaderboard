@@ -1,13 +1,14 @@
 import type { MlRewardRules } from "../database-service/domain/mlRewardRules.js";
-import type { RewardEntryMeta, RewardRuleKey } from "../database-service/domain/entities.js";
+import type { RewardEntryDraft, RewardEntryMeta } from "../database-service/domain/entities.js";
+
+export type { RewardEntryDraft } from "../database-service/domain/entities.js";
 
 /**
  * Reward des challenges ML.
  *
- * Contrairement aux challenges code (pool distribué proportionnellement au
- * close, cf. reward.ts), les points ML sont absolus et attribués en live :
- * chaque soumission produit des lignes de ledger immuables, calculées sur
- * l'état du monde à cet instant. Rien n'est jamais recalculé.
+ * Comme pour les challenges code, les points ML sont absolus et attribués en
+ * live : chaque soumission produit des lignes de ledger immuables, calculées
+ * sur l'état du monde à cet instant. Rien n'est jamais recalculé.
  *
  * Fonction pure : aucune dépendance à la base, tout est passé en entrée.
  */
@@ -15,16 +16,8 @@ import type { RewardEntryMeta, RewardRuleKey } from "../database-service/domain/
 /** Règles qui produisent des points. `beat_best` est dérivé de `model_metric`. */
 export type MlAwardRule = 'dataset' | 'model_metric' | 'model_code' | 'api_packaging';
 
-/** Une ligne de ledger à écrire, sans les champs générés par la base. */
-export interface RewardEntryDraft {
-  challenge_id: string;
-  user_id: string;
-  contribution_id?: string;
-  rule_key: RewardRuleKey;
-  points: number;
-  source_user_id?: string;
-  meta?: RewardEntryMeta;
-}
+/** Les clés de ledger que ce calcul écrit — déclarées par le flow ML. */
+type MlRuleKey = MlAwardRule | 'beat_best' | 'reuse_dataset' | 'reuse_model';
 
 /** Auteurs des artefacts réutilisés par le contributeur courant. */
 export interface MlLineage {
@@ -83,14 +76,14 @@ export function normalizeMetric(value: number, baseline: number): number {
 }
 
 /** Les règles portées par l'étape modèle, sur lesquelles s'appliquent les prélèvements. */
-const MODEL_RULE_KEYS: ReadonlySet<RewardRuleKey> = new Set<RewardRuleKey>([
+const MODEL_RULE_KEYS: ReadonlySet<MlRuleKey> = new Set<MlRuleKey>([
   'model_metric',
   'model_code',
   'beat_best',
 ]);
 
 interface GrossAward {
-  rule_key: RewardRuleKey;
+  rule_key: MlRuleKey;
   /** Points dus, bonus de groupe compris. C'est ce qui est versé et clampé. */
   points: number;
   /**
@@ -143,7 +136,7 @@ function computeGrossAwards(input: MlAwardInput): GrossAward[] {
   const multiplier = input.groupMultiplier ?? 1;
 
   /** Applique le bonus de groupe en gardant l'assiette d'origine à côté. */
-  const award = (rule_key: RewardRuleKey, basePoints: number, meta: RewardEntryMeta): GrossAward => ({
+  const award = (rule_key: MlRuleKey, basePoints: number, meta: RewardEntryMeta): GrossAward => ({
     rule_key,
     basePoints,
     points: Math.round(basePoints * multiplier),
@@ -216,7 +209,7 @@ function computeReuseSplits(
   if (!lineage || !MODEL_RULE_KEYS.has(award.rule_key) || award.points <= 0) return [];
 
   const candidates: Array<{
-    key: Extract<RewardRuleKey, 'reuse_dataset' | 'reuse_model'>;
+    key: 'reuse_dataset' | 'reuse_model';
     authorId?: string;
     contributionId?: string;
     share: number;

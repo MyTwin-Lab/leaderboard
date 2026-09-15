@@ -21,6 +21,30 @@ export interface RuleKeyDeclaration {
   key: string;
   /** Les points de cette clé consomment le pool du challenge. Faux pour une récompense fixe hors pool. */
   consumesPool: boolean;
+  /** Libellé lisible d'une ligne de cette clé. Sans libellé, la clé brute s'affiche. */
+  label?: string;
+  /**
+   * Libellé propre à une ligne, tiré de son `meta` (le nom d'un signal choisi
+   * par le manager, par exemple). `undefined` retombe sur `label`.
+   */
+  describe?(meta: Record<string, unknown> | undefined): string | undefined;
+}
+
+/** Une chip du profil d'un contributeur, pour un type de contribution agrégat. */
+export interface ProfileAggregateChip {
+  id: string;
+  label: string;
+  /** Clé d'icône du design system, ou `null`. */
+  icon: string | null;
+  count: number;
+  totalCp: number;
+}
+
+/** Comment le profil résume une contribution agrégat, en chips plutôt qu'en ligne de liste. */
+export interface ProfileAggregate {
+  /** Titre de la section (« Discussion »…). */
+  title: string;
+  summarize(input: { challengeId: string; contributionId: string }): Promise<ProfileAggregateChip[]>;
 }
 
 /** Un type de contribution (`contributions.type`). */
@@ -31,6 +55,21 @@ export interface ContributionTypeDeclaration {
    * une ligne d'agrégat, comme les signaux de discussion.
    */
   countsAsContribution: boolean;
+  /** Pour un type agrégat : son résumé dans le profil. */
+  profileAggregate?: ProfileAggregate;
+}
+
+/** Une ligne de CP gagnée hors challenge, sans projet. */
+export interface CpSourceEntry {
+  user_id: string;
+  points: number;
+  created_at: Date;
+}
+
+/** Des CP extérieurs au ledger des challenges, que le classement additionne. */
+export interface CpSourceDefinition {
+  key: string;
+  listAll(): Promise<CpSourceEntry[]>;
 }
 
 interface Declarations {
@@ -54,6 +93,8 @@ export interface KitDefinition extends Declarations {
 
 export interface ModuleDefinition extends Declarations {
   key: string;
+  /** CP que le module verse hors du ledger des challenges. */
+  cpSource?: CpSourceDefinition;
 }
 
 export interface PlatformDefinitions {
@@ -202,6 +243,13 @@ export class PlatformRegistry {
 
   static module(key: string): ModuleDefinition | undefined {
     return current().modules.get(key);
+  }
+
+  /** Les sources de CP extérieures au ledger des challenges. */
+  static cpSources(): CpSourceDefinition[] {
+    return [...current().modules.values()]
+      .map((module) => module.cpSource)
+      .filter((source): source is CpSourceDefinition => !!source);
   }
 
   static ruleKey(key: string): Owned<RuleKeyDeclaration> | undefined {
