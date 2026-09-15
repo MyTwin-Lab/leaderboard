@@ -190,6 +190,7 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
 
   const toTrending = (c: (typeof challenges)[number]): HomeTrendingChallenge => ({
     id: c.uuid,
+    slug: c.slug,
     title: c.title,
     type: c.type ?? "code",
     typeLabel: TYPE_LABELS[c.type ?? "code"] ?? "Code",

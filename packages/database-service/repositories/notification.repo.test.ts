@@ -5,6 +5,7 @@ const INPUT = {
   recipientId: "user-2",
   challengeId: "challenge-1",
   challengeTitle: "Collaboration Patterns",
+  challengeSlug: "collaboration-patterns",
   groupToken: "group-abc",
   fromUserId: "user-1",
   fromName: "Camille Daverio",
@@ -30,6 +31,7 @@ describe("buildGroupInviteDraft", () => {
     expect(buildGroupInviteDraft(INPUT).payload).toEqual({
       challengeId: "challenge-1",
       challengeTitle: "Collaboration Patterns",
+      challengeSlug: "collaboration-patterns",
       groupToken: "group-abc",
       fromUserId: "user-1",
       fromName: "Camille Daverio",

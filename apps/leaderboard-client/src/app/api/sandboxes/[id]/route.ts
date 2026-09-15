@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  ChallengeRepository,
   SandboxRepository,
   SandboxRewardRepository,
   AppSettingsRepository,
@@ -17,6 +18,7 @@ import { toSandboxView } from "@/lib/public/sandbox";
 export const dynamic = "force-dynamic";
 
 const sandboxRepo = new SandboxRepository();
+const challengeRepo = new ChallengeRepository();
 const starRepo = new SandboxStarRepository();
 const rewardRepo = new SandboxRewardRepository();
 const appSettingsRepo = new AppSettingsRepository();
@@ -48,7 +50,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const identity = starIdentity(viewer);
-    const [author, starCount, paidMap, myStar, rewards, settings] = await Promise.all([
+    const [author, starCount, paidMap, myStar, rewards, settings, promotedChallengeSlug] = await Promise.all([
       userRepo.findById(sandbox.user_id),
       starRepo.countActive(id),
       rewardRepo.paidTierThresholdsBySandboxIds([id]),
@@ -63,6 +65,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       // Les paliers et le bonus voyagent avec le détail : sans eux la page
       // devrait charger le listing complet pour afficher deux réglages.
       appSettingsRepo.get(),
+      promotedSlug(sandbox.promoted_challenge_id),
     ]);
 
     return NextResponse.json({
@@ -74,6 +77,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         myStar: myStar !== null,
         paidTierThresholds: paidMap.get(id) ?? [],
         rewards,
+        promotedChallengeSlug,
       }),
       tiers: settings?.sandbox_star_tiers ?? [],
       promotion_bonus_cp: settings?.sandbox_promotion_bonus_cp ?? 0,
@@ -132,7 +136,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const viewer = sandboxViewer({ userId: session.userId, role: session.role }, null);
-    const [author, starCount, paidMap, myStar] = await Promise.all([
+    const [author, starCount, paidMap, myStar, promotedChallengeSlug] = await Promise.all([
       userRepo.findById(sandbox.user_id),
       starRepo.countActive(id),
       rewardRepo.paidTierThresholdsBySandboxIds([id]),
@@ -140,6 +144,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       // pour un admin qui archive le sandbox d'un autre après l'avoir staré :
       // renvoyer `false` en dur ferait sauter son étoile dans l'UI.
       starRepo.findActiveForUser(id, session.userId),
+      // Archiver une proposition promue est possible : sa bannière garde le lien.
+      promotedSlug(sandbox.promoted_challenge_id),
     ]);
 
     return NextResponse.json({
@@ -150,6 +156,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         starCount,
         myStar: myStar !== null,
         paidTierThresholds: paidMap.get(id) ?? [],
+        promotedChallengeSlug,
       }),
     });
   } catch (error) {
@@ -158,4 +165,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     console.error("[sandbox] update failed", error);
     return NextResponse.json({ error: "Failed to update sandbox" }, { status: 500 });
   }
+}
+
+/** Le slug du challenge issu de la promotion, pour que la page puisse s'y lier. */
+async function promotedSlug(challengeId: string | null): Promise<string | null> {
+  if (!challengeId) return null;
+  return (await challengeRepo.findById(challengeId))?.slug ?? null;
 }

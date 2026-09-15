@@ -5,6 +5,7 @@ import { parseMlRewardRules } from "../../../../../../../../packages/database-se
 import { parseCodeRewardRules } from "../../../../../../../../packages/database-service/domain/codeRewardRules";
 import { getSessionUser } from "@/lib/auth";
 import { sandboxErrorResponse } from "@/lib/server/sandboxErrors";
+import { slugField } from "@/lib/server/slugs";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,8 @@ const service = new SandboxPromotionService();
  */
 const promoteSchema = z.object({
   title: z.string().min(1).optional(),
+  // Absent : le slug de la proposition, s'il est libre côté challenges.
+  slug: slugField.optional(),
   status: z.string(),
   start_date: z.string().nullish(),
   end_date: z.string().nullish(),

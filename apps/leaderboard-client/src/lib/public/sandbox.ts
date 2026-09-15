@@ -71,6 +71,7 @@ export interface SandboxView {
   user_id: string;
   type: string;
   title: string;
+  slug: string;
   context: string | null;
   goals: string[];
   why: string | null;
@@ -79,6 +80,13 @@ export interface SandboxView {
   dataset_urls: string[];
   status: string;
   promoted_challenge_id: string | null;
+  /**
+   * Le slug du challenge issu de la promotion, pour lier sa page. Même
+   * exposition que `promoted_challenge_id` : l'UUID redirige de toute façon
+   * vers ce slug. `null` tant que la proposition n'est pas promue, ou si la
+   * route ne l'a pas chargé.
+   */
+  promoted_challenge_slug: string | null;
   promoted_at: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -110,6 +118,8 @@ export interface SandboxViewInput {
   paidTierThresholds: number[];
   /** Le ledger du sandbox, si la route l'a chargé (page détail). */
   rewards?: any[];
+  /** Le slug du challenge promu, lu par la route — voir `SandboxView.promoted_challenge_slug`. */
+  promotedChallengeSlug?: string | null;
 }
 
 /** Dates en ISO : la row porte des `Date`, le JSON n'en a pas. */
@@ -134,6 +144,7 @@ export function toSandboxView(input: SandboxViewInput): SandboxView {
     user_id: s.user_id,
     type: s.type,
     title: s.title,
+    slug: s.slug,
     context: s.context ?? null,
     goals: Array.isArray(s.goals) ? s.goals : [],
     why: s.why ?? null,
@@ -142,6 +153,7 @@ export function toSandboxView(input: SandboxViewInput): SandboxView {
     dataset_urls: Array.isArray(s.dataset_urls) ? s.dataset_urls : [],
     status: s.status,
     promoted_challenge_id: s.promoted_challenge_id ?? null,
+    promoted_challenge_slug: s.promoted_challenge_id ? input.promotedChallengeSlug ?? null : null,
     promoted_at: iso(s.promoted_at),
     created_at: iso(s.created_at),
     updated_at: iso(s.updated_at),

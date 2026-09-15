@@ -13,7 +13,7 @@
  */
 export interface PublicOverview {
   challenge: {
-    uuid: string; title: string; description: string | null; status: string;
+    uuid: string; title: string; slug: string; description: string | null; status: string;
     type: string; start_date: string | null; end_date: string | null;
     contribution_points_reward: number; project_id: string;
     workspace_mode: string | null;
@@ -46,6 +46,7 @@ export function toPublicOverview(data: any): PublicOverview {
     challenge: {
       uuid: c.uuid,
       title: c.title,
+      slug: c.slug,
       description: c.description ?? null,
       status: c.status,
       type: c.type,

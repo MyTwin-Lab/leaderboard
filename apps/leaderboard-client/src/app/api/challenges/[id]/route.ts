@@ -4,12 +4,15 @@ import { parseMlRewardRules } from '../../../../../../../packages/database-servi
 import { parseCodeRewardRules } from '../../../../../../../packages/database-service/domain/codeRewardRules';
 import { verifyRequestToken } from '@/lib/auth';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
+import { slugField, slugTakenResponse } from '@/lib/server/slugs';
 import { z } from 'zod';
 
 const challengeRepo = new ChallengeRepository();
 
 const updateChallengeSchema = z.object({
   title: z.string().min(1).optional(),
+  // Modifié, l'ancien slug reste une redirection (voir ChallengeRepository.update).
+  slug: slugField.optional(),
   status: z.string().optional(),
   type: z.string().optional(),
   start_date: z.string().nullish(),
@@ -130,7 +133,9 @@ export async function PUT(
         { status: 400 }
       );
     }
-    
+    const slugTaken = slugTakenResponse(error);
+    if (slugTaken) return slugTaken;
+
     console.error('Error updating challenge:', error);
     return NextResponse.json(
       { error: 'Failed to update challenge' },

@@ -39,6 +39,7 @@ vi.mock('../../../../../../../packages/services/compute/compute-request.service.
 }));
 
 import { PUT, DELETE } from './route';
+import { SlugTakenError } from '../../../../../../../packages/database-service/domain/slug';
 
 const CHALLENGE_ID = 'challenge-1';
 
@@ -158,6 +159,35 @@ describe('PUT /api/challenges/[id] — reward_rules accepts either an ML or a co
     expect(res.status).toBe(400);
     expect(body.error).toBe('Invalid reward_rules');
     expect(mockChallengeUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('PUT /api/challenges/[id] — slug', () => {
+  beforeEach(() => {
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'code', status: 'active' });
+  });
+
+  it('passes a new slug to the repository, which keeps the old one as a redirect', async () => {
+    const res = await putBody({ slug: 'renamed' });
+
+    expect(res.status).toBe(200);
+    expect(mockChallengeUpdate).toHaveBeenCalledWith(CHALLENGE_ID, expect.objectContaining({ slug: 'renamed' }));
+  });
+
+  it('rejects a slug shaped like an id', async () => {
+    const res = await putBody({ slug: '8e53bee5-27d0-483d-9adf-091e5df9f2e8' });
+
+    expect(res.status).toBe(400);
+    expect(mockChallengeUpdate).not.toHaveBeenCalled();
+  });
+
+  it('answers 409 with a suggestion when the slug is taken', async () => {
+    mockChallengeUpdate.mockRejectedValue(new SlugTakenError('renamed', 'renamed-2'));
+
+    const res = await putBody({ slug: 'renamed' });
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ field: 'slug', suggestion: 'renamed-2' });
   });
 });
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   AppSettingsRepository,
+  ChallengeRepository,
   SandboxRepository,
   SandboxRewardRepository,
   SandboxStarRepository,
@@ -17,6 +18,7 @@ import { toSandboxView } from "@/lib/public/sandbox";
 export const dynamic = "force-dynamic";
 
 const sandboxRepo = new SandboxRepository();
+const challengeRepo = new ChallengeRepository();
 const starRepo = new SandboxStarRepository();
 const rewardRepo = new SandboxRewardRepository();
 const userRepo = new UserRepository();
@@ -53,14 +55,20 @@ export async function GET(request: NextRequest) {
     const all = await sandboxRepo.findAll({ includeArchived: true });
     const visible = all.filter((sandbox) => canSeeSandbox(sandbox, viewer));
     const ids = visible.map((sandbox) => sandbox.uuid);
+    const promotedIds = [
+      ...new Set(visible.flatMap((sandbox) => (sandbox.promoted_challenge_id ? [sandbox.promoted_challenge_id] : []))),
+    ];
 
-    const [counts, paidMap, authors, settings] = await Promise.all([
+    const [counts, paidMap, authors, settings, promotedChallenges] = await Promise.all([
       starRepo.countActiveBySandboxIds(ids),
       rewardRepo.paidTierThresholdsBySandboxIds(ids),
       userRepo.findByIds([...new Set(visible.map((sandbox) => sandbox.user_id))]),
       appSettingsRepo.get(),
+      // La carte d'une proposition promue mène au challenge : il faut son slug.
+      challengeRepo.findByIds(promotedIds),
     ]);
     const authorById = new Map(authors.map((author) => [author.uuid, author]));
+    const promotedSlugById = new Map(promotedChallenges.map((challenge) => [challenge.uuid, challenge.slug]));
 
     const myStars = await resolveMyStars(ids, viewer);
 
@@ -73,6 +81,9 @@ export async function GET(request: NextRequest) {
           starCount: counts.get(sandbox.uuid) ?? 0,
           myStar: myStars.has(sandbox.uuid),
           paidTierThresholds: paidMap.get(sandbox.uuid) ?? [],
+          promotedChallengeSlug: sandbox.promoted_challenge_id
+            ? promotedSlugById.get(sandbox.promoted_challenge_id) ?? null
+            : null,
         }),
       ),
       // Les paliers et le bonus sont la règle du jeu affichée : publics, et
@@ -114,6 +125,7 @@ export async function POST(request: NextRequest) {
       user_id: session.userId,
       type: parsed.data.type,
       title: parsed.data.title,
+      slug: parsed.data.slug,
       context: parsed.data.context ?? null,
       goals: parsed.data.goals,
       why: parsed.data.why ?? null,

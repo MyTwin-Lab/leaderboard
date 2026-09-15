@@ -102,6 +102,7 @@ export async function fetchProjectsWithChallenges(
         )
         .map((challenge) => ({
           id: challenge.uuid,
+          slug: challenge.slug,
           // DB column is NOT NULL (serial), but shared domain types mark it optional.
           // Normalize here so UI types can rely on `index: number`.
           index: challenge.index ?? 0,
@@ -173,6 +174,7 @@ export async function fetchTrendingChallenges(limit: number): Promise<TrendingCh
     const project = projectsMap.get(c.project_id);
     return {
       id: c.uuid,
+      slug: c.slug,
       index: c.index ?? 0,
       title: c.title,
       type: c.type ?? "code",
@@ -205,7 +207,7 @@ export async function fetchTrendingChallenges(limit: number): Promise<TrendingCh
     .map(toTrending);
 }
 
-export type LabChallenge = { id: string; title: string; type: string; description: string | null };
+export type LabChallenge = { id: string; slug: string; title: string; type: string; description: string | null };
 
 /**
  * Les challenges que la landing du Lab met en vitrine : ceux qu'un anonyme peut
@@ -220,5 +222,5 @@ export async function fetchLabChallenges(limit: number): Promise<LabChallenge[]>
     .sort((a, b) =>
       Number(b.status === "active") - Number(a.status === "active") || (b.index ?? 0) - (a.index ?? 0))
     .slice(0, limit)
-    .map((c) => ({ id: c.uuid, title: c.title, type: c.type, description: c.description ?? null }));
+    .map((c) => ({ id: c.uuid, slug: c.slug, title: c.title, type: c.type, description: c.description ?? null }));
 }

@@ -531,6 +531,8 @@ export const sandboxCreateSchema = z
   .object({
     type: z.enum(["code", "ml"]),
     title: z.string().trim().min(3).max(255),
+    /** Absent : dérivé du titre par le repository. */
+    slug: slugSchema.optional(),
     context: z.string().trim().max(20000).optional(),
     goals: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
     why: z.string().trim().max(20000).optional(),
@@ -553,6 +555,8 @@ export const sandboxCreateSchema = z
  */
 export const sandboxUpdateSchema = z.object({
   title: z.string().trim().min(3).max(255).optional(),
+  /** Modifié, l'ancien slug reste une redirection. */
+  slug: slugSchema.optional(),
   context: z.string().trim().max(20000).nullable().optional(),
   goals: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
   why: z.string().trim().max(20000).nullable().optional(),

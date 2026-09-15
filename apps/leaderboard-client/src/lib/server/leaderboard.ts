@@ -210,7 +210,7 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     if (!sandbox) continue;
     let entry = sandboxesMap.get(sandbox.uuid);
     if (!entry) {
-      entry = { id: sandbox.uuid, title: sandbox.title, status: sandbox.status, totalCP: 0, rewards: [] };
+      entry = { id: sandbox.uuid, slug: sandbox.slug, title: sandbox.title, status: sandbox.status, totalCP: 0, rewards: [] };
       sandboxesMap.set(sandbox.uuid, entry);
     }
     entry.totalCP += reward.points;

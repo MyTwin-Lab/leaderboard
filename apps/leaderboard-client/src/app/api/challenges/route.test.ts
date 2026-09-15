@@ -46,6 +46,7 @@ vi.mock('@/lib/db', () => ({
 }));
 
 import { GET, POST } from './route';
+import { SlugTakenError } from '../../../../../../packages/database-service/domain/slug';
 
 function getChallenges(query = '', token?: string) {
   const req = new NextRequest(`http://localhost/api/challenges${query}`, {
@@ -133,6 +134,39 @@ describe('GET /api/challenges', () => {
     const res = await getChallenges();
 
     expect(res.status).toBe(500);
+  });
+});
+
+describe('POST /api/challenges — slug', () => {
+  it('lets the repository derive the slug when none is sent', async () => {
+    const res = await postChallenge(validBody, 'valid-token');
+
+    expect(res.status).toBe(201);
+    expect(mockChallengeCreate.mock.calls[0][0].slug).toBeUndefined();
+  });
+
+  it('passes a requested slug through', async () => {
+    const res = await postChallenge({ ...validBody, slug: 'new-challenge' }, 'valid-token');
+
+    expect(res.status).toBe(201);
+    expect(mockChallengeCreate.mock.calls[0][0].slug).toBe('new-challenge');
+  });
+
+  it('rejects a malformed slug before touching the repository', async () => {
+    const res = await postChallenge({ ...validBody, slug: 'Not A Slug' }, 'valid-token');
+
+    expect(res.status).toBe(400);
+    expect(mockChallengeCreate).not.toHaveBeenCalled();
+  });
+
+  it('answers 409 with a free suggestion when the slug is taken', async () => {
+    mockChallengeCreate.mockRejectedValue(new SlugTakenError('new-challenge', 'new-challenge-2'));
+
+    const res = await postChallenge({ ...validBody, slug: 'new-challenge' }, 'valid-token');
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ field: 'slug', suggestion: 'new-challenge-2' });
+    expect(mockRepoCreate).not.toHaveBeenCalled();
   });
 });
 

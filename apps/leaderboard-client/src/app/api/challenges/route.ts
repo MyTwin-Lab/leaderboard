@@ -10,6 +10,7 @@ import { parseMlRewardRules } from '../../../../../../packages/database-service/
 import { parseCodeRewardRules } from '../../../../../../packages/database-service/domain/codeRewardRules';
 import { validationModeFor } from '../../../../../../packages/services/challenge/validation-mode';
 import { repositories } from '@/lib/db';
+import { slugField, slugTakenResponse } from '@/lib/server/slugs';
 import { z } from 'zod';
 
 const challengeRepo = new ChallengeRepository();
@@ -18,6 +19,8 @@ const challengeRepoRepo = new ChallengeRepoRepository();
 
 const createChallengeSchema = z.object({
   title: z.string().min(1),
+  // Absent : dérivé du titre par le repository. Présent : doit être libre (409).
+  slug: slugField.optional(),
   status: z.string(),
   type: z.string().default('code'),
   // Optional: a challenge can be created before its schedule is known.
@@ -186,7 +189,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+    const slugTaken = slugTakenResponse(error);
+    if (slugTaken) return slugTaken;
+
     console.error('Error creating challenge:', error);
     return NextResponse.json(
       { error: 'Failed to create challenge' },

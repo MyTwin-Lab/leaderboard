@@ -5,7 +5,7 @@ import { toPublicOverview, toSignedInOverview } from './overview';
 // regresses to a pass-through fails loudly rather than quietly leaking.
 const RAW = {
   challenge: {
-    uuid: 'c1', title: 'Alpha', description: 'desc', status: 'active',
+    uuid: 'c1', title: 'Alpha', slug: 'alpha', description: 'desc', status: 'active',
     type: 'code', start_date: '2026-01-01', end_date: '2026-02-01',
     contribution_points_reward: 1000, project_id: 'p1',
     workspace_mode: 'provided_repo',
@@ -65,7 +65,7 @@ describe('toPublicOverview', () => {
   it('keeps what the showcase needs', () => {
     const result = toPublicOverview(RAW as any);
     expect(result.challenge).toEqual({
-      uuid: 'c1', title: 'Alpha', description: 'desc', status: 'active',
+      uuid: 'c1', title: 'Alpha', slug: 'alpha', description: 'desc', status: 'active',
       type: 'code', start_date: '2026-01-01', end_date: '2026-02-01',
       contribution_points_reward: 1000, project_id: 'p1',
       workspace_mode: 'provided_repo',

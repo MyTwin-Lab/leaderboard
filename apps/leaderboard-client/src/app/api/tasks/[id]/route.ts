@@ -79,7 +79,9 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(task);
+    // La page de la tâche renvoie vers celle du challenge, qui vit à son slug.
+    const challenge = await challengeRepo.findById(task.challenge_id);
+    return NextResponse.json({ ...task, challenge_slug: challenge?.slug ?? null });
   } catch (error) {
     console.error('Error fetching task:', error);
     return NextResponse.json(

@@ -3,18 +3,22 @@ import { NextRequest } from 'next/server';
 
 const {
   mockGetSessionUser, mockVerifyAdmin, mockCanAccessChallengeInternals,
-  mockMeetingFindById, mockCancelMeeting,
+  mockMeetingFindById, mockCancelMeeting, mockChallengeFindById,
 } = vi.hoisted(() => ({
   mockGetSessionUser: vi.fn(),
   mockVerifyAdmin: vi.fn(),
   mockCanAccessChallengeInternals: vi.fn(),
   mockMeetingFindById: vi.fn(),
   mockCancelMeeting: vi.fn(),
+  mockChallengeFindById: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({
   getSessionUser: mockGetSessionUser,
   verifyAdmin: mockVerifyAdmin,
+}));
+vi.mock('@/lib/db', () => ({
+  repositories: { challenge: { findById: mockChallengeFindById } },
 }));
 vi.mock('@/lib/server/managerAuth', () => ({
   canAccessChallengeInternals: mockCanAccessChallengeInternals,
@@ -69,6 +73,7 @@ beforeEach(() => {
   mockGetSessionUser.mockResolvedValue(VIEWER);
   mockCanAccessChallengeInternals.mockResolvedValue(true);
   mockMeetingFindById.mockResolvedValue(RAW_MEETING);
+  mockChallengeFindById.mockResolvedValue({ uuid: 'challenge-1', slug: 'standup-challenge' });
   mockVerifyAdmin.mockResolvedValue({ userId: 'admin-1', role: 'admin', email: 'a@b.com' });
 });
 
@@ -113,6 +118,8 @@ describe('GET /api/sync-meetings/[id]', () => {
         meet_link: RAW_MEETING.meet_link,
         status: 'scheduled',
         created_by: 'manager-1',
+        // Pour le lien « back to challenge », qui vit au slug.
+        challenge_slug: 'standup-challenge',
       },
     });
     expect(mockMeetingFindById).toHaveBeenCalledWith(MEETING_ID);

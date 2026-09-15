@@ -8,6 +8,7 @@ const SANDBOX = {
   user_id: "author-1",
   type: "ml",
   title: "Bruit de fond IRM",
+  slug: "bruit-de-fond-irm",
   context: "contexte",
   goals: ["nettoyer", "publier"],
   why: "parce que",
@@ -67,6 +68,20 @@ function view(viewer: SandboxViewer, overrides: Record<string, unknown> = {}) {
 }
 
 describe("toSandboxView", () => {
+  it("publie le slug, dont la page publique a besoin pour se lier", () => {
+    expect(view(ANONYMOUS).slug).toBe("bruit-de-fond-irm");
+  });
+
+  it("ne donne le slug du challenge promu qu'à une proposition promue", () => {
+    expect(view(ANONYMOUS, { promotedChallengeSlug: "stale" }).promoted_challenge_slug).toBeNull();
+
+    const promoted = view(ANONYMOUS, {
+      sandbox: { ...SANDBOX, status: "promoted", promoted_challenge_id: "c1" },
+      promotedChallengeSlug: "bruit-de-fond-irm",
+    });
+    expect(promoted.promoted_challenge_slug).toBe("bruit-de-fond-irm");
+  });
+
   it("ne donne ni score ni email à un visiteur anonyme", () => {
     const result = view(ANONYMOUS);
 

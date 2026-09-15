@@ -79,6 +79,8 @@ export type ContributorSandboxReward = {
 
 export type ContributorSandbox = {
   id: string;
+  /** Pour lier `/sandbox/<slug>` depuis la fiche du contributeur. */
+  slug: string;
   title: string;
   /** `open` / `promoted` / `archived`. */
   status: string;
@@ -138,6 +140,8 @@ export type TeamMember = {
 
 export type ProjectChallengeSummary = {
   id: string;
+  /** Segment de l'URL publique : `/challenges/<slug>`. Les URLs admin gardent `id`. */
+  slug: string;
   index: number;
   title: string;
   description: string | null;
@@ -166,6 +170,7 @@ export type ProjectWithChallenges = {
 
 export type TrendingChallenge = {
   id: string;
+  slug: string;
   index: number;
   title: string;
   type: string;
@@ -206,6 +211,7 @@ export type HomePodiumEntry = HomeLeaderboardEntry & {
 
 export type HomeTrendingChallenge = {
   id: string;
+  slug: string;
   title: string;
   type: string;
   typeLabel: string;

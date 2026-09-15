@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SyncMeetingService } from '../../../../../../../packages/services/sync-meeting/sync-meeting.service.js';
 import { verifyAdmin, getSessionUser } from '@/lib/auth';
+import { repositories } from '@/lib/db';
 import { loadAccessibleMeeting, toMeetingView } from '../meetingAccess';
 
 export async function GET(
@@ -20,7 +21,9 @@ export async function GET(
       return NextResponse.json({ error: 'Meeting not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ meeting: toMeetingView(meeting) });
+    // La page du meeting renvoie vers celle du challenge, qui vit à son slug.
+    const challenge = await repositories.challenge.findById(meeting.challenge_id);
+    return NextResponse.json({ meeting: { ...toMeetingView(meeting), challenge_slug: challenge?.slug ?? null } });
   } catch (error) {
     console.error('[SyncMeetings] GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch meeting' }, { status: 500 });

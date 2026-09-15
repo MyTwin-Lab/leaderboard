@@ -21,6 +21,12 @@ export function buildGroupInviteDraft(input: {
   recipientId: string;
   challengeId: string;
   challengeTitle: string;
+  /**
+   * Pour lier la page du challenge. Figé comme le titre : s'il change ensuite,
+   * l'ancien slug redirige. Les invitations écrites avant les slugs n'ont que
+   * `challengeId`, dont l'URL redirige elle aussi.
+   */
+  challengeSlug: string;
   groupToken: string;
   fromUserId: string;
   fromName: string;
@@ -31,6 +37,7 @@ export function buildGroupInviteDraft(input: {
     payload: {
       challengeId: input.challengeId,
       challengeTitle: input.challengeTitle,
+      challengeSlug: input.challengeSlug,
       groupToken: input.groupToken,
       fromUserId: input.fromUserId,
       fromName: input.fromName,

@@ -82,6 +82,7 @@ export async function POST(
         recipientId,
         challengeId,
         challengeTitle: challenge.title,
+        challengeSlug: challenge.slug,
         groupToken: participation.group_id,
         fromUserId: user.id,
         fromName: inviter?.full_name ?? 'A contributor',

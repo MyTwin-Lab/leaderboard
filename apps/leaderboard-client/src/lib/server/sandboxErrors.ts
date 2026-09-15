@@ -6,6 +6,7 @@ import {
   SelfStarError,
   StarRateLimitedError,
 } from "../../../../../packages/services/sandbox";
+import { slugTakenResponse } from "./slugs";
 
 /**
  * Traduit les erreurs typées de `SandboxService` en réponses HTTP.
@@ -38,5 +39,6 @@ export function sandboxErrorResponse(error: unknown): NextResponse | null {
   if (error instanceof StarRateLimitedError) {
     return NextResponse.json({ error: error.message }, { status: 429 });
   }
-  return null;
+  // Création, édition et promotion : un slug pris répond comme sur les challenges.
+  return slugTakenResponse(error);
 }
