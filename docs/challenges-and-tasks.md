@@ -79,10 +79,10 @@ There is **no Join button on the brief**. The page has exactly one, in the heade
 
 ## Workspace modes (code challenges)
 
-Chosen once, at challenge creation (`challenges.workspace_mode`):
+Chosen once, at challenge creation (`workspace_mode` in `challenges.flow_config`):
 
 - **`provided_repo`** — the challenge owns a GitHub repo (`challenge_repos`). When a contributor joins, the provisioner creates a personal branch for them, named `contrib/<challenge-index>-<username>` (protected so only that contributor can push to it).
-- **`own_repo`** — no repo is created for the challenge. Each contributor declares the URL of their own **public** GitHub repository from their board, via `PATCH /api/challenges/[id]/workspace`. Private repos are out of scope for v1.
+- **`own_repo`** — no repo is created for the challenge. Each contributor declares the URL of their own **public** GitHub repository from their board, via `PATCH /api/challenges/[id]/flow/workspace`. Private repos are out of scope for v1.
 
 Either way, the workspace lives on the contributor's `challenge_teams` row (`workspace_provider`, `workspace_ref`, `workspace_url`, `workspace_status: pending | ready | failed`), not on a task.
 
@@ -119,7 +119,7 @@ Fetch scope: `GET /api/tasks?challenge_id=…&scope=mine|template|all`.
 
 There is no more per-task evaluation. Once a contributor has **at least one task and all of their personal tasks are `done`**, and their workspace is ready (branch `ready`, or repo URL filled in for `own_repo`), they can trigger a project-wide evaluation from their board:
 
-`POST /api/challenges/[id]/project-evaluation`
+`POST /api/challenges/[id]/flow/project-evaluation`
 
 1. Checks the preconditions above and rejects if an evaluation is already `running` for that contributor.
 2. Upserts a `contributions` row of `type: 'project'` for `(challenge, contributor)` — the code equivalent of the ML `dataset`/`model`/`api_packaging` contribution types.
@@ -164,15 +164,15 @@ An admin can designate a contributor as the **manager** of a project (`/admin/pr
 
 1. **Join a challenge** via `POST /api/challenges/:id/join`. This creates your `challenge_teams` participation, copies the template into your own board, and (in `provided_repo` mode) provisions your personal branch.
 2. **Work your board** — create/edit/reorder your own tasks, drag them through `todo → in_progress → done` (`PATCH /api/tasks/[id]`).
-3. **Set your workspace** — in `own_repo` mode, declare your public GitHub repo URL via `PATCH /api/challenges/[id]/workspace`; in `provided_repo` mode, your branch is already provisioned for you.
-4. **Trigger evaluation** once your board is fully `done` and your workspace is ready: `POST /api/challenges/[id]/project-evaluation`.
+3. **Set your workspace** — in `own_repo` mode, declare your public GitHub repo URL via `PATCH /api/challenges/[id]/flow/workspace`; in `provided_repo` mode, your branch is already provisioned for you.
+4. **Trigger evaluation** once your board is fully `done` and your workspace is ready: `POST /api/challenges/[id]/flow/project-evaluation`.
 5. **Earn CP immediately** — points from a successful run land on your ledger as soon as the run completes, no need to wait for the challenge to close. You can iterate and relaunch for more.
 
 ---
 
 ## Linking tasks to contributions
 
-Tasks are purely organizational and never become a contribution directly. For a code challenge, `POST /api/challenges/[id]/project-evaluation` creates/updates a single `contributions` row of `type: 'project'` per contributor, scoring their whole delivery — see the spec for the full pipeline. For an ML challenge, a contribution is created directly from the ML workspace submission flow instead (no task involved) — see [`ml-rewards.md`](./ml-rewards.md).
+Tasks are purely organizational and never become a contribution directly. For a code challenge, `POST /api/challenges/[id]/flow/project-evaluation` creates/updates a single `contributions` row of `type: 'project'` per contributor, scoring their whole delivery — see the spec for the full pipeline. For an ML challenge, a contribution is created directly from the ML workspace submission flow instead (no task involved) — see [`ml-rewards.md`](./ml-rewards.md).
 
 ---
 
@@ -180,7 +180,7 @@ Tasks are purely organizational and never become a contribution directly. For a 
 
 ```
 projects (manager_id → users, optional)
-  └── challenges (type: code | ml, workspace_mode for code)
+  └── challenges (type: a flow key — code | ml | endpoint-validation | journey-validation; flow_config)
         ├── challenge_teams  → users (+ workspace_provider/ref/url/status for code)
         ├── challenge_repos  → repos
         ├── challenge_documents  (incl. brief.md)
@@ -200,6 +200,7 @@ projects (manager_id → users, optional)
 - `packages/provisioner/src/index.ts` — `provisionContributorWorkspace()`, personal branch provisioning
 - `apps/leaderboard-client/src/lib/server/managerAuth.ts` — resolves project-manager authorization
 - `apps/leaderboard-client/src/app/challenges/[slug]/manage/` — the manager view (mirrors the admin challenge view, which stays at `/admin/challenges/[id]`)
-- `apps/leaderboard-client/src/app/api/challenges/` — includes `join/`, `workspace/`, `project-evaluation/`, `close/`, `overview/` (the aggregated page read), `documents/` (the brief), `ml-rewards/` (pool/breakdown, serves both `ml` and `code` challenges)
+- `apps/leaderboard-client/src/app/api/challenges/` — includes `join/`, `close/`, `overview/` (the aggregated page read), `documents/` and `brief/`, `rewards/` (pool/breakdown), and the generic dispatchers `flow/[...action]` and `ext/[key]/[...action]` to the actions flows and extensions declare
+- `content/flows/code/actions/` — the code flow's `workspace` and `project-evaluation` actions
 - `apps/leaderboard-client/src/app/api/tasks/`
 - `apps/leaderboard-client/src/lib/challengeBrief.ts` — brief convention and gate

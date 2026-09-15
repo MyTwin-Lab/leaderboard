@@ -76,8 +76,8 @@ two consecutive reads must never disagree on who the holder is.
 | `api/tasks` (GET `scope=mine`, POST) | the board the caller works on |
 | `api/tasks/[id]` | whose task it is |
 | `api/tasks/[id]/details` | reports `board_owner_id` to the page |
-| `api/challenges/[id]/workspace` | whose declared repo is being set |
-| `api/challenges/[id]/ml-workspace` | `userUrls`, `datasetUrls`, contribution lookup |
+| `content/flows/code/actions/workspace.ts` (`flow/workspace`) | whose declared repo is being set |
+| `content/flows/ml/actions/workspace.ts` (`flow/workspace`) | `userUrls`, `datasetUrls`, contribution lookup |
 | `api/challenges/[id]/overview` | reports `my_workspace_owner_id` |
 | `code-rewards.service`, `ml-rewards.service`, `lineage` | whose contribution is scored |
 

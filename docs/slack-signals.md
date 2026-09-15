@@ -7,8 +7,8 @@ Challenges can reward the collaboration that happens **outside the code** — in
 ## How it works
 
 ```
-Vercel cron (daily, 06:00 UTC)
-  → GET /api/cron/slack-signals            (Bearer CRON_SECRET)
+GET /api/cron/tick (every minute, Bearer CRON_SECRET)
+  → job slack-signals.detect (daily, 06:00 UTC)
     → for each active challenge with a Slack config:
         1. fetch new channel messages since the last cursor (conversations.history)
         2. resolve each author to a leaderboard user by email (users.info → users.email)
@@ -25,7 +25,7 @@ Every attribution is auditable: the ledger row's `meta` carries the signal, the 
 
 1. **Connect Slack** — an admin pastes a bot token in the Integrations tab of `/contributors/me`. Scopes and app creation are covered in [`admin-settings.md`](./admin-settings.md#slack). Don't forget to invite the bot to the channel.
 2. **Configure the challenge** — in the challenge edit drawer (admins and project managers), the **Discussion signals** section lets you pick the channel and define signals: an icon (from a predefined set), a label, a CP reward, and a written definition. The definition is what the AI matches against — the more precise, the better the detections.
-3. **Wait for the cron** (or trigger it manually):
+3. **Wait for the daily job** (or trigger it manually — `/api/cron/slack-signals` runs just this job, kept until challenge 020 L7):
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/slack-signals
@@ -61,13 +61,14 @@ Slack authors are matched to leaderboard users **by email**, before the LLM call
 
 | File | Purpose |
 |------|---------|
-| `packages/connectors/implementation/Slack.connector.ts` | Slack Web API: messages, user profiles, channel list, rate-limit retry |
+| `content/connectors/slack/connector.ts` | Slack Web API: messages, user profiles, channel list, rate-limit retry |
 | `packages/slack-signal-agent/` | GPT-4o detection agent — prompt, Zod schemas, post-parse guards |
 | `packages/services/slack/slack-signals.service.ts` | Per-challenge ingestion: cursor, resolution, dedup, ledger writes |
 | `packages/services/slack/cron-slack-signals.ts` | Loops over configured challenges (one failure doesn't block the rest) |
 | `packages/config/slackCredentials.ts` | Encrypted bot token access (DB, falls back to `SLACK_BOT_TOKEN`) |
 | `packages/database-service/repositories/challengeSignal.repo.ts` | Signal definitions CRUD |
 | `packages/database-service/repositories/challengeSlackConfig.repo.ts` | Channel config + cron cursor |
-| `apps/leaderboard-client/src/app/api/cron/slack-signals/route.ts` | Cron entry point |
+| `content/extensions/slack-signals/index.ts` | The extension, attached to every flow: rule key `slack_signal`, the `discussion` contribution type, the `slack-signals.detect` job and the `signals` / `config` actions under `/api/challenges/[id]/ext/slack-signals/` |
+| `content/extensions/slack-signals/actions.ts` | Signal and channel config handlers |
 | `apps/leaderboard-client/src/components/admin/ChallengeSlackSignalsEditor.tsx` | Channel + signals editor in the challenge drawer |
-| `apps/leaderboard-client/src/components/contributor/SlackConnectionCard.tsx` | Bot token connection card (Integrations tab) |
+| `content/connectors/slack/integration.ts` | The Slack integration: bot token, and the `channels` extra (`GET /api/integrations/slack/extras/channels`) shown in the generic `IntegrationCard` |

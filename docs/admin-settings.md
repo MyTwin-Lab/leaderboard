@@ -1,6 +1,6 @@
 # Admin Settings
 
-A handful of instance-wide settings — appearance, external integrations, and feature toggles — are controlled by admins from the **Appearance**, **Integrations** and **Modules** tabs on their own profile page (`/contributors/me`). All of them are stored in a single singleton database row (`app_settings`, `id = 1`) and take effect immediately for every user.
+Instance-wide settings — appearance, external integrations and product modules — are controlled by admins from the **Appearance**, **Integrations** and **Modules** tabs on their own profile page (`/contributors/me`). They take effect immediately for every user. The theme lives in the `app_settings` singleton row; connections live in `integration_credentials`, module states and settings in `module_settings`.
 
 ---
 
@@ -14,113 +14,77 @@ Admins can pick a predefined color theme for the whole app (e.g. Blue, Purple, G
 
 ---
 
-## Integrations: GitHub, Kaggle, Slack, OpenAI & Scaleway
+## Integrations
 
-All integrations follow the same pattern: instead of relying solely on a static token in `.env`, an admin connects an account from the UI. The credential is encrypted (AES-256-GCM) and stored in `app_settings`; the encryption key itself never enters the database. Connectors automatically prefer the database credential and fall back to the `.env` value if nothing is connected.
+Every integration is declared by its content package (connector or extension) and registered by the distribution; the Integrations tab renders one generic card per installed integration (`IntegrationCard`). A declaration gives its authentication mode (`oauth`, or `api_key` with its fields), a live check against the provider, what can be shown of a connection, and optional extras.
 
-### GitHub
+The credential is encrypted (AES-256-GCM, key `GITHUB_TOKEN_ENCRYPTION_KEY`) and stored in `integration_credentials` (`key`, `secret_enc`, `secret_iv`, `meta`, `connected_at`, `connected_by`); the encryption key never enters the database. Consumers resolve the credential at call time, so a connection takes effect without a restart.
 
-Connecting a GitHub org account replaces the static `GITHUB_TOKEN` for all connector operations (commits, file contents, branch provisioning).
+| Integration | Declared in | Auth | Fallback when not connected |
+|-------------|-------------|------|------------------------------|
+| `github` | `content/connectors/github/integration.ts` | OAuth — the account must own or administer a GitHub organization | `GITHUB_TOKEN` |
+| `kaggle` | `content/connectors/kaggle/integration.ts` | Username + API key | `KAGGLE_USERNAME` / `KAGGLE_KEY` |
+| `slack` | `content/connectors/slack/integration.ts` | Bot token (`xoxb-…`) | `SLACK_BOT_TOKEN` |
+| `openai` | `content/integrations/openai/integration.ts` | API key | `OPENAI_API_KEY` |
+| `scaleway` | `content/extensions/compute/integration.ts` | Secret key, project ID, zone | none — the compute panel is hidden |
 
-1. Admin clicks **Connect GitHub Account** in the Appearance tab.
-2. `GET /api/github-oauth/authorize` redirects to GitHub's OAuth consent screen.
-3. `GET /api/github-oauth/callback` exchanges the code for a token, then checks that the authorizing account is an **owner or admin of a GitHub organization** — personal accounts without an org membership are rejected with a clear error.
-4. The token is encrypted and stored (`app_settings.github_token_enc` / `github_token_iv` / `github_org` / `github_connected_at` / `github_connected_by`).
-5. `DELETE /api/github-oauth/connection` disconnects — connectors immediately revert to the `.env` `GITHUB_TOKEN`.
-6. `GET /api/github-oauth/status` reports connection state (never the token itself).
+Routes (`apps/leaderboard-client/src/app/api/integrations/`):
 
-Setting up the OAuth App itself (client ID/secret, callback URL) is covered in [`github-setup.md`](./github-setup.md).
+- `GET /api/integrations` — admin-only, the installed integrations with their fields, state and connection details.
+- `POST` / `DELETE /api/integrations/[key]/connection` — admin-only, connect with an API key (verified live before it is stored) or disconnect.
+- `GET /api/integrations/[key]/authorize` and `/callback` — the OAuth flow. `/api/github-oauth/callback` remains as an alias of the GitHub callback (see [`deployment.md`](./deployment.md#integrations)).
+- `GET /api/integrations/[key]/status` — `{ connected }` for any signed-in account; the date and details for an admin.
+- `/api/integrations/[key]/extras/[action]` — actions an integration adds, each with its own access. Slack declares `channels` (admin or manager), the channel picker of the challenge edit drawer.
 
-### Kaggle
+Scaleway disconnects **softly**: it sets `meta.disconnect_requested_at` instead of wiping the key. No new request or approval is allowed and the panel disappears, but a running instance lives until its 24h expiry and the compute jobs can still poll and terminate it (see [`compute-power.md`](./compute-power.md)).
 
-Kaggle datasets and models are used by `type: 'ml'` challenges (see [`ml-rewards.md`](./ml-rewards.md)). Connecting a Kaggle account lets the app read dataset metadata and model version metrics on the admin's behalf.
-
-- `POST /api/kaggle/connection` (admin-only) — takes a Kaggle username + API key, verifies them live against Kaggle's API, then encrypts and stores them (`app_settings.kaggle_username` / `kaggle_key_enc` / `kaggle_key_iv` / `kaggle_connected_at` / `kaggle_connected_by`).
-- `DELETE /api/kaggle/connection` — disconnects, falling back to the `KAGGLE_USERNAME` / `KAGGLE_KEY` env vars if set.
-- `GET /api/kaggle/status` — public, returns whether a Kaggle connection is active.
-
-### Slack
-
-Slack powers **discussion contribution signals**: challenges can watch a channel and reward predefined signals detected by AI in the daily conversation (see [`slack-signals.md`](./slack-signals.md)).
-
-Setting up the bot:
-
-1. Create a Slack app on <https://api.slack.com/apps> for your workspace.
-2. Under **OAuth & Permissions**, add the bot scopes `channels:read`, `channels:history`, `users:read` and `users:read.email`, then install the app to the workspace.
-3. Copy the **Bot User OAuth Token** (`xoxb-…`) and paste it in the Slack card of the Integrations tab.
-4. Invite the bot to every channel you want to track (`/invite @your-bot`).
-
-Routes:
-
-- `POST /api/slack/connection` (admin-only) — takes the bot token, verifies it live against Slack's `auth.test` (which also captures the workspace name), then encrypts and stores it (`app_settings.slack_token_enc` / `slack_token_iv` / `slack_team_name` / `slack_connected_at` / `slack_connected_by`).
-- `DELETE /api/slack/connection` — disconnects, falling back to the `SLACK_BOT_TOKEN` env var if set.
-- `GET /api/slack/status` — public, returns whether a Slack connection is active (and the workspace name).
-- `GET /api/slack/channels` (admin/manager) — lists public, non-archived channels for the channel picker in the challenge edit drawer.
-
-### OpenAI
-
-The OpenAI key powers every AI feature: contribution evaluation, meeting analysis and Slack signal detection. Connecting it from the UI replaces the `OPENAI_API_KEY` env var — all agents resolve the key at call time (`getOpenAIApiKey()`), so a key pasted in the UI takes effect without a restart.
-
-- `POST /api/openai/connection` (admin-only) — takes an API key, verifies it live against OpenAI's `/v1/models`, then encrypts and stores it (`app_settings.openai_key_enc` / `openai_key_iv` / `openai_connected_at` / `openai_connected_by`).
-- `DELETE /api/openai/connection` — disconnects, falling back to the `OPENAI_API_KEY` env var if set.
-- `GET /api/openai/status` — public, returns whether an OpenAI key is connected (never the key).
-
-### Scaleway
-
-Scaleway powers **GPU compute requests** on ML challenges: a contributor asks for a temporary GPU instance, a manager approves, and the platform provisions it (see [`compute-power.md`](./compute-power.md)).
-
-Unlike the four integrations above, this one has **no `.env` fallback** — if no account is connected, the compute panel is hidden entirely rather than offering a button that cannot work.
-
-- `POST /api/scaleway/connection` (admin-only) — takes a `secret_key`, a `project_id` and a `zone`, verifies them live against the Scaleway API, then encrypts and stores them (`app_settings.scaleway_secret_key_enc` / `scaleway_secret_key_iv` / `scaleway_project_id` / `scaleway_zone` / `scaleway_connected_at` / `scaleway_connected_by`).
-- `DELETE /api/scaleway/connection` — **soft**-disconnect. It sets `scaleway_disconnect_requested_at` rather than wiping the key: from that point on, no new request or approval is allowed and the panel disappears, but an instance already running keeps living until its natural 24h expiry, and the crons can still reach Scaleway to poll and terminate it. Nothing is left orphaned. Two accessors encode this: `isScalewayUserFacingConnected()` for every gate, `getScalewayCredentials()` (which ignores the flag) for the crons.
-- `GET /api/scaleway/status` — public, returns whether an account is connected plus the project ID (never the key).
+Setting up the Slack bot: create an app on <https://api.slack.com/apps>, add the bot scopes `channels:read`, `channels:history`, `users:read` and `users:read.email`, install it, paste the **Bot User OAuth Token** in the Slack card, and invite the bot to every tracked channel. Setting up the GitHub OAuth App is covered in [`github-setup.md`](./github-setup.md).
 
 ---
 
-## Modules: feature toggles
+## Modules
 
-Two optional UI features can be turned on or off instance-wide from the **Modules** tab, without touching any code or env var. Both are **off on a fresh instance** — an admin opts in.
+Product modules — **meetings**, **onboarding**, **digest** and **sandbox** — are listed on the **Modules** tab (`ModulesPanel`), one toggle each, with a settings editor for the modules that have settings (`apps/leaderboard-client/src/distribution/modules/settings.tsx`). A module without a row in `module_settings` takes the default it declares: sandbox is on, the others are off.
 
-| Toggle | Effect when off |
-|--------|------------------|
-| Meetings | The meetings sidebar is hidden from challenge pages for contributors and managers. |
-| Onboarding | The onboarding drawer is hidden for all non-admin users. |
+A disabled module disappears entirely, not only from the UI: its routes and pages answer 404, its jobs are skipped by the cron tick, its event subscriptions consume nothing, and its UI slots (challenge sections, admin menu entries, public navigation) are hidden.
 
-Turning a module off only hides the UI — onboarding progress keeps being tracked in the background either way, and admin pages are never affected by these flags.
+- `GET /api/modules` — public, the installed modules and whether each is enabled (never their settings).
+- `GET /api/modules/[key]` — admin-only, a module's state and validated settings.
+- `PATCH /api/modules/[key]` — admin-only, `{ enabled?, settings? }`. Settings are merged into the stored ones and validated by the module's schema (400 on invalid settings, 404 for a module the distribution does not install).
 
-- `GET /api/modules` — public, returns `{ meetings_enabled, onboarding_enabled }`.
-- `PATCH /api/modules` — admin-only, updates either flag.
+### Digest settings
+
+| Setting | Purpose |
+|---------|---------|
+| `frequency_days` | Days between two automatic digests (default `7`, range 1–365). |
+
+The module toggle governs the daily `digest.generate` job; while the module is on, **Generate now** on the **Digest** tab works regardless of the schedule. The tab and the `admin/digests` routes go away with the module. See [`digest.md`](./digest.md).
+
+### Sandbox settings
+
+Both **inert by default** — the sandbox pays nothing until an admin configures it.
+
+| Setting | Purpose |
+|---------|---------|
+| `star_tiers` | Ordered `{ stars, cp }` milestones, strictly increasing thresholds. Crossing one credits the author once, out of any pool. Lowering a threshold below a sandbox's star count does not pay retroactively: it is paid on the next star. |
+| `promotion_bonus_cp` | CP credited to the author when their sandbox becomes an official challenge. |
+
+The same editor carries the **star audit**: a sandbox's stars grouped by origin, hashed-IP prefix and day, with the ability to delete stars or a paid reward. Deleting a reward lowers the leaderboard total immediately. If the count is still above a threshold after a cleanup, the milestone is paid again on the next star. See [`sandbox.md`](./sandbox.md).
+
+### Onboarding
+
+The admin-only **Onboarding** tab lists every contributor's quest progress, backed by `GET /api/onboarding/all`. Quests are declared by their owners and completed from platform events, up to a minute after the action. See [`onboarding.md`](./onboarding.md).
 
 ---
 
-## Digest
+## Qualifications
 
-A **Digest** tab lets an admin browse the platform's activity history, cut into frozen periods, and configure how often a new one is generated. Two fields on `app_settings` back it:
+`users.role` is one of `admin`, `contributor`, `viewer`. What a role does not say — being a medical professional, for instance — is a **qualification**, declared by the distribution (MyTwin declares `medical_pro`) and granted per user. Flows read them from their configuration: a validation challenge's `reviewer_qualification`, `eligible_roles` and `expert_comment_qualification`.
 
-| Field | Purpose |
-|-------|---------|
-| `digest_enabled` | Master switch for the daily cron. Defaults to `false` — an admin feature does not turn itself on for existing instances. |
-| `digest_frequency_days` | Days between two automatic digests (default `7`, range 1–365). |
+- `GET /api/qualifications` — admin-only, the qualifications the distribution declares.
+- `PUT` / `DELETE /api/users/[id]/qualifications` — admin-only, grant or revoke one, with an optional note.
 
-`PATCH /api/admin/digest-settings` updates them. **Generate now** ignores `digest_enabled` entirely: the toggle governs the cron, not the button. See [`digest.md`](./digest.md).
-
----
-
-A related admin-only view, the **Onboarding** tab, lists every contributor's onboarding progress (5 quests) regardless of whether the module is enabled for others — backed by `GET /api/onboarding/all`. See [`onboarding.md`](./onboarding.md).
-
----
-
-## Sandbox
-
-Two settings drive the whole sandbox economy, both **inert by default** — the feature pays nothing until an admin configures it.
-
-**Star tiers** — an ordered list of `{ stars, cp }` milestones, as many as wanted, with strictly increasing thresholds. Crossing one credits the sandbox author once, out of any pool. Lowering a threshold below a sandbox's current star count does not pay it retroactively: it is paid on the next star, so saving this form never triggers a wave of payments.
-
-**Promotion bonus** — the CP credited to the author when their sandbox becomes an official challenge.
-
-The same tab carries the **star audit**: a sandbox's stars grouped by origin, hashed-IP prefix and day, with the ability to delete stars, or a paid reward. Deleting a reward lowers the leaderboard total immediately — there is no cached total. One thing to know: if the count is still above a threshold after a cleanup, the milestone is paid again on the next star, the unique index preventing duplicates rather than re-creation.
-
-See [`sandbox.md`](./sandbox.md).
+Grants live in `user_qualifications`; every grant and revocation is logged in `qualification_changes`. The admin user list (`components/admin/UserList.tsx`) edits them.
 
 ---
 
@@ -128,18 +92,20 @@ See [`sandbox.md`](./sandbox.md).
 
 | File | Purpose |
 |------|---------|
-| `packages/database-service/repositories/appSettings.repo.ts` | Singleton read/update for `app_settings` |
-| `packages/config/githubToken.ts` | AES-256-GCM encrypt/decrypt + `getGithubToken()` (DB, falls back to `.env`) |
-| `packages/config/kaggleCredentials.ts` | Same pattern for Kaggle credentials |
-| `packages/config/slackCredentials.ts` | Same pattern for the Slack bot token |
-| `packages/config/openaiCredentials.ts` | Same pattern for the OpenAI API key |
-| `packages/config/scalewayCredentials.ts` | Same pattern for Scaleway — DB only, no `.env` fallback |
+| `packages/database-service/repositories/appSettings.repo.ts` | Singleton read/update for the theme in `app_settings` |
+| `packages/capabilities/crypto.ts` | AES-256-GCM encrypt/decrypt |
+| `packages/capabilities/credentials.ts` | The credentials store (`integration_credentials`) |
+| `packages/connectors/integrations.ts` | Integration contract and `IntegrationRegistry` |
+| `packages/config/githubToken.ts` | `getGithubToken()` — store, then `GITHUB_TOKEN` |
+| `packages/config/{kaggle,slack,openai,scaleway}Credentials.ts` | Same accessors for the other integrations |
+| `packages/capabilities/modules.ts` | Module states and settings (`module_settings`) |
 | `apps/leaderboard-client/src/lib/themes.ts` | Predefined theme palette definitions |
 | `apps/leaderboard-client/src/app/api/admin/theme/route.ts` | Theme update endpoint |
-| `apps/leaderboard-client/src/app/api/github-oauth/` | GitHub OAuth connect/disconnect/status routes |
-| `apps/leaderboard-client/src/app/api/kaggle/` | Kaggle connect/disconnect/status routes |
-| `apps/leaderboard-client/src/app/api/slack/` | Slack connect/disconnect/status/channels routes |
-| `apps/leaderboard-client/src/app/api/openai/` | OpenAI connect/disconnect/status routes |
-| `apps/leaderboard-client/src/app/api/scaleway/` | Scaleway connect/disconnect/status routes |
-| `apps/leaderboard-client/src/app/api/modules/route.ts` | Module toggle read/update |
+| `apps/leaderboard-client/src/app/api/integrations/` | Generic integration routes |
+| `apps/leaderboard-client/src/components/contributor/IntegrationCard.tsx` | Generic integration card |
+| `apps/leaderboard-client/src/distribution/mytwin.integrations.tsx` | Integration icons and OAuth error messages |
+| `apps/leaderboard-client/src/app/api/modules/` | Module list, state and settings routes |
+| `apps/leaderboard-client/src/components/contributor/ModulesPanel.tsx` | Modules tab |
+| `apps/leaderboard-client/src/app/api/qualifications/route.ts` | Declared qualifications |
+| `apps/leaderboard-client/src/app/api/users/[id]/qualifications/route.ts` | Grant and revoke a qualification |
 | `apps/leaderboard-client/src/app/api/onboarding/all/route.ts` | Admin view of all contributors' onboarding progress |

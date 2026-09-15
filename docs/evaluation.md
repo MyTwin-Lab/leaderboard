@@ -11,7 +11,7 @@ The evaluation system uses OpenAI agents to automatically score a contributor's 
 
 For code challenges, evaluation is **project-scoped**, not per-task: tasks are a purely organizational personal kanban and never carry a score. A contributor triggers one evaluation of their whole delivery (branch or repo) once their board is fully `done`.
 
-Triggered via: `POST /api/challenges/:id/project-evaluation`
+Triggered via: `POST /api/challenges/:id/flow/project-evaluation`
 
 Called by the contributor themselves, once their personal board is complete and their workspace is ready. It's fire-and-forget: the route schedules the run and returns immediately; the UI polls the resulting contribution's `evaluation_status`.
 
@@ -22,7 +22,7 @@ Called by the contributor themselves, once their personal board is complete and 
 ## Pipeline
 
 ```
-POST /api/challenges/:id/project-evaluation
+POST /api/challenges/:id/flow/project-evaluation
         ↓
 CodeRewardsService.evaluate({ challengeId, userId })
         ↓
@@ -168,7 +168,7 @@ A sandbox run uses the `code` grid for **both** its types, pays no CP and writes
 | `content/grids/` | Grid seeds (code, model, dataset) |
 | `packages/services/evaluation-grid.service.ts` | CRUD for database-stored grids |
 | `packages/services/database-grid-provider.ts` | Fetches the published grid from the DB at runtime |
-| `apps/leaderboard-client/src/app/api/challenges/[id]/project-evaluation/route.ts` | API endpoint that triggers a project evaluation |
+| `content/flows/code/actions/project-evaluation.ts` | The code flow's `project-evaluation` action, dispatched by `/api/challenges/[id]/flow/[...action]` |
 
 ---
 

@@ -270,10 +270,10 @@ CRON_SECRET=a-random-secret-string
 2. Go to the admin panel > Sync Meetings
 3. Create a new meeting for a challenge with team members
 4. Check Google Calendar — a new event with a Meet link should appear
-5. After the meeting ends, trigger the cron endpoint:
+5. After the meeting ends, trigger the scheduler tick (it runs `meetings.check` with every other due job; the **meetings** module must be enabled — it is off by default):
    ```bash
    curl -H "Authorization: Bearer YOUR_CRON_SECRET" \
-     https://your-app-domain.com/api/cron/check-meetings
+     https://your-app-domain.com/api/cron/tick
    ```
 6. The meeting should transition through statuses: `scheduled` > `completed` > `processed`
 
@@ -288,7 +288,8 @@ When deploying to production (e.g. Scalingo, Heroku, Vercel):
 - [ ] Update `GOOGLE_OAUTH_REDIRECT_URI` to your production URL (e.g. `https://your-app.osc-fr1.scalingo.io/api/google-auth/callback`)
 - [ ] Add the production URL to **Authorized JavaScript origins** and **Authorized redirect URIs** in the [Google Cloud OAuth credentials](#4-create-oauth-20-credentials-user-login)
 - [ ] If using an "External" consent screen, submit for Google verification if you expect more than 100 users
-- [ ] Set up a cron job (e.g. Scalingo Scheduler, external cron service) to call `GET /api/cron/check-meetings` every 5-15 minutes with the `CRON_SECRET` as a Bearer token
+- [ ] Enable the **meetings** module from the Modules tab (disabled by default)
+- [ ] Set up the scheduler (e.g. Scalingo Scheduler) to call `GET /api/cron/tick` every minute with the `CRON_SECRET` as a Bearer token — it runs `meetings.check` along with every other job (see [`deployment.md`](./deployment.md))
 - [ ] Ensure the `GOOGLE_WORKSPACE_SERVICE_ACCOUNT_KEY` JSON is set as a single line (no newlines except within the `private_key` field which uses `\n`)
 - [ ] Verify `GOOGLE_WORKSPACE_ADMIN_EMAIL` has an active Google Workspace license with Calendar enabled
 

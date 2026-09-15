@@ -107,6 +107,19 @@ postdeploy: npm run db:apply-schema && npm run db:upgrade-flow-configs && npm ru
 
 The `postdeploy` hook is what keeps the database in step. It deliberately does **not** run `drizzle-kit push`: push has to disambiguate moved columns through an interactive prompt, and a deploy has no TTY. `scripts/db-apply-schema.ts` applies explicit, idempotent `IF NOT EXISTS` statements instead — so **a new column added to `drizzle.ts` must also be added there**. See [`database.md`](./database.md#migrations).
 
+Since challenge 020, `db-apply-schema` also carries the data takeovers of the platform split. Each one is idempotent — a second pass writes nothing — and leaves the former columns in place, still readable by the previous release:
+
+| Step | What it does |
+|------|--------------|
+| `challenges.flow_config` | Copies `workspace_mode`, `compute_enabled`, `cp_per_validation`, `required_validations` into the flow's configuration; splits `type = 'validation'` into `endpoint-validation` / `journey-validation`, and sets the qualification parameters (`reviewer_qualification`, `eligible_roles`, `expert_comment_qualification`) on configurations that lack them |
+| `user_qualifications`, `qualification_changes` | Every `medical_pro` account becomes `contributor` with the `medical_pro` qualification, logged in both journals |
+| `sandboxes.proposal_fields` | Copies `repo_url`, `model_url`, `dataset_urls`; `sandboxes.type` widens to `varchar(64)` (a flow key) |
+| `integration_credentials` | Copies the GitHub, Kaggle, OpenAI, Slack and Scaleway connections of `app_settings` |
+| `cron_runs` | The lock and last run of each job |
+| `module_settings` | Copies `modules_meetings_enabled`, `modules_onboarding_enabled`, `digest_*` and `sandbox_*` of `app_settings` |
+| `platform_events`, `event_deliveries` | The event outbox and each subscriber's cursor |
+| `onboarding_quest_progress` | Copies the five booleans of `onboarding_progress`, one row per completed quest |
+
 `scripts/db-upgrade-flow-configs.ts` records the upgrades of `challenges.flow_config` to the version each installed flow declares (the application already upgrades an older configuration in memory when it reads it). `scripts/db-seed-grids.ts` then inserts the evaluation grids the installed flows need (`code`, `model`, `dataset`, listed in `src/distribution/mytwin.grids.ts`) when no grid carries their slug yet — the core has no built-in grid, and an evaluation without its grid fails. `scripts/db-resync-rewards.ts` finally rebuilds the derived caches (`contributions.reward`, `challenges.completion`).
 
 **The postdeploy runs while the previous release still serves traffic** — Scalingo only switches routing once it succeeds, and keeps the old release if it fails. Schema changes must therefore keep the old code working. The slug columns are the case in point: they are added nullable, backfilled under a write lock and set `NOT NULL` in one transaction per table, at the very end of `db-apply-schema`. Between that `NOT NULL` and the routing switch (seconds), the old release cannot create a challenge or a sandbox. If the postdeploy fails *after* it, the old release stays up in that state — roll back with `ALTER TABLE challenges ALTER COLUMN slug DROP NOT NULL` (and the same on `sandboxes`) while you fix the deploy. Before the first deploy of a data migration like this one, take a manual backup from the Scalingo dashboard, and preview what will be written with `npm run db:preview-slugs` through `scalingo db-tunnel`.
@@ -128,7 +141,7 @@ JWT_SECRET=your-32+-character-secret
 NODE_ENV=production
 ```
 
-Required for full mode:
+Required for full mode (`OPENAI_API_KEY` and `GITHUB_TOKEN` only as fallbacks of the admin connections):
 ```env
 OPENAI_API_KEY=...
 GITHUB_TOKEN=...
@@ -179,9 +192,11 @@ The tick runs every job whose schedule has come due since its last start (UTC cr
 
 A job with no row in `cron_runs` only catches an occurrence from the last 5 minutes: deploying a daily job at 14:00 runs it the next day, not immediately.
 
-**Scalingo.** Since challenge 020 (L5) the Scalingo Scheduler needs a single entry, `* * * * *`, calling `/api/cron/tick`. Switch it when deploying L5. The five former endpoints (`/api/cron/check-meetings`, `slack-signals`, `compute-provisioning`, `compute-expiration`, `digest`) still answer until L7, each running its job under the same lock, so an old scheduler entry cannot double a run while both coexist.
+The tick checks the secret with `isCronAuthorized` (`apps/leaderboard-client/src/lib/server/cronAuth.ts`). A job owned by a disabled module is recorded as `skipped`. Two core jobs, `core.events.distribute` and `core.events.purge`, deliver the event outbox to its subscribers and purge events older than 30 days.
 
-**Vercel.** `vercel.json` still lists the five former endpoints; whether a Vercel deployment exists is checked in L7.
+**Scalingo.** The Scalingo Scheduler needs a single entry, `* * * * *`, calling `/api/cron/tick`. Switch it on the first deploy of challenge 020. The five former endpoints (`/api/cron/check-meetings`, `slack-signals`, `compute-provisioning`, `compute-expiration`, `digest`) are thin wrappers (`cronJobRoute`, `apps/leaderboard-client/src/lib/server/cronJobRoute.ts`) that run their job under the same lock, so an old scheduler entry cannot double a run while both coexist. They are removed after the switch (see [Post-deploy steps](#post-deploy-steps-l7-not-run-on-the-branch)).
+
+**Vercel.** `vercel.json` still lists the five former endpoints; whether a Vercel deployment exists has to be checked before removing it.
 
 ---
 
@@ -197,8 +212,61 @@ OTEL_SERVICE_NAME=leaderboard-api
 
 These are optional — the app runs fine without them.
 
-## Integrations (challenge 020, L5)
+## Integrations
 
 Admin connections (GitHub, Kaggle, Slack, OpenAI, Scaleway) are stored in `integration_credentials`, encrypted with `GITHUB_TOKEN_ENCRYPTION_KEY`. `db:apply-schema` copies the existing `app_settings` connections on the first deploy; nothing has to be reconnected.
 
-The routes are `/api/integrations/[key]/{connection,status,authorize,callback}`. The GitHub OAuth app keeps `GITHUB_OAUTH_REDIRECT_URI=<origin>/api/github-oauth/callback`: that route is kept as a compatibility alias of `/api/integrations/github/callback`. To move to the new URL, add it to the GitHub OAuth app's callback URLs, then update `GITHUB_OAUTH_REDIRECT_URI` on Scalingo; the alias is removed in L7.
+The routes are `/api/integrations/[key]/{connection,status,authorize,callback,extras/[action]}` (see [`admin-settings.md`](./admin-settings.md)).
+
+**GitHub OAuth callback.** The GitHub OAuth app may keep `GITHUB_OAUTH_REDIRECT_URI=<origin>/api/github-oauth/callback`: that route is kept as a compatibility alias of `/api/integrations/github/callback`. To move to the new URL, first add `<origin>/api/integrations/github/callback` to the OAuth app's callback URLs on GitHub, then update `GITHUB_OAUTH_REDIRECT_URI` on Scalingo. Changing the variable first breaks the connection flow.
+
+**Branch provisioning.** The GitHub workspace provider is always registered and reads the token of the GitHub connection at each call (`getGithubToken()`, `packages/config/githubToken.ts`). While no account is connected, it falls back to `GITHUB_TOKEN`; without either, provisioning answers "unavailable" instead of failing the join.
+
+---
+
+## Post-deploy steps (L7, not run on the branch)
+
+Challenge 020 keeps every former column, route and fallback so that the previous release keeps working during a deploy and a rollback stays possible. Once production has run the new release and the check of each step passes, remove them in this order.
+
+### 1. Former columns
+
+Take a backup first. Check that the takeovers are complete — each query must return `0`:
+
+```sql
+-- flow_config carries what the columns held
+SELECT count(*) FROM challenges WHERE flow_config IS NULL;
+-- no account left on the former role
+SELECT count(*) FROM users WHERE role = 'medical_pro';
+-- proposals copied
+SELECT count(*) FROM sandboxes WHERE proposal_fields -> 'repo_url' IS DISTINCT FROM to_jsonb(repo_url);
+-- connections copied
+SELECT count(*) FROM app_settings s WHERE s.github_token_enc IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM integration_credentials WHERE key = 'github');
+-- module states copied
+SELECT count(*) FROM app_settings WHERE NOT EXISTS (SELECT 1 FROM module_settings WHERE key = 'sandbox');
+```
+
+Then drop, in `scripts/db-apply-schema.ts` (with `IF EXISTS`), `drizzle.ts` and the takeover steps that read them:
+
+- `challenges`: `workspace_mode`, `compute_enabled`, `cp_per_validation`, `required_validations`;
+- `app_settings`: `github_token_enc`, `github_token_iv`, `github_org`, `github_connected_at`, `github_connected_by`, `kaggle_username`, `kaggle_key_enc`, `kaggle_key_iv`, `kaggle_connected_at`, `kaggle_connected_by`, `openai_key_enc`, `openai_key_iv`, `openai_connected_at`, `openai_connected_by`, `slack_token_enc`, `slack_token_iv`, `slack_team_name`, `slack_connected_at`, `slack_connected_by`, `scaleway_secret_key_enc`, `scaleway_secret_key_iv`, `scaleway_project_id`, `scaleway_zone`, `scaleway_connected_at`, `scaleway_connected_by`, `scaleway_disconnect_requested_at`, `modules_meetings_enabled`, `modules_onboarding_enabled`, `digest_enabled`, `digest_frequency_days`, `sandbox_star_tiers`, `sandbox_promotion_bonus_cp`;
+- `sandboxes`: `repo_url`, `model_url`, `dataset_urls` (with `packages/database-service/domain/legacyProposalFields.ts`);
+- the `onboarding_progress` table, with the rollback row `OnboardingProgressRepository` still inserts for a new user and its merge in `accountMerge.repo.ts` (every read already goes through `onboarding_quest_progress`).
+
+### 2. `medical_pro` in the proxy
+
+`apps/leaderboard-client/src/proxy.ts` still accepts the `medical_pro` role, for access tokens issued before the takeover. Remove it **at least 7 days after** the first deploy of challenge 020, once no session can still carry the former role. Check: `SELECT count(*) FROM users WHERE role = 'medical_pro'` returns `0`.
+
+### 3. `GITHUB_TOKEN` fallback
+
+Check that a GitHub account is connected (`SELECT connected_at, meta FROM integration_credentials WHERE key = 'github'`) and that joining a code challenge provisions a branch. Then remove the fallback from `getGithubToken()` and `GITHUB_TOKEN` from `packages/config/index.ts` and the Scalingo environment.
+
+### 4. Cron wrappers
+
+Check that the Scalingo Scheduler has a single `/api/cron/tick` entry and that `SELECT job_key, last_started_at, last_status FROM cron_runs` shows every job running from the tick. Then delete `apps/leaderboard-client/src/app/api/cron/{check-meetings,slack-signals,compute-provisioning,compute-expiration,digest}` and `cronJobRoute`.
+
+### 5. `vercel.json`
+
+Check in the Vercel dashboard whether a project deploys this repository. If none does, delete `vercel.json`; otherwise replace its five entries with a single `* * * * *` entry on `/api/cron/tick`.
+
+The `/api/github-oauth/callback` alias goes once `GITHUB_OAUTH_REDIRECT_URI` points at `/api/integrations/github/callback`.

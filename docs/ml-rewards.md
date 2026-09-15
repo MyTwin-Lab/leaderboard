@@ -27,7 +27,7 @@ An ML challenge has up to four submission slots, each backed by a linked repo:
 | Model (code) | A GitHub repo with the model's training code | AI-scored against the code grid |
 | API packaging | A GitHub repo packaging the model as an API | AI-scored against the code grid |
 
-Contributors submit a URL for each step from the challenge's ML workspace view (`PATCH /api/challenges/:id/ml-workspace`). Each submission upserts a contribution and triggers scoring for that step — AI scoring runs asynchronously since it can take longer than a single request.
+Contributors submit a URL for each step from the challenge's ML workspace view (`PATCH /api/challenges/:id/flow/workspace`). Each submission upserts a contribution and triggers scoring for that step — AI scoring runs asynchronously since it can take longer than a single request.
 
 ---
 
@@ -49,7 +49,7 @@ If a contributor points their model or packaging step at a dataset or model that
 
 ### The point ledger
 
-Every award or deduction is recorded as its own row in an append-only ledger (`reward_entries`) rather than updating a running total — so a contribution's reward is always the sum of its ledger rows, and a contributor can see exactly where their points (or someone else's reuse credit) came from. `GET /api/contributions/:id/rewards` returns this breakdown for one contribution; `GET /api/challenges/:id/ml-rewards` returns the pool's overall state (awarded, remaining, and the rules in effect) for a challenge.
+Every award or deduction is recorded as its own row in an append-only ledger (`reward_entries`) rather than updating a running total — so a contribution's reward is always the sum of its ledger rows, and a contributor can see exactly where their points (or someone else's reuse credit) came from. `GET /api/contributions/:id/rewards` returns this breakdown for one contribution; `GET /api/challenges/:id/rewards` returns the pool's overall state (awarded, remaining, and the rules in effect) for a challenge.
 
 The regular leaderboard needs no special handling for this — each ledger entry belongs to a specific contribution, and a contribution's total reward is just the sum of its ledger entries.
 
@@ -74,7 +74,7 @@ The regular leaderboard needs no special handling for this — each ledger entry
 | `packages/services/challenge/artifactUrl.ts` | Normalizes submitted URLs (the key used to detect reuse) |
 | `packages/services/challenge/lineage.ts` | Determines who originally authored a reused artifact |
 | `packages/database-service/repositories/rewardEntry.repo.ts` | Ledger writes, keeps `contributions.reward` in sync |
-| `apps/leaderboard-client/src/app/api/challenges/[id]/ml-workspace/route.ts` | Submission endpoint (triggers scoring) |
-| `apps/leaderboard-client/src/app/api/challenges/[id]/ml-rewards/route.ts` | Pool state for a challenge |
+| `content/flows/ml/actions/workspace.ts` | The ML flow's `workspace` action — `GET`/`PATCH /api/challenges/[id]/flow/workspace` (the submission triggers scoring) |
+| `apps/leaderboard-client/src/app/api/challenges/[id]/rewards/route.ts` | Pool state for a challenge, plus what the flow's `rewards` declaration adds |
 | `apps/leaderboard-client/src/app/api/contributions/[id]/rewards/route.ts` | Ledger breakdown for one contribution |
 | `apps/leaderboard-client/src/components/admin/MlRewardRulesEditor.tsx` | Reward rules editor (challenge creation/config) |

@@ -52,18 +52,12 @@ GITHUB_TOKEN=
 # Optional — only needed for the in-app GitHub OAuth connection (see github-setup.md)
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
-GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/api/github-oauth/callback
+GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/api/integrations/github/callback
 GITHUB_TOKEN_ENCRYPTION_KEY=
 
 # Optional — only needed for Kaggle (ML challenges) if not connected via the UI
 KAGGLE_USERNAME=
 KAGGLE_KEY=
-
-# Optional — only needed for Google Drive connector
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REFRESH_TOKEN=
-GOOGLE_FOLDER_ID=
 
 # Optional — only needed for sync meetings (Google Workspace)
 GOOGLE_WORKSPACE_SERVICE_ACCOUNT_EMAIL=

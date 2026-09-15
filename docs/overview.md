@@ -17,16 +17,16 @@ MyTwin Leaderboard is an internal platform for **MyTwin Lab** that tracks contri
 | Concept | Description |
 |---------|-------------|
 | **Project** | A top-level initiative. Contains repositories and challenges, and can have a **manager** — a contributor with elevated access to that project's challenges. |
-| **Challenge** | A time-bounded sprint with a reward pool. Work happens inside challenges. A **code** challenge (task-based, GitHub), an **ML** challenge (dataset/model/packaging submissions, GitHub + Kaggle), or a **validation** challenge (checks that a linked source challenge's deliverable actually works — reference cases against a deployed API for an `ml` source, a scripted scenario walkthrough of a deployed app for a `code` source — see [`validation-challenges.md`](./validation-challenges.md)). |
+| **Challenge** | A time-bounded sprint with a reward pool. Work happens inside challenges. A **code** challenge (task-based, GitHub), an **ML** challenge (dataset/model/packaging submissions, GitHub + Kaggle), or a validation challenge that checks a linked source challenge's deliverable actually works — **endpoint-validation** (reference cases against a deployed API) or **journey-validation** (a scripted scenario walkthrough of a deployed app), see [`validation-challenges.md`](./validation-challenges.md). Each type is a *flow* installed by the distribution (see [`writing-a-flow.md`](./writing-a-flow.md)). |
 | **Task** | A concrete piece of work inside a *code* challenge. Tasks are the primary unit of work there; ML challenges have no tasks. |
 | **Contribution** | A recorded unit of output (code commit, doc, dataset, model) attributed to a contributor. |
 | **Evaluation** | An AI-generated quality assessment of a contribution — produces a score (0–100) and justification. |
 | **CP (Contribution Points)** | Reward currency distributed to contributors. Code challenges split a fixed pool proportionally at close; ML challenges award absolute points live per submission (see [`ml-rewards.md`](./ml-rewards.md)). |
 | **Sync Meeting** | A team meeting created from the app in Google Workspace, later analyzed by AI. |
-| **Onboarding** | A 5-quest sequence for new contributors to get started with the platform. |
+| **Onboarding** | An optional module: quests for new contributors, declared by flows and modules and completed by platform events. |
 | **Brief** | A challenge's Markdown introduction (`brief.md`), shown before the workspace to a signed-in contributor who hasn't joined yet. |
-| **Reference case** | A ground-truth input/expected-output pair on a validation challenge, authored by a `medical_pro` and used to test a submitted API. |
-| **Scenario** | An ordered list of steps on a `code`-sourced validation challenge, authored by an admin; a validator walks the same steps through each exposed application, marking each `passed` / `failed` / `blocked`. |
+| **Reference case** | A ground-truth input/expected-output pair on a validation challenge, authored by a reviewer holding the challenge's reviewer qualification (`medical_pro` in MyTwin) and used to test a submitted API. |
+| **Scenario** | An ordered list of steps on a `journey-validation` challenge, authored by an admin; a validator walks the same steps through each exposed application, marking each `passed` / `failed` / `blocked`. |
 | **Compute request** | A contributor's request for a temporary GPU instance on an ML challenge, approved by a manager. |
 | **Digest** | An immutable snapshot of one period's platform activity, generated on a schedule and never rewritten — see [`digest.md`](./digest.md). |
 

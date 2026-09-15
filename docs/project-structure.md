@@ -23,56 +23,75 @@ leaderboard/
 │       │   │   │   ├── evaluation-runs/  meetings/  projects/  repos/  users/
 │       │   │   ├── challenges/        # Challenge listing + detail page
 │       │   │   │   └── [id]/manage/   # Project-manager view (mirrors the admin challenge view)
-│       │   │   ├── contributors/      # Contributor profiles + /me (settings, integrations, onboarding)
-│       │   │   ├── sync-meetings/     # Meeting detail page
+│       │   │   ├── contributors/      # Contributor profiles + /me (settings, integrations, modules)
+│       │   │   ├── sandbox/           # Sandbox module pages (404 when disabled)
+│       │   │   ├── sync-meetings/     # Meetings module pages (404 when disabled)
 │       │   │   ├── tasks/             # Task detail page
 │       │   │   └── api/               # Next.js Route Handlers — see api.md
-│       │   │       ├── admin/theme/        # instance-wide theme
+│       │   │       ├── admin/              # theme, digests, sandboxes, sandbox-rewards
 │       │   │       ├── auth/               # refresh, logout, check-session
 │       │   │       ├── google-auth/        # OAuth authorize + callback (login)
-│       │   │       ├── challenges/         # the bulk of the app — see below
-│       │   │       ├── contributions/  contributors/  tasks/  users/
-│       │   │       ├── projects/  repos/  leaderboard/  onboarding/  modules/
-│       │   │       ├── evaluation-grids/  evaluation-runs/
-│       │   │       ├── sync-meetings/
-│       │   │       ├── github-oauth/  kaggle/  slack/  openai/  scaleway/
-│       │   │       ├── cron/               # check-meetings, slack-signals,
-│       │   │       │                       # compute-provisioning, compute-expiration,
-│       │   │       │                       # digest
+│       │   │       ├── challenges/         # challenges; [id]/flow/[...action] and
+│       │   │       │                       # [id]/ext/[key]/[...action] for flow and extension actions
+│       │   │       ├── contributions/  contributors/  tasks/  users/  notifications/
+│       │   │       ├── projects/  repos/  leaderboard/  onboarding/  qualifications/
+│       │   │       ├── evaluation-grids/  evaluation-runs/  sandboxes/  sync-meetings/
+│       │   │       ├── integrations/       # generic connections: [key]/{connection,status,
+│       │   │       │                       # authorize,callback,extras/[action]}
+│       │   │       ├── github-oauth/       # legacy alias of the GitHub OAuth callback
+│       │   │       ├── modules/            # module list + [key] settings and toggle
+│       │   │       ├── events/ui/          # browser-only UI events → outbox
+│       │   │       ├── cron/tick/          # the single scheduled entry point (the five
+│       │   │       │                       # older cron routes are thin wrappers, to be removed)
 │       │   │       ├── docs/               # Scalar API reference (dev only)
 │       │   │       └── openapi.json/       # OpenAPI spec (dev only)
 │       │   ├── components/
 │       │   │   ├── admin/             # admin drawers, editors, lists
-│       │   │   ├── challenges/        # brief, code/ML/validation flows, compute panels, drawers
-│       │   │   │   └── shared/        # activity, metrics, participant progress
-│       │   │   ├── contributor/       # profile, task board, integration cards, settings
+│       │   │   ├── challenges/        # brief, detail and manage views, drawers
+│       │   │   ├── contributor/       # profile, task board, integration cards, modules panel
 │       │   │   ├── home/              # homepage sections
-│       │   │   ├── layout/            # navbar, navigation, session guard, background
+│       │   │   ├── layout/            # navbar, footer, module nav links, session guard
 │       │   │   ├── leaderboard/       # podium, table, filters
 │       │   │   ├── onboarding/        # onboarding drawer + quests
 │       │   │   ├── public/            # challenge cards, filters, project explorer
+│       │   │   ├── sandbox/           # proposal listing, detail, forms
 │       │   │   └── ui/                # design-system primitives (Button, Markdown, Toast…)
+│       │   ├── distribution/          # composition root — the only shell code that may import
+│       │   │   │                      # content/ and modules/
+│       │   │   ├── mytwin.platform.ts # flows, extensions, kits, modules installed
+│       │   │   ├── mytwin.server.ts   # connectors, integrations, bundle sources, providers, grids
+│       │   │   ├── mytwin.client.tsx  mytwin.forms.tsx  mytwin.activity.tsx  mytwin.integrations.tsx
+│       │   │   ├── mytwin.modules.tsx mytwin.proxy.ts
+│       │   │   └── client/  forms/  activity/  modules/   # per flow, connector and module
 │       │   ├── lib/
 │       │   │   ├── auth.ts            # JWT helpers (sign, verify, cookies)
 │       │   │   ├── db.ts              # repository instances
+│       │   │   ├── flowSlots.ts  flowFormSlots.ts  moduleSlots.ts   # client slot contracts
+│       │   │   ├── challengeActions.ts  # flowActionUrl / extensionActionUrl
+│       │   │   ├── moduleProxy.ts  uiEvents.ts  flowConfig.ts  integrations.ts
 │       │   │   ├── challengeBrief.ts  # brief filename convention + gate logic
-│       │   │   ├── useJoinChallenge.ts
+│       │   │   ├── useJoinChallenge.ts  joinGate.ts
 │       │   │   ├── leaderboard.ts  contributor.ts  medals.ts  taskProgress.ts
 │       │   │   ├── themes.ts  color-utils.ts  formatters.ts  utils.ts  url.ts
-│       │   │   ├── onboarding-track.ts  signin.ts  routeVisibility.ts
-│       │   │   ├── fetchJson.ts  types.ts  validation.ts  otel.ts
+│       │   │   ├── signin.ts  routeVisibility.ts  fetchJson.ts  types.ts  validation.ts  otel.ts
 │       │   │   ├── public/            # payload allowlists for anonymous visitors
-│       │   │   │                      # (overview, challengeVisibility, mlRewards, repoActivity)
-│       │   │   └── server/            # server-only (managerAuth, onboarding, home,
-│       │   │                          #  leaderboard, publicPages, safeFileHeaders)
+│       │   │   └── server/            # server-only (managerAuth, cronAuth, modules, onboarding,
+│       │   │                          #  home, leaderboard, publicPages, integrations)
 │       │   ├── proxy.ts               # route protection (JWT check, Edge runtime)
-│       │   └── instrumentation.ts     # observability init
+│       │   └── instrumentation.ts     # installs the distribution + observability init
 │       ├── vitest.config.ts           # the real test runner config (alias-aware)
 │       ├── package.json
 │       └── next.config.ts
 │
-├── packages/
-│   ├── config/                        # env validation (Zod) + encrypted credentials
+├── packages/                          # CORE — imports nothing outside the core
+│   ├── registry/                      # PlatformRegistry + architecture, empty-distribution
+│   │                                  # and example-flow tests
+│   ├── capabilities/                  # evaluation + bundle, challenge-actions + challenge-hooks,
+│   │                                  # board, groups, qualifications, pool, economy, rewards,
+│   │                                  # cron, events, modules, crypto, credentials,
+│   │                                  # identity/ (Google login), http-proxy/ (SSRF guard,
+│   │                                  # endpoint proxy), testing/
+│   ├── config/                        # env validation (Zod) + credential getters
 │   │   ├── index.ts
 │   │   └── githubToken.ts  kaggleCredentials.ts  slackCredentials.ts
 │   │       openaiCredentials.ts  scalewayCredentials.ts
@@ -81,11 +100,8 @@ leaderboard/
 │   │   ├── db/
 │   │   │   ├── drizzle.ts             # schema definition (source of truth)
 │   │   │   └── mappers.ts             # DB rows ↔ domain entities
-│   │   ├── domain/
-│   │   │   ├── entities.ts            # TypeScript domain types
-│   │   │   ├── schemas_zod.ts         # Zod validation schemas
-│   │   │   ├── mlRewardRules.ts       # ML reward rules shape
-│   │   │   └── codeRewardRules.ts     # code reward rules shape
+│   │   ├── domain/                    # entities, Zod schemas, reward rule shapes,
+│   │   │                              # legacy column fallbacks
 │   │   └── repositories/              # one file per table/domain area
 │   │
 │   ├── evaluator/                     # AI evaluation agent
@@ -93,36 +109,31 @@ leaderboard/
 │   │   ├── grids/                     # grid registry (grids come from the database)
 │   │   └── openai/                    # client + evaluate agent
 │   │
-│   ├── capabilities/                  # core capabilities: evaluate + runs, bundle,
-│   │                                  # grid seeds, pool, economy, groups
+│   ├── connectors/                    # connector + integration interfaces and registries,
+│   │                                  # opaque activity
+│   ├── provisioner/src/               # provider interface + registry
 │   │
-│   ├── connectors/                    # external data source connectors
-│   │   ├── implementation/            # Github, Kaggle, GD (Drive), Slack
-│   │   ├── registry.ts  interfaces.ts  connectors.orchestrator.ts
-│   │
-│   ├── services/                      # orchestration and business logic
-│   │   ├── challenge/                 # code rewards, ML rewards, repo evaluation,
-│   │   │                              # validation + reference cases, SSRF guard,
-│   │   │                              # endpoint proxy, artifactUrl, lineage
-│   │   ├── compute/                   # GPU compute requests + its two crons
-│   │   ├── digest/                    # activity snapshots: schedule, payload,
-│   │   │                              # service + cron
-│   │   ├── google-workspace/          # auth, calendar, meet
-│   │   ├── slack/                     # signal ingestion + cron
-│   │   ├── sync-meeting/              # meeting lifecycle (create → poll → ingest → analyze)
-│   │   ├── evaluation-grid.service.ts  database-grid-provider.ts
-│   │   └── webhook.service.ts         # orphaned — nothing calls it
-│   │
-│   ├── provisioner/                   # workspace + instance provisioning
-│   │   └── src/providers/             # github-branch, scaleway-gpu
-│   │
-│   ├── scaleway/                      # Scaleway Instances API client
-│   ├── sync-meeting-agent/            # AI analysis of sync meetings
-│   ├── slack-signal-agent/            # AI detection of Slack contribution signals
-│   └── test/                          # ad-hoc scripts (not Vitest)
+│   ├── services/                      # not yet sorted: challenge/, compute/, digest/,
+│   │                                  # google-workspace/ (calendar, meet), sandbox/, slack/,
+│   │                                  # sync-meeting/, grid service + DB grid provider
+│   ├── sync-meeting-agent/            # not yet sorted: AI analysis of sync meetings
+│   └── slack-signal-agent/            # not yet sorted: AI detection of Slack signals
+│
+├── content/                           # INSTALLED CONTENT — see writing-a-flow.md
+│   ├── flows/                         # code  ml  endpoint-validation  journey-validation
+│   ├── kits/validation/               # shared by the validation flows
+│   ├── extensions/                    # slack-signals  compute (+ scaleway/)
+│   ├── connectors/                    # github  kaggle  slack
+│   ├── integrations/openai/
+│   ├── bundle-sources/                # github-snapshot  kaggle-artifact
+│   ├── workspace-providers/           # github-branch
+│   └── grids/                         # code  dataset  model (seeds)
+│
+├── modules/                           # PRODUCT MODULES — meetings  onboarding  digest  sandbox
 │
 ├── db_data/                           # seed data
-│   ├── seed.ts  seed-demo.ts  seed-validation-mammo.ts
+│   ├── seed.ts  seed-demo.ts  seed-sandbox.ts
+│   ├── seed-validation-mammo.ts  seed-validation-mykine.ts
 │   └── projects.json  users.json  challenges.json  contributions.json
 │
 ├── drizzle/                           # generated SQL migrations
@@ -131,6 +142,8 @@ leaderboard/
 │   ├── db-apply-schema.ts             # idempotent schema apply (deploy postdeploy)
 │   ├── db-resync-rewards.ts           # rebuild reward/completion caches
 │   ├── db-seed-grids.ts               # insert missing evaluation grids (deploy postdeploy)
+│   ├── db-upgrade-flow-configs.ts     # bring flow_config up to the flows' versions (postdeploy)
+│   ├── db-preview-slugs.ts
 │   ├── prod.sh
 │   └── macos/  windows/               # init + launch helpers
 ├── docs/                              # this documentation
@@ -146,6 +159,12 @@ leaderboard/
 |------|-------|
 | Page UI | `apps/leaderboard-client/src/app/**/*.tsx` |
 | API endpoints | `apps/leaderboard-client/src/app/api/**/route.ts` |
+| What is installed (flows, extensions, modules, connectors) | `apps/leaderboard-client/src/distribution/` |
+| A challenge flow (config, rules, actions, hooks) | `content/flows/<key>/index.ts` (see [`writing-a-flow.md`](./writing-a-flow.md)) |
+| Flow action dispatch and access | `packages/capabilities/challenge-actions.ts` |
+| Import boundaries | `packages/registry/architecture.test.ts` |
+| Scheduled jobs | `packages/capabilities/cron.ts` + `/api/cron/tick` |
+| Platform events and quests | `packages/capabilities/events.ts` + `modules/onboarding/` |
 | Route protection | `apps/leaderboard-client/src/proxy.ts` |
 | What anonymous visitors may see | `apps/leaderboard-client/src/lib/public/` |
 | Auth helpers | `apps/leaderboard-client/src/lib/auth.ts` |
@@ -154,15 +173,17 @@ leaderboard/
 | Production schema application | `scripts/db-apply-schema.ts` (see [`database.md`](./database.md#migrations)) |
 | DB repositories | `packages/database-service/repositories/` |
 | Seed data | `db_data/seed.ts` + `db_data/*.json` |
-| AI evaluation (code challenges) | `packages/evaluator/` + `packages/services/challenge/code-rewards.service.ts` |
-| ML challenge rewards | `content/flows/ml/reward.ts` + `packages/services/challenge/` (see [`ml-rewards.md`](./ml-rewards.md)) |
-| Validation challenges | `packages/services/challenge/reference-case.service.ts` + `validation-challenge.service.ts` (see [`validation-challenges.md`](./validation-challenges.md)) |
-| GPU compute | `packages/services/compute/` + `content/extensions/compute/scaleway/` (see [`compute-power.md`](./compute-power.md)) |
-| Google integrations | `packages/services/google-workspace/` |
-| Meeting analysis | `packages/sync-meeting-agent/` |
-| Slack signals | `packages/services/slack/` + `packages/slack-signal-agent/` |
-| Activity digest | `packages/services/digest/` (see [`digest.md`](./digest.md)) |
-| Sandbox (contributor proposals) | `packages/services/sandbox/` + `apps/leaderboard-client/src/app/sandbox/` + `src/components/sandbox/` + `src/lib/public/sandbox.ts` (see [`sandbox.md`](./sandbox.md)) |
-| Theme / integrations / module toggles | `packages/database-service/repositories/appSettings.repo.ts` (see [`admin-settings.md`](./admin-settings.md)) |
-| Env config & encrypted credentials | `packages/config/` |
+| AI evaluation (code challenges) | `packages/capabilities/evaluation.ts` + `packages/evaluator/` + `content/flows/code/` + `packages/services/challenge/code-rewards.service.ts` |
+| ML challenge rewards | `content/flows/ml/reward.ts` + `packages/services/challenge/ml-rewards.service.ts` (see [`ml-rewards.md`](./ml-rewards.md)) |
+| Validation challenges | `content/flows/endpoint-validation/` + `content/flows/journey-validation/` + `content/kits/validation/` + `packages/services/challenge/` (see [`validation-challenges.md`](./validation-challenges.md)) |
+| GPU compute | `content/extensions/compute/` + `packages/services/compute/` (see [`compute-power.md`](./compute-power.md)) |
+| Google login | `packages/capabilities/identity/google-auth.ts` |
+| Meetings | `modules/meetings/` + `packages/services/google-workspace/` + `packages/services/sync-meeting/` + `packages/sync-meeting-agent/` |
+| Slack signals | `content/extensions/slack-signals/` + `packages/services/slack/` + `packages/slack-signal-agent/` |
+| Activity digest | `modules/digest/` + `packages/services/digest/` (see [`digest.md`](./digest.md)) |
+| Sandbox (contributor proposals) | `modules/sandbox/` + `packages/services/sandbox/` + `content/flows/*/proposable.ts` + `apps/leaderboard-client/src/app/sandbox/` (see [`sandbox.md`](./sandbox.md)) |
+| Integrations (connections) | `packages/connectors/integrations.ts` + `content/connectors/*/integration.ts` + `packages/capabilities/credentials.ts` |
+| Module toggles and settings | `packages/capabilities/modules.ts` (`module_settings`, see [`admin-settings.md`](./admin-settings.md)) |
+| Theme | `packages/database-service/repositories/appSettings.repo.ts` |
+| Env config | `packages/config/` |
 | Root npm scripts | `package.json` (root) |

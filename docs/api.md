@@ -61,9 +61,11 @@ All request bodies are JSON unless noted (a few validation routes take `multipar
 | `GET` | `/api/challenges/:id` | Get a challenge by ID. | Public |
 | `PUT` | `/api/challenges/:id` | Update a challenge. A changed `slug` keeps the old one as a redirect; `409` when taken. | Admin or manager of its project |
 | `DELETE` | `/api/challenges/:id` | Delete a challenge (also terminates any GPU instance it owns). | Admin |
-| `GET` | `/api/challenges/:id/overview` | **Aggregated read** — challenge, team, tasks, meetings, repos, contributions, participants in one response. Backs both the public detail page and the manage view. Anonymous callers get a reduced, allowlisted payload (`lib/public/overview.ts`). | Public |
-| `POST` | `/api/challenges/:id/close` | Close a challenge — flips the status only, nothing is computed. | Admin |
-| `POST` | `/api/challenges/:id/sync` | Legacy challenge-level evaluation sync. Superseded by per-contributor project evaluation. | Admin |
+| `GET` | `/api/challenges/:id/overview` | **Aggregated read** — challenge, team, tasks, repos, contributions, participants in one response (meetings are read from the meetings module's own route). Backs both the public detail page and the manage view. Anonymous callers get a reduced, allowlisted payload (`lib/public/overview.ts`). | Public |
+| `POST` | `/api/challenges/:id/close` | Close a challenge — flips the status, then runs the flow's and extensions' `onClose` hooks (e.g. stopping GPU instances). | Admin |
+| `GET` | `/api/challenges/:id/brief` | The challenge's `brief.md`, readable before joining. | Public |
+| `GET` | `/api/challenges/:id/rewards` | Pool state (pool, distributed, remaining, breakdown) plus what the flow's `rewards` declaration adds. Anonymous callers get only the fields the flow declares public. | Public |
+| `GET` | `/api/challenges/:id/meetings` | The challenge's meetings. `404` while the meetings module is disabled. | Admin, manager or member |
 | `POST` | `/api/challenges/:id/join` | Join a challenge — creates the participation, copies the task template, provisions the personal branch. Optional body: `{ mode: 'group' }` creates a group and returns its invite token, `{ group: <uuid> }` joins one (no board copy, no provisioning). | Contributor+ |
 | `GET` | `/api/challenges/:id/group/:token` | Who holds an invited group and whether it can still be joined. Answers only on an exact token, lists nothing. | Contributor+ |
 | `POST` | `/api/challenges/:id/group/invite` | Drop a `group_invite` notification, carrying the group's token, into a contributor's profile. Body `{ userId }`. Idempotent per (recipient, group). **The caller must already be in a group on this challenge** — the server hands out the token here, so without that check any account could broadcast any group's. | Group member |
@@ -72,8 +74,6 @@ All request bodies are JSON unless noted (a few validation routes take `multipar
 | `PATCH` | `/api/notifications` | Mark all of yours read. | Self |
 | `PATCH` | `/api/notifications/:id` | Mark one of yours read. 404 covers "not found", "not yours" and "already read" alike — a 403 would confirm the row exists. | Self |
 | `DELETE` | `/api/notifications/:id` | Remove one of yours — declining a group invitation, or clearing one a successful join has spent. **Revokes nothing**: the group token stays valid and a link shared elsewhere still works. | Self |
-| `PATCH` | `/api/challenges/:id/workspace` | `own_repo` mode: declare or change your public GitHub repo URL. | Contributor (self) |
-| `POST` | `/api/challenges/:id/project-evaluation` | Trigger the evaluation of your own delivery. Fire-and-forget; poll the contribution's `evaluation_status`. | Contributor (self) |
 | `GET` | `/api/challenges/:id/repos` | Repos linked to a challenge. | Public |
 | `GET` | `/api/challenges/:id/repo-activity` | Live activity per linked repo — GitHub commits/PRs/reviews, or Kaggle dataset/model info. Fetched on demand, never cached. | Public |
 | `GET` | `/api/challenges/:id/team` | Team members of a challenge. | Public |
@@ -82,60 +82,94 @@ All request bodies are JSON unless noted (a few validation routes take `multipar
 | `GET` | `/api/challenges/:id/documents` | List a challenge's markdown documents — including its `brief.md` (see [`challenges-and-tasks.md`](./challenges-and-tasks.md#the-brief)). | Public |
 | `POST` | `/api/challenges/:id/documents` | Add a `.md` document (max 500KB). Idempotent for `brief.md`: re-posting replaces the existing brief (`200`) instead of stacking a second one (`201`). | Admin or manager of its project |
 | `DELETE` | `/api/challenges/:id/documents/:docId` | Delete a document. | Admin or manager of its project |
-| `GET` | `/api/challenges/:id/signals` | The challenge's discussion contribution signals. See [`slack-signals.md`](./slack-signals.md). | Public |
-| `POST` | `/api/challenges/:id/signals` | Define a signal (label, description, CP reward, icon). | Admin or manager |
-| `PUT` | `/api/challenges/:id/signals/:signalId` | Update a signal. | Admin or manager |
-| `DELETE` | `/api/challenges/:id/signals/:signalId` | Delete a signal. | Admin or manager |
-| `GET` | `/api/challenges/:id/slack-config` | The watched Slack channel + last run state. | Admin or manager |
-| `PUT` | `/api/challenges/:id/slack-config` | Set the watched Slack channel. | Admin or manager |
-| `DELETE` | `/api/challenges/:id/slack-config` | Stop watching the channel. | Admin or manager |
 
-### ML challenges
+### Flow and extension actions
 
-| Method | Path | Description | Auth |
-|--------|------|-------------|------|
-| `GET` | `/api/challenges/:id/ml-workspace` | Each contributor's submitted artifact URLs. | Public |
-| `PATCH` | `/api/challenges/:id/ml-workspace` | Submit/clear an artifact URL for one step (dataset, model, model code, API packaging). Triggers scoring, and makes the submitter a challenge member. | Contributor (self) |
-| `GET` | `/api/challenges/:id/ml-rewards` | Pool state (awarded, remaining, rules, per-user breakdown). Serves `code` challenges too. | Public |
+What a challenge type adds lives behind two generic routes. The core dispatcher (`packages/capabilities/challenge-actions.ts`) matches the path against the actions the challenge's flow declares (`content/flows/*/index.ts`, with `content/kits/validation/actions/index.ts` for both validation flows) or an extension attached to that flow declares (`content/extensions/*/index.ts`):
 
-### GPU compute (see [`compute-power.md`](./compute-power.md))
+| Path | Dispatched to |
+|------|---------------|
+| `/api/challenges/:id/flow/<action>` | an action of the challenge's flow |
+| `/api/challenges/:id/ext/<key>/<action>` | an action of extension `<key>`, when it applies to the challenge's flow |
 
-| Method | Path | Description | Auth |
-|--------|------|-------------|------|
-| `GET` | `/api/challenges/:id/compute-request` | The caller's own compute request on this challenge, if any. | Contributor (self) |
-| `POST` | `/api/challenges/:id/compute-request` | Request a temporary GPU instance. One per contributor per challenge. | Contributor (self) |
-| `POST` | `/api/challenges/:id/compute-request/reveal-token` | Return the JupyterLab URL + access token. Re-readable while the instance is `ready`. | Owning contributor |
-| `GET` | `/api/challenges/:id/compute-requests` | Every request on the challenge — never includes access tokens. | Admin or manager |
-| `POST` | `/api/challenges/:id/compute-requests/:requestId/decision` | `{ decision: 'approve' \| 'reject' \| 'retry' }`. | Admin or manager |
+Every action needs a session. Its declared access is met by **any one** of its conditions: a role, being the manager of the challenge's project, being a member of the challenge, or holding the qualification the challenge's `flow_config` names. "Signed in" below means no condition — the handler does the finer check. Answers: `404` (unknown challenge, action, or extension not attached), `405` (wrong method), `401`, `403`, and `500 { error: "Action failed" }` on an unexpected error. An action can return raw bytes. Writes pass the proxy through a single exception (see [`auth.md`](./auth.md#route-protection)).
 
-### Validation challenges (see [`validation-challenges.md`](./validation-challenges.md))
+#### `code` flow
 
-| Method | Path | Description | Auth |
-|--------|------|-------------|------|
-| `GET` | `/api/challenges/:id/validation-targets` | Exposed targets + pool state. `?eligible=true` lists the source challenge's `api_packaging` (ML source) or `project` (Code source) contributions not yet exposed. | Public (`eligible` = admin/manager) |
-| `POST` | `/api/challenges/:id/validation-targets` | Expose a submission and record its deployed endpoint URL. | Admin or manager |
-| `DELETE` | `/api/challenges/:id/validation-targets/:targetId` | Remove a target (409 once verdicts exist). | Admin or manager |
-| `GET` | `/api/challenges/:id/validation-targets/:targetId/claimable-cases` | Reference cases still claimable on this target, plus the caller's unfinished claims. | `medical_pro` |
-| `POST` | `/api/challenges/:id/validation-targets/:targetId/claim` | Claim a case **and** test it against the live endpoint in one gesture. Returns the raw response, `X-Validation-Status`, `X-Claim-Id`. | `medical_pro` |
-| `GET` | `/api/challenges/:id/validation-reference-cases` | Every case (admin/manager) or only your own (`medical_pro`). | Admin, manager or `medical_pro` |
-| `POST` | `/api/challenges/:id/validation-reference-cases` | Author a ground-truth case (`multipart`: input + expected_output). No admin override. | `medical_pro` |
-| `DELETE` | `/api/challenges/:id/validation-reference-cases/:caseId` | Delete a case (409 once claimed). | Its author, or admin |
-| `GET` | `/api/challenges/:id/validation-reference-cases/:caseId/input` | Stream the known-input bytes. There is deliberately no equivalent for the expected output. | Admin, manager, or the case's author |
-| `POST` | `/api/challenges/:id/validation-case-claims/:claimId/observation` | Record what you saw in the live response — required before any reveal. | `medical_pro` (claim owner) |
-| `POST` | `/api/challenges/:id/validation-case-claims/:claimId/reveal` | Return the expected output. Refused until an observation exists. | `medical_pro` (claim owner) |
-| `POST` | `/api/challenges/:id/validation-verdicts` | Cast the verdict for a revealed claim; resolves the target and pays the majority once quorum is reached. | `medical_pro` |
-| `GET` | `/api/challenges/:id/validation-runs` | Every verdict cast on the challenge — metadata only. | Admin or manager |
-| `GET` | `/api/challenges/:id/validation-runs/:attemptId/file` | The exact input bytes for one run. | Admin or manager |
-| `GET` | `/api/challenges/:id/validation-runs/:attemptId/response` | The exact endpoint response for one run. | Admin or manager |
-| `GET` | `/api/challenges/:id/validation-rewards` | Pool state + per-validator breakdown. | Admin or manager |
-| `GET` | `/api/challenges/:id/validation-scenario-steps` | The scenario, in order, plus `frozen`. It is the protocol, not a secret — nothing is hidden from the validator in scenario mode. | Any signed-in user |
-| `POST` | `/api/challenges/:id/validation-scenario-steps` | Append a step. 409 once any walkthrough exists. | Admin or manager |
-| `PATCH` | `/api/challenges/:id/validation-scenario-steps/:stepId` | Retitle, re-instruct or reorder a step (a reorder renumbers every sibling). 409 once any walkthrough exists. | Admin or manager |
-| `DELETE` | `/api/challenges/:id/validation-scenario-steps/:stepId` | Delete a step and renumber the rest. 409 once any walkthrough exists. | Admin or manager |
-| `POST` | `/api/challenges/:id/validation-scenario-runs` | Open **or resume** a walkthrough on one application — idempotent, returns the full state. 403 on your own (or your group's) application. | Any signed-in user |
-| `GET` | `/api/challenges/:id/validation-scenario-runs` | Every walkthrough on the challenge: per application, who walked it, each step result, the comments, the medical opinions and the overall feedback. | Admin or manager |
-| `PUT` | `/api/challenges/:id/validation-scenario-runs/:runId/steps/:stepId` | Save one step: `result` (`passed`/`failed`/`blocked`), `comment`, `medical_comment`. The body is the step panel's full state. 403 on `medical_comment` from a non-`medical_pro`. | The walkthrough's owner |
-| `POST` | `/api/challenges/:id/validation-scenario-runs/:runId/complete` | Close the walkthrough and pay `cp_per_validation`, clamped to the pool. 400 with `missingStepIds` while a step has no result. | The walkthrough's owner |
+| Method | Path | Description | Access |
+|--------|------|-------------|--------|
+| `PATCH` | `flow/workspace` | `own_repo` mode: declare or change your public GitHub repo URL. | Member |
+| `POST` | `flow/project-evaluation` | Trigger the evaluation of your own delivery (or your group's). Fire-and-forget; poll the contribution's `evaluation_status`. | Signed in — board, workspace and group checked by the service |
+
+#### `ml` flow
+
+| Method | Path | Description | Access |
+|--------|------|-------------|--------|
+| `GET` | `flow/workspace` | Each contributor's submitted artifact URLs. | Signed in |
+| `PATCH` | `flow/workspace` | Submit/clear an artifact URL for one step (dataset, model, model code, API packaging). Triggers scoring, and makes the submitter a challenge member. | Signed in (self) |
+
+#### Validation flows (see [`validation-challenges.md`](./validation-challenges.md))
+
+Common to `endpoint-validation` and `journey-validation` (validation kit):
+
+| Method | Path | Description | Access |
+|--------|------|-------------|--------|
+| `GET` | `flow/targets` | Exposed targets + pool state. `?eligible=true` lists the source challenge's deliverables not yet exposed (admin/manager, checked in the handler). | Signed in |
+| `POST` | `flow/targets` | Expose a submission and record its deployed URL. | Admin or manager |
+| `DELETE` | `flow/targets/:targetId` | Remove a target (409 once verdicts exist). | Admin or manager |
+| `GET` | `flow/rewards` | Pool state + per-validator breakdown. | Admin or manager |
+
+`endpoint-validation` — "Reviewer" is a holder of the challenge's `reviewer_qualification`:
+
+| Method | Path | Description | Access |
+|--------|------|-------------|--------|
+| `GET` | `flow/targets/:targetId/claimable-cases` | Reference cases still claimable on this target, plus the caller's unfinished claims. | Reviewer |
+| `POST` | `flow/targets/:targetId/claim` | Claim a case **and** test it against the live endpoint in one gesture. Returns the raw response, `X-Validation-Status`, `X-Claim-Id`. | Reviewer |
+| `GET` | `flow/reference-cases` | Every case (admin/manager) or only your own (reviewer). | Admin, manager or reviewer |
+| `POST` | `flow/reference-cases` | Author a ground-truth case (`multipart`: input + expected_output). No admin override. | Reviewer |
+| `DELETE` | `flow/reference-cases/:caseId` | Delete a case (409 once claimed). | Its author, or admin (handler) |
+| `GET` | `flow/reference-cases/:caseId/input` | Stream the known-input bytes. There is deliberately no equivalent for the expected output. | Admin, manager, or the case's author (handler) |
+| `POST` | `flow/case-claims/:claimId/observation` | Record what you saw in the live response — required before any reveal. | Reviewer (claim owner) |
+| `POST` | `flow/case-claims/:claimId/reveal` | Return the expected output. Refused until an observation exists. | Reviewer (claim owner) |
+| `POST` | `flow/verdicts` | Cast the verdict for a revealed claim; resolves the target and pays the majority once quorum is reached. | Reviewer |
+| `GET` | `flow/runs` | Every verdict cast on the challenge — metadata only. | Admin or manager |
+| `GET` | `flow/runs/:attemptId/file` | The exact input bytes for one run. | Admin or manager |
+| `GET` | `flow/runs/:attemptId/response` | The exact endpoint response for one run. | Admin or manager |
+
+`journey-validation`:
+
+| Method | Path | Description | Access |
+|--------|------|-------------|--------|
+| `GET` | `flow/scenario-steps` | The scenario, in order, plus `frozen`. It is the protocol, not a secret. | Signed in |
+| `POST` | `flow/scenario-steps` | Append a step. 409 once any walkthrough exists. | Admin or manager |
+| `PATCH` | `flow/scenario-steps/:stepId` | Retitle, re-instruct or reorder a step (a reorder renumbers every sibling). 409 once any walkthrough exists. | Admin or manager |
+| `DELETE` | `flow/scenario-steps/:stepId` | Delete a step and renumber the rest. 409 once any walkthrough exists. | Admin or manager |
+| `POST` | `flow/scenario-runs` | Open **or resume** a walkthrough on one application — idempotent, returns the full state. 403 on your own (or your group's) application, or outside the challenge's `eligible_roles`. | Signed in |
+| `GET` | `flow/scenario-runs` | Every walkthrough on the challenge: per application, who walked it, each step result, the comments, the expert opinions and the overall feedback. | Admin or manager |
+| `PUT` | `flow/scenario-runs/:runId/steps/:stepId` | Save one step: `result` (`passed`/`failed`/`blocked`), `comment`, `medical_comment`. 403 on `medical_comment` without the challenge's `expert_comment_qualification`. | The walkthrough's owner (handler) |
+| `POST` | `flow/scenario-runs/:runId/complete` | Close the walkthrough and pay `cp_per_validation`, clamped to the pool. 400 with `missingStepIds` while a step has no result. | The walkthrough's owner (handler) |
+
+#### `compute` extension — `ml` flow (see [`compute-power.md`](./compute-power.md))
+
+| Method | Path | Description | Access |
+|--------|------|-------------|--------|
+| `GET` | `ext/compute/request` | The caller's own compute request on this challenge, if any. | Signed in (self) |
+| `POST` | `ext/compute/request` | Request a temporary GPU instance. One per contributor per challenge. | Signed in (self) |
+| `POST` | `ext/compute/request/reveal-token` | Return the JupyterLab URL + access token. Re-readable while the instance is `ready`. | Owning contributor (handler) |
+| `GET` | `ext/compute/requests` | Every request on the challenge — never includes access tokens. | Admin or manager |
+| `POST` | `ext/compute/requests/:requestId/decision` | `{ decision: 'approve' \| 'reject' \| 'retry' }`. | Admin or manager |
+
+#### `slack-signals` extension — every flow (see [`slack-signals.md`](./slack-signals.md))
+
+| Method | Path | Description | Access |
+|--------|------|-------------|--------|
+| `GET` | `ext/slack-signals/signals` | The challenge's discussion contribution signals. | Signed in |
+| `POST` | `ext/slack-signals/signals` | Define a signal (label, description, CP reward, icon). | Admin or manager |
+| `PUT` | `ext/slack-signals/signals/:signalId` | Update a signal. | Admin or manager |
+| `DELETE` | `ext/slack-signals/signals/:signalId` | Delete a signal. | Admin or manager |
+| `GET` | `ext/slack-signals/config` | The watched Slack channel + last run state. | Admin or manager |
+| `PUT` | `ext/slack-signals/config` | Set the watched Slack channel. | Admin or manager |
+| `DELETE` | `ext/slack-signals/config` | Stop watching the channel. | Admin or manager |
 
 ---
 
@@ -167,6 +201,14 @@ Tasks are personal boards on `code` challenges (see [`challenges-and-tasks.md`](
 | `DELETE` | `/api/contributions/:id` | Delete a contribution. | Admin |
 | `GET` | `/api/contributions/challenge/:id` | All contributions for a challenge. | Public |
 | `GET` | `/api/contributions/:id/rewards` | Ledger breakdown (ML awards, reuse credits/deductions, Slack signals, validation). See [`ml-rewards.md`](./ml-rewards.md). | Public |
+
+---
+
+## Events
+
+| Method | Path | Description | Auth |
+|--------|------|-------------|------|
+| `POST` | `/api/events/ui` | `{ type, payload }` — an interface event (`ui.challenge_opened { challengeId }`, `ui.meeting_link_opened { meetingId }`) written to the event outbox. Only `ui.*` types the platform declares and the route knows how to check, and only on a challenge or meeting the caller can see. The user always comes from the session, never from the body. | Signed in |
 
 ---
 
@@ -206,6 +248,8 @@ Tasks are personal boards on `code` challenges (see [`challenges-and-tasks.md`](
 
 ## Sync Meetings
 
+Every route below answers `404` while the `meetings` module is disabled (the default).
+
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | `GET` | `/api/sync-meetings` | List sync meetings. | Contributor+ |
@@ -218,11 +262,12 @@ Tasks are personal boards on `code` challenges (see [`challenges-and-tasks.md`](
 
 ## Onboarding
 
+Quests complete server-side, from the platform events that complete them (see [`onboarding.md`](./onboarding.md)); there is no write route.
+
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| `GET` | `/api/onboarding` | The authenticated user's onboarding progress. | Contributor+ |
-| `PATCH` | `/api/onboarding` | Mark a quest as completed (idempotent). | Contributor+ |
-| `GET` | `/api/onboarding/all` | Every contributor's progress. | Admin |
+| `GET` | `/api/onboarding` | The installed quests and their state for the authenticated user. | Contributor+ |
+| `GET` | `/api/onboarding/all` | Every contributor's completed quests. | Admin |
 
 ---
 
@@ -237,8 +282,8 @@ A sandbox's `type` is the key of a flow that declares `proposable`; its fields (
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | `GET` | `/api/sandboxes` | List sandboxes with star counts, the caller's star state, the configured tiers and the promotion bonus. Archived ones only for their author and admins. | Public |
-| `POST` | `/api/sandboxes` | Create a sandbox. Goes live as `open` immediately. Optional `slug`, as for challenges. | `admin`, `contributor`, `medical_pro` |
-| `GET` | `/api/sandboxes/slug-availability` | `?slug=&exclude=<uuid>`, in the sandbox namespace. | `admin`, `contributor`, `medical_pro` |
+| `POST` | `/api/sandboxes` | Create a sandbox. Goes live as `open` immediately. Optional `slug`, as for challenges. | `admin`, `contributor` |
+| `GET` | `/api/sandboxes/slug-availability` | `?slug=&exclude=<uuid>`, in the sandbox namespace. | `admin`, `contributor` |
 | `GET` | `/api/sandboxes/:id` | Detail. The evaluation score is present only for the author and admins. | Public |
 | `PATCH` | `/api/sandboxes/:id` | Edit title, slug, sections, repo, model, datasets. `{ status: 'archived' }` archives it. `type` is immutable. | Author (archive: author or admin) |
 | `POST` | `/api/sandboxes/:id/promote` | Turn the sandbox into a challenge. Optional `slug`, the sandbox's own when omitted and free; `409` when taken. | Admin |
@@ -259,45 +304,42 @@ See [`admin-settings.md`](./admin-settings.md) for what each of these controls.
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | `PATCH` | `/api/admin/theme` | Update the instance-wide theme. | Admin |
-| `GET` | `/api/modules` | Module visibility flags (meetings, onboarding). | Public |
-| `PATCH` | `/api/modules` | Update module visibility flags. | Admin |
-| `GET` | `/api/github-oauth/authorize` | Start the GitHub OAuth connection flow. | Admin |
-| `GET` | `/api/github-oauth/callback` | Callback — validates org admin/owner status, stores the encrypted token. | Admin |
-| `GET` | `/api/github-oauth/status` | GitHub connection state (never the token). | Admin |
-| `DELETE` | `/api/github-oauth/connection` | Disconnect GitHub — falls back to `.env` `GITHUB_TOKEN`. | Admin |
-| `GET` | `/api/kaggle/status` | Kaggle connection state. | Public |
-| `POST` | `/api/kaggle/connection` | Connect a Kaggle account (verified live, stored encrypted). | Admin |
-| `DELETE` | `/api/kaggle/connection` | Disconnect Kaggle — falls back to `.env`. | Admin |
-| `GET` | `/api/slack/status` | Slack connection state (and workspace name). | Public |
-| `POST` | `/api/slack/connection` | Connect a Slack bot (verified via `auth.test`, stored encrypted). | Admin |
-| `DELETE` | `/api/slack/connection` | Disconnect Slack — falls back to `.env` `SLACK_BOT_TOKEN`. | Admin |
-| `GET` | `/api/slack/channels` | Public channels visible to the bot. | Admin or project manager |
-| `GET` | `/api/openai/status` | OpenAI connection state. | Public |
-| `POST` | `/api/openai/connection` | Connect an OpenAI API key (verified live, stored encrypted). | Admin |
-| `DELETE` | `/api/openai/connection` | Disconnect OpenAI — falls back to `.env` `OPENAI_API_KEY`. | Admin |
-| `GET` | `/api/scaleway/status` | Scaleway connection state (connected, project ID, date — never the key). | Public |
-| `POST` | `/api/scaleway/connection` | Connect Scaleway (`secret_key`, `project_id`, `zone` — verified live, stored encrypted). | Admin |
-| `DELETE` | `/api/scaleway/connection` | Request disconnection — see [`compute-power.md`](./compute-power.md). | Admin |
-| `GET` | `/api/admin/digests` | Digest history, newest first (paginated; counts, not payloads). | Admin |
+| `GET` | `/api/modules` | The installed modules and whether each is enabled — no settings. | Public |
+| `GET` | `/api/modules/:key` | A module's state and validated settings. | Admin |
+| `PATCH` | `/api/modules/:key` | `{ enabled?, settings? }` — settings are merged into the current ones, then validated by the module's schema (`400` otherwise). | Admin |
+| `GET` | `/api/qualifications` | The qualifications the distribution declares. | Admin |
+| `PUT` / `DELETE` | `/api/users/:id/qualifications` | Grant / revoke a qualification; audited in `qualification_changes`. | Admin |
+| `GET` | `/api/integrations` | The installed integrations, their fields and state. | Admin |
+| `GET` | `/api/integrations/:key/status` | `{ connected }`; admins also get `connected_at` and the public details (never a secret). | Public |
+| `POST` | `/api/integrations/:key/connection` | Connect an API-key integration (`kaggle`, `slack`, `openai`, `scaleway`): one body field per declared field, verified live with the provider, stored encrypted in `integration_credentials`. | Admin |
+| `DELETE` | `/api/integrations/:key/connection` | Disconnect, by the integration's rule — deletion, or a deferred disconnect for Scaleway (see [`compute-power.md`](./compute-power.md)). | Admin |
+| `GET` | `/api/integrations/:key/authorize` | Start an OAuth integration (`github`): random state in a cookie, then the provider's consent page. | Admin |
+| `GET` | `/api/integrations/:key/callback` | OAuth return — for GitHub, validates org admin/owner status and stores the encrypted token. `/api/github-oauth/callback` remains as an alias until challenge 020 L7. | Admin |
+| `GET` | `/api/integrations/:key/extras/:action` | A side read an integration declares, with the access it declares — e.g. `slack/extras/channels`, the public channels visible to the bot (admin or project manager). | Declared |
+| `GET` | `/api/admin/digests` | Digest history, newest first (paginated; counts, not payloads). `404` while the digest module is disabled, like the two below. | Admin |
 | `GET` | `/api/admin/digests/:id` | One digest's full payload. | Admin |
-| `POST` | `/api/admin/digests/generate` | Generate a digest now. Optional `{ period_start }` forces the lower bound (ISO or `YYYY-MM-DD`, read as midnight UTC, must be past); without it, the last `period_end` is used. Works even when the schedule is off. | Admin |
-| `PATCH` | `/api/admin/digest-settings` | Update `digest_enabled` / `digest_frequency_days`. | Admin |
+| `POST` | `/api/admin/digests/generate` | Generate a digest now. Optional `{ period_start }` forces the lower bound (ISO or `YYYY-MM-DD`, read as midnight UTC, must be past); without it, the last `period_end` is used. | Admin |
 
 ---
 
 ## Cron
 
-All five are secured by `Authorization: Bearer $CRON_SECRET` and declared in `vercel.json`.
+One route, `GET /api/cron/tick`, secured by `Authorization: Bearer $CRON_SECRET` and called **every minute** by the scheduler. It runs the jobs that are due, one after the other, each under its lock in `cron_runs`; a failing job is recorded there and does not stop the next. Jobs are declared by their owner — the core, a flow, an extension or a module — and collected by `packages/capabilities/cron.ts`. A disabled module's jobs are skipped.
 
-| Method | Path | Schedule | Purpose |
-|--------|------|----------|---------|
-| `GET` | `/api/cron/check-meetings` | every minute | Detect completed meetings and trigger analysis. |
-| `GET` | `/api/cron/slack-signals` | daily, 06:00 UTC | Slack signal detection + CP awards. See [`slack-signals.md`](./slack-signals.md). |
-| `GET` | `/api/cron/compute-provisioning` | every minute | Poll GPU instances still provisioning and flip them to `ready`. |
-| `GET` | `/api/cron/compute-expiration` | every minute | Terminate GPU instances past their 24h window. |
-| `GET` | `/api/cron/digest` | daily, 05:00 UTC | Generate an activity digest when one is due. See [`digest.md`](./digest.md). |
+| Job | Owner | Schedule (UTC) | Purpose |
+|-----|-------|----------------|---------|
+| `core.events.distribute` | core | every minute | Deliver platform events to their subscribers (quests…). |
+| `core.events.purge` | core | daily, 05:30 | Purge events older than 30 days. |
+| `core.refresh-tokens.cleanup` | core | daily, 05:00 | Delete expired refresh tokens. |
+| `compute.provisioning` | `compute` extension | every minute | Poll GPU instances still provisioning and flip them to `ready`. |
+| `compute.expiration` | `compute` extension | every minute | Terminate GPU instances past their 24h window. |
+| `slack-signals.detect` | `slack-signals` extension | daily, 06:00 | Slack signal detection + CP awards. See [`slack-signals.md`](./slack-signals.md). |
+| `endpoint-validation.evidence.purge` | `endpoint-validation` flow | daily, 05:00 | Purge the evidence (inputs, responses) of challenges closed for 12 months. |
+| `meetings.check` | `meetings` module | every minute | Detect completed meetings and trigger analysis. |
+| `digest.generate` | `digest` module | daily, 05:00 | Generate an activity digest when one is due. See [`digest.md`](./digest.md). |
+| `sandbox.ip-hashes.purge` | `sandbox` module | daily, 05:00 | Purge star IP hashes older than 30 days. |
 
-Outside Vercel there is no built-in scheduler — see [`deployment.md`](./deployment.md#cron-jobs).
+The former routes `/api/cron/check-meetings`, `/api/cron/slack-signals`, `/api/cron/compute-provisioning`, `/api/cron/compute-expiration` and `/api/cron/digest` are wrappers that run just their job; they remain until the scheduler switch is verified (challenge 020 L7). See [`deployment.md`](./deployment.md).
 
 ---
 

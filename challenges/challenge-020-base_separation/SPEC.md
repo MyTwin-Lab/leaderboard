@@ -319,7 +319,7 @@ interface FlowAction {
   - Tous les appels `trackOnboardingStep` sont retirés du core et des flows : `ChallengeDetailClient.tsx`, `ContributorTaskBoard.tsx`, `CodeChallengePanel.tsx`.
   - Ce bus est aussi le futur déclencheur du moteur de la phase 2.
 - **Onboarding.** Chaque propriétaire déclare ses quêtes (clé, libellé, événement déclencheur) : `validated_task` par le flow code, `joined_meeting` par meetings, `assigned_task` par le board, etc. Les clés de quête actuelles sont conservées.
-  - Nouvelle table `onboarding_progress(user_id, quest_key, completed_at)`, reprise depuis les 5 colonnes booléennes.
+  - Nouvelle table `onboarding_quest_progress(user_id, quest_key, completed_at)`, reprise depuis les 5 colonnes booléennes de `onboarding_progress`, qui garde son nom jusqu'au `DROP` de L7.
   - `onboardingStepSchema` (`schemas_zod.ts:445`) et `OnboardingStep` (`entities.ts:769`) sont supprimés.
   - `evaluated_contribution`, jamais émise aujourd'hui, se valide sur `contribution.evaluated`.
 - **Meetings.**

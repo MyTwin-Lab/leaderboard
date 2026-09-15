@@ -104,7 +104,7 @@ Référence : `SPEC.md` (les § cités renvoient à ce document).
 
 - 6.1 Contrat de module et table `module_settings` (reprise des flags et réglages digest et sandbox). Application côté serveur : 404, jobs sautés, slots masqués.
 - 6.2 Outbox `platform_events`, table `event_deliveries`, distribution par le tick. Catalogue initial de six événements, limité à ce que les quêtes d'onboarding consomment (§4.9) : `user.created`, `task.created`, `evaluation.requested`, `contribution.evaluated`, `ui.challenge_opened`, `ui.meeting_link_opened`.
-- 6.3 Onboarding : quêtes déclarées, table `onboarding_progress(user_id, quest_key, completed_at)` et reprise ; retrait de `trackOnboardingStep` du core et des flows ; `initForUser` abonné à `user.created`.
+- 6.3 Onboarding : quêtes déclarées, table `onboarding_quest_progress(user_id, quest_key, completed_at)` (l'ancienne `onboarding_progress` garde son nom jusqu'au `DROP`) et reprise ; retrait de `trackOnboardingStep` du core et des flows ; `initForUser` abonné à `user.created`.
 - 6.4 `GoogleAuthService` déplacé dans l'identité du core ; module meetings (slot de la page challenge, route de lecture propre, `meetings` retiré de l'overview, nav admin et proxy par slots).
 - 6.5 Digest en module (réglages dans `module_settings`).
 - 6.6 Sandbox en module : capacité `proposable` des flows code et ML, `promotion.ts` sans branches par type, évaluation formative via `evaluate()`.
@@ -127,3 +127,35 @@ Référence : `SPEC.md` (les § cités renvoient à ce document).
 - 7.3 Mise à jour de `docs/architecture.md`, `docs/packages.md`, `docs/project-structure.md`, `docs/deployment.md`, `docs/admin-settings.md`, `docs/onboarding.md`, `docs/sandbox.md` et `docs/validation-challenges.md`. Nouveau `docs/writing-a-flow.md`.
 
 **Fin de lot :** un flow d'exemple minimal (jetable, hors distribution) s'installe dans un manifeste de test, sans aucune modification du core ni du schéma.
+
+---
+
+## Avancement (branche `challenge-020-base_separation`)
+
+| Lot | Commits | État |
+|---|---|---|
+| L0 | `6e4c6f5` | fait |
+| L1 | `f23aabc`, `ba4d47e`, `7bca4b3`, `2f79c04` | fait |
+| L2 | `967bb7b`, `f0b7c08` | fait |
+| L3 | `a8b7edd`, `f168ecf`, `dcc3237`, `2c257c9` | fait |
+| L4 | `3523d65`, `1715913`, `1084d3a` | fait |
+| L5 | `9564d3b`, `fd4e1fc` | fait |
+| L6 | `f61bf39`, `4d99ec2`, `95ea20c` | fait ; `sandboxes.type` élargi en `varchar(64)` |
+| L7 | `676a2d9` (7.3 `writing-a-flow.md`, flow d'exemple) et la mise à jour des docs | 7.3 fait ; 7.1 à 7.2 bis après déploiement |
+
+### Au déploiement
+
+1. `db:apply-schema` (postdeploy) : tables et reprises des lots L3 à L6, rejouables.
+2. Ajouter `/api/integrations/github/callback` aux URL de callback de l'app OAuth GitHub, puis seulement changer `GITHUB_OAUTH_REDIRECT_URI` (l'alias `/api/github-oauth/callback` reste servi).
+3. Scalingo Scheduler : une seule entrée, `/api/cron/tick` chaque minute. Les anciennes routes cron restent servies tant que 7.2 n'est pas fait.
+4. Écran des modules : vérifier l'état repris (meetings, onboarding, digest, sandbox).
+
+### Après déploiement (non exécuté sur la branche)
+
+| Étape | Vérifier d'abord |
+|---|---|
+| 7.1 `DROP` des colonnes | Reprises complètes : `flow_config` renseigné sur tous les challenges, une ligne `integration_credentials` par connexion d'`app_settings`, `module_settings` rempli, `onboarding_quest_progress` rempli, `proposal_fields` égal aux colonnes ; une journée de prod sans erreur. Retirer aussi les écritures en miroir : `domain/legacyProposalFields.ts`, la ligne `onboarding_progress` créée par `onboardingProgress.repo.ts` et sa fusion dans `accountMerge.repo.ts`. |
+| 7.1 bis `medical_pro` hors du proxy | ≥ 7 jours après le déploiement de L3 ; `SELECT count(*) FROM users WHERE role = 'medical_pro'` = 0. |
+| 7.1 ter repli `GITHUB_TOKEN` | Un challenge code créé et rejoint en prod avec la connexion OAuth seule ; puis retrait du code et de la variable Scalingo. |
+| 7.2 enveloppes cron | `cron_runs` montre chaque job passé à l'heure par le tick ; plus d'appel aux anciennes routes dans les logs. |
+| 7.2 bis `vercel.json` | Aucun projet Vercel ne déploie le dépôt. |

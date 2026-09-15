@@ -62,8 +62,8 @@ The proxy at `apps/leaderboard-client/src/proxy.ts` (Next.js middleware, runs at
 | Path | Who can access |
 |------|----------------|
 | `/admin/**` | `admin` only |
-| `/contributors/me` | `admin`, `contributor`, `viewer`, `medical_pro` |
-| `/challenges/**` | `admin`, `contributor`, `viewer`, `medical_pro` |
+| `/contributors/me` | `admin`, `contributor`, `viewer` (and a legacy `medical_pro` token, see [Qualifications](#qualifications)) |
+| `/challenges/**` | `admin`, `contributor`, `viewer` (same) |
 | `/sandbox/**` | Public — anyone can browse proposals and star them, signed in or not |
 | `/api/notifications/**` | Cookie (the owner — every route reads only the caller's rows) |
 | `/api/google-auth/**` | Public (OAuth flow) |
@@ -76,14 +76,14 @@ The write exceptions, as encoded in `proxy.ts`:
 | Exception | Covers |
 |-----------|--------|
 | Task self-service | `POST /api/tasks`, `PATCH`/`DELETE /api/tasks/:id` — your own board |
-| ML contributor | any path containing `/ml-workspace` |
 | Join | any path ending in `/join` |
-| Challenge self-service | paths ending in `/project-evaluation` or `/workspace` |
+| Flow and extension actions | any `/api/challenges/:id/flow/**` or `/api/challenges/:id/ext/**` path — each action declares its access, applied by the core dispatcher (see [`api.md`](./api.md#flow-and-extension-actions)) |
 | Own profile | `PATCH /api/contributors/me` |
 | Manager-accessible | `PUT`/`PATCH /api/challenges/:id`, `POST /api/challenges`, `POST`/`PUT /api/repos*`, any path containing `/documents` |
 | Group invite | any path ending in `/group/invite` — group membership is checked in the handler |
 | Own notifications | `PATCH`/`DELETE` under `/api/notifications` — row ownership lives in the repository's `WHERE` |
-| `medical_pro` validation | for that role only: paths containing `/validation-verdicts`, `/validation-targets`, `/validation-case-claims`, `/validation-reference-cases` |
+| UI events | `POST /api/events/ui` — any signed-in account; the handler checks the event type and what the caller can see |
+| Module writes | declared by each module in the distribution (`src/distribution/mytwin.proxy.ts`) — today `POST /api/sync-meetings`, the right being checked in the handler |
 
 `/api/notifications/**` is **inside** the matcher, unlike `/api/sandboxes/**`
 below. Its routes are always authenticated, and staying inside buys the silent
@@ -102,16 +102,21 @@ Since the proxy runs at the Edge, it cannot query the database — it only check
 
 ## Roles
 
-Roles are stored in `users.role` (free-text in the schema) and changed by an admin from `/admin/users`. Four values are used:
+Roles are stored in `users.role` (free-text in the schema) and changed by an admin from `/admin/users`. Three values are used:
 
 | Role | Description |
 |------|-------------|
 | `admin` | Full access — manage challenges, tasks, contributions, users, evaluation grids, trigger evaluations, app-wide settings (theme, integrations, module toggles) |
 | `contributor` | The default. Joins challenges, works a personal board, submits ML artifacts, requests GPU compute, participates in onboarding |
 | `viewer` | Read-only participant: can reach the same pages as a contributor, but the proxy's write rule leaves them with no mutating route of their own |
-| `medical_pro` | Qualified reviewer on validation challenges — the only role that can author reference cases, claim and test them, and cast verdicts. Not a superset of `contributor`; it is a qualification, not a permission level. See [`validation-challenges.md`](./validation-challenges.md#the-medical_pro-role) |
 
 New users registered via Google OAuth get `contributor`. Any other role has to be set explicitly by an admin.
+
+### Qualifications
+
+A qualification is a checked credential held on top of a role, not a permission level: `user_qualifications`, granted and revoked by an admin (`PUT` / `DELETE /api/users/:id/qualifications`, audited in `qualification_changes`). The distribution declares which exist (`GET /api/qualifications`) — MyTwin declares `medical_pro`. A validation challenge's `flow_config` names the qualification its gestures require (`reviewer_qualification`, `expert_comment_qualification`), and a flow action can require it (see [`validation-challenges.md`](./validation-challenges.md)).
+
+`medical_pro` used to be a role; those accounts became `contributor` with the qualification. The proxy still accepts a `medical_pro` token on protected pages until challenge 020 L7, the lifetime of a refresh token issued before the migration.
 
 ### Project managers (not a role)
 

@@ -4,6 +4,8 @@ The Sandbox is where anyone can **propose** a unit of work in the health domain,
 
 It turns the leaderboard from a task board — where MyTwin defines the work and contributors execute it — into a two-way platform.
 
+It is a product **module** (`modules/sandbox`), **enabled by default**, that an admin can turn off from the Modules tab of `/contributors/me` (see [`admin-settings.md`](./admin-settings.md)).
+
 **Requires:** nothing beyond the database for the listing and stars. The formative evaluation needs the same GitHub and OpenAI connections as a code challenge.
 
 **Reference documents:** [`input/spec-sandbox.md`](./input/spec-sandbox.md) (functional spec, its section 0 lists the arbitrated trade-offs and wins on contradiction) and [`input/plan-sandbox.md`](./input/plan-sandbox.md) (implementation plan).
@@ -22,9 +24,27 @@ A sandbox is **not a challenge** and deliberately shares nothing with one:
 | Lifecycle | draft → active → completed | `open` → `promoted` / `archived` |
 | Community input | contributions | stars only |
 
-A sandbox has a **type** — `code` or `ml`, chosen at creation and immutable. `validation` is excluded: a validation challenge derives from an existing ML challenge, it cannot be born from a proposal. The type drives the expected inputs, and the type of the challenge it becomes if promoted.
+A sandbox has a **type**: the key of a flow that declares itself **proposable**, chosen at creation and immutable. In the MyTwin distribution that is `code` or `ml`; the validation flows declare nothing, since a validation challenge derives from an existing challenge and cannot be born from a proposal. The flow's `proposable` declaration decides everything type-specific — the expected fields, the formative evaluation, and the challenge the proposal becomes if promoted. No sandbox service knows `code` or `ml`.
 
 Collaboration is deliberately blocked before promotion. Other contributors cannot join a sandbox; they star it. Collaboration starts once it becomes a challenge.
+
+---
+
+## The module and the proposable flows
+
+**Disabled** means gone, not hidden: `/api/sandboxes/**` and the sandbox admin routes answer 404, the `/sandbox` pages call `notFound()`, and the "Sandbox" entry of the public navigation disappears (the `publicNav` slot of `distribution/modules/sandbox.tsx`, rendered by the navbar and the footer). Existing proposals, stars and sandbox CP are kept.
+
+The module declares its settings schema (`modules/sandbox/settings.ts`), its CP source (the `sandbox_rewards` ledger), the daily job `sandbox.ip-hashes.purge`, and the `formative` evaluation handler used to retry a failed run.
+
+A flow accepts proposals by declaring `proposable` (`FlowDefinition.proposable` in `packages/registry/platform.ts`):
+
+| Part | What it says | `code` (`content/flows/code/proposable.ts`) | `ml` (`content/flows/ml/proposable.ts`) |
+|---|---|---|---|
+| `fields` | zod schema of `proposal_fields` | `repo_url`; model and datasets refused | `repo_url`, optional `model_url`, 1–10 `dataset_urls` |
+| `evaluation` | bundle source, grid, input, optional agent context | `github-snapshot`, grid `code` | `github-snapshot`, grid `code`, datasets and model in the context |
+| `promote` | the challenge's `flow_config`, the seeded `workspace_meta`, `afterPromote` | `own_repo` on the author's repo | compute from the drawer, workspace pre-filled, the author's work carried over |
+
+A proposal whose fields fail its flow's schema is refused (400); a sandbox whose flow is no longer installed or no longer proposable cannot be evaluated or promoted (409). The creation form lists the kinds of `sandboxKinds` (`distribution/forms/sandbox.ts`).
 
 ---
 
@@ -36,14 +56,12 @@ Collaboration is deliberately blocked before promotion. Other contributors canno
 |---|---|
 | `uuid` | PK |
 | `user_id` | the author, sole editor |
-| `type` | `code` / `ml`, immutable after creation |
+| `type` | the proposable flow's key, `varchar(64)`, immutable after creation |
 | `title` | |
 | `slug` | the public URL segment, `/sandbox/<slug>`. Unique among sandboxes, derived from the title at creation, editable by the author; a former slug keeps redirecting (`sandbox_slug_redirects`). See [`seo.md`](./seo.md) |
 | `context`, `goals`, `why` | the three sections of the proposal. `goals` is a `jsonb` string array rather than a markdown list, because each goal is rendered on its own and they are the natural candidates for the challenge's tasks after promotion |
-| `repo_url` | required for both types |
-| `model_url` | `ml` only, optional — a sandbox can start without an artifact |
-| `dataset_urls` | `ml` only, `jsonb` string array, at least one required. An array because an ML challenge already stores `workspace_meta.datasetUrls[userId]` this way, so promotion pre-fills without conversion |
-| `proposal_fields` | `jsonb`, the proposal's fields (`repo_url`, `model_url`, `dataset_urls`). Read first, with a per-key fallback on the three columns above, which are written as a mirror until they are dropped (challenge 020, L7). The flow's proposable schema validates it from L6 |
+| `proposal_fields` | `jsonb`, the proposal's type-specific fields, validated by the flow's `proposable.fields` schema |
+| `repo_url`, `model_url`, `dataset_urls` | former columns, copied into `proposal_fields`. Still written as a mirror and read as a per-key fallback (`domain/legacyProposalFields.ts`) until they are dropped in challenge 020, L7 |
 | `status` | `open` / `promoted` / `archived`. Created directly as `open` |
 | `promoted_challenge_id` | set at promotion, `ON DELETE SET NULL` — deleting the challenge must not erase the proposal that produced it |
 | `evaluation`, `evaluation_status`, `evaluated_at` | latest formative evaluation, same shape as a contribution's so the display is shared |
@@ -74,10 +92,12 @@ There is **no cached total** — no equivalent of `contributions.reward`. A cont
 
 ### Settings
 
-Two columns on the singleton `app_settings` row, both inert by default so the feature pays nothing until an admin configures it:
+The module's settings live in `module_settings.settings` for the `sandbox` key, validated by `sandboxSettingsSchema`. Both are inert by default so the feature pays nothing until an admin configures it:
 
-- `sandbox_star_tiers` — `jsonb`, ordered list of `{ stars, cp }` with strictly increasing thresholds;
-- `sandbox_promotion_bonus_cp` — integer.
+- `star_tiers` — ordered list of `{ stars, cp }` with strictly increasing thresholds;
+- `promotion_bonus_cp` — integer.
+
+They were copied from the former `app_settings.sandbox_*` columns, which are no longer read and are dropped in challenge 020, L7.
 
 ---
 
@@ -88,7 +108,7 @@ Stars are not decoration — they are the platform's demand signal, and crossing
 The admin defines an ordered list of milestones, as many as they want, plus a promotion bonus:
 
 ```json
-{ "tiers": [ { "stars": 5, "cp": 50 }, { "stars": 15, "cp": 100 }, { "stars": 50, "cp": 300 } ],
+{ "star_tiers": [ { "stars": 5, "cp": 50 }, { "stars": 15, "cp": 100 }, { "stars": 50, "cp": 300 } ],
   "promotion_bonus_cp": 200 }
 ```
 
@@ -129,7 +149,7 @@ A paid milestone is never taken back, so a star → unstar wave has to leave som
 
 The IP is stored as an HMAC — never in clear — and serves **only** to cap the rate (30 anonymous stars per hour). Making it carry uniqueness would have been a mistake: a campus or a company leaves through a single address, so real users would block each other. The 429 message invites signing in, which is the way out for someone genuinely behind a shared IP.
 
-**GDPR:** server-side salt, hashes purged after 30 days by an opportunistic update on every star write — no extra cron. `anon_id` is a random value with no link to a person and is kept. No user agent is stored.
+**GDPR:** server-side salt, hashes purged after 30 days — by an opportunistic update on every star write, and by the module's daily job `sandbox.ip-hashes.purge` (`modules/sandbox/retention.ts`) so that hashes do not outlive the announced period when nobody stars. `anon_id` is a random value with no link to a person and is kept. No user agent is stored.
 
 ### Signing in attaches anonymous stars
 
@@ -152,15 +172,16 @@ What it costs: someone signed out on their own browser sees "not starred" on a s
 Since milestones are never reverted automatically, a fraudulent wave has to be undoable by hand: admin routes list a sandbox's stars grouped by origin, hashed IP and day, delete them by id, by hashed IP or by time window, and delete a reward row — which lowers the leaderboard total immediately, there being no cache.
 
 One thing to know: if the counter is still above a threshold after cleanup, the milestone will be **paid again on the next star**. The unique index prevents duplicates, not re-creation — and at that point the milestone is legitimate.
+
 ---
 
 ## Reading CP back
 
-Sandbox CP count in the ranking, and they get there through **one injection point**: `aggregateUsersByContribution()` in `lib/leaderboard.ts` takes the sandbox ledger as an optional argument and adds it to the totals **without touching the contribution counts** — the treatment already given to `discussion` CP, since a crossed milestone rewards a proposal rather than adding a contribution.
+Sandbox CP count in the ranking as a **CP source**: the module declares `cpSource`, the core reads every installed source (`packages/capabilities/economy.ts`), and `aggregateUsersByContribution()` in `lib/leaderboard.ts` adds them to the totals **without touching the contribution counts** — the treatment already given to `discussion` CP, since a crossed milestone rewards a proposal rather than adding a contribution.
 
 | Path | What it reads |
 |---|---|
-| `fetchLeaderboard` | the whole ledger, injected into the aggregation |
+| `fetchLeaderboard` | every CP source, added to the aggregation |
 | `fetchContributorProfile` | the same for the global rank, plus this user's rows for `totalCP` and the Sandbox block |
 | `fetchHomeOverview` | the same, and the "CP distributed" stat — without it the podium would show more CP than the global figure |
 
@@ -188,7 +209,7 @@ Already-generated digests are immutable, so the tab renders the section only whe
 
 ## UI
 
-**Navigation.** Sandbox replaces About in the main navigation. `/about` is the MyTwin Lab landing (see [`seo.md`](./seo.md)), reached from the home hero, the footer and a "How MyTwin Lab works" link in the listing header — all in the same "see all" link style, whose arrow lives in `components/home/ArrowIcon.tsx`.
+**Navigation.** Sandbox replaces About in the main navigation, as the module's `publicNav` entry — shown only while the module is enabled. `/about` is the MyTwin Lab landing (see [`seo.md`](./seo.md)), reached from the home hero, the footer and a "How MyTwin Lab works" link in the listing header — all in the same "see all" link style, whose arrow lives in `components/home/ArrowIcon.tsx`.
 
 **Listing** (`/sandbox`) — search over title, author and context; sort by stars or recency; `Open` / `Promoted` / `Mine` pills with counts; header stats. A promoted card's call to action links to the challenge it became, not back to the sandbox. An archived sandbox appears only under `Mine`, and only for its author.
 
@@ -198,7 +219,7 @@ The sort control is `TabPills`, the same component as the profile tabs, so its f
 
 **Detail** (`/sandbox/:slug`) — the three sections of the proposal, the repo and model links, the star toggle, the milestone panel, and for the author the formative evaluation panel. Editing and archiving live here too.
 
-**Creation** — type first, then the fields that type needs. The **Address** field under the title shows the public URL: it follows the title until touched, is checked for availability as it is typed, and in edit mode says that the current address will redirect once changed. The "Start from a dev kit / SOON" row is a deliberate placeholder: no logic behind it, it marks where the dev-kit selector will slot in.
+**Creation** — kind first (`sandboxKinds`), then the fields that kind needs. The **Address** field under the title shows the public URL: it follows the title until touched, is checked for availability as it is typed, and in edit mode says that the current address will redirect once changed. The "Start from a dev kit / SOON" row is a deliberate placeholder: no logic behind it, it marks where the dev-kit selector will slot in.
 
 Two things the components must respect:
 
@@ -212,25 +233,25 @@ Two traps `globals.css` sets, both of which caught these components before being
 - **An opaque `bg-white` stays white in light mode.** The stylesheet only rewrites the *translucent* whites (`bg-white/<opacity>`) and `text-white*`. A solid white pill therefore disappears on a light page. Use `bg-foreground` / `text-background`, which swap with the theme — that is what `TabPills` does, and its own comment says so.
 - **Light mode sets the colour of every `svg`.** An icon inside a dark-filled button renders dark on dark. An inline `style={{ color: "var(--background)" }}` beats that rule, which carries no `!important`.
 
-**Admin tab.** A "Sandbox" tab on `/contributors/me` holds the tier rows, the promotion bonus, and the star audit — see [`admin-settings.md`](./admin-settings.md).
+**Admin.** The Sandbox card of the Modules tab on `/contributors/me` switches the module on or off and holds the tier rows, the promotion bonus and the star audit (`SandboxSettings`, saved through `PATCH /api/modules/sandbox`) — see [`admin-settings.md`](./admin-settings.md).
 
 ---
 
 ## Formative evaluation
 
-The author can have their repository scored at any time. The run uses the same pipeline as a code challenge, produces a score out of 10 — and **pays nothing**. It exists to help the author improve, and gives an admin a quality read when considering promotion.
+The author can have their repository scored at any time. The run produces a score out of 10 — and **pays nothing**. It exists to help the author improve, and gives an admin a quality read when considering promotion.
 
-**Both types use the `code` grid.** Not the `model` one, despite what the original spec said. An ML challenge already scores code that way: in the ML role table, `model_code` maps to `grid: 'code'`, while the `model` role has **no grid at all** — it is scored on a Kaggle metric. The `model` grid (performance, innovation, reproducibility) never evaluates code, and a sandbox has only code to snapshot.
+**The flow says how.** `SandboxEvaluationService` reads the `proposable.evaluation` of the sandbox's flow and calls the core `evaluate()` capability with its bundle source, its grid and the input it derives from the proposal fields. One consequence worth knowing: a custom grid published in the database under the `code` slug serves challenges and sandboxes alike.
 
-What separates an ML sandbox is therefore **not the grid but the context** handed to the agent: the dataset URLs and, when present, the model URL are injected into the evaluated subject's description. A sandbox with no model artifact produces no `Model artifact` line and the run proceeds — the repository is what gets snapshotted either way.
+**Both MyTwin kinds use the `code` grid** on a `github-snapshot` bundle. Not the `model` one, despite what the original spec said. An ML challenge already scores code that way: in the ML role table, `model_code` maps to `grid: 'code'`, while the `model` role has **no grid at all** — it is scored on a Kaggle metric. The `model` grid (performance, innovation, reproducibility) never evaluates code, and a sandbox has only code to snapshot.
+
+What separates an ML sandbox is therefore **not the grid but the context** handed to the agent (`proposable.evaluation.context`): the dataset URLs and, when present, the model URL are injected into the evaluated subject's description. A sandbox with no model artifact produces no `Model artifact` line and the run proceeds — the repository is what gets snapshotted either way.
 
 The context also carries the author's **goals**. They are what the repository is judged against: without them the agent scores a repo in the abstract, when the whole proposal is the gap between what the author set out to build and what is actually there.
 
-**Shared core.** `packages/services/challenge/repo-evaluation.ts` holds the snapshot → grid → score path, extracted unchanged from `CodeRewardsService`, which now calls it. One consequence worth knowing: a custom grid published in the database under the `code` slug serves challenges and sandboxes alike, since both go through the same `DatabaseGridProvider`.
+The two pure helpers (`toScore10`, `parseGithubRepoUrl`) live in `packages/services/challenge/repo-score.ts`, apart from the evaluation code: a client component needs `toScore10` to render a score, and importing the evaluation path would pull `octokit` and `openai` into the browser bundle.
 
-The two pure helpers (`toScore10`, `parseGithubRepoUrl`) live in `repo-score.ts`, apart from the evaluation module: a client component needs `toScore10` to render a score, and importing the evaluation module would pull `octokit` and `openai` into the browser bundle.
-
-**One run at a time.** The `pending → running` transition is a compare-and-set on the row, so two clicks cannot start two runs. Status flows `pending → running → done | failed`, and the UI polls while it is in flight.
+**One run at a time.** The `pending → running` transition is a compare-and-set on the row, so two clicks cannot start two runs. Status flows `pending → running → done | failed`, and the UI polls while it is in flight. A failed run is retried through the module's `formative` evaluation handler.
 
 Nothing is ever written to `reward_entries`, `sandbox_rewards` or `contributions` by this path.
 
@@ -238,7 +259,9 @@ Nothing is ever written to `reward_entries`, `sandbox_rewards` or `contributions
 
 ## Promotion
 
-An admin turns a convincing proposal into an official challenge. The **type is inherited**, never chosen — a `code` sandbox becomes a code challenge, an `ml` one an ML challenge. Everything else (project, pool, reward rules, dates, compute, brief) is the admin's call, filled in through the usual challenge drawer, pre-filled from the sandbox — the address included: the challenge takes the sandbox's slug when it is free among challenges, so `/sandbox/mykine` becomes `/challenges/mykine`.
+An admin turns a convincing proposal into an official challenge. The **type is inherited**, never chosen — the challenge takes the sandbox's flow key. Everything else (project, pool, reward rules, dates, compute, brief) is the admin's call, filled in through the usual challenge drawer, pre-filled from the sandbox — the address included: the challenge takes the sandbox's slug when it is free among challenges, so `/sandbox/mykine` becomes `/challenges/mykine`.
+
+What the flow contributes comes from `proposable.promote`: `flowConfig` (merged into the challenge's validated `flow_config`), `workspaceMeta` (the seeded `workspace_meta`) and `afterPromote` (run after the commit).
 
 ### One transaction, guarded on the way in
 
@@ -263,16 +286,16 @@ The author does not re-submit what they already provided. On a challenge, handin
 
 | Sandbox | What happens |
 |---|---|
-| `ml` | contributions created for the `dataset` and `model_code` roles, then scored through the normal ML path |
+| `ml` | `afterPromote` (`resumeAuthorWork`) creates contributions for the `dataset` and `model_code` roles, then scores them through the normal ML path |
 | `ml`, model role | **not** scored — it has no grid, it is scored on a Kaggle metric the sandbox does not hold. Credited when the author publishes one from the challenge |
-| `code` | the repo is attached as `own_repo`; the challenge's own evaluation cycle creates the contribution on the first run |
+| `code` | `flowConfig` sets `own_repo` on the author's repo; the challenge's own evaluation cycle creates the contribution on the first run |
 
 Two details that matter:
 
 - **The two awards run in sequence, not in parallel.** Each reads what is left of the pool before writing its ledger rows; two concurrent reads would see the same remainder and could together overshoot it. Promotion is the only place that triggers two at once.
 - **The carry-over runs after the commit and is not fatal**, like template tasks and the brief. A failure leaves the promotion done and the contributions pending; nothing replays them automatically.
 
-The contribution titles and the artifact flag live in `ML_ROLE_RULE` (`packages/services/challenge/mlRoles.ts`), shared with the workspace route: two paths write these contributions now, and a carried-over one has to be indistinguishable from a submitted one.
+The contribution titles and the artifact flag live in `ML_ROLE_RULE` (`packages/services/challenge/mlRoles.ts`), shared with the workspace action: two paths write these contributions now, and a carried-over one has to be indistinguishable from a submitted one.
 
 ### After promotion
 
@@ -282,7 +305,7 @@ The sandbox is marked `promoted` and linked to the challenge; its card in the li
 
 ## API and visibility
 
-The listing and the detail pages are **public**. Creating, editing, evaluating, archiving and promoting all require an account — see the role table in [`auth.md`](./auth.md) and the routes in [`api.md`](./api.md).
+The listing and the detail pages are **public**. Creating, editing, evaluating, archiving and promoting all require an account — see the role table in [`auth.md`](./auth.md) and the routes in [`api.md`](./api.md). With the module disabled, every one of them answers 404.
 
 `/api/sandboxes/**` sits deliberately **outside the proxy matcher**, like `/api/admin/*`: its writes are open to anonymous visitors, which no proxy exception can express, so each handler authenticates itself. One consequence: no silent token refresh runs there, and an expired session would read as anonymous. The sandbox pages fetch `/api/contributors/me`, which *is* in the matcher, and that is what refreshes the session.
 

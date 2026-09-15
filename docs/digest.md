@@ -1,6 +1,6 @@
 # Digest
 
-The digest is a periodic, **immutable** snapshot of platform activity — generated automatically on a configurable schedule, browsable by admins from their profile page.
+The digest is a periodic, **immutable** snapshot of platform activity — generated automatically on a configurable schedule, browsable by admins from their profile page. It is the `digest` product module (`modules/digest/index.ts`), switched on and set from the Modules tab.
 
 **Requires:** nothing beyond the database. Pure SQL aggregation, no AI agent, no external integration — it works on an instance with no integration connected.
 
@@ -9,16 +9,15 @@ The digest is a periodic, **immutable** snapshot of platform activity — genera
 ## How it works
 
 ```
-Vercel cron (daily, 05:00 UTC)
-  → GET /api/cron/digest                    (Bearer CRON_SECRET)
-    1. digest_enabled off → no-op
-    2. read the cursor: the last digest's period_end
-    3. not enough whole UTC days elapsed → no-op
-    4. otherwise aggregate [cursor, now] into a frozen JSON payload
+GET /api/cron/tick (every minute, Bearer CRON_SECRET)
+  → job digest.generate (daily, 05:00 UTC) — skipped while the digest module is disabled
+    1. read the cursor: the last digest's period_end
+    2. not enough whole UTC days elapsed → no-op
+    3. otherwise aggregate [cursor, now] into a frozen JSON payload
        and insert one `digests` row
 ```
 
-Admins browse the history from a **Digest** tab on `/contributors/me`, set the frequency, and can trigger a generation manually at any time.
+Admins browse the history from a **Digest** tab on `/contributors/me` and can trigger a generation manually at any time; the frequency is a setting of the module.
 
 ---
 
@@ -77,15 +76,15 @@ A digest is **never regenerated or updated** after creation. `DigestRepository` 
 
 ## Scheduling model
 
-There is no dynamic cron schedule. The cron runs daily (same pattern as `slack-signals`); the decision to generate lives in the endpoint:
+There is no dynamic cron schedule. The job runs daily (same pattern as `slack-signals.detect`); the decision to generate lives in `runDigestCron()`:
 
 ```
 period_end of last digest  =  cursor
-if whole UTC days since cursor >= digest_frequency_days  →  generate over [cursor, now]
+if whole UTC days since cursor >= frequency_days  →  generate over [cursor, now]
 else                                                     →  no-op
 ```
 
-The `digests` table is its own cursor — no "last generated" field in `app_settings`, and no possible gap or overlap between two consecutive digests. The first digest ever uses the configured frequency as a lookback window (`[now - frequency, now]`).
+The `digests` table is its own cursor — no "last generated" field in `module_settings`, and no possible gap or overlap between two consecutive digests. The first digest ever uses the configured frequency as a lookback window (`[now - frequency, now]`).
 
 ### Whole days, not timestamps
 
@@ -97,7 +96,7 @@ The window bounds themselves stay exact timestamps: `period_start` equals the pr
 
 The **Generate now** button calls the same generation path, skipping only the frequency check. By default it generates over `[last period_end, now]` like any other run, so the cursor invariant holds: the next automatic digest starts where the manual one ended. A manual digest with a very short period is valid and may have mostly empty sections.
 
-It works even when `digest_enabled` is off — the toggle governs the cron, not the button.
+It needs the module enabled: while `digest` is disabled, every `/api/admin/digests/**` route answers `404`, manual generation included.
 
 **Choosing the start.** The tab also exposes a date field next to the button. Left empty, the cursor is used. Set, it forces `period_start` and **deliberately breaks the `period_start = previous period_end` invariant** — the resulting digest can overlap a period an earlier digest already covered.
 
@@ -109,12 +108,12 @@ A plain `YYYY-MM-DD` is read as **midnight UTC**, not midnight in the reader's t
 
 ## Configuration
 
-Two fields on the `app_settings` singleton, edited from the Digest tab:
+The module's row in `module_settings`, edited from the Modules tab (`PATCH /api/modules/digest`):
 
 | Field | Purpose |
 |-------|---------|
-| `digest_enabled` | Master switch — when off, the cron no-ops (manual generation still works). Defaults to `false`: an admin feature does not turn itself on for existing instances. |
-| `digest_frequency_days` | Interval between automatic digests (default `7`, accepted range 1–365) |
+| `enabled` | The module's state — when off, the tick skips `digest.generate` and the digest routes answer `404`. Without a row the module is off: an admin feature does not turn itself on for existing instances. |
+| `settings.frequency_days` | Interval between automatic digests (default `7`, accepted range 1–365, validated by `digestSettingsSchema`) |
 
 ---
 
@@ -137,12 +136,12 @@ Three datation columns were added elsewhere for the digest to be computable at a
 | `GET` | `/api/admin/digests` | List digests, newest first. Paginated (`?limit=`, `?offset=`), ships counts rather than payloads. | Admin |
 | `GET` | `/api/admin/digests/:id` | Read one digest's full payload. | Admin |
 | `POST` | `/api/admin/digests/generate` | Manual generation. Optional body `{ period_start }` (ISO or `YYYY-MM-DD`, read as midnight UTC, must be in the past) forces the lower bound; without it the cursor is used. | Admin |
-| `PATCH` | `/api/admin/digest-settings` | Update `digest_enabled` / `digest_frequency_days`. | Admin |
-| `GET` | `/api/cron/digest` | Daily check + generation when due. | `Bearer $CRON_SECRET` |
+| `PATCH` | `/api/modules/digest` | `{ enabled?, settings: { frequency_days } }`. | Admin |
+| `GET` | `/api/cron/digest` | Legacy wrapper running only `digest.generate`, kept until challenge 020 L7 — the scheduler calls `/api/cron/tick`. | `Bearer $CRON_SECRET` |
 
-Nothing changes in `proxy.ts`: writes under `/api/**` already require `admin` by the blanket rule. The two `GET`s are not covered by that rule and re-check the role themselves.
+All three digest routes answer `404` while the module is disabled. The two `GET`s are not covered by the proxy's admin rule for writes and re-check the role themselves.
 
-The cron endpoint follows the existing pattern: secured by `CRON_SECRET`, declared in `vercel.json`, or curled by an external scheduler on Scalingo / PM2 (see [`deployment.md`](./deployment.md#cron-jobs)).
+The job runs from `/api/cron/tick`, like every scheduled job (see [`deployment.md`](./deployment.md)). To run it by hand:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/digest
@@ -154,7 +153,6 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/digest
 
 A **Digest** tab on the admin profile page (`/contributors/me`), alongside Appearance / Integrations / Evaluation Grids / Modules / Onboarding:
 
-- the enable toggle and the interval field;
 - **Generate now**, disabled while a generation is in flight;
 - the history, newest first, each entry expandable onto its five sections. An empty section renders an explicit "Nothing in this period" line rather than disappearing — a short digest is a valid result, and a missing section would read as a bug.
 
@@ -177,13 +175,13 @@ A **Digest** tab on the admin profile page (`/contributors/me`), alongside Appea
 |------|---------|
 | `packages/services/digest/digest-schedule.ts` | `isDigestDue()` / `digestWindow()` — the cursor and the day-boundary comparison. Pure |
 | `packages/services/digest/digest-payload.ts` | `buildDigestPayload()` — the five sections, group resolution, ledger aggregation. Pure |
-| `packages/services/digest/digest.service.ts` | Windowed queries, lookups, insert |
-| `packages/services/digest/cron-digest.ts` | Enabled check + frequency check + generation |
+| `packages/services/digest/digest.service.ts` | Windowed queries, lookups, insert; `digestFrequencyDays()` reads the module's settings |
+| `packages/services/digest/cron-digest.ts` | Frequency check + generation, the body of `digest.generate` |
+| `modules/digest/index.ts` | The module: settings schema and the `digest.generate` job |
 | `packages/database-service/repositories/digest.repo.ts` | `digests` reads and the single insert |
 | `packages/database-service/repositories/challenge.repo.ts` | `closedAtPatch()` + the windowed reads |
-| `apps/leaderboard-client/src/app/api/cron/digest/route.ts` | Cron entry point |
 | `apps/leaderboard-client/src/app/api/admin/digests/` | List / read / generate routes |
-| `apps/leaderboard-client/src/app/api/admin/digest-settings/route.ts` | Settings endpoint |
 | `apps/leaderboard-client/src/components/contributor/DigestTab.tsx` | The profile tab |
+| `apps/leaderboard-client/src/distribution/modules/settings.tsx` | The frequency editor of the Modules tab |
 
 > Design decisions and what was rejected: [`docs/input/spec-digest.md`](./input/spec-digest.md).
