@@ -108,6 +108,7 @@ import type {
   NotificationType,
   SandboxStarTier,
 } from "../domain/entities.js";
+import { sandboxProposalOf } from "../domain/legacyProposalFields.js";
 
 // --- Types inférés depuis Drizzle ---
 type DbProject = InferSelectModel<typeof projects>;
@@ -1044,6 +1045,7 @@ export function toDomainDigest(row: DbDigest): Digest {
 // --- SANDBOX ---
 
 export function toDomainSandbox(row: DbSandbox): Sandbox {
+  const proposal = sandboxProposalOf(row);
   return {
     uuid: row.uuid,
     user_id: row.user_id,
@@ -1055,9 +1057,11 @@ export function toDomainSandbox(row: DbSandbox): Sandbox {
     // par un chemin qui ignorait la colonne remonterait null.
     goals: row.goals ?? [],
     why: row.why ?? null,
-    repo_url: row.repo_url,
-    model_url: row.model_url ?? null,
-    dataset_urls: row.dataset_urls ?? [],
+    // Lus dans `proposal_fields`, repli clé par clé sur les colonnes : domain/legacyProposalFields.ts.
+    repo_url: proposal.repo_url,
+    model_url: proposal.model_url,
+    dataset_urls: proposal.dataset_urls,
+    proposal_fields: proposal.proposal_fields,
     status: row.status as SandboxStatus,
     promoted_challenge_id: row.promoted_challenge_id ?? null,
     promoted_at: row.promoted_at ?? null,

@@ -643,6 +643,12 @@ export interface Sandbox {
   /** ML uniquement, et optionnel : un sandbox ML peut démarrer sans artefact. */
   model_url: string | null;
   dataset_urls: string[];
+  /**
+   * Les champs de la proposition, dont `repo_url`, `model_url` et
+   * `dataset_urls` ci-dessus sont la lecture historique. Le schéma du flow
+   * proposable les validera au lot L6 du challenge 020.
+   */
+  proposal_fields?: Record<string, unknown>;
   status: SandboxStatus;
   promoted_challenge_id: string | null;
   promoted_at: Date | null;

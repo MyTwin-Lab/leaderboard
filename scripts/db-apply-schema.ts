@@ -938,6 +938,38 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
       WHERE type = 'journey-validation' AND NOT (COALESCE(flow_config, '{}'::jsonb) ? 'expert_comment_qualification')`,
   },
 
+  // --- Champs de proposition des sandboxes (challenge 020, L3) ---
+  //
+  // `proposal_fields` reprend repo_url, model_url et dataset_urls ; les
+  // colonnes restent, écrites en miroir, jusqu'en L7. La reprise recopie les
+  // colonnes dès que le jsonb en diffère : elle rattrape aussi une édition
+  // faite par l'ancien code pendant le déploiement, et laisse intactes les
+  // clés qu'aucune colonne ne porte. Idempotent : le nouveau code écrit les
+  // deux à l'identique.
+  {
+    label: "sandboxes.proposal_fields",
+    sql: `ALTER TABLE sandboxes ADD COLUMN IF NOT EXISTS proposal_fields jsonb NOT NULL DEFAULT '{}'::jsonb`,
+  },
+  {
+    label: "sandboxes.proposal_fields (reprise des colonnes)",
+    sql: `
+      UPDATE sandboxes
+      SET proposal_fields = COALESCE(proposal_fields, '{}'::jsonb) || jsonb_build_object(
+          'repo_url', repo_url,
+          'model_url', model_url,
+          'dataset_urls', COALESCE(dataset_urls, '[]'::jsonb)
+        )
+      WHERE jsonb_build_object(
+          'repo_url', proposal_fields -> 'repo_url',
+          'model_url', proposal_fields -> 'model_url',
+          'dataset_urls', proposal_fields -> 'dataset_urls'
+        ) IS DISTINCT FROM jsonb_build_object(
+          'repo_url', repo_url,
+          'model_url', model_url,
+          'dataset_urls', COALESCE(dataset_urls, '[]'::jsonb)
+        )`,
+  },
+
   // --- Slugs des URLs publiques (docs/superpowers/plans/2026-09-15-slug-urls.md) ---
   //
   // En toute fin de tableau, volontairement : le SET NOT NULL rend la colonne

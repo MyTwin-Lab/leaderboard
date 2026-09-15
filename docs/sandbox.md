@@ -43,6 +43,7 @@ Collaboration is deliberately blocked before promotion. Other contributors canno
 | `repo_url` | required for both types |
 | `model_url` | `ml` only, optional — a sandbox can start without an artifact |
 | `dataset_urls` | `ml` only, `jsonb` string array, at least one required. An array because an ML challenge already stores `workspace_meta.datasetUrls[userId]` this way, so promotion pre-fills without conversion |
+| `proposal_fields` | `jsonb`, the proposal's fields (`repo_url`, `model_url`, `dataset_urls`). Read first, with a per-key fallback on the three columns above, which are written as a mirror until they are dropped (challenge 020, L7). The flow's proposable schema validates it from L6 |
 | `status` | `open` / `promoted` / `archived`. Created directly as `open` |
 | `promoted_challenge_id` | set at promotion, `ON DELETE SET NULL` — deleting the challenge must not erase the proposal that produced it |
 | `evaluation`, `evaluation_status`, `evaluated_at` | latest formative evaluation, same shape as a contribution's so the display is shared |

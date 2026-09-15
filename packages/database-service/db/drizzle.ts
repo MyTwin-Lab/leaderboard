@@ -1024,6 +1024,10 @@ export const sandboxes = pgTable("sandboxes", {
   // artefact), au moins un dataset est requis à la création.
   model_url: text("model_url"),
   dataset_urls: jsonb("dataset_urls").$type<string[]>().notNull().default([]),
+  // Les champs de la proposition (repo_url, model_url, dataset_urls), que le
+  // schéma du flow validera en L6. Les trois colonnes ci-dessus sont écrites en
+  // miroir jusqu'à leur suppression en L7 : domain/legacyProposalFields.ts.
+  proposal_fields: jsonb("proposal_fields").$type<Record<string, unknown>>().notNull().default({}),
   // 'open' | 'promoted' | 'archived'. Créé directement 'open' : aucune
   // validation admin n'est nécessaire pour exister.
   status: varchar("status", { length: 10 }).notNull().default("open"),
