@@ -32,8 +32,8 @@ interface PoolState {
 }
 
 /**
- * Since challenge-014, only `medical_pro` users may vote on a validation
- * challenge — testing happens exclusively by claiming a pre-authored
+ * Since challenge-014, only reviewers holding the qualification the challenge
+ * requires may vote on a validation challenge — testing happens exclusively by claiming a pre-authored
  * ground-truth reference case (see ReferenceCaseAuthorPanel for the writing
  * side), not by dropping an arbitrary file. See
  * challenges/challenge-014-qualified_validation/SPEC.md section 4.3.
@@ -42,22 +42,17 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
   const [targets, setTargets] = useState<TargetItem[]>([]);
   const [pool, setPool] = useState<PoolState | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [canReview, setCanReview] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeContributionId, setActiveContributionId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [meRes, targetsRes] = await Promise.all([
-        fetch('/api/contributors/me'),
-        fetch(`/api/challenges/${challengeId}/validation-targets`),
-      ]);
-      if (meRes.ok) {
-        const me = await meRes.json();
-        setRole(me.user?.role ?? null);
-      }
+      const targetsRes = await fetch(`/api/challenges/${challengeId}/validation-targets`);
       if (targetsRes.ok) {
         const data = await targetsRes.json();
+        // Relire exige la qualification que le challenge pose : le serveur le dit.
+        setCanReview(data.viewer?.canReview === true);
         setTargets(data.targets ?? []);
         setPool(data.pool ?? null);
         setCurrentUserId(data.currentUserId ?? null);
@@ -73,12 +68,12 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
     return <div className="h-48 animate-pulse rounded-xl border border-white/[0.06] bg-white/5" />;
   }
 
-  if (role !== 'medical_pro') {
+  if (!canReview) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] py-12 text-center">
         <ShieldCheck className="h-7 w-7 text-white/15" />
         <p className="max-w-sm text-xs text-white/25">
-          Only qualified health professionals (medical_pro) can vote on this validation challenge.
+          Only qualified reviewers can vote on this validation challenge.
         </p>
       </div>
     );
@@ -108,7 +103,7 @@ export function ValidationChallengeFlow({ challengeId }: { challengeId: string }
           </div>
           <span className="flex items-center gap-2 rounded-full bg-brandCP/10 px-3.5 py-2 text-xs font-semibold text-brandCP">
             <Coins className="h-3.5 w-3.5" />
-            medical_pro required to vote
+            Qualification required to vote
           </span>
         </div>
       )}

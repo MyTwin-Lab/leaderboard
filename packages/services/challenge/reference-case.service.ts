@@ -5,20 +5,23 @@ import {
   UserRepository,
   ReferenceCaseRepository,
   CaseClaimRepository,
+  UserQualificationRepository,
 } from "../../database-service/repositories/index.js";
 import type { ValidationReferenceCase, ValidationCaseClaim } from "../../database-service/domain/entities.js";
 import { proxyFileToEndpoint, EndpointCallError, type ProxyResult } from "./endpoint-proxy.js";
 import { SelfVoteError, ValidationTargetError } from "./validation-challenge.service.js";
 import { validationConfigOf } from "../../../content/kits/validation/config.js";
 import { ENDPOINT_VALIDATION_FLOW_KEY } from "../../../content/flows/endpoint-validation/descriptor.js";
+import { reviewerQualificationOf } from "../../../content/flows/endpoint-validation/index.js";
+import { hasQualification, type QualificationReader } from "../../capabilities/qualifications.js";
 
 export { EndpointCallError, SelfVoteError, ValidationTargetError };
 
-/** A non-medical_pro user tried to author/claim/observe/reveal. */
+/** A unqualified user tried to author/claim/observe/reveal. */
 export class InsufficientRoleError extends Error {}
 /** Authoring a case would exceed `required_validations` cases on this challenge. */
 export class ReferenceCaseQuotaError extends Error {}
-/** A medical_pro tried to claim or author-conflict with a case they wrote themselves. */
+/** A qualified reviewer tried to claim or author-conflict with a case they wrote themselves. */
 export class SelfAuthoredCaseError extends Error {}
 /** Lost the claim race — another validator claimed this case on this target first. */
 export class DuplicateClaimError extends Error {}
@@ -38,6 +41,8 @@ export interface ReferenceCaseDeps {
   userRepo: Pick<UserRepository, "findById">;
   caseRepo: ReferenceCaseRepository;
   caseClaimRepo: CaseClaimRepository;
+  /** Qui détient la qualification que le challenge exige des relecteurs. */
+  qualificationRepo: QualificationReader;
 }
 
 /**
@@ -45,8 +50,8 @@ export interface ReferenceCaseDeps {
  * ---------------------
  * Owns the ground-truth reference case lifecycle described in
  * challenges/challenge-014-qualified_validation/SPEC.md section 4.3:
- * a medical_pro writes exactly `required_validations` cases per validation
- * challenge, another medical_pro claims one on a target (which tests it
+ * a qualified reviewer writes exactly `required_validations` cases per validation
+ * challenge, another qualified reviewer claims one on a target (which tests it
  * against the live endpoint in one atomic gesture), records an observation,
  * and only then may the case's expected output be revealed to them — the
  * server-side enforcement point for "note first, see the answer after".
@@ -66,6 +71,7 @@ export class ReferenceCaseService {
       userRepo: new UserRepository(),
       caseRepo: new ReferenceCaseRepository(),
       caseClaimRepo: new CaseClaimRepository(),
+      qualificationRepo: new UserQualificationRepository(),
       ...deps,
     };
   }
@@ -87,9 +93,8 @@ export class ReferenceCaseService {
       throw new ValidationTargetError("This validation challenge has no required_validations configured");
     }
 
-    const author = await this.deps.userRepo.findById(authorUserId);
-    if (!author || author.role !== "medical_pro") {
-      throw new InsufficientRoleError("Only medical_pro users can author a reference case");
+    if (!(await hasQualification(authorUserId, reviewerQualificationOf(challenge), this.deps.qualificationRepo))) {
+      throw new InsufficientRoleError("Only qualified reviewers can author a reference case");
     }
 
     const existingCount = await this.deps.caseRepo.countByChallenge(validationChallengeId);
@@ -134,14 +139,13 @@ export class ReferenceCaseService {
   }): Promise<{ claim: ValidationCaseClaim; liveResponse: ProxyResult }> {
     const { validationChallengeId, contributionId, referenceCaseId, validatorUserId } = input;
 
-    const validator = await this.deps.userRepo.findById(validatorUserId);
-    if (!validator || validator.role !== "medical_pro") {
-      throw new InsufficientRoleError("Only medical_pro users can claim a reference case");
-    }
-
     const challenge = await this.deps.challengeRepo.findById(validationChallengeId);
     if (!challenge || challenge.type !== ENDPOINT_VALIDATION_FLOW_KEY) {
       throw new ValidationTargetError("Not a validation challenge");
+    }
+
+    if (!(await hasQualification(validatorUserId, reviewerQualificationOf(challenge), this.deps.qualificationRepo))) {
+      throw new InsufficientRoleError("Only qualified reviewers can claim a reference case");
     }
 
     const target = await this.deps.targetRepo.findByChallengeAndContribution(validationChallengeId, contributionId);

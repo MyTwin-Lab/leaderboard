@@ -5,7 +5,8 @@ import type { FlowDescriptor } from "./flows.js";
  * -------------------------
  * Ce que la distribution installée apporte côté serveur : les flows (un par
  * challenge), les extensions (attachables aux flows qu'elles déclarent), les
- * kits (code partagé entre flows) et les modules produit.
+ * kits (code partagé entre flows), les modules produit et les qualifications
+ * que ses flows exigent.
  *
  * Chacun déclare les clés du ledger et les types de contribution qu'il écrit.
  * Le registre refuse, dès l'installation, une clé revendiquée par deux
@@ -120,12 +121,6 @@ export interface FlowRulesDeclaration {
   parse(raw: unknown): unknown | null;
 }
 
-interface Declarations {
-  ruleKeys?: readonly RuleKeyDeclaration[];
-  contributionTypes?: readonly ContributionTypeDeclaration[];
-  evaluationHandlers?: readonly EvaluationHandlerDeclaration[];
-}
-
 /**
  * Un livrable qu'un flow produit : un type de contribution, et ce qu'il
  * permet d'éprouver (`endpoint`, `deployed_app`…). Un flow de validation
@@ -136,9 +131,32 @@ export interface DeliverableDeclaration {
   capabilities: readonly string[];
 }
 
+/**
+ * Une qualification qu'un compte peut détenir (`user_qualifications.key`),
+ * distincte de son rôle : le rôle dit ce qu'il a le droit de faire sur la
+ * plateforme, la qualification ce qu'on lui reconnaît de compétent pour juger.
+ */
+export interface QualificationDeclaration {
+  key: string;
+  label: string;
+  description?: string;
+}
+
+interface Declarations {
+  ruleKeys?: readonly RuleKeyDeclaration[];
+  contributionTypes?: readonly ContributionTypeDeclaration[];
+  evaluationHandlers?: readonly EvaluationHandlerDeclaration[];
+}
+
 export interface FlowDefinition extends Declarations {
   descriptor: FlowDescriptor;
   config?: FlowConfigDeclaration;
+  /**
+   * Valeurs que la distribution pose pour les clés de configuration absentes,
+   * à la création comme à la lecture (une qualification exigée, par exemple).
+   * Le flow reste générique ; c'est l'installation qui le règle.
+   */
+  configDefaults?: Readonly<Record<string, unknown>>;
   rules?: FlowRulesDeclaration;
   /** Les livrables que ses contributions constituent. */
   deliverables?: readonly DeliverableDeclaration[];
@@ -168,6 +186,7 @@ export interface PlatformDefinitions {
   extensions?: readonly ExtensionDefinition[];
   kits?: readonly KitDefinition[];
   modules?: readonly ModuleDefinition[];
+  qualifications?: readonly QualificationDeclaration[];
 }
 
 /** Une déclaration, avec qui l'a faite (`flow:ml`, `extension:slack-signals`…). */
@@ -178,6 +197,7 @@ interface PlatformState {
   extensions: Map<string, ExtensionDefinition>;
   kits: Map<string, KitDefinition>;
   modules: Map<string, ModuleDefinition>;
+  qualifications: Map<string, QualificationDeclaration>;
   ruleKeys: Map<string, Owned<RuleKeyDeclaration>>;
   contributionTypes: Map<string, Owned<ContributionTypeDeclaration>>;
   /** Par clé de propriétaire (`code`, `sandbox`…), telle qu'inscrite dans `evaluation_runs.trigger_type`. */
@@ -282,6 +302,7 @@ export class PlatformRegistry {
       extensions: new Map(),
       kits: new Map(),
       modules: new Map(),
+      qualifications: new Map(),
       ruleKeys: new Map(),
       contributionTypes: new Map(),
       evaluationHandlers: new Map(),
@@ -314,6 +335,9 @@ export class PlatformRegistry {
     for (const module of definitions.modules ?? []) {
       addUnique(state.modules, "Module", module.key, module);
       owners.push({ key: module.key, owner: `module:${module.key}`, declarations: module });
+    }
+    for (const qualification of definitions.qualifications ?? []) {
+      addUnique(state.qualifications, "Qualification", qualification.key, qualification);
     }
 
     for (const { key, owner, declarations } of owners) {
@@ -359,6 +383,14 @@ export class PlatformRegistry {
 
   static module(key: string): ModuleDefinition | undefined {
     return current().modules.get(key);
+  }
+
+  static qualification(key: string | null | undefined): QualificationDeclaration | undefined {
+    return key ? current().qualifications.get(key) : undefined;
+  }
+
+  static qualifications(): QualificationDeclaration[] {
+    return [...current().qualifications.values()];
   }
 
   /** Les sources de CP extérieures au ledger des challenges. */

@@ -150,7 +150,7 @@ export class ReferenceCaseRepository {
   /**
    * Cases on this challenge, not authored by excludeAuthorId, not already
    * claimed on this specific target — the "pick a case" list for a
-   * medical_pro opening a target. The same case can still appear here for a
+   * qualified reviewer opening a target. The same case can still appear here for a
    * *different* target even after being claimed on this one, since claim
    * exclusivity is per-target, not per-case.
    */

@@ -80,10 +80,9 @@ describe("canSeeSandbox", () => {
 });
 
 describe("canCreateSandbox", () => {
-  it("autorise admin, contributor et medical_pro", () => {
+  it("autorise admin et contributor", () => {
     expect(canCreateSandbox("admin")).toBe(true);
     expect(canCreateSandbox("contributor")).toBe(true);
-    expect(canCreateSandbox("medical_pro")).toBe(true);
   });
 
   it("exclut viewer, qui n'a aucun droit d'écriture", () => {

@@ -90,6 +90,38 @@ describe("flow-config", () => {
     });
   });
 
+  describe("configDefaults", () => {
+    const qualified: ConfigSchema = {
+      parse(value) {
+        const config = value as { reviewer?: unknown };
+        if (typeof config.reviewer !== "string") throw new Error("reviewer is required");
+        return { reviewer: config.reviewer };
+      },
+    };
+
+    beforeEach(() => {
+      PlatformRegistry.reset();
+      PlatformRegistry.install({
+        flows: [
+          {
+            descriptor: { key: "review", label: "Review", longLabel: "Review", icon: "shield", briefRequired: false, publiclyVisible: false },
+            config: { version: 1, schema: qualified },
+            configDefaults: { reviewer: "doctor" },
+          },
+        ],
+      });
+    });
+
+    it("fills a key the distribution sets, at creation as at reading", () => {
+      expect(prepareFlowConfig("review", {}).flow_config).toEqual({ reviewer: "doctor" });
+      expect(flowConfigOf({ type: "review", flow_config: {} })).toEqual({ reviewer: "doctor" });
+    });
+
+    it("never overrides a value that is set", () => {
+      expect(prepareFlowConfig("review", { reviewer: "nurse", ignored: undefined }).flow_config).toEqual({ reviewer: "nurse" });
+    });
+  });
+
   describe("prepareFlowConfig", () => {
     it("validates a new config and stores it in the current version", () => {
       expect(prepareFlowConfig("room", { seats: 3, extensions: { gpu: { enabled: true } } })).toEqual({

@@ -853,6 +853,91 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
     },
   },
 
+  // --- Qualifications (challenge 020, L3) ---
+  // Le rôle ne porte plus que des permissions ; ce qu'on reconnaît à un compte
+  // de compétent pour juger devient une qualification, auditée comme un rôle.
+  {
+    label: "user_qualifications",
+    sql: `
+      CREATE TABLE IF NOT EXISTS user_qualifications (
+        user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        key varchar(64) NOT NULL,
+        granted_by uuid REFERENCES users(uuid) ON DELETE SET NULL,
+        granted_at timestamp NOT NULL DEFAULT now(),
+        note text,
+        PRIMARY KEY (user_id, key)
+      )`,
+  },
+  {
+    label: "idx_user_qualifications_key",
+    sql: `CREATE INDEX IF NOT EXISTS idx_user_qualifications_key ON user_qualifications (key)`,
+  },
+  {
+    label: "qualification_changes",
+    sql: `
+      CREATE TABLE IF NOT EXISTS qualification_changes (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        key varchar(64) NOT NULL,
+        action varchar(16) NOT NULL,
+        changed_by uuid REFERENCES users(uuid) ON DELETE SET NULL,
+        note text,
+        created_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+  {
+    label: "idx_qualification_changes_user_created",
+    sql: `CREATE INDEX IF NOT EXISTS idx_qualification_changes_user_created ON qualification_changes (user_id, created_at)`,
+  },
+  // Reprise : chaque compte `medical_pro` devient `contributor` et reçoit la
+  // qualification `medical_pro`, tracée dans les deux journaux. Une seule
+  // transaction : un compte ne peut pas perdre son rôle sans avoir reçu sa
+  // qualification. Idempotent : plus aucun `medical_pro` au second passage.
+  {
+    label: "users.role medical_pro → contributor + qualification medical_pro",
+    run: async () => {
+      await db.transaction(async (tx) => {
+        const { rows } = await tx.execute(sql`SELECT uuid FROM users WHERE role = 'medical_pro' FOR UPDATE`);
+        if (rows.length === 0) return;
+
+        const note = "Reprise du rôle medical_pro (challenge 020, L3)";
+        await tx.execute(sql`
+          INSERT INTO user_qualifications (user_id, key, note)
+          SELECT uuid, 'medical_pro', ${note} FROM users WHERE role = 'medical_pro'
+          ON CONFLICT DO NOTHING`);
+        await tx.execute(sql`
+          INSERT INTO qualification_changes (user_id, key, action, note)
+          SELECT uuid, 'medical_pro', 'granted', ${note} FROM users WHERE role = 'medical_pro'`);
+        await tx.execute(sql`
+          INSERT INTO role_changes (user_id, old_role, new_role, note)
+          SELECT uuid, 'medical_pro', 'contributor', ${note} FROM users WHERE role = 'medical_pro'`);
+        await tx.execute(sql`UPDATE users SET role = 'contributor' WHERE role = 'medical_pro'`);
+        console.log(`    ${rows.length} compte(s) medical_pro repris`);
+      });
+    },
+  },
+  // Les flows de validation lisent la qualification exigée dans leur
+  // configuration : les challenges existants gardent `medical_pro`, et le
+  // parcours garde ses rôles éligibles (les medical_pro étant désormais des
+  // contributeurs). Idempotent : seules les configurations sans la clé.
+  {
+    label: "challenges.flow_config (paramètres de qualification des validations)",
+    sql: `
+      UPDATE challenges
+      SET flow_config = jsonb_build_object('reviewer_qualification', 'medical_pro') || COALESCE(flow_config, '{}'::jsonb)
+      WHERE type = 'endpoint-validation' AND NOT (COALESCE(flow_config, '{}'::jsonb) ? 'reviewer_qualification')`,
+  },
+  {
+    label: "challenges.flow_config (paramètres de qualification des parcours)",
+    sql: `
+      UPDATE challenges
+      SET flow_config = jsonb_build_object(
+          'eligible_roles', '["contributor", "admin"]'::jsonb,
+          'expert_comment_qualification', 'medical_pro'
+        ) || COALESCE(flow_config, '{}'::jsonb)
+      WHERE type = 'journey-validation' AND NOT (COALESCE(flow_config, '{}'::jsonb) ? 'expert_comment_qualification')`,
+  },
+
   // --- Slugs des URLs publiques (docs/superpowers/plans/2026-09-15-slug-urls.md) ---
   //
   // En toute fin de tableau, volontairement : le SET NOT NULL rend la colonne

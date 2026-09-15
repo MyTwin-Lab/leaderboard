@@ -29,6 +29,8 @@ const {
   mockScenarioRunFindByChallengeAndValidator: vi.fn(),
 }));
 
+const { mockIsQualifiedReviewer } = vi.hoisted(() => ({ mockIsQualifiedReviewer: vi.fn() }));
+vi.mock('@/distribution/mytwin.validation.server', () => ({ isQualifiedReviewer: mockIsQualifiedReviewer }));
 vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
 vi.mock('@/lib/server/managerAuth', () => ({ isManagerOfChallenge: mockIsManagerOfChallenge }));
 vi.mock('../../../../../../../../packages/services/challenge/ssrf-guard', () => ({
@@ -95,6 +97,7 @@ const VALIDATION_CHALLENGE = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetSessionUser.mockResolvedValue(null);
+  mockIsQualifiedReviewer.mockResolvedValue(false);
   mockChallengeFindById.mockImplementation(async (id: string) =>
     id === CHALLENGE_ID ? VALIDATION_CHALLENGE : { uuid: 'ml-challenge-1', type: 'ml' }
   );

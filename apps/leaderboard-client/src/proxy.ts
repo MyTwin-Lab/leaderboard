@@ -25,6 +25,7 @@ const protectedApiRoutes = [
   '/api/challenges',
   '/api/projects',
   '/api/users',
+  '/api/qualifications',
   '/api/repos',
   '/api/contributions',
   '/api/contributors/me',
@@ -338,12 +339,14 @@ export async function proxy(request: NextRequest) {
         pathname.includes('/validation-scenario-steps');
 
       // Cycle de vote de la validation qualifiée (challenge-014) : claim/observation/
-      // reveal/verdict/authoring d'un cas de référence — réservé aux medical_pro,
-      // enforced dans chaque handler (InsufficientRoleError). Sans cette exception,
+      // reveal/verdict/authoring d'un cas de référence — réservé aux relecteurs
+      // qualifiés, vérifié dans chaque handler contre la qualification que le challenge exige. Sans cette exception,
       // le garde-fou "admin only" ci-dessous bloquerait toute la fonctionnalité pour
-      // un vrai medical_pro non-admin.
-      const isMedicalProValidationRoute =
-        payload.role === 'medical_pro' &&
+      // un relecteur qualifié non-admin.
+      const isQualifiedValidationRoute =
+        // `medical_pro` : jeton émis avant la reprise en qualification,
+        // accepté jusqu'au lot L7 du challenge 020.
+        ['contributor', 'medical_pro'].includes(payload.role) &&
         (pathname.includes('/validation-verdicts') ||
           pathname.includes('/validation-targets') ||
           pathname.includes('/validation-case-claims') ||
@@ -358,10 +361,10 @@ export async function proxy(request: NextRequest) {
       // action d'administration.
       //
       // Les vraies gardes vivent dans ScenarioWalkthroughService, où elles sont
-      // testées : rôle éligible (contributor/medical_pro/admin — pas viewer,
+      // testées : rôle éligible selon la configuration du parcours (pas viewer,
       // lecture seule partout ailleurs), pas ma propre application (porteur ET
       // membres du groupe), la walkthrough m'appartient et est encore
-      // brouillon, l'avis médical réservé aux medical_pro. Sans cette
+      // brouillon, l'avis médical réservé à la qualification exigée. Sans cette
       // exception, le garde-fou « admin only » ci-dessous interdirait à tout
       // le monde sauf un admin de démarrer une walkthrough — et donc d'être payé.
       const isScenarioWalkthroughRoute = pathname.includes('/validation-scenario-runs');
@@ -382,7 +385,7 @@ export async function proxy(request: NextRequest) {
 
       // Les méthodes de modification nécessitent le rôle admin, sauf pour certaines routes
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && payload.role !== 'admin') {
-        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isMedicalProValidationRoute && !isScenarioWalkthroughRoute && !isNotificationSelfRoute && !isGroupInviteRoute && !isComputeRequestRoute && !isSyncMeetingCreateRoute) {
+        if (!isTaskSelfServiceRoute && !isMLContributorRoute && !isChallengeJoinRoute && !isChallengeSelfServiceRoute && !isManagerAccessibleRoute && !isContributorSelfRoute && !isQualifiedValidationRoute && !isScenarioWalkthroughRoute && !isNotificationSelfRoute && !isGroupInviteRoute && !isComputeRequestRoute && !isSyncMeetingCreateRoute) {
           return respond(NextResponse.json(
             { error: 'Admin role required for this action' },
             { status: 403 }

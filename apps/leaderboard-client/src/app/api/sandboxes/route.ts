@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/sandboxes — création.
  *
- * `admin`, `contributor` et `medical_pro` (§1.6). `viewer` est exclu : c'est le
+ * `admin` et `contributor` (§1.6). `viewer` est exclu : c'est le
  * rôle sans aucun droit d'écriture. Un manager n'a rien de particulier ici — il
  * crée en tant que contributeur, comme tout le monde.
  */

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UserRepository } from '../../../../../../packages/database-service/repositories';
+import { UserQualificationRepository, UserRepository } from '../../../../../../packages/database-service/repositories';
 import { userRoleSchema } from '../../../../../../packages/database-service/domain/schemas_zod';
 import { getSessionUser } from '@/lib/auth';
 import { z } from 'zod';
 
 const userRepo = new UserRepository();
+const qualificationRepo = new UserQualificationRepository();
 
 const createUserSchema = z.object({
   github_username: z.string().min(1).optional(),
@@ -25,7 +26,10 @@ export async function GET() {
     if (session.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const users = await userRepo.findAll();
-    return NextResponse.json(users);
+    const qualifications = await qualificationRepo.findByUsers(users.map(u => u.uuid));
+    const keysByUser = new Map<string, string[]>();
+    for (const q of qualifications) keysByUser.set(q.user_id, [...(keysByUser.get(q.user_id) ?? []), q.key]);
+    return NextResponse.json(users.map(u => ({ ...u, qualifications: keysByUser.get(u.uuid) ?? [] })));
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json(

@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
-import { UserList } from '@/components/admin/UserList';
+import { UserList, type ManagedUser, type QualificationOption } from '@/components/admin/UserList';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Search } from 'lucide-react';
-import type { User } from '../../../../../../packages/database-service/domain/entities';
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [qualifications, setQualifications] = useState<QualificationOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -22,9 +22,14 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users');
-      const data = await res.json();
-      setUsers(data);
+      const [usersRes, qualificationsRes] = await Promise.all([
+        fetch('/api/users'),
+        fetch('/api/qualifications'),
+      ]);
+      setUsers(await usersRes.json());
+      // Sans la liste des qualifications, les comptes restent gérables : seules
+      // les puces d'octroi manquent.
+      if (qualificationsRes.ok) setQualifications(await qualificationsRes.json());
     } catch {
       toast('Failed to load users', 'error');
     } finally {
@@ -54,8 +59,12 @@ export default function UsersPage() {
     }
   };
 
-  const handleRoleUpdated = (updated: User) => {
+  const handleRoleUpdated = (updated: ManagedUser) => {
     setUsers((prev) => prev.map((u) => (u.uuid === updated.uuid ? updated : u)));
+  };
+
+  const handleQualificationsUpdated = (userId: string, keys: string[]) => {
+    setUsers((prev) => prev.map((u) => (u.uuid === userId ? { ...u, qualifications: keys } : u)));
   };
 
   const filtered = useMemo(() => {
@@ -66,7 +75,8 @@ export default function UsersPage() {
         u.github_username?.toLowerCase().includes(q) ||
         u.full_name?.toLowerCase().includes(q) ||
         u.email?.toLowerCase().includes(q) ||
-        u.role?.toLowerCase().includes(q),
+        u.role?.toLowerCase().includes(q) ||
+        (u.qualifications ?? []).some((key) => key.toLowerCase().includes(q)),
     );
   }, [users, search]);
 
@@ -92,7 +102,13 @@ export default function UsersPage() {
           </div>
         }
       >
-        <UserList users={filtered} onDelete={handleDelete} onRoleUpdated={handleRoleUpdated} />
+        <UserList
+          users={filtered}
+          qualifications={qualifications}
+          onDelete={handleDelete}
+          onRoleUpdated={handleRoleUpdated}
+          onQualificationsUpdated={handleQualificationsUpdated}
+        />
       </Card>
     </div>
   );

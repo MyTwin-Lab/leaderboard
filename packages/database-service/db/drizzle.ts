@@ -176,8 +176,8 @@ export const users = pgTable("users", {
 // --- ROLE_CHANGES ---
 // Journal d'audit des rôles. Une row par changement effectif, écrite dans la
 // même transaction que l'UPDATE de users.role (UserRepository.updateRole) :
-// aucun changement de rôle ne peut exister sans sa trace. `medical_pro` est la
-// frontière de confiance des challenges de validation, d'où l'exigence.
+// aucun changement de rôle ne peut exister sans sa trace. Les qualifications
+// ont leur propre journal (qualification_changes).
 //
 // `old_role` NULL = rôle attribué à la création du compte par un admin.
 // `changed_by` SET NULL : l'auteur peut être supprimé, la trace reste.
@@ -192,6 +192,38 @@ export const role_changes = pgTable("role_changes", {
   created_at: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   userCreatedIdx: index("idx_role_changes_user_created").on(table.user_id, table.created_at),
+}));
+
+// --- USER_QUALIFICATIONS ---
+// Ce qu'on reconnaît à un compte de compétent pour juger (un professionnel de
+// santé…), distinct de son rôle, qui ne porte que des permissions. Les clés
+// sont déclarées par la distribution installée. Chaque octroi et chaque retrait
+// laisse une trace dans qualification_changes, dans la même transaction.
+export const user_qualifications = pgTable("user_qualifications", {
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  key: varchar("key", { length: 64 }).notNull(),
+  granted_by: uuid("granted_by").references(() => users.uuid, { onDelete: "set null" }),
+  granted_at: timestamp("granted_at").defaultNow().notNull(),
+  note: text("note"),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.user_id, table.key] }),
+  keyIdx: index("idx_user_qualifications_key").on(table.key),
+}));
+
+// --- QUALIFICATION_CHANGES ---
+// Journal d'audit des qualifications, sur le modèle de role_changes : une row
+// par octroi ou retrait effectif. `changed_by` NULL : reprise de données, ou
+// auteur supprimé depuis.
+export const qualification_changes = pgTable("qualification_changes", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  key: varchar("key", { length: 64 }).notNull(),
+  action: varchar("action", { length: 16 }).notNull(), // granted | revoked
+  changed_by: uuid("changed_by").references(() => users.uuid, { onDelete: "set null" }),
+  note: text("note"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userCreatedIdx: index("idx_qualification_changes_user_created").on(table.user_id, table.created_at),
 }));
 
 // --- CONTRIBUTIONS ---
@@ -287,7 +319,7 @@ export const validation_targets = pgTable("validation_targets", {
 
 // --- VALIDATION_REFERENCE_CASES ---
 // Ground-truth ("known input -> expected output") cases authored by a
-// medical_pro (see challenges/challenge-014-qualified_validation/SPEC.md).
+// qualified reviewer (see challenges/challenge-014-qualified_validation/SPEC.md).
 // Exactly `required_validations` cases per validation challenge — enforced
 // at the service layer (ReferenceCaseService), not here, since a DB CHECK
 // can't see sibling-row counts. Shared across every target on the challenge:
@@ -333,7 +365,7 @@ export const validation_case_claims = pgTable("validation_case_claims", {
   response_bytes: bytea("response_bytes").notNull(),
   response_content_type: varchar("response_content_type", { length: 255 }).notNull(),
   response_status: integer("response_status").notNull(),
-  // Free-text note on what the medical_pro saw, recorded BEFORE reveal.
+  // Free-text note on what the reviewer saw, recorded BEFORE reveal.
   observation: text("observation"),
   observed_at: timestamp("observed_at"),
   // Set once, server-side, only after observed_at is non-null — the
@@ -352,7 +384,7 @@ export const validation_case_claims = pgTable("validation_case_claims", {
 }));
 
 // --- VALIDATION_ATTEMPTS ---
-// One row per final verdict cast by a medical_pro on a given target. Traces
+// One row per final verdict cast by a qualified reviewer on a given target. Traces
 // back to the claim (and thus the reference case, the live response, and the
 // observation) that produced it via reference_case_claim_id.
 //
@@ -479,7 +511,7 @@ export const validation_step_feedbacks = pgTable("validation_step_feedbacks", {
   result: varchar("result", { length: 10 }).notNull(),
   // The user-experience comment, open to every validator.
   comment: text("comment"),
-  // The clinical reading, writable only by a medical_pro — alongside
+  // The clinical reading, writable only by a holder of the expert qualification — alongside
   // `comment`, never instead of it.
   medical_comment: text("medical_comment"),
   created_at: timestamp("created_at").defaultNow(),

@@ -8,6 +8,7 @@ import {
   ScenarioStepRepository,
   ScenarioRunRepository,
   StepFeedbackRepository,
+  UserQualificationRepository,
 } from "../../database-service/repositories/index.js";
 import type {
   ScenarioStepResult,
@@ -18,6 +19,8 @@ import type {
 import type { RewardEntryDraft } from "../../database-service/repositories/index.js";
 import type { Challenge } from "../../database-service/domain/entities.js";
 import { assertJourneyValidationChallenge } from "../../../content/flows/journey-validation/guard.js";
+import { journeyAccessOf } from "../../../content/flows/journey-validation/index.js";
+import { hasQualification, qualificationLabel, type QualificationReader } from "../../capabilities/qualifications.js";
 import { findOrCreateValidatorContribution } from "../../../content/kits/validation/validatorContribution.js";
 import { distributedFromPool, remainingPool } from "../../capabilities/pool.js";
 import { validationConfigOf } from "../../../content/kits/validation/config.js";
@@ -34,9 +37,6 @@ import {
   TargetNotExposedError,
   ValidatorRoleError,
 } from "./scenario-errors.js";
-
-/** Rôles autorisés à parcourir un scénario et être payés pour — tout sauf `viewer`. */
-const ELIGIBLE_VALIDATOR_ROLES = ["contributor", "medical_pro", "admin"];
 
 /** Un champ texte vide ou blanc vaut « pas de contenu », jamais une chaîne vide en base. */
 function blankToNull(value: string | null | undefined): string | null {
@@ -66,6 +66,8 @@ export interface WalkthroughState {
   completedAt: Date | null;
   globalFeedback: string | null;
   steps: WalkthroughStepState[];
+  /** L'avis expert d'une étape : ouvert à ce validateur ou non, et le libellé de la qualification exigée. */
+  expertComment: { allowed: boolean; label: string | null };
 }
 
 export interface CompleteWalkthroughResult {
@@ -84,6 +86,8 @@ export interface ScenarioWalkthroughDeps {
   memberRepo: Pick<ContributionMemberRepository, "findByContribution">;
   userRepo: Pick<UserRepository, "findById">;
   rewardRepo: Pick<RewardEntryRepository, "sumByChallenge" | "createManyAndSyncRewards">;
+  /** Qui détient la qualification que le parcours exige pour un avis expert. */
+  qualificationRepo: QualificationReader;
 }
 
 /**
@@ -117,6 +121,7 @@ export class ScenarioWalkthroughService {
       memberRepo: new ContributionMemberRepository(),
       userRepo: new UserRepository(),
       rewardRepo: new RewardEntryRepository(),
+      qualificationRepo: new UserQualificationRepository(),
       ...deps,
     };
   }
@@ -134,9 +139,9 @@ export class ScenarioWalkthroughService {
   }): Promise<WalkthroughState> {
     const { validationChallengeId, contributionId, validatorUserId } = input;
 
-    await assertJourneyValidationChallenge(this.deps.challengeRepo, validationChallengeId);
+    const challenge = await assertJourneyValidationChallenge(this.deps.challengeRepo, validationChallengeId);
     await this.assertExposed(validationChallengeId, contributionId);
-    await this.assertValidatorRole(validatorUserId);
+    await this.assertValidatorRole(validatorUserId, challenge);
 
     const steps = await this.deps.stepRepo.findByChallenge(validationChallengeId);
     if (steps.length === 0) {
@@ -146,16 +151,17 @@ export class ScenarioWalkthroughService {
     }
 
     await this.assertNotOwnApplication(contributionId, validatorUserId);
+    const expertComment = await this.expertCommentAccess(validatorUserId, challenge);
 
     const existing = await this.deps.runRepo.findOne(validationChallengeId, contributionId, validatorUserId);
-    if (existing) return this.stateOf(existing, steps);
+    if (existing) return this.stateOf(existing, steps, expertComment);
 
     const created = await this.deps.runRepo.create({
       validation_challenge_id: validationChallengeId,
       contribution_id: contributionId,
       validator_user_id: validatorUserId,
     });
-    if (created) return this.stateOf(created, steps);
+    if (created) return this.stateOf(created, steps, expertComment);
 
     // create() a renvoyé null : l'index unique a rejeté l'insert parce qu'une
     // requête concurrente du même validateur a gagné. La ligne existe, on la
@@ -163,7 +169,7 @@ export class ScenarioWalkthroughService {
     // simplement double-cliqué.
     const winner = await this.deps.runRepo.findOne(validationChallengeId, contributionId, validatorUserId);
     if (!winner) throw new RunNotFoundError("Could not open the walkthrough");
-    return this.stateOf(winner, steps);
+    return this.stateOf(winner, steps, expertComment);
   }
 
   /** L'application doit être exposée comme cible sur ce challenge de validation. */
@@ -176,15 +182,15 @@ export class ScenarioWalkthroughService {
 
   /**
    * « Any signed-in contributor » dans la spec veut dire ce que le rôle dit :
-   * contributor, medical_pro et admin peuvent parcourir un scénario ; viewer
+   * les rôles que la configuration du parcours déclare éligibles peuvent parcourir un scénario ; viewer
    * — assignable, lecture seule partout ailleurs dans proxy.ts — ne peut pas.
    * Vérifié ici plutôt que dans le middleware pour que ce soit testable et
    * pour que toute route qui appelle openWalkthrough en hérite.
    */
-  private async assertValidatorRole(validatorUserId: string): Promise<void> {
+  private async assertValidatorRole(validatorUserId: string, challenge: Challenge): Promise<void> {
     const user = await this.deps.userRepo.findById(validatorUserId);
-    if (!user || !ELIGIBLE_VALIDATOR_ROLES.includes(user.role)) {
-      throw new ValidatorRoleError("Only a contributor, medical_pro or admin can walk through a scenario");
+    if (!user || !journeyAccessOf(challenge).eligible_roles.includes(user.role)) {
+      throw new ValidatorRoleError("Your role cannot walk through this scenario");
     }
   }
 
@@ -232,7 +238,7 @@ export class ScenarioWalkthroughService {
   }): Promise<WalkthroughState> {
     const { validationChallengeId, runId, stepId, validatorUserId, result } = input;
 
-    await assertJourneyValidationChallenge(this.deps.challengeRepo, validationChallengeId);
+    const challenge = await assertJourneyValidationChallenge(this.deps.challengeRepo, validationChallengeId);
     const run = await this.loadDraft(validationChallengeId, runId, validatorUserId);
 
     const steps = await this.deps.stepRepo.findByChallenge(validationChallengeId);
@@ -240,7 +246,7 @@ export class ScenarioWalkthroughService {
       throw new StepNotFoundError("Step not found in this challenge's scenario");
     }
 
-    const medicalComment = await this.resolveMedicalComment(validatorUserId, input.medicalComment);
+    const medicalComment = await this.resolveMedicalComment(validatorUserId, input.medicalComment, challenge);
 
     await this.deps.feedbackRepo.upsert({
       run_id: run.uuid,
@@ -250,25 +256,25 @@ export class ScenarioWalkthroughService {
       medical_comment: medicalComment,
     });
 
-    return this.stateOf(run, steps);
+    return this.stateOf(run, steps, await this.expertCommentAccess(validatorUserId, challenge));
   }
 
   /**
-   * L'avis médical est réservé au rôle `medical_pro` — la même frontière de
-   * qualification que le flux ML trace déjà, et non une frontière
-   * d'appartenance au challenge.
+   * L'avis médical est réservé à la qualification que le parcours exige — la
+   * même frontière de qualification que la validation d'endpoints trace déjà,
+   * et non une frontière d'appartenance au challenge.
    *
    * Une chaîne vide n'est pas une tentative d'écriture : un validateur sans
-   * le rôle n'a simplement pas le champ, et un client qui poste `""` ne doit
+   * la qualification n'a simplement pas le champ, et un client qui poste `""` ne doit
    * pas récolter un 403.
    */
-  private async resolveMedicalComment(validatorUserId: string, raw: string | null): Promise<string | null> {
+  private async resolveMedicalComment(validatorUserId: string, raw: string | null, challenge: Challenge): Promise<string | null> {
     const value = blankToNull(raw);
     if (value === null) return null;
 
-    const user = await this.deps.userRepo.findById(validatorUserId);
-    if (user?.role !== "medical_pro") {
-      throw new MedicalCommentForbiddenError("Only medical_pro users can leave a medical opinion");
+    const key = journeyAccessOf(challenge).expert_comment_qualification;
+    if (!(await hasQualification(validatorUserId, key, this.deps.qualificationRepo))) {
+      throw new MedicalCommentForbiddenError("Only qualified experts can leave an expert opinion");
     }
     return value;
   }
@@ -309,7 +315,7 @@ export class ScenarioWalkthroughService {
     // revérifie pareil ce que la route de révélation avait déjà imposé. Sans
     // ce second appel, un contributeur passé viewer en cours de route
     // resterait payable à la clôture malgré la garde posée à l'ouverture.
-    await this.assertValidatorRole(validatorUserId);
+    await this.assertValidatorRole(validatorUserId, challenge);
     await this.assertNotOwnApplication(run.contribution_id, validatorUserId);
 
     const steps = await this.deps.stepRepo.findByChallenge(validationChallengeId);
@@ -376,8 +382,19 @@ export class ScenarioWalkthroughService {
     return run;
   }
 
-  /** Le scénario joint à mes réponses, dans l'ordre des étapes. */
-  private async stateOf(run: ValidationScenarioRun, steps: ValidationScenarioStep[]): Promise<WalkthroughState> {
+  /** L'avis expert est-il ouvert à ce validateur, et sous quel libellé. */
+  private async expertCommentAccess(validatorUserId: string, challenge: Challenge): Promise<WalkthroughState["expertComment"]> {
+    const key = journeyAccessOf(challenge).expert_comment_qualification;
+    if (!key) return { allowed: false, label: null };
+    return {
+      allowed: await hasQualification(validatorUserId, key, this.deps.qualificationRepo),
+      label: qualificationLabel(key),
+    };
+  }
+
+  private async stateOf(run: ValidationScenarioRun, steps: ValidationScenarioStep[],
+    expertComment: WalkthroughState["expertComment"],
+  ): Promise<WalkthroughState> {
     const feedbacks = await this.deps.feedbackRepo.findByRun(run.uuid);
     const byStep = new Map<string, ValidationStepFeedback>(feedbacks.map(f => [f.step_id, f]));
 
@@ -386,6 +403,7 @@ export class ScenarioWalkthroughService {
       contributionId: run.contribution_id,
       completedAt: run.completed_at,
       globalFeedback: run.global_feedback,
+      expertComment,
       steps: steps.map(s => {
         const f = byStep.get(s.uuid);
         return {

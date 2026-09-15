@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth";
 import { repositories } from "@/lib/db";
-import { UserRepository } from "../../../../../../../packages/database-service/repositories";
+import { UserQualificationRepository, UserRepository } from "../../../../../../../packages/database-service/repositories";
 
 const userRepo = new UserRepository();
+const qualificationRepo = new UserQualificationRepository();
 
 export async function GET() {
   const session = await getSessionUser();
@@ -14,7 +15,13 @@ export async function GET() {
   }
 
   const managedProjects = await repositories.project.findByManagerId(session.id);
-  return NextResponse.json({ user: session, managedProjectIds: managedProjects.map(p => p.uuid) });
+  const qualifications = await qualificationRepo.findByUser(session.id);
+  return NextResponse.json({
+    user: session,
+    managedProjectIds: managedProjects.map(p => p.uuid),
+    // Les clés détenues : l'interface montre ou masque les gestes qui les exigent.
+    qualifications: qualifications.map(q => q.key),
+  });
 }
 
 export async function PATCH(request: NextRequest) {

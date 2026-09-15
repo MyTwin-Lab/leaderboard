@@ -16,6 +16,8 @@ vi.mock('../../../../../../../../../../packages/database-service/repositories', 
   CaseClaimRepository: class { findPurgeState = mockFindPurgeState; },
 }));
 
+const { mockIsQualifiedReviewer } = vi.hoisted(() => ({ mockIsQualifiedReviewer: vi.fn() }));
+vi.mock('@/distribution/mytwin.validation.server', () => ({ isQualifiedReviewer: mockIsQualifiedReviewer }));
 vi.mock('@/lib/auth', () => ({ getSessionUser: vi.fn() }));
 vi.mock('@/lib/server/safeFileHeaders', () => ({
   buildSafeFileHeaders: (contentType: string | null, filename: string | null) => ({
@@ -45,7 +47,8 @@ function call() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'medical_pro' });
+  mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'contributor' });
+  mockIsQualifiedReviewer.mockResolvedValue(true);
   mockFindPurgeState.mockResolvedValue({ validator_user_id: 'bob', claim_purged_at: null, case_purged_at: null });
 });
 
@@ -67,8 +70,8 @@ describe('POST /api/challenges/[id]/validation-case-claims/[claimId]/reveal', ()
     expect(mockRevealExpectedOutput).not.toHaveBeenCalled();
   });
 
-  it('returns 403 for a non-medical_pro user', async () => {
-    mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'contributor' });
+  it('returns 403 for a user without the reviewer qualification', async () => {
+    mockIsQualifiedReviewer.mockResolvedValue(false);
     const res = await call();
     expect(res.status).toBe(403);
     expect(mockRevealExpectedOutput).not.toHaveBeenCalled();

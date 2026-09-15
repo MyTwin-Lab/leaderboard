@@ -10,9 +10,11 @@ import {
   ScenarioStepRepository,
   ScenarioRunRepository,
   StepFeedbackRepository,
+  UserQualificationRepository,
 } from '../../../../../../../../packages/database-service/repositories';
 import { isManagerOfChallenge } from '@/lib/server/managerAuth';
 import { isValidationFlow } from '@/distribution/mytwin.validation';
+import { expertQualificationOf } from '@/distribution/mytwin.validation.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,16 +25,17 @@ const userRepo = new UserRepository();
 const stepRepo = new ScenarioStepRepository();
 const runRepo = new ScenarioRunRepository();
 const feedbackRepo = new StepFeedbackRepository();
+const qualificationRepo = new UserQualificationRepository();
 
 const openRunSchema = z.object({ contribution_id: z.string().uuid() });
 
 // POST /api/challenges/[id]/validation-scenario-runs — tout principal connecté
 // à ce niveau ; ScenarioWalkthroughService.openWalkthrough affine ensuite :
-// contributor, medical_pro et admin peuvent ouvrir une walkthrough, viewer
+// contributor, qualified expert et admin peuvent ouvrir une walkthrough, viewer
 // est refusé (ValidatorRoleError, 403).
 // Idempotent : crée le brouillon, ou renvoie celui laissé en cours avec les
 // retours d'étape déjà enregistrés. L'avis médical, lui, reste gardé sur
-// medical_pro, étape par étape.
+// qualified expert, étape par étape.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -119,6 +122,13 @@ export async function GET(
     const users = await userRepo.findByIds(userIds);
     const usersById = new Map(users.map(u => [u.uuid, u]));
 
+    // L'avis expert d'un parcours est réservé à la qualification que sa
+    // configuration exige : le panneau signale qui la détient.
+    const expert = expertQualificationOf(challenge);
+    const expertIds = new Set(
+      expert ? await qualificationRepo.findHolders([...new Set(runs.map(r => r.validator_user_id))], expert.key) : []
+    );
+
     // L'ordre du scénario, pas l'ordre d'insertion : le panneau rend une ligne
     // de marques P/F/B, qui doit correspondre aux étapes qu'elle résume.
     const stepOrder = new Map(steps.map((s, i) => [s.uuid, i]));
@@ -140,7 +150,8 @@ export async function GET(
           endpointUrl: contribution?.live_endpoint_url ?? null,
           validatorId: run.validator_user_id,
           validatorName: validator?.full_name ?? 'Unknown',
-          isMedicalPro: validator?.role === 'medical_pro',
+          isExpert: expertIds.has(run.validator_user_id),
+          expertLabel: expert?.label ?? null,
           completedAt: run.completed_at,
           globalFeedback: run.global_feedback,
           answeredCount: runFeedbacks.length,

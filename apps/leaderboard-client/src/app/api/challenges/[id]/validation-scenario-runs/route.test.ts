@@ -11,6 +11,7 @@ const {
   mockStepFindByChallenge,
   mockRunFindByChallenge,
   mockFeedbackFindByRuns,
+  mockFindHolders,
 } = vi.hoisted(() => ({
   mockGetSessionUser: vi.fn(),
   mockOpenWalkthrough: vi.fn(),
@@ -21,6 +22,7 @@ const {
   mockStepFindByChallenge: vi.fn(),
   mockRunFindByChallenge: vi.fn(),
   mockFeedbackFindByRuns: vi.fn(),
+  mockFindHolders: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ getSessionUser: mockGetSessionUser }));
@@ -35,6 +37,7 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   ScenarioStepRepository: class { findByChallenge = mockStepFindByChallenge; },
   ScenarioRunRepository: class { findByChallenge = mockRunFindByChallenge; },
   StepFeedbackRepository: class { findByRuns = mockFeedbackFindByRuns; },
+  UserQualificationRepository: class { findHolders = mockFindHolders; },
 }));
 
 import { GET, POST } from './route';
@@ -71,7 +74,8 @@ beforeEach(() => {
 describe('POST /api/challenges/[id]/validation-scenario-runs', () => {
   it('opens a walkthrough for any signed-in contributor', async () => {
     // Aucun rôle requis : n'importe quel contributeur peut parcourir une
-    // application. Seul l'avis médical est gardé sur medical_pro.
+    // application. Seul l'avis expert est gardé, par la qualification que le
+    // parcours exige.
     const res = await openRun({ contribution_id: APP });
     const body = await res.json();
 
@@ -118,7 +122,9 @@ describe('GET /api/challenges/[id]/validation-scenario-runs', () => {
   beforeEach(() => {
     mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
     mockIsManagerOfChallenge.mockResolvedValue(false);
-    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'journey-validation', source_challenge_id: 'code-ch-1' });
+    mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'journey-validation', source_challenge_id: 'code-ch-1',
+      flow_config: { cp_per_validation: 200, eligible_roles: ['contributor', 'admin'], expert_comment_qualification: 'medical_pro' },
+     });
     mockStepFindByChallenge.mockResolvedValue([
       { uuid: 'step-1', position: 0, title: 'Create an account' },
       { uuid: 'step-2', position: 1, title: 'Log in' },
@@ -127,6 +133,7 @@ describe('GET /api/challenges/[id]/validation-scenario-runs', () => {
       { uuid: 'run-1', contribution_id: APP, validator_user_id: 'bob', completed_at: new Date('2026-09-08'), global_feedback: 'Usable end to end.' },
       { uuid: 'run-2', contribution_id: APP_B, validator_user_id: 'carol', completed_at: null, global_feedback: null },
     ]);
+    mockFindHolders.mockResolvedValue(['bob']);
     mockFeedbackFindByRuns.mockResolvedValue([
       { uuid: 'fb-2', run_id: 'run-1', step_id: 'step-2', result: 'failed', comment: 'Login loops.', medical_comment: 'Not usable in consultation.' },
       { uuid: 'fb-1', run_id: 'run-1', step_id: 'step-1', result: 'passed', comment: null, medical_comment: null },
@@ -137,7 +144,7 @@ describe('GET /api/challenges/[id]/validation-scenario-runs', () => {
     }));
     mockUserFindByIds.mockResolvedValue([
       { uuid: 'alice', full_name: 'Alice' }, { uuid: 'dan', full_name: 'Dan' },
-      { uuid: 'bob', full_name: 'Bob', role: 'medical_pro' }, { uuid: 'carol', full_name: 'Carol', role: 'contributor' },
+      { uuid: 'bob', full_name: 'Bob', role: 'contributor' }, { uuid: 'carol', full_name: 'Carol', role: 'contributor' },
     ]);
   });
 
@@ -145,8 +152,10 @@ describe('GET /api/challenges/[id]/validation-scenario-runs', () => {
     const body = await (await getRuns()).json();
 
     expect(body.runs).toHaveLength(2);
+    expect(mockFindHolders).toHaveBeenCalledWith(['bob', 'carol'], 'medical_pro');
+    expect(body.runs[1]).toMatchObject({ isExpert: false });
     expect(body.runs[0]).toMatchObject({
-      id: 'run-1', validatorName: 'Bob', isMedicalPro: true,
+      id: 'run-1', validatorName: 'Bob', isExpert: true, expertLabel: 'Health professional',
       submitterName: 'Alice', globalFeedback: 'Usable end to end.', answeredCount: 2,
     });
   });

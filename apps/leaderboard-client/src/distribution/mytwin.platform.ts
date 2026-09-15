@@ -8,6 +8,9 @@ import { slackSignalsExtension } from '../../../../content/extensions/slack-sign
 import { computeExtension } from '../../../../content/extensions/compute';
 import { sandboxModule } from '../../../../modules/sandbox';
 
+/** La qualification des professionnels de santé, exigée par les validations MyTwin. */
+export const MEDICAL_PRO = 'medical_pro';
+
 /**
  * Distribution MyTwin — plateforme
  * --------------------------------
@@ -16,8 +19,21 @@ import { sandboxModule } from '../../../../modules/sandbox';
  * être vérifié sans charger les connecteurs ni leurs credentials.
  */
 export const platform: PlatformDefinitions = {
-  flows: [codeFlow, mlFlow, endpointValidationFlow, journeyValidationFlow],
+  flows: [
+    codeFlow,
+    mlFlow,
+    // Les validations MyTwin sont jugées par des professionnels de santé.
+    { ...endpointValidationFlow, configDefaults: { reviewer_qualification: MEDICAL_PRO } },
+    { ...journeyValidationFlow, configDefaults: { expert_comment_qualification: MEDICAL_PRO } },
+  ],
   kits: [validationKit],
   extensions: [slackSignalsExtension, computeExtension],
   modules: [sandboxModule],
+  qualifications: [
+    {
+      key: MEDICAL_PRO,
+      label: 'Health professional',
+      description: 'A health professional whose qualification an admin has checked.',
+    },
+  ],
 };

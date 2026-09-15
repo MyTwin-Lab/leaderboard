@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindAll, mockCreate } = vi.hoisted(() => ({
+const { mockFindAll, mockCreate, mockFindByUsers } = vi.hoisted(() => ({
+  mockFindByUsers: vi.fn(),
   mockFindAll: vi.fn(),
   mockCreate: vi.fn(),
 }));
@@ -12,6 +13,9 @@ vi.mock('../../../../../../packages/database-service/repositories', () => ({
   UserRepository: class {
     findAll = mockFindAll;
     create = mockCreate;
+  },
+  UserQualificationRepository: class {
+    findByUsers = mockFindByUsers;
   },
 }));
 
@@ -32,6 +36,7 @@ function postUsers(body: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
+  mockFindByUsers.mockResolvedValue([]);
 });
 
 describe('GET /api/users', () => {
@@ -44,7 +49,7 @@ describe('GET /api/users', () => {
     expect(mockFindAll).not.toHaveBeenCalled();
   });
 
-  it.each(['contributor', 'viewer', 'medical_pro'])('returns 403 for a %s session', async (role) => {
+  it.each(['contributor', 'viewer'])('returns 403 for a %s session', async (role) => {
     mockGetSessionUser.mockResolvedValue({ id: 'u1', role });
 
     const res = await GET();
@@ -53,17 +58,22 @@ describe('GET /api/users', () => {
     expect(mockFindAll).not.toHaveBeenCalled();
   });
 
-  it('returns the list of users to an admin', async () => {
+  it('returns the list of users to an admin, with the qualifications each one holds', async () => {
     const users = [
       { uuid: '1', full_name: 'Ada Lovelace', role: 'contributor' },
       { uuid: '2', full_name: 'Alan Turing', role: 'admin' },
     ];
     mockFindAll.mockResolvedValue(users);
+    mockFindByUsers.mockResolvedValue([{ user_id: '1', key: 'medical_pro' }]);
 
     const res = await GET();
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(users);
+    expect(await res.json()).toEqual([
+      { ...users[0], qualifications: ['medical_pro'] },
+      { ...users[1], qualifications: [] },
+    ]);
+    expect(mockFindByUsers).toHaveBeenCalledWith(['1', '2']);
     expect(mockFindAll).toHaveBeenCalled();
   });
 
@@ -87,7 +97,7 @@ describe('POST /api/users', () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it.each(['contributor', 'viewer', 'medical_pro'])('returns 403 for a %s session', async (role) => {
+  it.each(['contributor', 'viewer'])('returns 403 for a %s session', async (role) => {
     mockGetSessionUser.mockResolvedValue({ id: 'u1', role });
 
     const res = await postUsers({ full_name: 'Ada', role: 'contributor' });

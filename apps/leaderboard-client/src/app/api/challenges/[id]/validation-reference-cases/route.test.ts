@@ -14,6 +14,8 @@ const {
   mockIsManagerOfChallenge: vi.fn(),
 }));
 
+const { mockIsQualifiedReviewer } = vi.hoisted(() => ({ mockIsQualifiedReviewer: vi.fn() }));
+vi.mock('@/distribution/mytwin.validation.server', () => ({ isQualifiedReviewer: mockIsQualifiedReviewer }));
 vi.mock('@/lib/auth', () => ({ getSessionUser: vi.fn() }));
 vi.mock('@/lib/server/managerAuth', () => ({ isManagerOfChallenge: mockIsManagerOfChallenge }));
 
@@ -55,14 +57,15 @@ function post(fields: Record<string, string | Blob> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'medical_pro' });
+  mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'contributor' });
+  mockIsQualifiedReviewer.mockResolvedValue(true);
   mockIsManagerOfChallenge.mockResolvedValue(false);
   mockFindByChallenge.mockResolvedValue([]);
   mockFindByAuthor.mockResolvedValue([]);
 });
 
 describe('POST /api/challenges/[id]/validation-reference-cases', () => {
-  it('authors a case as medical_pro', async () => {
+  it('authors a case as a qualified reviewer', async () => {
     mockAuthorCase.mockResolvedValue({
       uuid: 'case-1', author_user_id: 'bob', input_filename: 'in.png', input_content_type: 'image/png', created_at: new Date(),
     });
@@ -76,6 +79,7 @@ describe('POST /api/challenges/[id]/validation-reference-cases', () => {
 
   it('returns 403 for a contributor', async () => {
     mockGetSessionUser.mockResolvedValue({ id: 'u1', role: 'contributor' });
+    mockIsQualifiedReviewer.mockResolvedValue(false);
     const res = await post();
     expect(res.status).toBe(403);
     expect(mockAuthorCase).not.toHaveBeenCalled();
@@ -83,6 +87,7 @@ describe('POST /api/challenges/[id]/validation-reference-cases', () => {
 
   it('returns 403 for an admin — no authoring override exists', async () => {
     mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
+    mockIsQualifiedReviewer.mockResolvedValue(false);
     const res = await post();
     expect(res.status).toBe(403);
     expect(mockAuthorCase).not.toHaveBeenCalled();
@@ -112,6 +117,7 @@ describe('POST /api/challenges/[id]/validation-reference-cases', () => {
 describe('GET /api/challenges/[id]/validation-reference-cases', () => {
   it('returns the full list for an admin', async () => {
     mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
+    mockIsQualifiedReviewer.mockResolvedValue(false);
     mockFindByChallenge.mockResolvedValue([{ uuid: 'case-1', author_user_id: 'bob', input_filename: 'a.png', input_content_type: 'image/png', created_at: new Date() }]);
 
     const res = await get();
@@ -132,7 +138,7 @@ describe('GET /api/challenges/[id]/validation-reference-cases', () => {
     expect(mockFindByChallenge).toHaveBeenCalled();
   });
 
-  it("returns only the caller's own cases for a medical_pro", async () => {
+  it("returns only the caller's own cases for a qualified reviewer", async () => {
     const res = await get();
 
     expect(res.status).toBe(200);
@@ -142,6 +148,7 @@ describe('GET /api/challenges/[id]/validation-reference-cases', () => {
 
   it('returns 403 for a plain contributor', async () => {
     mockGetSessionUser.mockResolvedValue({ id: 'u1', role: 'contributor' });
+    mockIsQualifiedReviewer.mockResolvedValue(false);
     const res = await get();
     expect(res.status).toBe(403);
   });

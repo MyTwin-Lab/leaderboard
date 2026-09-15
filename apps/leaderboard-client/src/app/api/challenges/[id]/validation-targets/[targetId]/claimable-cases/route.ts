@@ -8,13 +8,14 @@ import {
   CaseClaimRepository,
 } from '../../../../../../../../../../packages/database-service/repositories';
 import { getSessionUser } from '@/lib/auth';
+import { isQualifiedReviewer } from '@/distribution/mytwin.validation.server';
 
 const service = new ReferenceCaseService();
 const targetRepo = new ValidationTargetRepository();
 const caseClaimRepo = new CaseClaimRepository();
 
 // GET /api/challenges/[id]/validation-targets/[targetId]/claimable-cases
-// medical_pro only. Returns the reference cases still claimable by the
+// qualified reviewer only. Returns the reference cases still claimable by the
 // requester on this specific target (metadata only — no bytes), plus their
 // own unfinished claims on it so the client can resume an interrupted
 // observe/reveal/vote sequence instead of re-offering the pick list.
@@ -26,8 +27,8 @@ export async function GET(
     const { id: challengeId, targetId } = await params;
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'medical_pro') {
-      return NextResponse.json({ error: 'Only medical_pro users can claim a reference case' }, { status: 403 });
+    if (!(await isQualifiedReviewer(user.id, challengeId))) {
+      return NextResponse.json({ error: 'Only qualified reviewers can claim a reference case' }, { status: 403 });
     }
 
     const target = await targetRepo.findById(targetId);

@@ -248,7 +248,8 @@ export const computeRequestSchema = z.object({
  * Rôles acceptés en écriture par l'API. `userSchema.role` reste une chaîne
  * libre : il valide aussi des rows historiques qu'on ne veut pas rejeter.
  */
-export const userRoleSchema = z.enum(['admin', 'contributor', 'viewer', 'medical_pro']);
+// Des permissions seulement : une compétence reconnue est une qualification.
+export const userRoleSchema = z.enum(['admin', 'contributor', 'viewer']);
 
 export const userSchema = z.object({
   uuid: z.string().uuid(),

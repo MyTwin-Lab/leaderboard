@@ -7,6 +7,7 @@ import {
   ObservationAlreadyRecordedError,
 } from '../../../../../../../../../../packages/services/challenge/reference-case.service';
 import { getSessionUser } from '@/lib/auth';
+import { isQualifiedReviewer } from '@/distribution/mytwin.validation.server';
 
 const service = new ReferenceCaseService();
 
@@ -15,7 +16,7 @@ const observationSchema = z.object({
 });
 
 // POST /api/challenges/[id]/validation-case-claims/[claimId]/observation
-// medical_pro only, must own the claim. Records what they saw in the live
+// qualified reviewer only, must own the claim. Records what they saw in the live
 // response — BEFORE the expected output can be revealed (see .../reveal).
 export async function POST(
   req: NextRequest,
@@ -24,11 +25,11 @@ export async function POST(
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'medical_pro') {
-      return NextResponse.json({ error: 'Only medical_pro users can record an observation' }, { status: 403 });
-    }
 
-    const { claimId } = await params;
+    const { id: challengeId, claimId } = await params;
+    if (!(await isQualifiedReviewer(user.id, challengeId))) {
+      return NextResponse.json({ error: 'Only qualified reviewers can record an observation' }, { status: 403 });
+    }
     const body = await req.json();
     const { observation } = observationSchema.parse(body);
 

@@ -202,13 +202,13 @@ export interface ValidationTarget {
 
 /**
  * Un cas de vérité terrain (entrée connue -> sortie attendue), écrit par un
- * medical_pro. Partagé par tout le challenge de validation — voir
+ * relecteur qualifié. Partagé par tout le challenge de validation — voir
  * challenges/challenge-014-qualified_validation/SPEC.md section 4.3.
  */
 export interface ValidationReferenceCase {
   uuid: string;
   validation_challenge_id: string; // FK -> challenges.uuid
-  author_user_id: string | null;   // FK -> users.uuid (le medical_pro auteur)
+  author_user_id: string | null;   // FK -> users.uuid (le relecteur auteur)
   input_bytes: Buffer;
   input_filename: string;
   input_content_type: string;
@@ -220,7 +220,7 @@ export interface ValidationReferenceCase {
 }
 
 /**
- * La réclamation d'un cas de référence par un medical_pro sur un target
+ * La réclamation d'un cas de référence par un relecteur qualifié sur un target
  * donné : réponse réelle capturée à la réclamation (un seul geste atomique),
  * puis observation, puis révélation — dans cet ordre, appliqué côté service.
  */
@@ -239,7 +239,7 @@ export interface ValidationCaseClaim {
   purged_at?: Date | null;         // non-null une fois response_bytes purgé
 }
 
-/** Un verdict (works/broken) rendu par un medical_pro sur une cible donnée. */
+/** Un verdict (works/broken) rendu par un relecteur qualifié sur une cible donnée. */
 export interface ValidationAttempt {
   uuid: string;
   validation_challenge_id: string; // FK -> challenges.uuid
@@ -286,7 +286,7 @@ export interface ValidationScenarioRun {
   created_at: Date;
 }
 
-/** Le retour d'un validateur sur une étape : un résultat, un commentaire UX, et un avis médical réservé aux medical_pro. */
+/** Le retour d'un validateur sur une étape : un résultat, un commentaire UX, et un avis médical réservé à la qualification exigée. */
 export interface ValidationStepFeedback {
   uuid: string;
   run_id: string;  // FK -> validation_scenario_runs.uuid
@@ -327,12 +327,36 @@ export interface ComputeRequest {
 }
 
 /**
- * Les rôles réellement utilisés (proxy.ts, components/admin/UserList.tsx,
- * seeds). La colonne reste un varchar : cette liste borne ce que l'API
- * accepte en écriture, elle ne réinterprète pas les rows existantes.
+ * Les rôles : des permissions, rien d'autre (proxy.ts,
+ * components/admin/UserList.tsx, seeds). Ce qu'on reconnaît à quelqu'un de
+ * compétent pour juger est une qualification (`user_qualifications`). La
+ * colonne reste un varchar : cette liste borne ce que l'API accepte en
+ * écriture, elle ne réinterprète pas les rows existantes.
  */
-export const USER_ROLES = ['admin', 'contributor', 'viewer', 'medical_pro'] as const;
+export const USER_ROLES = ['admin', 'contributor', 'viewer'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
+
+/** Une qualification détenue par un compte — voir la table user_qualifications. */
+export interface UserQualification {
+  user_id: string;
+  key: string;
+  granted_by: string | null;
+  granted_at: Date;
+  note: string | null;
+}
+
+export type QualificationAction = 'granted' | 'revoked';
+
+/** Trace d'un octroi ou d'un retrait de qualification — voir la table qualification_changes. */
+export interface QualificationChange {
+  uuid: string;
+  user_id: string;
+  key: string;
+  action: QualificationAction;
+  changed_by: string | null;
+  note: string | null;
+  created_at: Date;
+}
 
 /** Trace d'un changement de rôle — voir la table role_changes. */
 export interface RoleChange {

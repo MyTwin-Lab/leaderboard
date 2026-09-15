@@ -1,6 +1,7 @@
 export { ProjectRepository } from "./project.repo";
 export { RepoRepository } from "./repo.repo";
 export { ChallengeRepository, ParentFlowTakenError } from "./challenge.repo";
+export { UserQualificationRepository } from "./userQualification.repo";
 export { ChallengeRepoRepository } from "./challengeRepos.repo";
 export { ChallengeTeamRepository } from "./challengeTeam.repo";
 export { UserRepository } from "./user.repo";

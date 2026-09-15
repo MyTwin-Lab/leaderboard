@@ -18,6 +18,8 @@ const {
   };
 });
 
+const { mockIsQualifiedReviewer } = vi.hoisted(() => ({ mockIsQualifiedReviewer: vi.fn() }));
+vi.mock('@/distribution/mytwin.validation.server', () => ({ isQualifiedReviewer: mockIsQualifiedReviewer }));
 vi.mock('@/lib/auth', () => ({
   getSessionUser: vi.fn(),
 }));
@@ -62,7 +64,8 @@ function baseBody(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetSessionUser.mockResolvedValue({ id: 'user-1', role: 'medical_pro' });
+  mockGetSessionUser.mockResolvedValue({ id: 'user-1', role: 'contributor' });
+  mockIsQualifiedReviewer.mockResolvedValue(true);
 });
 
 describe('POST /api/challenges/[id]/validation-verdicts', () => {
@@ -74,8 +77,8 @@ describe('POST /api/challenges/[id]/validation-verdicts', () => {
     expect(mockCastVerdict).not.toHaveBeenCalled();
   });
 
-  it('returns 403 for a non-medical_pro user', async () => {
-    mockGetSessionUser.mockResolvedValue({ id: 'user-1', role: 'contributor' });
+  it('returns 403 for a user without the reviewer qualification', async () => {
+    mockIsQualifiedReviewer.mockResolvedValue(false);
     const res = await POST(buildRequest(baseBody()), { params: Promise.resolve({ id: 'challenge-1' }) });
 
     expect(res.status).toBe(403);

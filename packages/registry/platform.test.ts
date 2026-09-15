@@ -112,6 +112,20 @@ describe("PlatformRegistry", () => {
     expect(PlatformRegistry.isInstalled()).toBe(false);
   });
 
+  it("exposes the declared qualifications, and refuses one declared twice", () => {
+    PlatformRegistry.install({ flows: [], qualifications: [{ key: "nurse", label: "Nurse" }] });
+    expect(PlatformRegistry.qualification("nurse")?.label).toBe("Nurse");
+    expect(PlatformRegistry.qualification("pilot")).toBeUndefined();
+
+    PlatformRegistry.reset();
+    expect(() =>
+      PlatformRegistry.install({
+        flows: [],
+        qualifications: [{ key: "nurse", label: "Nurse" }, { key: "nurse", label: "RN" }],
+      })
+    ).toThrow(/Qualification "nurse" is installed twice/);
+  });
+
   it("refuses a second distribution, and says when none is installed", () => {
     expect(() => PlatformRegistry.flows()).toThrow(/No distribution installed/);
 

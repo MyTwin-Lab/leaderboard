@@ -37,7 +37,7 @@ interface SandboxListResponse {
  *
  * Un manager n'y figure pas : sur un sandbox, il est un contributeur ordinaire.
  */
-const CREATOR_ROLES = ["admin", "contributor", "medical_pro"];
+const CREATOR_ROLES = ["admin", "contributor"];
 
 const SORTS: { key: SandboxSort; label: string }[] = [
   { key: "stars", label: "Most starred" },

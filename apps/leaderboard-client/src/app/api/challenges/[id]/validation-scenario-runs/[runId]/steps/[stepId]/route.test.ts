@@ -68,7 +68,7 @@ describe('PUT .../validation-scenario-runs/[runId]/steps/[stepId]', () => {
     expect((await putStep({ result: 'maybe' })).status).toBe(400);
   });
 
-  it('returns 403 when a non-medical_pro sends a medical comment', async () => {
+  it('returns 403 when a validator without the expert qualification sends a medical comment', async () => {
     mockSaveStepFeedback.mockRejectedValue(new MedicalCommentForbiddenError('no'));
 
     expect((await putStep({ result: 'passed', medical_comment: 'Unsafe.' })).status).toBe(403);

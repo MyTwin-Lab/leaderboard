@@ -11,6 +11,8 @@ const {
   mockRecordObservation: vi.fn(),
 }));
 
+const { mockIsQualifiedReviewer } = vi.hoisted(() => ({ mockIsQualifiedReviewer: vi.fn() }));
+vi.mock('@/distribution/mytwin.validation.server', () => ({ isQualifiedReviewer: mockIsQualifiedReviewer }));
 vi.mock('@/lib/auth', () => ({ getSessionUser: vi.fn() }));
 
 vi.mock('../../../../../../../../../../packages/services/challenge/reference-case.service', () => ({
@@ -36,7 +38,8 @@ function call(body: Record<string, unknown> = { observation: 'Looks correct' }) 
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'medical_pro' });
+  mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'contributor' });
+  mockIsQualifiedReviewer.mockResolvedValue(true);
 });
 
 describe('POST /api/challenges/[id]/validation-case-claims/[claimId]/observation', () => {
@@ -56,8 +59,8 @@ describe('POST /api/challenges/[id]/validation-case-claims/[claimId]/observation
     expect(mockRecordObservation).not.toHaveBeenCalled();
   });
 
-  it('returns 403 for a non-medical_pro user', async () => {
-    mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'contributor' });
+  it('returns 403 for a user without the reviewer qualification', async () => {
+    mockIsQualifiedReviewer.mockResolvedValue(false);
     const res = await call();
     expect(res.status).toBe(403);
     expect(mockRecordObservation).not.toHaveBeenCalled();

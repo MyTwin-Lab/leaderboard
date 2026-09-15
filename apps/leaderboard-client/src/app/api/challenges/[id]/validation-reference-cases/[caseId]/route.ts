@@ -10,7 +10,7 @@ const caseClaimRepo = new CaseClaimRepository();
 
 // DELETE /api/challenges/[id]/validation-reference-cases/[caseId]
 // The case's own author, or an admin (not a plain manager — case authorship
-// is a medical_pro-only trust boundary, moderation is admin-only). 409 once
+// is a qualified-reviewer trust boundary, moderation is admin-only). 409 once
 // any claim already exists against the case — same guard shape as
 // validation-targets/[targetId]'s vote-count check.
 export async function DELETE(

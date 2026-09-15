@@ -11,6 +11,7 @@ import {
   ClaimNotRevealedError,
 } from '../../../../../../../../packages/services/challenge/validation-challenge.service';
 import { getSessionUser } from '@/lib/auth';
+import { isQualifiedReviewer } from '@/distribution/mytwin.validation.server';
 
 const service = new ValidationChallengeService();
 
@@ -22,7 +23,7 @@ const castVerdictSchema = z.object({
   reference_case_claim_id: z.string().uuid(),
 });
 
-// POST /api/challenges/[id]/validation-verdicts — medical_pro only, after
+// POST /api/challenges/[id]/validation-verdicts — qualified reviewer only, after
 // claiming a reference case, recording an observation, and viewing its
 // revealed expected output (see POST .../validation-targets/[targetId]/claim,
 // .../validation-case-claims/[claimId]/observation, .../reveal).
@@ -34,11 +35,11 @@ export async function POST(
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'medical_pro') {
-      return NextResponse.json({ error: 'Only medical_pro users can cast a verdict' }, { status: 403 });
-    }
 
     const { id: challengeId } = await params;
+    if (!(await isQualifiedReviewer(user.id, challengeId))) {
+      return NextResponse.json({ error: 'Only qualified reviewers can cast a verdict' }, { status: 403 });
+    }
     const body = await req.json();
     const parsed = castVerdictSchema.parse(body);
 

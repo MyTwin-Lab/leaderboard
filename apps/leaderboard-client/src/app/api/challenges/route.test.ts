@@ -312,7 +312,11 @@ describe('POST /api/challenges', () => {
       // il n'a aucun sens sans quorum, et une valeur non nulle en base
       // laisserait croire qu'un target peut se résoudre.
       expect(mockChallengeCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'journey-validation', flow_config: { cp_per_validation: 5 } })
+        expect.objectContaining({
+          type: 'journey-validation',
+          // La distribution pose la qualification des avis experts quand la création ne la précise pas.
+          flow_config: { cp_per_validation: 5, eligible_roles: ['contributor', 'admin'], expert_comment_qualification: 'medical_pro' },
+        })
       );
     });
 
@@ -369,7 +373,7 @@ describe('POST /api/challenges', () => {
         expect.objectContaining({
           source_challenge_id: mlSourceId,
           type: 'endpoint-validation',
-          flow_config: { cp_per_validation: 5, required_validations: 3 },
+          flow_config: { cp_per_validation: 5, required_validations: 3, reviewer_qualification: 'medical_pro' },
         })
       );
     });

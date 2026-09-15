@@ -17,6 +17,10 @@ export interface ChallengeFlowConfigView {
   required_validations: number | null;
   /** Extension compute : demandes de puissance de calcul ouvertes. */
   compute_enabled: boolean;
+  /** Validation d'endpoints : la qualification exigée des relecteurs. */
+  reviewer_qualification: string | null;
+  /** Parcours de scénario : la qualification exigée pour un avis expert. */
+  expert_comment_qualification: string | null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -31,5 +35,8 @@ export function flowConfigView(challenge: { flow_config?: unknown } | null | und
     cp_per_validation: typeof config.cp_per_validation === 'number' ? config.cp_per_validation : 0,
     required_validations: typeof config.required_validations === 'number' ? config.required_validations : null,
     compute_enabled: compute.enabled === true,
+    reviewer_qualification: typeof config.reviewer_qualification === 'string' ? config.reviewer_qualification : null,
+    expert_comment_qualification:
+      typeof config.expert_comment_qualification === 'string' ? config.expert_comment_qualification : null,
   };
 }

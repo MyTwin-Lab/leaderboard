@@ -34,7 +34,7 @@ const CASE = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetSessionUser.mockResolvedValue({ id: 'alice', role: 'medical_pro' });
+  mockGetSessionUser.mockResolvedValue({ id: 'alice', role: 'contributor' });
   mockIsManagerOfChallenge.mockResolvedValue(false);
   mockFindInputById.mockResolvedValue(CASE);
 });

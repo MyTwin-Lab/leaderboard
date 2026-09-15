@@ -31,7 +31,7 @@ function makeChallenge(over: Partial<Challenge> = {}): Challenge {
     completion: 0,
     project_id: "proj-1",
     source_challenge_id: "ml-ch-1",
-    flow_config: { cp_per_validation: 5, required_validations: 3 },
+    flow_config: { cp_per_validation: 5, required_validations: 3, reviewer_qualification: "medical_pro" },
     ...over,
   };
 }
@@ -70,7 +70,7 @@ function makeClaim(over: Partial<ValidationCaseClaim> = {}): ValidationCaseClaim
 function makeUser(over: Partial<User> = {}): User {
   return {
     uuid: "bob",
-    role: "medical_pro",
+    role: "contributor",
     full_name: "Bob",
     created_at: new Date(),
     ...over,
@@ -84,6 +84,8 @@ function makeDeps(opts: {
   overrideResolve?: (uuid: string, outcome: "works" | "broken") => Promise<any>;
   users?: Record<string, User | null>;
   claims?: Record<string, ValidationCaseClaim | null>;
+  /** Les validateurs sans la qualification exigée ; les autres la détiennent, sauf un compte supprimé. */
+  unqualified?: string[];
 } = {}): ValidationRunDeps {
   const challenge = makeChallenge(opts.challenge);
   const contribution = makeContribution();
@@ -145,6 +147,11 @@ function makeDeps(opts: {
       }),
     },
     userRepo: { findById: vi.fn(async (id: string) => users[id] ?? null) },
+    qualificationRepo: {
+      has: vi.fn(async (id: string, key: string) =>
+        key === "medical_pro" && users[id] !== null && !(opts.unqualified ?? []).includes(id)
+      ),
+    },
     caseClaimRepo: { findById: vi.fn(async (id: string) => claims[id] ?? null) },
   } as ValidationRunDeps;
 }
@@ -213,8 +220,8 @@ describe("ValidationChallengeService.castVerdict", () => {
     );
   });
 
-  it("throws InsufficientRoleError for a non-medical_pro validator", async () => {
-    const deps = makeDeps({ users: { bob: makeUser({ role: "contributor" }) } });
+  it("throws InsufficientRoleError for a validator without the reviewer qualification", async () => {
+    const deps = makeDeps({ unqualified: ["bob"] });
     const service = new ValidationChallengeService(deps);
 
     await expect(service.castVerdict({ ...baseInput, validatorUserId: "bob" })).rejects.toThrow(InsufficientRoleError);
@@ -257,7 +264,7 @@ describe("ValidationChallengeService.castVerdict", () => {
 
   it("throws SelfVoteError when the validator owns the target submission", async () => {
     const deps = makeDeps({
-      users: { alice: makeUser({ uuid: "alice", role: "medical_pro" }) },
+      users: { alice: makeUser({ uuid: "alice" }) },
       claims: { "claim-1": makeClaim({ validator_user_id: "alice" }) },
     });
     const service = new ValidationChallengeService(deps);
@@ -312,7 +319,7 @@ describe("ValidationChallengeService.castVerdict", () => {
   });
 
   it("clamps the payout batch to whatever remains in the pool", async () => {
-    const deps = withExtraClaims(makeDeps({ challenge: { contribution_points_reward: 8, flow_config: { cp_per_validation: 5, required_validations: 3 } } }), ["carol", "dave"]);
+    const deps = withExtraClaims(makeDeps({ challenge: { contribution_points_reward: 8, flow_config: { cp_per_validation: 5, required_validations: 3, reviewer_qualification: "medical_pro" } } }), ["carol", "dave"]);
     const service = new ValidationChallengeService(deps);
 
     await service.castVerdict({ ...baseInput, validatorUserId: "bob", verdict: "works", referenceCaseClaimId: "claim-1" });

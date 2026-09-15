@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockGetSessionUser, mockFindByManagerId, mockUpdate } = vi.hoisted(() => ({
+const { mockGetSessionUser, mockFindByManagerId, mockUpdate, mockFindQualifications } = vi.hoisted(() => ({
+  mockFindQualifications: vi.fn(),
   mockGetSessionUser: vi.fn(),
   mockFindByManagerId: vi.fn(),
   mockUpdate: vi.fn(),
@@ -16,6 +17,9 @@ vi.mock('@/lib/db', () => ({
 vi.mock('../../../../../../../packages/database-service/repositories', () => ({
   UserRepository: class {
     update = mockUpdate;
+  },
+  UserQualificationRepository: class {
+    findByUser = mockFindQualifications;
   },
 }));
 
@@ -37,6 +41,7 @@ beforeEach(() => {
   mockGetSessionUser.mockResolvedValue(SESSION);
   mockFindByManagerId.mockResolvedValue([]);
   mockUpdate.mockResolvedValue(undefined);
+  mockFindQualifications.mockResolvedValue([]);
 });
 
 describe('GET /api/contributors/me', () => {
@@ -48,13 +53,15 @@ describe('GET /api/contributors/me', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns the session user and managed project ids', async () => {
+  it('returns the session user, managed project ids and held qualifications', async () => {
     mockFindByManagerId.mockResolvedValue([{ uuid: 'p1' }, { uuid: 'p2' }]);
+    mockFindQualifications.mockResolvedValue([{ user_id: 'user-1', key: 'medical_pro' }]);
 
     const res = await GET();
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ user: SESSION, managedProjectIds: ['p1', 'p2'] });
+    expect(await res.json()).toEqual({ user: SESSION, managedProjectIds: ['p1', 'p2'], qualifications: ['medical_pro'] });
+    expect(mockFindQualifications).toHaveBeenCalledWith('user-1');
     expect(mockFindByManagerId).toHaveBeenCalledWith('user-1');
   });
 });

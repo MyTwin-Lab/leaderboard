@@ -52,7 +52,7 @@ const ADMIN: SandboxViewer = { kind: "account", userId: "admin-1", role: "admin"
 // Un manager est rattaché à un projet ; un sandbox n'en a pas. Sur un sandbox
 // il est un contributeur ordinaire — d'où le rôle `contributor` ici.
 const MANAGER: SandboxViewer = { kind: "account", userId: "manager-1", role: "contributor" };
-const OTHER_ADMINLESS: SandboxViewer = { kind: "account", userId: "u9", role: "medical_pro" };
+const OTHER_ADMINLESS: SandboxViewer = { kind: "account", userId: "u9", role: "contributor" };
 
 function view(viewer: SandboxViewer, overrides: Record<string, unknown> = {}) {
   return toSandboxView({

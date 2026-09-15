@@ -236,7 +236,7 @@ function ValidationRules({ challenge }: { challenge: ChallengeRules }) {
         </FlowBox>
         <FlowArrow />
         <FlowBox icon={<span className="text-sm">🗳️</span>} title="Validators test & vote">
-          A qualified validator (medical_pro) claims a blind reference case, records an observation,
+          A qualified reviewer claims a blind reference case, records an observation,
           then votes Works or Broken once the expected output is revealed.
         </FlowBox>
         <FlowArrow />

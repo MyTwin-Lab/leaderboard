@@ -19,7 +19,7 @@ import type { StarIdentity } from "../../../../../packages/services/sandbox/sand
  * aucun droit d'écriture (`docs/auth.md`). Il peut en revanche starer avec son
  * compte — lire et soutenir n'est pas écrire.
  */
-export const SANDBOX_CREATOR_ROLES = ["admin", "contributor", "medical_pro"] as const;
+export const SANDBOX_CREATOR_ROLES = ["admin", "contributor"] as const;
 
 /** Ce que `verifyRequestToken` renvoie, réduit à ce qui sert ici. */
 export interface SessionClaims {

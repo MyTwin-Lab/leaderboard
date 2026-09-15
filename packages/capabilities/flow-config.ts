@@ -67,7 +67,11 @@ function upgrade(flow: FlowDefinition, raw: Record<string, unknown>, fromVersion
  * retirer de la distribution ne doit rien effacer.
  */
 function validate(flow: FlowDefinition, raw: Record<string, unknown>): FlowConfig {
-  const { extensions: rawExtensions, ...own } = raw;
+  const { extensions: rawExtensions, ...given } = raw;
+  // Les défauts de la distribution comblent les clés absentes, jamais une
+  // valeur posée, même `null` : une clé laissée vide exprès le reste.
+  const present = Object.fromEntries(Object.entries(given).filter(([, value]) => value !== undefined));
+  const own = { ...(flow.configDefaults ?? {}), ...present };
   const config: FlowConfig = flow.config ? { ...flow.config.schema.parse(own) } : { ...own };
 
   const sections = asRecord(rawExtensions);

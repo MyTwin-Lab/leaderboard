@@ -43,7 +43,7 @@ function makeChallenge(over: Partial<Challenge> = {}): Challenge {
     completion: 0,
     project_id: "proj-1",
     source_challenge_id: "ml-ch-1",
-    flow_config: { cp_per_validation: 5, required_validations: 3 },
+    flow_config: { cp_per_validation: 5, required_validations: 3, reviewer_qualification: "medical_pro" },
     ...over,
   };
 }
@@ -76,7 +76,7 @@ function makeTarget(over: Partial<ValidationTarget> = {}): ValidationTarget {
 }
 
 function makeUser(over: Partial<User> = {}): User {
-  return { uuid: "bob", role: "medical_pro", full_name: "Bob", created_at: new Date(), ...over };
+  return { uuid: "bob", role: "contributor", full_name: "Bob", created_at: new Date(), ...over };
 }
 
 function makeCase(over: Partial<ValidationReferenceCase> = {}): ValidationReferenceCase {
@@ -117,6 +117,8 @@ function makeDeps(opts: {
   target?: ValidationTarget | null;
   contribution?: Contribution | null;
   user?: User | null;
+  /** Bob détient la qualification exigée des relecteurs. Défaut : oui. */
+  qualified?: boolean;
   refCase?: Partial<ReturnType<typeof makeCase>> | null;
   existingCasesCount?: number;
   createClaimResult?: ValidationCaseClaim | null;
@@ -135,6 +137,7 @@ function makeDeps(opts: {
     targetRepo: { findByChallengeAndContribution: vi.fn(async () => target) },
     contributionRepo: { findById: vi.fn(async () => contribution) },
     userRepo: { findById: vi.fn(async () => user) },
+    qualificationRepo: { has: vi.fn(async (_userId: string, key: string) => key === "medical_pro" && (opts.qualified ?? true)) },
     caseRepo: {
       countByChallenge: vi.fn(async () => opts.existingCasesCount ?? 0),
       create: vi.fn(async (entity: any) => ({ uuid: "case-new", created_at: new Date(), ...entity })),
@@ -163,7 +166,7 @@ describe("ReferenceCaseService.authorCase", () => {
     expectedOutput: { buffer: Buffer.from("out"), filename: null, contentType: "text/plain" },
   };
 
-  it("creates a case for a medical_pro author under quota", async () => {
+  it("creates a case for a qualified author under quota", async () => {
     const deps = makeDeps({ existingCasesCount: 1 });
     const service = new ReferenceCaseService(deps);
 
@@ -175,15 +178,15 @@ describe("ReferenceCaseService.authorCase", () => {
     );
   });
 
-  it("throws InsufficientRoleError for a non-medical_pro author", async () => {
-    const deps = makeDeps({ user: makeUser({ role: "contributor" }) });
+  it("throws InsufficientRoleError for a author without the reviewer qualification", async () => {
+    const deps = makeDeps({ qualified: false });
     const service = new ReferenceCaseService(deps);
 
     await expect(service.authorCase(authorInput)).rejects.toThrow(InsufficientRoleError);
   });
 
   it("throws ReferenceCaseQuotaError once required_validations cases already exist", async () => {
-    const deps = makeDeps({ existingCasesCount: 3, challenge: { flow_config: { cp_per_validation: 5, required_validations: 3 } } });
+    const deps = makeDeps({ existingCasesCount: 3, challenge: { flow_config: { cp_per_validation: 5, required_validations: 3, reviewer_qualification: "medical_pro" } } });
     const service = new ReferenceCaseService(deps);
 
     await expect(service.authorCase(authorInput)).rejects.toThrow(ReferenceCaseQuotaError);
@@ -216,8 +219,8 @@ describe("ReferenceCaseService.claimCase", () => {
     );
   });
 
-  it("throws InsufficientRoleError for a non-medical_pro validator", async () => {
-    const deps = makeDeps({ user: makeUser({ role: "contributor" }) });
+  it("throws InsufficientRoleError for a validator without the reviewer qualification", async () => {
+    const deps = makeDeps({ qualified: false });
     const service = new ReferenceCaseService(deps);
 
     await expect(service.claimCase(claimInput)).rejects.toThrow(InsufficientRoleError);

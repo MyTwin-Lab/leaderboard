@@ -31,7 +31,7 @@ function call() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'medical_pro' });
+  mockGetSessionUser.mockResolvedValue({ id: 'bob', role: 'contributor' });
   mockFindInputById.mockResolvedValue({ uuid: 'case-1', validation_challenge_id: 'challenge-1', author_user_id: 'bob' });
   mockFindByReferenceCase.mockResolvedValue([]);
   mockDelete.mockResolvedValue(undefined);
@@ -54,8 +54,8 @@ describe('DELETE /api/challenges/[id]/validation-reference-cases/[caseId]', () =
     expect(mockDelete).toHaveBeenCalledWith('case-1');
   });
 
-  it('returns 403 for a different medical_pro who is not the author', async () => {
-    mockGetSessionUser.mockResolvedValue({ id: 'other-medical-pro', role: 'medical_pro' });
+  it('returns 403 for a different reviewer who is not the author', async () => {
+    mockGetSessionUser.mockResolvedValue({ id: 'other-reviewer', role: 'contributor' });
 
     const res = await call();
 

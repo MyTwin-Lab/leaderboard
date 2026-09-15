@@ -6,6 +6,7 @@ import {
   RewardEntryRepository,
   UserRepository,
   CaseClaimRepository,
+  UserQualificationRepository,
 } from "../../database-service/repositories/index.js";
 import type { RewardEntryDraft } from "../../database-service/repositories/index.js";
 import type { Challenge, ValidationAttempt } from "../../database-service/domain/entities.js";
@@ -13,6 +14,8 @@ import { findOrCreateValidatorContribution } from "../../../content/kits/validat
 import { distributedFromPool, remainingPool } from "../../capabilities/pool.js";
 import { validationConfigOf } from "../../../content/kits/validation/config.js";
 import { ENDPOINT_VALIDATION_FLOW_KEY } from "../../../content/flows/endpoint-validation/descriptor.js";
+import { reviewerQualificationOf } from "../../../content/flows/endpoint-validation/index.js";
+import { hasQualification, type QualificationReader } from "../../capabilities/qualifications.js";
 
 /** The submission isn't exposed on this validation challenge, or has no endpoint — a 4xx-shaped problem. */
 export class ValidationTargetError extends Error {}
@@ -20,7 +23,7 @@ export class ValidationTargetError extends Error {}
 export class SelfVoteError extends Error {}
 /** A validator tried to cast a second verdict on a target they already voted on. */
 export class DuplicateVerdictError extends Error {}
-/** A non-medical_pro user tried to cast a verdict on a validation challenge. */
+/** A unqualified user tried to cast a verdict on a validation challenge. */
 export class InsufficientRoleError extends Error {}
 /** The referenced claim doesn't exist. */
 export class ClaimNotFoundError extends Error {}
@@ -65,12 +68,14 @@ export interface ValidationRunDeps {
   rewardRepo: Pick<RewardEntryRepository, "sumByChallenge" | "createManyAndSyncRewards">;
   userRepo: Pick<UserRepository, "findById">;
   caseClaimRepo: Pick<CaseClaimRepository, "findById">;
+  /** Qui détient la qualification que le challenge exige des relecteurs. */
+  qualificationRepo: QualificationReader;
 }
 
 /**
  * ValidationChallengeService
  * ---------------------------
- * `castVerdict()` records what a `medical_pro` validator concluded after
+ * `castVerdict()` records what a qualified validator concluded after
  * testing a reference case's known input against a target's live endpoint
  * (via `ReferenceCaseService.claimCase`/`recordObservation`/
  * `revealExpectedOutput` — see reference-case.service.ts) and, once a target
@@ -97,6 +102,7 @@ export class ValidationChallengeService {
       rewardRepo: new RewardEntryRepository(),
       userRepo: new UserRepository(),
       caseClaimRepo: new CaseClaimRepository(),
+      qualificationRepo: new UserQualificationRepository(),
       ...deps,
     };
   }
@@ -124,9 +130,8 @@ export class ValidationChallengeService {
       throw new ValidationTargetError("Submission is not exposed on this validation challenge");
     }
 
-    const user = await this.deps.userRepo.findById(validatorUserId);
-    if (!user || user.role !== "medical_pro") {
-      throw new InsufficientRoleError("Only medical_pro users can cast a verdict on a validation challenge");
+    if (!(await hasQualification(validatorUserId, reviewerQualificationOf(challenge), this.deps.qualificationRepo))) {
+      throw new InsufficientRoleError("Only qualified reviewers can cast a verdict on a validation challenge");
     }
 
     const claim = await this.deps.caseClaimRepo.findById(referenceCaseClaimId);

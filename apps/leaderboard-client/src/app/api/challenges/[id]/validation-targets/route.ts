@@ -16,6 +16,7 @@ import { flowConfigOf } from '../../../../../../../../packages/capabilities/flow
 import { assertPublicHttpUrl } from '../../../../../../../../packages/services/challenge/ssrf-guard';
 import { eligibleDeliverableType } from '../../../../../../../../packages/capabilities/deliverables';
 import { isValidationFlow, validationModeOf } from '@/distribution/mytwin.validation';
+import { isQualifiedReviewer } from '@/distribution/mytwin.validation.server';
 
 const challengeRepo = new ChallengeRepository();
 const contributionRepo = new ContributionRepository();
@@ -153,6 +154,8 @@ export async function GET(
     return NextResponse.json({
       currentUserId: session?.id ?? null,
       mode,
+      // Relire exige la qualification que la configuration du challenge pose.
+      viewer: { canReview: mode === 'reference_case' && !!session && (await isQualifiedReviewer(session.id, challenge)) },
       pool: {
         pool,
         distributed,

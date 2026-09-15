@@ -6,13 +6,13 @@ describe("buildRoleChange", () => {
     expect(buildRoleChange({
       userId: "u1",
       oldRole: "contributor",
-      newRole: "medical_pro",
+      newRole: "viewer",
       changedBy: "admin-1",
       note: "  RPPS vérifié  ",
     })).toEqual({
       user_id: "u1",
       old_role: "contributor",
-      new_role: "medical_pro",
+      new_role: "viewer",
       changed_by: "admin-1",
       note: "RPPS vérifié",
     });

@@ -21,14 +21,14 @@ import { GET, PATCH, DELETE } from './route';
 import { getSessionUser } from '@/lib/auth';
 
 const mockGetSessionUser = getSessionUser as ReturnType<typeof vi.fn>;
-const NON_ADMIN_ROLES = ['contributor', 'viewer', 'medical_pro'];
+const NON_ADMIN_ROLES = ['contributor', 'viewer'];
 
 function get() {
   const req = new NextRequest('http://localhost/api/users/user-1');
   return GET(req, { params: Promise.resolve({ id: 'user-1' }) });
 }
 
-function patch(body: Record<string, unknown> = { role: 'medical_pro' }) {
+function patch(body: Record<string, unknown> = { role: 'viewer' }) {
   const req = new NextRequest('http://localhost/api/users/user-1', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -53,7 +53,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetSessionUser.mockResolvedValue({ id: 'admin-1', role: 'admin' });
   mockFindById.mockResolvedValue({ uuid: 'user-1', role: 'contributor' });
-  mockUpdateRole.mockResolvedValue({ uuid: 'user-1', role: 'medical_pro' });
+  mockUpdateRole.mockResolvedValue({ uuid: 'user-1', role: 'viewer' });
   mockDelete.mockResolvedValue(true);
 });
 
@@ -100,13 +100,19 @@ describe('PATCH /api/users/[id]', () => {
     expect(mockUpdateRole).not.toHaveBeenCalled();
   });
 
-  it('grants the medical_pro role as an admin, recording who did it — the actual role-grant path this whole feature depends on', async () => {
-    const res = await patch({ role: 'medical_pro', note: 'Kiné, n° RPPS vérifié' });
+  it('changes a role as an admin, recording who did it', async () => {
+    const res = await patch({ role: 'viewer', note: 'Compte en lecture seule' });
     expect(res.status).toBe(200);
-    expect(mockUpdateRole).toHaveBeenCalledWith('user-1', 'medical_pro', {
+    expect(mockUpdateRole).toHaveBeenCalledWith('user-1', 'viewer', {
       changedBy: 'admin-1',
-      note: 'Kiné, n° RPPS vérifié',
+      note: 'Compte en lecture seule',
     });
+  });
+
+  it('rejects medical_pro, which is a qualification now, not a role', async () => {
+    const res = await patch({ role: 'medical_pro' });
+    expect(res.status).toBe(400);
+    expect(mockUpdateRole).not.toHaveBeenCalled();
   });
 
   it('rejects a role outside the known list', async () => {
