@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Box, BrainCircuit, Code2, X } from "lucide-react";
 import type { SandboxView } from "@/lib/public/sandbox";
+import { useSlugField } from "@/lib/useSlugField";
+import { SlugField } from "@/components/ui/SlugField";
 import { formatGoals, goalsError, parseGoals } from "./goalsField";
 
 interface CreateSandboxModalProps {
@@ -94,6 +96,10 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
   const [mounted, setMounted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Dérivé du titre à la création ; en édition, le slug actuel, que le titre ne
+  // touche plus. Le modifier laisse l'ancienne adresse en redirection.
+  const slugField = useSlugField("sandbox", form.title);
+  const { reset: resetSlug } = slugField;
 
   // Portail vers `document.body` : une modale `fixed` rendue dans un sous-arbre
   // porteur d'une transformation (`animate-fade-up`) se retrouverait confinée
@@ -107,6 +113,11 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
   useEffect(() => {
     if (!open) return;
     setError(null);
+    resetSlug(
+      sandbox
+        ? { title: sandbox.title, value: sandbox.slug, saved: sandbox.slug, excludeId: sandbox.uuid }
+        : { title: "" },
+    );
     setForm(
       sandbox
         ? {
@@ -121,7 +132,7 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
           }
         : EMPTY,
     );
-  }, [open, sandbox]);
+  }, [open, sandbox, resetSlug]);
 
   useEffect(() => {
     if (!open) return;
@@ -142,7 +153,8 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
     isHttpUrl(form.repo) &&
     (!isMl || isHttpUrl(form.dataset)) &&
     (!isMl || !form.model.trim() || isHttpUrl(form.model)) &&
-    !goalsProblem;
+    !goalsProblem &&
+    slugField.ready;
 
   const patch = (changes: Partial<FormState>) => setForm((current) => ({ ...current, ...changes }));
 
@@ -162,6 +174,8 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
       const body = isEdit
         ? {
             title: form.title.trim(),
+            // Seulement s'il a changé : l'ancienne adresse devient une redirection.
+            ...(slugField.changed ? { slug: slugField.submitValue } : {}),
             context: context || null,
             goals,
             why: why || null,
@@ -173,6 +187,7 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
         : {
             type: form.type,
             title: form.title.trim(),
+            slug: slugField.submitValue,
             ...(context ? { context } : {}),
             goals,
             ...(why ? { why } : {}),
@@ -192,6 +207,10 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
 
       if (!res.ok) {
         const payload = await res.json().catch(() => null);
+        // Pris entre la vérification et l'envoi : le champ le montre, avec sa suggestion.
+        if (res.status === 409 && payload?.field === "slug") {
+          slugField.conflict(payload.error, payload.suggestion ?? null);
+        }
         throw new Error(payload?.error ?? "Couldn’t save this sandbox.");
       }
 
@@ -205,10 +224,16 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
     }
   };
 
+  const fieldsMissing =
+    form.title.trim().length < 3 ||
+    !isHttpUrl(form.repo) ||
+    (isMl && !isHttpUrl(form.dataset));
   const hint = !valid
-    ? isMl
-      ? "A title, a repository and a dataset URL are required."
-      : "A title and a repository URL are required."
+    ? !fieldsMissing && !slugField.ready
+      ? "Choose an available address."
+      : isMl
+        ? "A title, a repository and a dataset URL are required."
+        : "A title and a repository URL are required."
     : isEdit
       ? "Type stays as it is - it drives the fields and the grid."
       : "Goes live as open, right away. The type carries over on promotion.";
@@ -290,6 +315,16 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved }: CreateSa
             className={INPUT_CLASS}
           />
         </Field>
+
+        {/* Pas dans un <Field> : c'est un <label>, et la ligne d'état porte un
+            bouton (« Use … ») qu'un label détournerait vers l'input. */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-white/70">
+            Address
+            <span className="font-normal text-white/30"> - the link people will share</span>
+          </span>
+          <SlugField field={slugField} />
+        </div>
 
         <Field label="Context">
           <textarea

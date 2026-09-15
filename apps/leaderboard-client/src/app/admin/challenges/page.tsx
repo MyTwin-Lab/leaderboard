@@ -45,14 +45,15 @@ export default function ChallengesPage() {
   const handleCreate = async (data: any) => {
     const res = await fetch('/api/challenges', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     if (res.ok) { await fetchChallenges(); setActiveTab(0); toast('Challenge created', 'success'); }
-    else toast('Failed to create challenge', 'error');
+    // Un 409 dit quel slug est pris : plus utile qu'un échec générique.
+    else toast((await res.json().catch(() => null))?.error ?? 'Failed to create challenge', 'error');
   };
 
   const handleUpdate = async (data: any) => {
     if (!editingChallenge) return;
     const res = await fetch(`/api/challenges/${editingChallenge.uuid}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     if (res.ok) { await fetchChallenges(); setEditingChallenge(undefined); setActiveTab(0); toast('Challenge updated', 'success'); }
-    else toast('Failed to update challenge', 'error');
+    else toast((await res.json().catch(() => null))?.error ?? 'Failed to update challenge', 'error');
   };
 
   const handleDelete = async (id: string) => {

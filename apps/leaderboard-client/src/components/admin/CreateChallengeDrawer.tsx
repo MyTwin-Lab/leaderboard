@@ -20,6 +20,8 @@ import { flushBrief } from './briefFlush';
 import { buildPromotionRequestBody } from './promotionRequestBody';
 import { buildPromotedDescription } from '../../../../../packages/services/sandbox/promotion';
 import { Markdown } from '@/components/ui/Markdown';
+import { SlugField } from '@/components/ui/SlugField';
+import { useSlugField } from '@/lib/useSlugField';
 import { BRIEF_TEMPLATE, findBrief } from '@/lib/challengeBrief';
 import {
   DEFAULT_ML_REWARD_RULES,
@@ -125,6 +127,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const typeLocked = isEdit || isPromotion;
 
   const [title, setTitle] = useState('');
+  // Suit le titre à la création ; en édition et en promotion, part d'un slug
+  // existant que le titre ne touche plus (voir lib/slugField.ts).
+  const slugField = useSlugField('challenge', title);
   const [projectId, setProjectId] = useState(projects[0]?.id ?? '');
   const [status, setStatus] = useState('draft');
   const [type, setType] = useState<'code' | 'ml' | 'validation'>('code');
@@ -188,6 +193,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
     if (challenge) {
       setTitle(challenge.title);
+      slugField.reset({ title: challenge.title, value: challenge.slug, saved: challenge.slug, excludeId: challenge.uuid });
       setProjectId(challenge.project_id);
       setStatus(challenge.status);
       setType(challenge.type === 'ml' ? 'ml' : challenge.type === 'validation' ? 'validation' : 'code');
@@ -210,6 +216,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setComputeEnabled(challenge.compute_enabled ?? false);
     } else if (promotion) {
       setTitle(promotion.title);
+      // Les espaces de noms sont séparés : `/sandbox/mykine` peut devenir
+      // `/challenges/mykine`. La vérification dira s'il est déjà pris.
+      slugField.reset({ title: promotion.title, value: promotion.slug });
       setType(promotion.type === 'ml' ? 'ml' : 'code');
       // La description markdown est composée par la même fonction que le
       // serveur, pour que ce que l'admin relit soit exactement ce qui serait
@@ -281,6 +290,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
   const resetForm = () => {
     setTitle('');
+    slugField.reset({ title: '' });
     setProjectId(projects[0]?.id ?? '');
     setStatus('draft');
     setType('code');
@@ -342,6 +352,12 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setError('Pick the source challenge this validation challenge tests.');
       return;
     }
+    if (!slugField.ready) {
+      setError(slugField.state.check.status === 'checking'
+        ? 'Still checking the address - try again in a moment.'
+        : 'Choose an available address for this challenge.');
+      return;
+    }
 
     setSaving(true);
     setError('');
@@ -381,6 +397,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             isPromotion
               ? buildPromotionRequestBody({
                   title,
+                  slug: slugField.submitValue,
                   status,
                   type: type === 'ml' ? 'ml' : 'code',
                   startDate,
@@ -395,9 +412,11 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                   apiPackagingEnabled,
                 })
               : isEdit
-                ? shared
+                // Envoyé seulement s'il a changé : l'ancien devient une redirection.
+                ? { ...shared, ...(slugField.changed ? { slug: slugField.submitValue } : {}) }
                 : {
                     ...shared,
+                    slug: slugField.submitValue,
                     project_id: projectId,
                     contribution_points_reward: cp,
                     workspace_mode: type === 'code' ? workspaceMode : undefined,
@@ -455,7 +474,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           }, 900);
         }
       } else {
-        const d = await res.json();
+        const d = await res.json().catch(() => ({}));
+        // Pris entre la vérification et l'envoi : le champ le montre, avec sa suggestion.
+        if (res.status === 409 && d.field === 'slug') slugField.conflict(d.error, d.suggestion ?? null);
         setError(d.error || `Failed to ${isPromotion ? 'promote this sandbox' : isEdit ? 'update' : 'create'} challenge`);
       }
     } catch {
@@ -550,6 +571,11 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             />
             <div className="h-px bg-white/[0.06] transition-all focus-within:bg-brandCP/30" />
           </div>
+
+          {/* ── Address ── */}
+          <Field label="Address">
+            <SlugField field={slugField} />
+          </Field>
 
           {/* ── Type ── */}
           {/* Locked on edit: the type decides which repos are created, and they

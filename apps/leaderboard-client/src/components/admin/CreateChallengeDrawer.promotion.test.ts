@@ -3,6 +3,7 @@ import { buildPromotionRequestBody, type PromotionFormState } from './promotionR
 
 const base: PromotionFormState = {
   title: '  Triage assistant  ',
+  slug: 'triage-assistant',
   status: 'active',
   type: 'code',
   startDate: '',
@@ -35,6 +36,8 @@ describe('buildPromotionRequestBody', () => {
   it('envoie le projet, le pool, le statut et les dates que l’admin a saisis', () => {
     expect(buildPromotionRequestBody(base)).toMatchObject({
       title: 'Triage assistant',
+      // Le slug choisi dans le tiroir, celui de la proposition par défaut.
+      slug: 'triage-assistant',
       status: 'active',
       project_id: base.projectId,
       contribution_points_reward: 500,

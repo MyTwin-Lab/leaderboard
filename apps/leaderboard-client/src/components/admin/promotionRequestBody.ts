@@ -14,6 +14,8 @@
  */
 export interface PromotionFormState {
   title: string;
+  /** Le slug du challenge — pré-rempli avec celui de la proposition, modifiable. */
+  slug: string;
   status: string;
   /** Hérité de la proposition — sert seulement à choisir les champs à envoyer. */
   type: "code" | "ml";
@@ -34,6 +36,7 @@ export function buildPromotionRequestBody(state: PromotionFormState): Record<str
 
   return {
     title: state.title.trim(),
+    slug: state.slug,
     status: state.status,
     // '' d'un input date vide signifie « pas de date », comme à la création.
     start_date: state.startDate || null,

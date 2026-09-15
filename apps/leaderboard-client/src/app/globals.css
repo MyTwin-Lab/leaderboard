@@ -78,6 +78,13 @@ html[data-mode="light"] select {
   border-color: rgb(0 0 0 / 0.12) !important;
 }
 
+/* Le champ slug porte déjà la boîte (préfixe + saisie) : son input ne doit pas
+   en dessiner une seconde à l'intérieur. */
+html[data-mode="light"] input.slug-field-input {
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
 /* Select options — override hardcoded dark colors */
 html[data-mode="light"] option {
   background-color: var(--background) !important;

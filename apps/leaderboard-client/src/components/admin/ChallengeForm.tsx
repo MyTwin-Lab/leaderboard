@@ -5,6 +5,8 @@ import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/c
 import { ChallengeTasksEditor } from './ChallengeTasksEditor';
 import { Code2, BrainCircuit, ShieldCheck, Cpu, Package } from 'lucide-react';
 import { Toggle } from '@/components/ui/Toggle';
+import { SlugField } from '@/components/ui/SlugField';
+import { useSlugField } from '@/lib/useSlugField';
 import { MlRewardRulesEditor } from './MlRewardRulesEditor';
 import { ValidationTargetsEditor } from './ValidationTargetsEditor';
 import { ValidationRewardsPanel } from './ValidationRewardsPanel';
@@ -30,6 +32,16 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     contribution_points_reward: challenge?.contribution_points_reward ?? 0,
     project_id: challenge?.project_id ?? '',
   });
+
+  const slugField = useSlugField('challenge', formData.title);
+  const { reset: resetSlug } = slugField;
+  // En édition, le slug enregistré : le titre n'y touche plus. Déclaré après le
+  // hook, donc appliqué après sa dérivation depuis le titre initial.
+  useEffect(() => {
+    if (challenge) {
+      resetSlug({ title: challenge.title, value: challenge.slug, saved: challenge.slug, excludeId: challenge.uuid });
+    }
+  }, [challenge, resetSlug]);
 
   const [rewardRules, setRewardRules] = useState<MlRewardRules>(
     parseMlRewardRules(challenge?.reward_rules) ?? DEFAULT_ML_REWARD_RULES
@@ -73,6 +85,8 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Le champ affiche déjà pourquoi : pris, invalide, ou vérification en cours.
+    if (!slugField.ready) return;
     // Reward rules only apply to ML challenges. For other types we omit the
     // key entirely (PUT treats an absent field as "unchanged") instead of
     // sending null, which would wipe out a code challenge's real rules.
@@ -80,6 +94,8 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     // like the pool/project) — only sent when creating a new challenge.
     onSubmit({
       ...formData,
+      // En édition, seulement s'il a changé : l'ancien devient une redirection.
+      ...(!challenge?.uuid || slugField.changed ? { slug: slugField.submitValue } : {}),
       ...(formData.type === 'ml' ? { reward_rules: rewardRules } : {}),
       compute_enabled: formData.type === 'ml' ? computeEnabled : false,
       ...(formData.type === 'validation' && !challenge?.uuid
@@ -116,6 +132,10 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
             placeholder="Challenge title"
             autoFocus
           />
+        </FormField>
+
+        <FormField label="Address" required>
+          <SlugField field={slugField} />
         </FormField>
 
         {/* Type picker */}
