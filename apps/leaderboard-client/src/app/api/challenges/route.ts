@@ -46,8 +46,12 @@ const createChallengeSchema = z.object({
   project_id: z.string().uuid(),
   github_repo: z.string().optional(),
   reward_rules: z.unknown().nullish(),
-  // Champs de configuration, rangés dans `flow_config` par le flow du
-  // challenge (qui ignore ceux qui ne le concernent pas).
+  // La configuration du flow, validée par son schéma. Un flow ajouté par la
+  // distribution passe tout par ce champ : la route ne connaît pas ses clés.
+  flow_config: z.record(z.string(), z.unknown()).optional(),
+  // Champs de configuration à plat des premiers flows, rangés dans
+  // `flow_config` par le flow du challenge (qui ignore ceux qui ne le
+  // concernent pas). Ils l'emportent sur `flow_config` quand les deux sont là.
   workspace_mode: z.enum(['provided_repo', 'own_repo']).optional(),
   source_challenge_id: z.string().uuid().optional(),
   cp_per_validation: z.number().int().positive().optional(),
@@ -145,18 +149,25 @@ export async function POST(request: NextRequest) {
       api_packaging_enabled,
       reward_rules: _rawRules,
       source_challenge_id,
+      flow_config,
       ...fields
     } = validated;
 
     // La configuration candidate : le schéma du flow garde ses clés et pose
-    // ses défauts, chaque extension attachée valide sa section.
+    // ses défauts, chaque extension attachée valide sa section. Les champs à
+    // plat absents (`undefined`) ne masquent pas ceux de `flow_config`.
+    const givenExtensions = flow_config?.extensions;
     let storedConfig: ReturnType<typeof prepareFlowConfig>;
     try {
       storedConfig = prepareFlowConfig(flowKey, {
-        workspace_mode,
-        cp_per_validation,
-        required_validations,
-        extensions: { compute: { enabled: compute_enabled } },
+        ...flow_config,
+        ...Object.fromEntries(
+          Object.entries({ workspace_mode, cp_per_validation, required_validations }).filter(([, value]) => value !== undefined)
+        ),
+        extensions: {
+          ...(givenExtensions && typeof givenExtensions === 'object' && !Array.isArray(givenExtensions) ? givenExtensions : {}),
+          compute: { enabled: compute_enabled },
+        },
       });
     } catch (error) {
       if (error instanceof FlowConfigError) {

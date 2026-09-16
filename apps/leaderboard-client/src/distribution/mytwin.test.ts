@@ -26,6 +26,9 @@ const HISTORICAL_RULE_KEYS = [
   'validation',
 ];
 
+/** Les clés des flows ajoutés depuis, installées elles aussi. */
+const ADDED_RULE_KEYS = ['annotation', 'annotation_clawback'];
+
 describe('distribution MyTwin', () => {
   beforeEach(() => PlatformRegistry.reset());
   afterEach(() => PlatformRegistry.reset());
@@ -41,7 +44,9 @@ describe('distribution MyTwin', () => {
   it('gives an owner to every rule key already written in existing ledgers', () => {
     PlatformRegistry.install(platform);
 
-    expect(PlatformRegistry.ruleKeys().map((ruleKey) => ruleKey.key).sort()).toEqual(HISTORICAL_RULE_KEYS);
+    expect(PlatformRegistry.ruleKeys().map((ruleKey) => ruleKey.key).sort()).toEqual(
+      [...HISTORICAL_RULE_KEYS, ...ADDED_RULE_KEYS].sort()
+    );
   });
 
   it('declares a handler for every evaluation the services trace', () => {

@@ -48,3 +48,5 @@ export { PlatformEventRepository } from "./platformEvent.repo.js";
 export type { StoredPlatformEvent, EventExecutor } from "./platformEvent.repo.js";
 export { EventDeliveryRepository } from "./eventDelivery.repo.js";
 export type { EventDelivery } from "./eventDelivery.repo.js";
+export { ResourceRepository, ResourceDrawTransaction } from "./resource.repo.js";
+export type { ResourceInstance, ResourceClaim, ConsumedClaim } from "./resource.repo.js";

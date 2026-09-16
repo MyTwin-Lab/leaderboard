@@ -76,7 +76,7 @@ Then install it in `src/distribution/mytwin.platform.ts` (`flows: [..., demoFlow
 | Field | What it does |
 |---|---|
 | `descriptor` | Name, icon, brief, public visibility. |
-| `config` | The schema of `challenges.flow_config`, fixed at creation, and its `version` with `upgrades[n]` (n → n+1). Old configs are upgraded in memory on read, and persisted by `npm run db:upgrade-flow-configs`. Read it with `flowConfigOf(challenge)` (`packages/capabilities/flow-config.ts`). |
+| `config` | The schema of `challenges.flow_config`, fixed at creation (the form section sends it as `flow_config` in the body of `POST /api/challenges`, which passes it to the schema without knowing its keys), and its `version` with `upgrades[n]` (n → n+1). Old configs are upgraded in memory on read, and persisted by `npm run db:upgrade-flow-configs`. Read it with `flowConfigOf(challenge)` (`packages/capabilities/flow-config.ts`). |
 | `configDefaults` | Set by the **distribution**, not the flow: values for missing config keys (a required qualification, for instance). |
 | `rules` | `parse(raw)` for `challenges.reward_rules`, editable after creation. |
 | `rewards` | Extra fields for `/api/challenges/[id]/rewards` (`summarize`, `publicFields`). |
@@ -129,4 +129,4 @@ Screens never branch on the challenge type. They ask the distribution:
 - [ ] Slots in `mytwin.client.tsx`, form section in `mytwin.forms.tsx`.
 - [ ] Handler tests with `actionContext`, and a test of each action's declared `access`.
 - [ ] `npx vitest run packages content modules` from the repository root (architecture test included) and `npx vitest run` in `apps/leaderboard-client`.
-- [ ] No change to the core, no migration: if the flow seems to need one, the need belongs in a capability first.
+- [ ] No change to the core, no migration: if the flow seems to need one, the need belongs in a capability first. Work units that people claim, under a redundancy `k`, a TTL or one claim per person, are the `resources` capability (`packages/capabilities/resources.ts`, see [`data-annotation.md`](./data-annotation.md)).

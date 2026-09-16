@@ -3,11 +3,13 @@ import { codeFlowDescriptor } from '../../../../content/flows/code/descriptor';
 import { mlFlowDescriptor } from '../../../../content/flows/ml/descriptor';
 import { endpointValidationFlowDescriptor } from '../../../../content/flows/endpoint-validation/descriptor';
 import { journeyValidationFlowDescriptor } from '../../../../content/flows/journey-validation/descriptor';
+import { dataAnnotationFlowDescriptor } from '../../../../content/flows/data-annotation/descriptor';
 import { flowCatalog } from './mytwin.flows';
 import { codeSlots } from './client/code';
 import { mlSlots } from './client/ml';
 import { endpointValidationSlots } from './client/endpoint-validation';
 import { journeyValidationSlots } from './client/journey-validation';
+import { dataAnnotationSlots } from './client/data-annotation';
 
 /**
  * Distribution MyTwin — slots d'interface des flows
@@ -22,6 +24,7 @@ const SLOTS: Readonly<Record<string, FlowUiSlots>> = {
   [mlFlowDescriptor.key]: mlSlots,
   [endpointValidationFlowDescriptor.key]: endpointValidationSlots,
   [journeyValidationFlowDescriptor.key]: journeyValidationSlots,
+  [dataAnnotationFlowDescriptor.key]: dataAnnotationSlots,
 };
 
 /** Les slots du flow de ce type ; ceux du flow par défaut pour un type absent ou inconnu, comme `flowCatalog`. */

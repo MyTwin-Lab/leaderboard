@@ -30,6 +30,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`evaluation.md`](./evaluation.md) | AI evaluation pipeline, scoring grids, rewards |
 | [`ml-rewards.md`](./ml-rewards.md) | Reward rules for ML challenges — live scoring, reuse, and the point ledger |
 | [`validation-challenges.md`](./validation-challenges.md) | Checking a source challenge's deliverable actually works — reference cases against an ML API, or a scenario walkthrough of a code app |
+| [`data-annotation.md`](./data-annotation.md) | Labeling campaigns: images claimed under k-redundancy, hidden quality checks weighting pay, agreement, sampled audits — and the core `resources` capability they run on |
 | [`compute-power.md`](./compute-power.md) | Temporary Scaleway GPU instances for ML challenge contributors |
 | [`sync-meetings.md`](./sync-meetings.md) | Creating meetings in Google Workspace + AI analysis |
 | [`slack-signals.md`](./slack-signals.md) | Slack contribution signals — AI-detected rewards from channel discussions |

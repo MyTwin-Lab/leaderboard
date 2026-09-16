@@ -10,6 +10,7 @@ import { codeFormLogic } from './forms/code';
 import { mlFormLogic } from './forms/ml';
 import { VALIDATION_FLOW_BY_SOURCE, validationFormLogic } from './forms/validation';
 import { sandboxKindOf, sandboxKinds } from './forms/sandbox';
+import { annotationFormLogic, optionKeyOf } from './forms/annotation';
 
 const create: FlowFormContext = { mode: 'create', pool: 100, open: true };
 const edit = (challenge: Record<string, unknown>): FlowFormContext => ({
@@ -45,8 +46,9 @@ describe('distribution MyTwin — challenge forms', () => {
       'ml',
       'validation',
       'validation',
+      'data-annotation',
     ]);
-    expect(formLogics.map((logic) => logic.key)).toEqual(['code', 'ml', 'validation']);
+    expect(formLogics.map((logic) => logic.key)).toEqual(['code', 'ml', 'validation', 'data-annotation']);
   });
 });
 
@@ -128,6 +130,52 @@ describe('validation form section', () => {
 
     expect(state).toMatchObject({ sourceChallengeId: 'src', cpPerValidation: 12 });
     expect(validationFormLogic.body(state, ctx)).toEqual({ reward_rules: null, compute_enabled: false });
+  });
+});
+
+describe('annotation form section', () => {
+  it('creates a data-annotation challenge with its config under flow_config', () => {
+    const state = {
+      ...annotationFormLogic.initialState(create),
+      k: 5,
+      options: [{ key: 'benign', label: 'Benign' }, { key: 'malignant', label: 'Malignant' }],
+    };
+
+    expect(annotationFormLogic.validate!(state, create)).toBeNull();
+    expect(annotationFormLogic.body(state, create)).toEqual({
+      type: 'data-annotation',
+      reward_rules: { per_unit_cp: 5, gold_rate: 0.1, audit_rate: 0.1 },
+      flow_config: {
+        k: 5,
+        ttl_hours: 48,
+        label_schema: { kind: 'single_choice', options: state.options },
+        sensitive_clearance: { min_seen: 5, min_accuracy: 0.8 },
+      },
+    });
+  });
+
+  it('blocks an invalid setup: an empty option, duplicate keys', () => {
+    const state = annotationFormLogic.initialState(create);
+    expect(annotationFormLogic.validate!({ ...state, options: [{ key: 'yes', label: 'Yes' }, { key: '', label: '' }] }, create))
+      .toMatch(/Annotation setup/);
+    expect(annotationFormLogic.validate!({ ...state, options: [{ key: 'a', label: 'A' }, { key: 'a', label: 'a' }] }, create))
+      .toMatch(/unique/);
+  });
+
+  it('only sends the pay rules when editing: the structure is locked', () => {
+    const ctx = edit({
+      type: 'data-annotation',
+      reward_rules: { per_unit_cp: 9, gold_rate: 0.2, audit_rate: 0 },
+      flow_config: { k: 7, ttl_hours: 12, label_schema: { kind: 'single_choice', options: [{ key: 'x', label: 'X' }, { key: 'y', label: 'Y' }] } },
+    });
+    const state = annotationFormLogic.initialState(ctx);
+
+    expect(state).toMatchObject({ k: 7, ttlHours: 12, rules: { per_unit_cp: 9, gold_rate: 0.2, audit_rate: 0 } });
+    expect(annotationFormLogic.body(state, ctx)).toEqual({ reward_rules: { per_unit_cp: 9, gold_rate: 0.2, audit_rate: 0 } });
+  });
+
+  it('derives option keys from labels', () => {
+    expect(optionKeyOf(' Très suspect (BI-RADS 5) ')).toBe('tres_suspect_bi-rads_5');
   });
 });
 

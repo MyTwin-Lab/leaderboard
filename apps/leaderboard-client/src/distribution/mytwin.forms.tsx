@@ -1,11 +1,13 @@
-import { BrainCircuit, Code2, ShieldCheck } from 'lucide-react';
+import { BrainCircuit, Code2, ShieldCheck, Tags } from 'lucide-react';
 import type { FlowFormSection } from '@/lib/flowFormSlots';
 import { codeFormLogic } from './forms/code';
 import { mlFormLogic } from './forms/ml';
 import { validationFormLogic } from './forms/validation';
+import { annotationFormLogic } from './forms/annotation';
 import { CodeDetails, CodeFields } from './forms/code-fields';
 import { MlFields } from './forms/ml-fields';
 import { ValidationDetails, ValidationFields } from './forms/validation-fields';
+import { AnnotationFields } from './forms/annotation-fields';
 
 export { sandboxKinds, sandboxKindOf, type SandboxKind } from './forms/sandbox';
 
@@ -27,6 +29,7 @@ export const creatableFormSections: readonly FlowFormSection[] = [
     Fields: ValidationFields,
     Details: ValidationDetails,
   },
+  { ...annotationFormLogic, label: 'Annotation', description: 'Label images, hidden checks', icon: Tags, Fields: AnnotationFields },
 ];
 
 export function formSectionByKey(key: string): FlowFormSection {

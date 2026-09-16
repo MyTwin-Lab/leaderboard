@@ -1,4 +1,4 @@
-import { BrainCircuit, Code2, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { BrainCircuit, Code2, ShieldCheck, Tags, type LucideIcon } from 'lucide-react';
 
 /**
  * Les icônes proposées aux flows. Un flow désigne la sienne par une clé dans
@@ -9,6 +9,7 @@ const FLOW_ICONS: Record<string, LucideIcon> = {
   code: Code2,
   brain: BrainCircuit,
   shield: ShieldCheck,
+  tag: Tags,
 };
 
 export function FlowIcon({ icon, className }: { icon: string; className?: string }) {

@@ -440,6 +440,54 @@ describe('POST /api/challenges', () => {
     });
   });
 
+  describe('flow_config', () => {
+    const annotation = {
+      ...validBody,
+      type: 'data-annotation',
+      reward_rules: { per_unit_cp: 4 },
+      flow_config: {
+        k: 5,
+        label_schema: { kind: 'single_choice', options: [{ key: 'yes', label: 'Yes' }, { key: 'no', label: 'No' }] },
+      },
+    };
+
+    it('passes the configuration of a flow the route does not know, validated by its schema', async () => {
+      const res = await postChallenge(annotation, 'valid-token');
+
+      expect(res.status).toBe(201);
+      expect(mockChallengeCreate).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'data-annotation',
+        reward_rules: { per_unit_cp: 4, gold_rate: 0.1, audit_rate: 0.1 },
+        flow_config: {
+          k: 5,
+          ttl_hours: 48,
+          label_schema: annotation.flow_config.label_schema,
+          sensitive_clearance: { min_seen: 5, min_accuracy: 0.8 },
+        },
+      }));
+      expect(mockRepoCreate).not.toHaveBeenCalled();
+    });
+
+    it('refuses a configuration the flow schema rejects', async () => {
+      const res = await postChallenge({ ...annotation, flow_config: { ...annotation.flow_config, k: 4 } }, 'valid-token');
+
+      expect(res.status).toBe(400);
+      expect(mockChallengeCreate).not.toHaveBeenCalled();
+    });
+
+    it('lets the flat fields of the first flows win over flow_config', async () => {
+      const res = await postChallenge(
+        { ...validBody, workspace_mode: 'own_repo', flow_config: { workspace_mode: 'provided_repo' } },
+        'valid-token'
+      );
+
+      expect(res.status).toBe(201);
+      expect(mockChallengeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ flow_config: { workspace_mode: 'own_repo' } })
+      );
+    });
+  });
+
   it('returns 500 when challenge creation fails', async () => {
     mockChallengeCreate.mockRejectedValue(new Error('db down'));
 

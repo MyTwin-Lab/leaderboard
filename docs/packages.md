@@ -33,6 +33,7 @@ What flows, extensions and modules build on:
 - **`evaluation.ts`** — `evaluate({ bundle, gridSlug, subject })`, runs and their retry; `bundle.ts` prepares and cleans the snapshot
 - **`challenge-actions.ts`** / **`challenge-hooks.ts`** — the action dispatcher with declared access, and the `onCreate` / `onJoin` / `onGroupJoin` / `onClose` / `onDelete` hooks
 - **`board.ts`**, **`groups.ts`**, **`qualifications.ts`** — personal task board, group policy, user qualifications
+- **`resources.ts`** — claimable work units: import, `draw` bounded by `k` with TTL and one live claim per person, `consume`, `release`, `close` (`resource_instances`, `resource_claims` — see [`data-annotation.md`](./data-annotation.md))
 - **`pool.ts`**, **`economy.ts`**, **`rewards.ts`**, **`deliverables.ts`**, **`flow-config.ts`**, **`grid-seeds.ts`**
 - **`cron.ts`** — the job registry behind `/api/cron/tick` (`cron_runs`)
 - **`events.ts`** — outbox: `emit`, `distribute`, `purge`
@@ -100,7 +101,7 @@ Still in `packages/` but outside the core rules (see `UNSORTED_PREFIXES` in the 
 
 | Kind | Entries |
 |------|---------|
-| `flows/` | `code` (project on a branch, board-gated evaluation), `ml` (datasets, models, packaging), `endpoint-validation`, `journey-validation` — each exports a `FlowDefinition` from `index.ts` |
+| `flows/` | `code` (project on a branch, board-gated evaluation), `ml` (datasets, models, packaging), `endpoint-validation`, `journey-validation`, `data-annotation` (labeling campaigns on the `resources` capability) — each exports a `FlowDefinition` from `index.ts` |
 | `kits/validation` | validation targets, validator contribution and `cp_per_validation` payment, shared by the two validation flows |
 | `extensions/` | `slack-signals` (every flow), `compute` (ML: GPU requests, Scaleway client and provider in `compute/scaleway/`) |
 | `connectors/` | `github`, `kaggle`, `slack` — connector, integration and activity extractor |

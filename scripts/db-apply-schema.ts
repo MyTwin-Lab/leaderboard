@@ -1139,6 +1139,56 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
       )`,
   },
 
+  // --- Capacité resources (challenge 020, M1) ---
+  {
+    label: "resource_instances",
+    sql: `
+      CREATE TABLE IF NOT EXISTS resource_instances (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        challenge_id uuid NOT NULL REFERENCES challenges(uuid) ON DELETE CASCADE,
+        resource_type varchar(64) NOT NULL,
+        payload jsonb NOT NULL,
+        class varchar(32),
+        state varchar(16) NOT NULL DEFAULT 'open',
+        verdict varchar(64),
+        resolution jsonb,
+        created_by uuid REFERENCES users(uuid) ON DELETE SET NULL,
+        created_at timestamp NOT NULL DEFAULT now(),
+        closed_at timestamp
+      )`,
+  },
+  {
+    label: "resource_instances (challenge_id, resource_type, state, class)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_resource_instances_draw ON resource_instances (challenge_id, resource_type, state, class)`,
+  },
+  {
+    label: "resource_claims",
+    sql: `
+      CREATE TABLE IF NOT EXISTS resource_claims (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        resource_id uuid NOT NULL REFERENCES resource_instances(uuid) ON DELETE CASCADE,
+        challenge_id uuid NOT NULL REFERENCES challenges(uuid) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        result jsonb,
+        claimed_at timestamp NOT NULL DEFAULT now(),
+        expires_at timestamp,
+        consumed_at timestamp,
+        released_at timestamp
+      )`,
+  },
+  {
+    label: "resource_claims.resource_id (index)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_resource_claims_resource_id ON resource_claims (resource_id)`,
+  },
+  {
+    label: "resource_claims (challenge_id, user_id)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_resource_claims_challenge_user ON resource_claims (challenge_id, user_id)`,
+  },
+  {
+    label: "resource_claims (resource_id, user_id) unique, vivantes",
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_resource_claims_live ON resource_claims (resource_id, user_id) WHERE released_at IS NULL`,
+  },
+
   // --- Slugs des URLs publiques (docs/superpowers/plans/2026-09-15-slug-urls.md) ---
   //
   // En toute fin de tableau, volontairement : le SET NOT NULL rend la colonne

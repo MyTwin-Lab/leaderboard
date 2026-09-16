@@ -1371,6 +1371,51 @@ export const event_deliveries = pgTable("event_deliveries", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// --- RESOURCE_INSTANCES ---
+// Capacité `resources` (challenge 020) : des unités de travail qu'un flow
+// importe et que ses participants réclament. Le core stocke, réclame et
+// compte ; le sens d'un type, d'une charge ou d'un verdict appartient au flow.
+export const resource_instances = pgTable("resource_instances", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  resource_type: varchar("resource_type", { length: 64 }).notNull(),
+  // Validée par le flow à l'écriture.
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  // Un regroupement grossier, filtrable au tirage (`standard`, `sensitive`…).
+  class: varchar("class", { length: 32 }),
+  state: varchar("state", { length: 16 }).notNull().default("open"),
+  verdict: varchar("verdict", { length: 64 }),
+  resolution: jsonb("resolution").$type<Record<string, unknown>>(),
+  created_by: uuid("created_by").references(() => users.uuid, { onDelete: "set null" }),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  closed_at: timestamp("closed_at"),
+}, (table) => ({
+  drawIdx: index("idx_resource_instances_draw").on(table.challenge_id, table.resource_type, table.state, table.class),
+}));
+
+// --- RESOURCE_CLAIMS ---
+// Une réclamation = une unité de travail = un résultat. Active tant qu'elle
+// n'est ni consommée, ni libérée, ni échue ; consommée, elle est définitive.
+// L'index unique partiel est l'invariant « une réclamation vivante par
+// personne et par ressource » ; une réclamation échue est libérée par le
+// tirage suivant de son auteur (`released_at = expires_at`), l'index ne
+// pouvant pas dépendre de l'heure.
+export const resource_claims = pgTable("resource_claims", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  resource_id: uuid("resource_id").references(() => resource_instances.uuid, { onDelete: "cascade" }).notNull(),
+  challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  result: jsonb("result").$type<Record<string, unknown>>(),
+  claimed_at: timestamp("claimed_at").defaultNow().notNull(),
+  expires_at: timestamp("expires_at"),
+  consumed_at: timestamp("consumed_at"),
+  released_at: timestamp("released_at"),
+}, (table) => ({
+  resourceIdx: index("idx_resource_claims_resource_id").on(table.resource_id),
+  userIdx: index("idx_resource_claims_challenge_user").on(table.challenge_id, table.user_id),
+  liveIdx: uniqueIndex("idx_resource_claims_live").on(table.resource_id, table.user_id).where(sql`released_at IS NULL`),
+}));
+
 // --- DATABASE CLIENT ---
 
 const pool = new Pool({
