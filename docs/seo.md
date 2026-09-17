@@ -45,6 +45,7 @@ Where things live:
 - **A disabled query stays `isPending`.** The client components skip `meQuery` for a known-anonymous visitor, so they test a `sessionKnown` flag rather than `meQuery.isPending` — testing the latter would bring the skeleton back.
 - Challenge cards on `/challenges` carry a real `<a href>` on their title: an `onClick` + `router.push` is not a link to a crawler.
 - **JSON-LD escapes `<`** (`components/seo/JsonLd.tsx`): challenge and sandbox titles are user input.
+- **Google may write its own snippet from the page text, so the text must read well out of layout.** The home page carries little prose, and Google built its snippet from the footer, gluing column titles and links together ("ExploreAbout MyTwin LabChallenges…"): they were inline `<span>` and `<a>` stacked by flexbox, with nothing separating them in the text. Footer columns are now `<p>` + `<ul>/<li>`. The home description (`DEFAULT_DESCRIPTION`) also starts with the footer's sentence word for word, so the text Google picked and the meta agree. Check a page's text the way a crawler reads it: strip the tags from `curl -s` output.
 - **Legal markdown is read with `process.cwd()`** (`lib/server/legal.ts`), which is `apps/leaderboard-client` under the Procfile and `next dev`. The in-house `Markdown` renderer has no tables, restarts ordered lists after a paragraph, and renders a bare `>` line as text — the legal files are written around that.
 
 ## Decisions

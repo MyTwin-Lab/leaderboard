@@ -26,9 +26,44 @@ const LEGAL_LINKS = [
 const linkClass =
   "text-sm text-white/55 underline-offset-4 transition-colors hover:text-brandCP hover:underline";
 
-function ColumnTitle({ children }: { children: React.ReactNode }) {
+/**
+ * Une colonne de liens, en blocs (`<p>`, `<ul>`, `<li>`) et non en `<span>` et
+ * `<a>` empilés par flexbox : des éléments en ligne ne laissent aucun
+ * séparateur dans le texte de la page, et Google avait composé l'extrait de
+ * l'accueil avec « ExploreAbout MyTwin LabChallengesSandbox… ».
+ */
+function LinkColumn({
+  id,
+  title,
+  links,
+  external = false,
+}: {
+  id: string;
+  title: string;
+  links: { href: string; label: string }[];
+  external?: boolean;
+}) {
   return (
-    <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/35">{children}</span>
+    <div className="flex flex-col gap-2.5">
+      <p id={id} className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/35">
+        {title}
+      </p>
+      <ul aria-labelledby={id} className="flex flex-col gap-2.5">
+        {links.map((link) => (
+          <li key={link.href}>
+            {external ? (
+              <a href={link.href} className={linkClass}>
+                {link.label}
+              </a>
+            ) : (
+              <Link href={link.href} className={linkClass}>
+                {link.label}
+              </Link>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -51,30 +86,9 @@ export function Footer() {
           </div>
 
           <nav aria-label="Footer" className="grid grid-cols-2 gap-x-10 gap-y-8 sm:grid-cols-3">
-            <div className="flex flex-col gap-2.5">
-              <ColumnTitle>Explore</ColumnTitle>
-              {EXPLORE_LINKS.map((link) => (
-                <Link key={link.href} href={link.href} className={linkClass}>
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-            <div className="flex flex-col gap-2.5">
-              <ColumnTitle>MyTwin</ColumnTitle>
-              {MYTWIN_LINKS.map((link) => (
-                <a key={link.href} href={link.href} className={linkClass}>
-                  {link.label}
-                </a>
-              ))}
-            </div>
-            <div className="flex flex-col gap-2.5">
-              <ColumnTitle>Legal</ColumnTitle>
-              {LEGAL_LINKS.map((link) => (
-                <Link key={link.href} href={link.href} className={linkClass}>
-                  {link.label}
-                </Link>
-              ))}
-            </div>
+            <LinkColumn id="footer-explore" title="Explore" links={EXPLORE_LINKS} />
+            <LinkColumn id="footer-mytwin" title="MyTwin" links={MYTWIN_LINKS} external />
+            <LinkColumn id="footer-legal" title="Legal" links={LEGAL_LINKS} />
           </nav>
         </div>
 
