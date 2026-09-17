@@ -3,6 +3,7 @@ import { HomeHero } from "@/components/home/HomeHero";
 import { HomeBuilding } from "@/components/home/HomeBuilding";
 import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
 import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
+import { HomeLatestNews } from "@/components/home/HomeLatestNews";
 import { HomePodcast } from "@/components/home/HomePodcast";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { DEFAULT_DESCRIPTION, jsonLdGraph, labOrganizationJsonLd, pageMetadata, websiteJsonLd } from "@/lib/seo";
@@ -49,6 +50,9 @@ export default async function HomePage() {
         />
         <HomeChallengesPreview challenges={overview.trendingChallenges} />
       </div>
+
+      {/* ── MyTwin Lab News ─────────────────────────────────────────── */}
+      <HomeLatestNews />
 
       {/* ── MyTwin Inside ───────────────────────────────────────────── */}
       <HomePodcast />

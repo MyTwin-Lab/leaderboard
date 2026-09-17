@@ -109,6 +109,7 @@ describe("buildSitemap", () => {
         { slug: "segment-lesions", created_at: created, closed_at: closed },
       ],
       sandboxes: [{ slug: "sleep-tracker", updated_at: updated }],
+      news: [{ slug: "mykine", lastModified: "2026-09-16" }],
     });
 
     expect(sitemap.map((entry) => entry.url)).toEqual([
@@ -117,15 +118,18 @@ describe("buildSitemap", () => {
       "https://lab.example.com/challenges",
       "https://lab.example.com/sandbox",
       "https://lab.example.com/leaderboard",
+      "https://lab.example.com/news",
       "https://lab.example.com/terms-of-use",
       "https://lab.example.com/privacy-policy",
       "https://lab.example.com/challenges/predict-glucose",
       "https://lab.example.com/challenges/segment-lesions",
       "https://lab.example.com/sandbox/sleep-tracker",
+      "https://lab.example.com/news/mykine",
     ]);
-    expect(sitemap[7].lastModified).toBe(created);
-    expect(sitemap[8].lastModified).toBe(closed);
-    expect(sitemap[9].lastModified).toBe(updated);
+    expect(sitemap[8].lastModified).toBe(created);
+    expect(sitemap[9].lastModified).toBe(closed);
+    expect(sitemap[10].lastModified).toBe(updated);
+    expect(sitemap[11].lastModified).toBe("2026-09-16");
   });
 });
 

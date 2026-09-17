@@ -1,0 +1,95 @@
+import type { ReactNode } from "react";
+
+/**
+ * Une news du Lab, écrite en TSX et non en markdown : sections ancrées, encadré
+ * « At a glance », blocs visuels propres à l'article, sources et entités
+ * balisées. Le gabarit (`components/news/`) donne la même grammaire à toutes ;
+ * chaque article ne dessine que ce que son contenu montre mieux qu'il ne le
+ * raconte. Règles éditoriales : `docs/news-playbook.md`.
+ */
+
+/** Le type d'événement : il choisit la pastille, et rien d'autre. */
+export type NewsCategory = "partnership" | "challenge" | "sandbox" | "research" | "community";
+
+export const NEWS_CATEGORY_LABELS: Record<NewsCategory, string> = {
+  partnership: "Partnership",
+  challenge: "Challenge",
+  sandbox: "Sandbox",
+  research: "Research",
+  community: "Community",
+};
+
+export type NewsSection = {
+  /** Ancre du sommaire, stable : un lien partagé vers une section y mène. */
+  id: string;
+  title: string;
+  content: ReactNode;
+};
+
+export type NewsFact = {
+  label: string;
+  value: ReactNode;
+};
+
+export type NewsFaqItem = {
+  question: string;
+  /** Texte brut et non JSX : la même chaîne alimente la page et le JSON-LD. */
+  answer: string;
+};
+
+export type NewsSource = {
+  label: string;
+  url: string;
+};
+
+/**
+ * Une entité que l'article nomme (partenaire, technologie, institution) :
+ * déclarée en `mentions` dans le JSON-LD, avec son site. C'est le lien
+ * MyTwin → partenaire que la news construit, écrit pour les moteurs.
+ */
+export type NewsMention = {
+  type: "Organization" | "Person" | "SoftwareApplication";
+  name: string;
+  url?: string;
+};
+
+export type NewsCta = {
+  text: string;
+  label: string;
+  /** `/…` pour une page du Lab, URL complète pour un autre site. */
+  href: string;
+};
+
+export type NewsArticle = {
+  /** Anglais, court, sans date : l'URL survit aux mises à jour de l'article. */
+  slug: string;
+  /** Le jour où l'article paraît sur le Lab — jamais antidaté. */
+  publishedAt: string;
+  /** Seulement quand le fond change : c'est la date du sitemap et de `dateModified`. */
+  updatedAt?: string;
+  /**
+   * Le mois où l'événement a eu lieu (`AAAA-MM`), qui peut précéder la
+   * publication de loin. C'est lui qui ordonne les news et s'affiche sur les
+   * cartes : une news raconte un moment de l'histoire du Lab.
+   */
+  eventMonth: string;
+  category: NewsCategory;
+  readingMinutes: number;
+  /** Le H1. */
+  title: string;
+  /** Sans « | MyTwin Lab », ajouté par la page : ≤ ~48 caractères. */
+  seoTitle: string;
+  /** ≤ ~155 caractères. */
+  description: string;
+  /** Le chapeau sous le H1, et le résumé des cartes. */
+  excerpt: string;
+  keywords: string[];
+  facts: NewsFact[];
+  intro: ReactNode;
+  sections: NewsSection[];
+  /** Seulement s'il y a de vraies questions : une news ne se rembourre pas. */
+  faq?: NewsFaqItem[];
+  cta: NewsCta;
+  sources: NewsSource[];
+  mentions: NewsMention[];
+};

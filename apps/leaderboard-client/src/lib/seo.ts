@@ -1,5 +1,5 @@
 import type { Metadata, MetadataRoute } from "next";
-import { challengePath, sandboxPath } from "@/lib/paths";
+import { NEWS_PATH, challengePath, newsPath, sandboxPath } from "@/lib/paths";
 
 /**
  * Ce que les moteurs de recherche et les aperçus de lien lisent : nom du site,
@@ -46,6 +46,13 @@ export const MYTWIN = {
   clinicians: "https://mytwin.care/en/clinicians",
   contact: "https://mytwin.care/en/contact-us",
 } as const;
+
+/**
+ * L'auteur éditorial des news, le même que sur le blog de mytwin.care — nommé
+ * avec son rôle : c'est la relation personne → organisation qui construit
+ * l'entité, pas le nom seul.
+ */
+export const EDITORIAL_AUTHOR = { name: "Rubens Valcy", role: "Founder of MyTwin" } as const;
 
 /**
  * Pages externes qui représentent le Lab lui-même. On ne déclare que ce qui
@@ -132,6 +139,40 @@ export function pageMetadata({
   };
 }
 
+/**
+ * Les métadonnées d'une news : celles d'une page publique, avec un aperçu de
+ * type `article` qui porte ses dates et son auteur. L'image vient du
+ * `opengraph-image.tsx` de la route, propre à chaque news.
+ */
+export function articleMetadata({
+  title,
+  description,
+  path,
+  publishedTime,
+  modifiedTime,
+  tags,
+}: {
+  title: string;
+  description: string;
+  path: string;
+  publishedTime: string;
+  modifiedTime: string;
+  tags: string[];
+}): Metadata {
+  const base = pageMetadata({ title, description, path });
+  return {
+    ...base,
+    openGraph: {
+      ...base.openGraph,
+      type: "article",
+      publishedTime,
+      modifiedTime,
+      authors: [EDITORIAL_AUTHOR.name],
+      tags,
+    },
+  };
+}
+
 /** Métadonnées d'une page qui ne doit pas être indexée (inconnue, privée, retirée). */
 export function unindexedMetadata(title: string): Metadata {
   return { title, robots: { index: false, follow: false } };
@@ -143,6 +184,8 @@ export type SitemapInput = {
   challenges: { slug: string; created_at: Date; closed_at?: Date | null }[];
   /** Déjà filtrés sur ce qu'un visiteur anonyme peut ouvrir. */
   sandboxes: { slug: string; updated_at: Date }[];
+  /** `lastModified` : la date de mise à jour de la news, sinon sa publication. */
+  news: { slug: string; lastModified: string }[];
 };
 
 /**
@@ -151,7 +194,7 @@ export type SitemapInput = {
  * à faire dans Google), et une URL en `noindex` dans un sitemap dégrade la
  * confiance que Google accorde au fichier entier.
  */
-export function buildSitemap({ baseUrl, challenges, sandboxes }: SitemapInput): MetadataRoute.Sitemap {
+export function buildSitemap({ baseUrl, challenges, sandboxes, news }: SitemapInput): MetadataRoute.Sitemap {
   const url = (path: string) => `${baseUrl}${path}`;
 
   return [
@@ -160,6 +203,7 @@ export function buildSitemap({ baseUrl, challenges, sandboxes }: SitemapInput): 
     { url: url("/challenges"), changeFrequency: "daily", priority: 0.9 },
     { url: url("/sandbox"), changeFrequency: "daily", priority: 0.8 },
     { url: url("/leaderboard"), changeFrequency: "daily", priority: 0.6 },
+    { url: url(NEWS_PATH), changeFrequency: "weekly", priority: 0.8 },
     { url: url("/terms-of-use"), changeFrequency: "yearly", priority: 0.2 },
     { url: url("/privacy-policy"), changeFrequency: "yearly", priority: 0.2 },
     ...challenges.map((challenge) => ({
@@ -172,6 +216,12 @@ export function buildSitemap({ baseUrl, challenges, sandboxes }: SitemapInput): 
       url: url(sandboxPath(sandbox.slug)),
       lastModified: sandbox.updated_at,
       changeFrequency: "weekly" as const,
+      priority: 0.7,
+    })),
+    ...news.map((article) => ({
+      url: url(newsPath(article.slug)),
+      lastModified: article.lastModified,
+      changeFrequency: "monthly" as const,
       priority: 0.7,
     })),
   ];
@@ -248,5 +298,103 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]): JsonL
       name: item.name,
       item: `${SITE_URL}${item.path}`,
     })),
+  };
+}
+
+/**
+ * `worksFor` désigne MyTwin par l'`@id` que déclare mytwin.care : l'auteur des
+ * news du Lab et le fondateur de MyTwin sont la même personne pour les moteurs.
+ */
+export function authorJsonLd(): JsonLdNode {
+  return {
+    "@type": "Person",
+    name: EDITORIAL_AUTHOR.name,
+    jobTitle: EDITORIAL_AUTHOR.role,
+    worksFor: { "@type": "Organization", "@id": MYTWIN.id, name: MYTWIN.name, url: MYTWIN.url },
+  };
+}
+
+/**
+ * Une news. `mentions` déclare les entités qu'elle nomme (partenaires,
+ * technologies) avec leur site : le lien MyTwin → partenaire, écrit pour les
+ * moteurs. `citation` déclare les sources affichées en pied d'article.
+ */
+export function newsArticleJsonLd({
+  path,
+  headline,
+  description,
+  datePublished,
+  dateModified,
+  image,
+  keywords,
+  section,
+  sources,
+  mentions,
+}: {
+  path: string;
+  headline: string;
+  description: string;
+  datePublished: string;
+  dateModified: string;
+  image: string;
+  keywords: string[];
+  section: string;
+  sources: { label: string; url: string }[];
+  mentions: { type: string; name: string; url?: string }[];
+}): JsonLdNode {
+  const url = `${SITE_URL}${path}`;
+  return {
+    "@type": "NewsArticle",
+    "@id": `${url}#article`,
+    headline,
+    description,
+    url,
+    mainEntityOfPage: url,
+    datePublished,
+    dateModified,
+    inLanguage: "en",
+    image: [image],
+    articleSection: section,
+    keywords: keywords.join(", "),
+    author: authorJsonLd(),
+    publisher: { "@id": LAB_ORGANIZATION_ID },
+    isPartOf: { "@id": WEBSITE_ID },
+    mentions: mentions.map(({ type, name, url: mentionUrl }) => ({
+      "@type": type,
+      name,
+      ...(mentionUrl ? { url: mentionUrl } : {}),
+    })),
+    citation: sources.map((source) => ({ "@type": "CreativeWork", name: source.label, url: source.url })),
+  };
+}
+
+/** Une page qui liste des contenus : l'index des news. */
+export function collectionPageJsonLd({
+  path,
+  name,
+  description,
+  items,
+}: {
+  path: string;
+  name: string;
+  description: string;
+  items: { name: string; path: string }[];
+}): JsonLdNode {
+  return {
+    "@type": "CollectionPage",
+    name,
+    description,
+    url: `${SITE_URL}${path}`,
+    inLanguage: "en",
+    isPartOf: { "@id": WEBSITE_ID },
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: items.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: `${SITE_URL}${item.path}`,
+        name: item.name,
+      })),
+    },
   };
 }

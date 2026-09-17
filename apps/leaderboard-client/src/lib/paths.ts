@@ -1,5 +1,5 @@
 /**
- * Les URLs des pages publiques d'un challenge et d'un sandbox.
+ * Les URLs des pages publiques d'un challenge, d'un sandbox et d'une news.
  *
  * Toujours bâties sur le **slug**, jamais sur l'UUID : une page servie à son
  * UUID redirige (308), et un lien qui y mène coûte un aller-retour — et, pour
@@ -36,6 +36,12 @@ export function challengeSignInPath(slug: string, groupToken?: string | null): s
 
 export function sandboxPath(slug: string): string {
   return `/sandbox/${slug}`;
+}
+
+export const NEWS_PATH = "/news";
+
+export function newsPath(slug: string): string {
+  return `${NEWS_PATH}/${slug}`;
 }
 
 /**

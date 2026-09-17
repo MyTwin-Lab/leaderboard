@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Metadata, MetadataRoute } from "next";
+import { NEWS_ARTICLES } from "@/content/news";
 import { repositories } from "@/lib/db";
 import { challengePath, sandboxPath } from "@/lib/paths";
 import type { Challenge, Sandbox } from "../../../../../packages/database-service/domain/entities";
@@ -138,5 +139,9 @@ export async function fetchSitemap(): Promise<MetadataRoute.Sitemap> {
     baseUrl: SITE_URL,
     challenges: challenges.filter(isPubliclyVisible),
     sandboxes: sandboxes.filter((sandbox) => canSeeSandbox(sandbox, ANONYMOUS)),
+    news: NEWS_ARTICLES.map((article) => ({
+      slug: article.slug,
+      lastModified: article.updatedAt ?? article.publishedAt,
+    })),
   });
 }

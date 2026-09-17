@@ -2,13 +2,14 @@
 
 > What search engines may index on mytwinlab.care, how the site declares itself as part of the MyTwin entity, and where the public-facing pages that carry that live.
 
-The site has two jobs in search: rank its own pages (home, the `/about` landing, challenge and sandbox pages) and reinforce the **MyTwin** entity whose canonical domain is mytwin.care. The two sites must not compete for the same queries: "digital twin" belongs to mytwin.care, the Lab owns "MyTwin Lab" and open health innovation.
+The site has two jobs in search: rank its own pages (home, the `/about` landing, challenge and sandbox pages, the news) and reinforce the **MyTwin** entity whose canonical domain is mytwin.care. The two sites must not compete for the same queries: "digital twin" belongs to mytwin.care, the Lab owns "MyTwin Lab", open health innovation, and the events and partnerships told in its news ([`news-playbook.md`](./news-playbook.md)).
 
 ## Surface
 
 | Path | Indexed | Notes |
 |---|---|---|
 | `/` | ✅ | brand-first title, `Organization` + `WebSite` JSON-LD |
+| `/news`, `/news/<slug>` | ✅ | `CollectionPage` on the index, `NewsArticle` + `BreadcrumbList` on each news, a generated OG image per news; unknown slug → `404` ([`news.md`](./news.md)) |
 | `/about` | ✅ | the Lab landing (institutions + contributors), `AboutPage` JSON-LD |
 | `/challenges`, `/challenges/<slug>` | ✅ public ones | `BreadcrumbList` JSON-LD on detail |
 | `/sandbox`, `/sandbox/<slug>` | ✅ visible ones | `BreadcrumbList` JSON-LD on detail |
@@ -25,11 +26,11 @@ Everything is decided **from an anonymous visitor's point of view**: crawlers ne
 Where things live:
 - `src/lib/seo.ts` — `SITE_URL`, `SITE_NAME`, `pageMetadata()`, sitemap builder, JSON-LD builders. Pure, no DB.
 - `src/lib/server/seo.ts` — metadata and JSON-LD that depend on the database (challenge, sandbox, contributor), sitemap data.
-- `src/lib/paths.ts` — every link to a challenge or sandbox page (`challengePath`, `sandboxPath`, the invite and sign-in links). Pure, client-safe.
+- `src/lib/paths.ts` — every link to a challenge, sandbox or news page (`challengePath`, `sandboxPath`, `newsPath`, the invite and sign-in links). Pure, client-safe.
 - `src/lib/server/pageRefs.ts` — resolves a page's URL segment: current slug, moved (UUID, former slug, capitalised slug) or missing.
 - `packages/database-service/domain/slug.ts` — what a slug may be, `slugify`, collision numbering, the deploy-time backfill plan.
 - `src/app/robots.ts`, `src/app/sitemap.ts`, `src/app/opengraph-image.tsx`.
-- `src/components/layout/Footer.tsx` — site-wide links, including the editorial link to mytwin.care and the legal pages.
+- `src/components/layout/Footer.tsx` — site-wide links, including the editorial link to mytwin.care, the news and the legal pages.
 
 ## Gotchas
 
