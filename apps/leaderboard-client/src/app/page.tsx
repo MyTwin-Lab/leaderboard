@@ -1,7 +1,9 @@
 import { fetchHomeOverview } from "@/lib/server/home";
 import { HomeHero } from "@/components/home/HomeHero";
+import { HomeBuilding } from "@/components/home/HomeBuilding";
 import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
 import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
+import { HomePodcast } from "@/components/home/HomePodcast";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { DEFAULT_DESCRIPTION, jsonLdGraph, labOrganizationJsonLd, pageMetadata, websiteJsonLd } from "@/lib/seo";
 
@@ -13,8 +15,9 @@ export const dynamic = "force-dynamic";
 
 // Le titre de l'accueil commence par la marque : c'est la page qui doit
 // sortir sur la requête « MyTwin Lab ». « Digital twin » est laissé à
-// mytwin.care, qui porte ce territoire — les deux sites ne se disputent pas
-// les mêmes requêtes.
+// mytwin.care, qui porte ce territoire : il n'apparaît ici que dans la phrase
+// de mission (H1, description, « What we are building »), toujours liée à
+// mytwin.care, jamais dans un titre.
 export const metadata = pageMetadata({
   absoluteTitle: "MyTwin Lab | Open Health Innovation Community",
   description: DEFAULT_DESCRIPTION,
@@ -34,6 +37,9 @@ export default async function HomePage() {
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <HomeHero />
 
+      {/* ── What we are building ─────────────────────────────────────── */}
+      <HomeBuilding />
+
       {/* ── Leaderboard + Trending challenges ───────────────────────── */}
       <div className="grid gap-8 lg:grid-cols-2">
         <HomeLeaderboardPreview
@@ -44,6 +50,8 @@ export default async function HomePage() {
         <HomeChallengesPreview challenges={overview.trendingChallenges} />
       </div>
 
+      {/* ── MyTwin Inside ───────────────────────────────────────────── */}
+      <HomePodcast />
     </div>
   );
 }

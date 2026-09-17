@@ -20,13 +20,13 @@ export function HomeHero() {
         .
       </h1>
 
-      {/* Body — le lien vers /about vit ici, à droite du paragraphe en desktop
-          et sous lui en mobile. La route /about n'est plus dans la navigation
-          principale (remplacée par Sandbox) : c'est désormais son point
-          d'entrée, et il reprend le style des liens « voir tout » du reste de
-          la page d'accueil. */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <p className="max-w-2xl text-sm leading-relaxed text-white/60 sm:text-base">
+      {/* Body — le lien vers /about vit ici, sous le paragraphe et aligné à
+          droite. La route /about n'est plus dans la navigation principale
+          (remplacée par Sandbox) : c'est désormais son point d'entrée, et il
+          reprend le style des liens « voir tout » du reste de la page
+          d'accueil. */}
+      <div className="flex flex-col gap-4">
+        <p className="text-sm leading-relaxed text-white/60 sm:text-base">
           Students, engineers, clinicians, researchers and citizens contributing to a shared
           mission: creating the most advanced digital twin of the human body and making the
           best health innovations accessible to everyone. Every contribution is tracked,
@@ -34,7 +34,7 @@ export function HomeHero() {
         </p>
         <Link
           href="/about"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:gap-2"
+          className="inline-flex items-center gap-1.5 self-end text-sm font-semibold text-brandCP transition-all duration-200 hover:gap-2"
         >
           About the Lab
           <ArrowIcon />

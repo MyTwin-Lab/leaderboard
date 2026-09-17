@@ -1,6 +1,6 @@
 # Privacy Policy - MyTwin Lab
 
-> Last updated: **September 14, 2026**
+> Last updated: **September 16, 2026**
 
 This policy explains how **We Are One** processes your personal data when you visit or take part in **MyTwin Lab** (https://mytwinlab.care), and how you can exercise your rights. It does not cover the MyTwin application, whose own policy is available at [https://mytwin.care/en/privacy-policy](https://mytwin.care/en/privacy-policy).
 
@@ -140,6 +140,8 @@ MyTwin Lab only uses cookies that are **strictly necessary** for the service you
 - **sb_anon** — remembers the stars you give without an account (1 year). Only set when you star a project while signed out.
 - **g_oauth_state** — protects your sign-in with Google against request forgery (10 minutes).
 - **gh_oauth_state** — protects the connection of a GitHub account by an administrator (10 minutes).
+
+**Embedded videos.** The episodes of MyTwin Inside shown on the Lab are hosted on YouTube. A video is loaded, in YouTube's privacy-enhanced mode (youtube-nocookie.com), **only when you press play**: until then, your browser sends nothing to YouTube. Once you start a video, YouTube, operated by Google Ireland Limited, receives your IP address and may store information on your device, under its own privacy policy: [https://policies.google.com/privacy](https://policies.google.com/privacy).
 
 ## 10. Security
 

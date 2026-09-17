@@ -50,6 +50,8 @@ Where things live:
 
 ## Decisions
 
+**"Digital twin" appears on the home page only as the mission line.** The H1 ("…the world's most advanced human digital twin", linked to mytwin.care), the description and the "What we are building" section, which links to mytwin.care too. No title of the Lab — page or news — targets a "digital twin" query.
+
 **MyTwin Lab is a child organization of MyTwin, not the same entity.** Its `Organization` node carries `parentOrganization` with `@id` `https://mytwin.care/#organization` — the exact `@id` mytwin.care declares in its own `src/lib/seo.ts`. A `sameAs` to mytwin.care would state that both sites describe one thing. `sameAs` only lists profiles of the Lab that exist (the MyTwin-Lab GitHub organization). The reverse link lives on mytwin.care (`subOrganization` + footer link).
 
 **URLs are slugs, chosen before the detail pages were indexed.** Changing URLs after indexing costs redirects and a consolidation delay; before, nothing. A slug is derived from the title at creation (editable in the form), unique per namespace (a promoted challenge can keep its sandbox's slug), never changed by a title edit, and editable later with the old one kept as a redirect — so an indexed or shared URL never breaks. Admin URLs (`/admin/challenges/<uuid>`) stay on the UUID: private, never indexed.
