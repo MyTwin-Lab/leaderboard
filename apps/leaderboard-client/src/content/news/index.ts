@@ -1,4 +1,13 @@
+import { ensweetCardiacRehabilitation } from "./ensweet-cardiac-rehabilitation";
+import { healthguardPatientControlledRecords } from "./healthguard-patient-controlled-records";
+import { iVirtualCameraVitalSigns } from "./i-virtual-camera-vital-signs";
+import { mammographyAiChallenges } from "./mammography-ai-challenges";
+import { mykine } from "./mykine";
+import { mytwinLabLeaderboardBeta } from "./mytwin-lab-leaderboard-beta";
+import { racketSportsInjuryRisk } from "./racket-sports-injury-risk";
+import { skiniveAiSkinChecks } from "./skinive-ai-skin-checks";
 import type { NewsArticle } from "./types";
+import { virtuosisAiVoiceAnalysis } from "./virtuosis-ai-voice-analysis";
 
 /**
  * Le registre des news. Ajouter une news = un dossier `<slug>/` + une ligne ici.
@@ -7,7 +16,17 @@ import type { NewsArticle } from "./types";
  * raconte un moment de l'histoire du Lab, et plusieurs peuvent paraître le même
  * jour sur des événements éloignés. À mois égal, l'ordre de ce tableau fait foi.
  */
-const ARTICLES: readonly NewsArticle[] = [];
+const ARTICLES: readonly NewsArticle[] = [
+  mykine,
+  mytwinLabLeaderboardBeta,
+  mammographyAiChallenges,
+  healthguardPatientControlledRecords,
+  ensweetCardiacRehabilitation,
+  racketSportsInjuryRisk,
+  virtuosisAiVoiceAnalysis,
+  skiniveAiSkinChecks,
+  iVirtualCameraVitalSigns,
+];
 
 export const NEWS_ARTICLES: readonly NewsArticle[] = [...ARTICLES].sort((a, b) =>
   b.eventMonth.localeCompare(a.eventMonth),
