@@ -2,10 +2,17 @@
 
 import { useEffect, useRef } from "react";
 
+// La silhouette que l'estimation de pose reconstruit à partir de la caméra du
+// téléphone, pendant un squat. Les deux relevés (répétitions, flexion du genou)
+// sont ceux d'une séance fictive : ils montrent ce que MyKine mesure.
+// Panneau sombre, couleurs fixes : le visuel ne suit pas le thème du Lab.
+const PANEL = "#1b2327";
+const BONE = "#fff";
+const JOINT = "#0af7c1";
+
 type Point = readonly [number, number];
 
-// Deux poses vues de profil, [debout, squat] : la silhouette que l'estimation
-// de pose reconstruit à partir de la caméra du téléphone.
+// Deux poses vues de profil, [debout, squat].
 const JOINTS = {
   shoulder: [[150, 66], [160, 98]],
   elbow: [[180, 80], [193, 104]],
@@ -41,7 +48,20 @@ function Tween({ attribute, from, to }: { attribute: string; from: number; to: n
   );
 }
 
-export function MyKineVisual() {
+function Chip({ label, value, className }: { label: string; value: string; className: string }) {
+  return (
+    <div
+      className={`absolute grid gap-[0.1em] rounded-[0.8em] border border-[rgb(255_255_255/0.14)] bg-[rgb(13_19_22/0.55)] px-[0.8em] py-[0.5em] text-[1.05em] font-medium leading-tight text-[#fff] backdrop-blur-[8px] ${className}`}
+    >
+      <small className="text-[0.66em] font-normal uppercase tracking-[0.12em] text-[rgb(255_255_255/0.6)]">
+        {label}
+      </small>
+      {value}
+    </div>
+  );
+}
+
+export function PoseIllustration() {
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Les animations SMIL ignorent `prefers-reduced-motion` : on les fige à la main.
@@ -52,11 +72,21 @@ export function MyKineVisual() {
   }, []);
 
   return (
-    <div className="l-kine" aria-hidden>
-      <svg ref={svgRef} viewBox="0 0 320 240" preserveAspectRatio="xMidYMid slice" fill="none">
-        <line x1="60" y1="226" x2="260" y2="226" stroke="currentColor" strokeOpacity="0.18" />
+    <div
+      className="relative size-full"
+      style={{ background: `radial-gradient(70% 60% at 50% 40%, rgb(255 255 255 / 0.07), transparent 70%), ${PANEL}` }}
+    >
+      {/* Cadré en 16:10, le format des cartes : de la tête au sol. */}
+      <svg
+        ref={svgRef}
+        viewBox="-16 18 352 220"
+        preserveAspectRatio="xMidYMid slice"
+        fill="none"
+        className="absolute inset-0 size-full"
+      >
+        <line x1="60" y1="226" x2="260" y2="226" stroke={BONE} strokeOpacity="0.18" />
 
-        <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.9">
+        <g stroke={BONE} strokeWidth="2" strokeLinecap="round" strokeOpacity="0.9">
           {BONES.map(([start, end]) => (
             <line
               key={`${start}-${end}`}
@@ -77,7 +107,7 @@ export function MyKineVisual() {
           </circle>
         </g>
 
-        <g fill="#0af7c1">
+        <g fill={JOINT}>
           {Object.entries(JOINTS).map(([name, [from, to]]) => (
             <circle key={name} cx={from[0]} cy={from[1]} r="3.5">
               <Tween attribute="cx" from={from[0]} to={to[0]} />
@@ -87,14 +117,8 @@ export function MyKineVisual() {
         </g>
       </svg>
 
-      <div className="l-kine__chip" style={{ top: "1.25rem", left: "1.25rem" }}>
-        <small>Reps</small>
-        08 / 12
-      </div>
-      <div className="l-kine__chip" style={{ right: "1.25rem", bottom: "1.25rem" }}>
-        <small>Knee flexion</small>
-        94°
-      </div>
+      <Chip label="Reps" value="08 / 12" className="top-[1.4em] left-[1.4em]" />
+      <Chip label="Knee flexion" value="94°" className="right-[1.4em] bottom-[1.4em]" />
     </div>
   );
 }

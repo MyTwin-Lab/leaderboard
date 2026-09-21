@@ -8,9 +8,7 @@ const VELOCITY_EPSILON = 0.1;
 
 /**
  * Le mouvement du carousel des contributeurs, porté de la landing MyTwin Health
- * (`/patients`) : défilement continu, que l'on peut attraper et lancer. La
- * landing `/` et l'accueil `/home` ont chacune leur habillage, le mouvement est
- * le même.
+ * (`/patients`) : défilement continu, que l'on peut attraper et lancer.
  *
  * La piste doit contenir ses éléments deux fois de suite : la moitié de sa
  * largeur fait un cycle complet. Sous `prefers-reduced-motion`, elle ne défile

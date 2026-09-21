@@ -1,10 +1,7 @@
 import { COMMUNITY_MEMBERS } from "@/content/community";
 import { HomeCommunityCarousel } from "./HomeCommunityCarousel";
 
-/**
- * « Join our Community », repris de la landing `/` sans son « Enter the Lab » :
- * on est déjà dans le Lab. Même texte, mêmes visages, aux couleurs du thème.
- */
+/** « Join our Community » : les visages du Lab, en carousel. */
 export function HomeCommunity() {
   return (
     <section aria-labelledby="community-title" className="flex flex-col items-center gap-3 text-center">

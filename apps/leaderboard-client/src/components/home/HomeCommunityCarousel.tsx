@@ -5,8 +5,8 @@ import Image from "next/image";
 import type { CommunityMember } from "@/content/community";
 import { useDragMarquee } from "@/lib/useDragMarquee";
 
-// Le carousel de la landing, habillé aux couleurs du Lab : même mouvement
-// (`useDragMarquee`), mêmes photos. Décoratif : la liste lisible est à côté.
+// Le carousel de la landing MyTwin Health, aux couleurs du Lab : le mouvement
+// vit dans `useDragMarquee`. Décoratif : la liste lisible est à côté.
 export function HomeCommunityCarousel({ members }: { members: ReadonlyArray<CommunityMember> }) {
   const { trackRef, dragHandlers } = useDragMarquee<HTMLDivElement>();
 

@@ -72,7 +72,7 @@ The template renders the frame (`news.md`); the article provides these fields.
 | Field | Rule |
 |---|---|
 | `title` (H1) | Entity-first, says the event: *"Virtuosis AI brings voice analysis to MyTwin"*. No clickbait, no question. |
-| `overviewTitle` | The title of the cards and the landing: short and catchy (*"MyKine turns a phone camera into a physio’s measuring tool"*). It may drop the entity pair, never the YMYL rules: no diagnosis, no availability the news doesn't state. |
+| `overviewTitle` | The title of the cards: short and catchy (*"MyKine turns a phone camera into a physio’s measuring tool"*). It may drop the entity pair, never the YMYL rules: no diagnosis, no availability the news doesn't state. |
 | `seoTitle` | ≤ ~48 characters (the template appends ` \| MyTwin Lab`). The entity pair first. |
 | `description` | ≤ ~155 characters. The event + why it matters. Written for the person searching, not a copy of the lead. |
 | `excerpt` | 1–3 sentences under the H1 and on the cards. |

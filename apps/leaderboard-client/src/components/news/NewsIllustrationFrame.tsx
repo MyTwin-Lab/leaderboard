@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 /**
  * Le cadre de l'illustration d'une news dans un aperçu. Le cadre fixe le
  * format, l'illustration le remplit : une image est recadrée, un visuel se
- * centre sur le panneau clair de la landing, quel que soit le thème du Lab.
+ * centre sur un panneau clair, quel que soit le thème du Lab.
  *
  * Toujours décoratif : le titre de l'aperçu dit déjà ce que montre l'image.
  */

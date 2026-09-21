@@ -10,8 +10,8 @@ interface HomeLeaderboardPreviewProps {
 
 /**
  * Le top 3 du classement, en liste sobre : même dessin que l'illustration de la
- * news du Leaderboard sur la landing (rang, avatar, nom, CP), mais lu en direct
- * et aux couleurs du thème. Le reste du classement est sur `/leaderboard`.
+ * news du Leaderboard (rang, avatar, nom, CP), mais lu en direct et aux
+ * couleurs du thème. Le reste du classement est sur `/leaderboard`.
  */
 export function HomeLeaderboardPreview({ podium }: HomeLeaderboardPreviewProps) {
   return (

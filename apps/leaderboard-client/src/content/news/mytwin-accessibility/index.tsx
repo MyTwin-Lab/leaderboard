@@ -1,6 +1,7 @@
 import { NewsCallout } from "@/components/news/NewsCallout";
 import { NewsLink } from "@/components/news/NewsLink";
 import type { NewsArticle } from "../types";
+import { ScreenReaderIllustration } from "./screen-reader-illustration";
 import { ScreenReaderPath } from "./screen-reader-path";
 
 const MYTWIN_PATIENTS = "https://mytwin.care/en/patients";
@@ -20,6 +21,7 @@ export const mytwinAccessibility: NewsArticle = {
   readingMinutes: 5,
   title: "Rethinking MyTwin for blind and visually impaired people: what our first accessibility work taught us",
   overviewTitle: "Designing an app for visually impaired users was harder than we thought",
+  illustration: { kind: "visual", Visual: ScreenReaderIllustration },
   seoTitle: "MyTwin accessibility: designing for blind users",
   description:
     "Making MyTwin usable without seeing the screen took more than labels: it meant rethinking the app. Next step to explore: an app you can drive by voice.",

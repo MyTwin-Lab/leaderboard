@@ -61,7 +61,7 @@ export type NewsCta = {
 };
 
 /**
- * L'illustration d'une news dans ses aperçus (cartes, landing) : une image, ou
+ * L'illustration d'une news dans ses aperçus (les cartes) : une image, ou
  * un visuel dessiné en HTML/SVG. Même règle qu'un bloc visuel : elle illustre
  * et n'ajoute rien, ni chiffre ni résultat qui ne soit dans l'article.
  */
@@ -99,7 +99,7 @@ export type NewsArticle = {
   /** Le H1. */
   title: string;
   /**
-   * Le titre des aperçus (cartes, landing) : plus court et plus accrocheur que
+   * Le titre des aperçus (les cartes) : plus court et plus accrocheur que
    * le H1, qui garde l'entité et l'événement pour le référencement.
    */
   overviewTitle: string;

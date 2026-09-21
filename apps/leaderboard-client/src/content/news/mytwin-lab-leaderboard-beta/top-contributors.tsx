@@ -1,10 +1,26 @@
 import Image from "next/image";
-import { TOP_CONTRIBUTORS_SNAPSHOT } from "@/content/top-contributors";
 import { formatCP } from "@/lib/formatters";
 
-// Le top 3 de la landing, redessiné pour le cadre des aperçus : le même
-// instantané, des tailles en `em` qui suivent la largeur du cadre, et des
-// couleurs fixes, le panneau restant clair quel que soit le thème du Lab.
+/**
+ * Instantané du top 3 de `/leaderboard`, écrit à la main pour montrer les
+ * photos de `public/landing/contributors/`, que les comptes n'ont pas. À
+ * rebrancher sur le classement quand les avatars suivront.
+ */
+const TOP_CONTRIBUTORS_SNAPSHOT = [
+  { rank: 1, name: "Alix Chagot", bio: "Software Engineer", cp: 23641, photo: "/landing/contributors/alix_chagot.webp" },
+  { rank: 2, name: "Antoine", bio: "Software Engineer", cp: 7600, photo: "/landing/contributors/antoine_tessier.webp" },
+  {
+    rank: 3,
+    name: "Mahdi Lamriben",
+    bio: "Fullstack, Data & AI Engineer",
+    cp: 6000,
+    photo: "/landing/contributors/mahdi_lamriben.webp",
+  },
+] as const;
+
+// Le top 3 dessiné pour le cadre des aperçus : des tailles en `em` qui suivent
+// la largeur du cadre, et des couleurs fixes, le panneau restant clair quel que
+// soit le thème du Lab.
 export function TopContributorsIllustration() {
   return (
     <div className="flex w-[88%] max-w-[24em] flex-col gap-[0.85em]">

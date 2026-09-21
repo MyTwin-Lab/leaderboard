@@ -1,30 +1,54 @@
-import { landingDisplay, landingHeading, landingSans } from "./fonts";
-import { LandingCommunity } from "./LandingCommunity";
-import { LandingFooter } from "./LandingFooter";
-import { LandingHero } from "./LandingHero";
-import { LandingNews } from "./LandingNews";
-import { LandingStatement } from "./LandingStatement";
+import Image, { getImageProps } from "next/image";
+import Link from "next/link";
+
+import { ArrowIcon } from "./ArrowIcon";
+import { landingHeading, landingSans } from "./fonts";
 
 import "./landing.css";
 
-// La landing de `/` : sa propre DA (polices, couleurs, rythme), scopée sous
-// `.landing`. Elle ne lit aucun token du thème du Lab et sort de son chrome
-// (voir `components/layout/LabShell.tsx`). Le CTA « Enter the Lab » mène à
-// `/home`, où commence la web app.
+// Deux cadrages de la même scène : paysage pour un écran plus large que haut,
+// portrait (téléphone, tablette debout). Le navigateur ne charge que le sien.
+// Image décorative : le message est dans le titre, d'où l'`alt` vide.
+const BACKDROP = { alt: "", sizes: "100vw", priority: true } as const;
+const {
+  props: { srcSet: landscapeSrcSet },
+} = getImageProps({ ...BACKDROP, src: "/landing/hero/digital-twin-hologram.webp", width: 1774, height: 887 });
+const {
+  props: { srcSet: portraitSrcSet, ...backdropProps },
+} = getImageProps({ ...BACKDROP, src: "/landing/hero/digital-twin-hologram-mobile.webp", width: 941, height: 1672 });
+
+// La landing de `/` : un seul écran, sans scroll. Le titre, puis « Enter the
+// Lab », qui mène à `/home`, où commence la web app. Sa propre DA (polices,
+// couleurs), scopée sous `.landing` : elle ne lit aucun token du thème du Lab
+// et sort de son chrome (voir `components/layout/LabShell.tsx`).
 export function Landing() {
   return (
-    <div className={`landing ${landingHeading.variable} ${landingDisplay.variable} ${landingSans.variable}`}>
-      {/* Sans JavaScript, rien ne déclenche les apparitions : tout est montré. */}
-      <noscript>
-        <style>{`.l-reveal{opacity:1;transform:none}`}</style>
-      </noscript>
-      <main>
-        <LandingHero />
-        <LandingCommunity />
-        <LandingNews />
-        <LandingStatement />
+    <div className={`landing ${landingHeading.variable} ${landingSans.variable}`}>
+      <picture>
+        <source media="(orientation: landscape)" srcSet={landscapeSrcSet} />
+        {/* eslint-disable-next-line @next/next/no-img-element -- art direction : `getImageProps` + <picture> */}
+        <img {...backdropProps} srcSet={portraitSrcSet} alt="" className="l-backdrop" />
+      </picture>
+      <div className="l-scrim" aria-hidden />
+
+      <header className="l-bar">
+        <Image
+          src="/landing/logo/mytwin-lab-logo-dark.png"
+          alt="MyTwin Lab"
+          width={644}
+          height={246}
+          priority
+          className="l-logo"
+        />
+      </header>
+
+      <main className="l-hero">
+        <h1 className="l-heading l-hero__title">We are building the world’s most advanced human digital twin</h1>
+        <Link href="/home" className="l-button">
+          Enter the Lab
+          <ArrowIcon />
+        </Link>
       </main>
-      <LandingFooter />
     </div>
   );
 }
