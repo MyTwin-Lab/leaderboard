@@ -1,0 +1,53 @@
+import { fetchHomeOverview } from "@/lib/server/home";
+import { HomeHero } from "@/components/home/HomeHero";
+import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
+import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
+import { HomeLatestNews } from "@/components/home/HomeLatestNews";
+import { HomePodcast } from "@/components/home/HomePodcast";
+import { pageMetadata } from "@/lib/seo";
+
+// HomeStatsCard ("The Lab, right now") is temporarily hidden from the home
+// page — component kept in place, just not rendered here. HomeHero takes
+// the full width in its place.
+
+export const dynamic = "force-dynamic";
+
+// L'accueil du Lab, une fois passé la landing `/` : c'est `/` qui porte la
+// marque (titre « MyTwin Lab », JSON-LD de l'entité). Cette page vise ce
+// qu'elle montre, pour ne pas concurrencer la landing sur « MyTwin Lab ».
+export const metadata = pageMetadata({
+  title: "Top Contributors, Trending Challenges and News",
+  description:
+    "Inside MyTwin Lab: the top contributors, the trending health challenges, the latest news and the MyTwin Inside podcast. Every contribution is tracked, evaluated and rewarded in CP.",
+  path: "/home",
+});
+
+export default async function HomePage() {
+  // Single aggregated read — see fetchHomeOverview() for why this replaces
+  // separate fetchLeaderboard()/fetchTrendingChallenges() calls (each of
+  // which re-fetched the same projects/challenges/contributions/users).
+  const overview = await fetchHomeOverview();
+
+  return (
+    <div className="space-y-10 sm:space-y-14">
+      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      <HomeHero />
+
+      {/* ── Leaderboard + Trending challenges ───────────────────────── */}
+      <div className="grid gap-8 lg:grid-cols-2">
+        <HomeLeaderboardPreview
+          podium={overview.podium}
+          rest={overview.rest}
+          contributorsRanked={overview.contributorsRanked}
+        />
+        <HomeChallengesPreview challenges={overview.trendingChallenges} />
+      </div>
+
+      {/* ── MyTwin Lab News ─────────────────────────────────────────── */}
+      <HomeLatestNews />
+
+      {/* ── MyTwin Inside ───────────────────────────────────────────── */}
+      <HomePodcast />
+    </div>
+  );
+}

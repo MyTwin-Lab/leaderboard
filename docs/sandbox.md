@@ -187,7 +187,7 @@ Already-generated digests are immutable, so the tab renders the section only whe
 
 ## UI
 
-**Navigation.** Sandbox replaces About in the main navigation. `/about` is the MyTwin Lab landing (see [`seo.md`](./seo.md)), reached from the home hero, the footer and a "How MyTwin Lab works" link in the listing header — all in the same "see all" link style, whose arrow lives in `components/home/ArrowIcon.tsx`.
+**Navigation.** Sandbox replaces About in the main navigation. `/about` is parked (`noindex`, see [`seo.md`](./seo.md)): the home hero and the footer no longer link to it, only the "How MyTwin Lab works" link in the listing header still does — in the "see all" link style, whose arrow lives in `components/home/ArrowIcon.tsx`.
 
 **Listing** (`/sandbox`) — search over title, author and context; sort by stars or recency; `Open` / `Promoted` / `Mine` pills with counts; header stats. A promoted card's call to action links to the challenge it became, not back to the sandbox. An archived sandbox appears only under `Mine`, and only for its author.
 

@@ -41,7 +41,13 @@ const TITLE = "About MyTwin Lab | Open Health Innovation Sandbox";
 const DESCRIPTION =
   "MyTwin Lab is the open health innovation sandbox of MyTwin, where hospitals, clinicians, researchers and developers build applications for the MyTwin Platform.";
 
-export const metadata = pageMetadata({ absoluteTitle: TITLE, description: DESCRIPTION, path: "/about" });
+// Plus aucun lien de navigation ne mène ici et la page est sortie de l'index
+// (et du sitemap) le temps de décider ce qu'elle devient : elle reste ouverte
+// en URL directe. `follow` reste vrai, ses liens sortants restent valables.
+export const metadata = {
+  ...pageMetadata({ absoluteTitle: TITLE, description: DESCRIPTION, path: "/about" }),
+  robots: { index: false, follow: true },
+};
 
 const DOMAINS = [
   "Medical imaging AI",

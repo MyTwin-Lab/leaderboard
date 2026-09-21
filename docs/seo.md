@@ -2,15 +2,16 @@
 
 > What search engines may index on mytwinlab.care, how the site declares itself as part of the MyTwin entity, and where the public-facing pages that carry that live.
 
-The site has two jobs in search: rank its own pages (home, the `/about` landing, challenge and sandbox pages, the news) and reinforce the **MyTwin** entity whose canonical domain is mytwin.care. The two sites must not compete for the same queries: "digital twin" belongs to mytwin.care, the Lab owns "MyTwin Lab", open health innovation, and the events and partnerships told in its news ([`news-playbook.md`](./news-playbook.md)).
+The site has two jobs in search: rank its own pages (the `/` landing, the Lab home `/home`, challenge and sandbox pages, the news) and reinforce the **MyTwin** entity whose canonical domain is mytwin.care. The two sites must not compete for the same queries: "digital twin" belongs to mytwin.care, the Lab owns "MyTwin Lab", open health innovation, and the events and partnerships told in its news ([`news-playbook.md`](./news-playbook.md)).
 
 ## Surface
 
 | Path | Indexed | Notes |
 |---|---|---|
-| `/` | ✅ | brand-first title, `Organization` + `WebSite` JSON-LD |
+| `/` | ✅ | the landing (own art direction, a placeholder for now): brand-first title, `Organization` + `WebSite` JSON-LD |
+| `/home` | ✅ | the Lab home (top contributors, trending challenges, news, podcast), reached from the landing and the navbar's "Home" |
 | `/news`, `/news/<slug>` | ✅ | `CollectionPage` on the index, `NewsArticle` + `BreadcrumbList` on each news, a generated OG image per news; unknown slug → `404` ([`news.md`](./news.md)) |
-| `/about` | ✅ | the Lab landing (institutions + contributors), `AboutPage` JSON-LD |
+| `/about` | ❌ `noindex, follow` | the former Lab landing, parked: out of the navigation and the sitemap, still open at its URL |
 | `/challenges`, `/challenges/<slug>` | ✅ public ones | `BreadcrumbList` JSON-LD on detail |
 | `/sandbox`, `/sandbox/<slug>` | ✅ visible ones | `BreadcrumbList` JSON-LD on detail |
 | `/leaderboard` | ✅ | |
@@ -51,15 +52,17 @@ Where things live:
 
 ## Decisions
 
-**"Digital twin" appears on the home page only as the mission line.** The H1 ("…the world's most advanced human digital twin", linked to mytwin.care), the description and the "What we are building" section, which links to mytwin.care too. No title of the Lab — page or news — targets a "digital twin" query.
+**"Digital twin" appears only as the mission line.** In `DEFAULT_DESCRIPTION` and in the `/home` paragraph ("…the most advanced digital twin of the human body"). No title of the Lab — page or news — targets a "digital twin" query.
+
+**`/` carries the brand, `/home` carries the Lab.** The root is the landing that must rank on "MyTwin Lab": it keeps the brand-first title and the entity JSON-LD. What used to be the home page moved to `/home`, titled after what it shows so the two do not compete for the same query.
 
 **MyTwin Lab is a child organization of MyTwin, not the same entity.** Its `Organization` node carries `parentOrganization` with `@id` `https://mytwin.care/#organization` — the exact `@id` mytwin.care declares in its own `src/lib/seo.ts`. A `sameAs` to mytwin.care would state that both sites describe one thing. `sameAs` only lists profiles of the Lab that exist (the MyTwin-Lab GitHub organization). The reverse link lives on mytwin.care (`subOrganization` + footer link).
 
 **URLs are slugs, chosen before the detail pages were indexed.** Changing URLs after indexing costs redirects and a consolidation delay; before, nothing. A slug is derived from the title at creation (editable in the form), unique per namespace (a promoted challenge can keep its sandbox's slug), never changed by a title edit, and editable later with the old one kept as a redirect — so an indexed or shared URL never breaks. Admin URLs (`/admin/challenges/<uuid>`) stay on the UUID: private, never indexed.
 
-**One page per query.** `/about` became the Lab landing and absorbed the values of the former manifesto: two pages about "MyTwin Lab" would compete for the same query.
+**One page per query.** `/about` had become the Lab landing and absorbed the values of the former manifesto. With a new landing at `/`, it is parked rather than left to compete for "MyTwin Lab": `noindex, follow`, out of the sitemap, no link from the home hero or the footer. The page and its code stay until its fate is decided.
 
-**The landing tells the vision, the legal pages tell the facts.** `/about` presents where the Lab is going — applications connected to the MyTwin Platform, Sandbox projects built together — because that link is what the Lab means to an institution. Two things stay strictly factual on it because health is YMYL: the research-vs-medical-device line and the patient-data rule. No partner is named until one is public. The terms and privacy policy describe what the service actually does.
+**The landing tells the vision, the legal pages tell the facts.** `/about` (parked, see above) presents where the Lab is going — applications connected to the MyTwin Platform, Sandbox projects built together — because that link is what the Lab means to an institution. Two things stay strictly factual on it because health is YMYL: the research-vs-medical-device line and the patient-data rule. No partner is named until one is public. The terms and privacy policy describe what the service actually does.
 
 ## Operating
 

@@ -114,7 +114,7 @@ describe("buildSitemap", () => {
 
     expect(sitemap.map((entry) => entry.url)).toEqual([
       "https://lab.example.com/",
-      "https://lab.example.com/about",
+      "https://lab.example.com/home",
       "https://lab.example.com/challenges",
       "https://lab.example.com/sandbox",
       "https://lab.example.com/leaderboard",

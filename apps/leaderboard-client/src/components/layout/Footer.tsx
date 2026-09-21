@@ -3,7 +3,6 @@ import { MYTWIN } from "@/lib/seo";
 import { MyTwinLogo } from "./MyTwinLogo";
 
 const EXPLORE_LINKS = [
-  { href: "/about", label: "About MyTwin Lab" },
   { href: "/news", label: "MyTwin Lab News" },
   { href: "/challenges", label: "Challenges" },
   { href: "/sandbox", label: "Sandbox" },
