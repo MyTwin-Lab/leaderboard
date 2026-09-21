@@ -46,8 +46,9 @@ leaderboard/
 │       │   │   ├── challenges/        # brief, code/ML/validation flows, compute panels, drawers
 │       │   │   │   └── shared/        # activity, metrics, participant progress
 │       │   │   ├── contributor/       # profile, task board, integration cards, settings
-│       │   │   ├── home/              # homepage sections
-│       │   │   ├── layout/            # navbar, navigation, session guard, background
+│       │   │   ├── home/              # Lab home (`/home`) sections
+│       │   │   ├── landing/           # the `/` landing: own art direction, scoped CSS, fonts
+│       │   │   ├── layout/            # navbar, navigation, session guard, background, LabShell
 │       │   │   ├── leaderboard/       # podium, table, filters
 │       │   │   ├── onboarding/        # onboarding drawer + quests
 │       │   │   ├── public/            # challenge cards, filters, project explorer
@@ -162,6 +163,7 @@ leaderboard/
 | Slack signals | `packages/services/slack/` + `packages/slack-signal-agent/` |
 | Activity digest | `packages/services/digest/` (see [`digest.md`](./digest.md)) |
 | Sandbox (contributor proposals) | `packages/services/sandbox/` + `apps/leaderboard-client/src/app/sandbox/` + `src/components/sandbox/` + `src/lib/public/sandbox.ts` (see [`sandbox.md`](./sandbox.md)) |
+| Landing (`/`) | `apps/leaderboard-client/src/components/landing/` + `src/components/layout/LabShell.tsx` + `public/landing/` (see [`landing.md`](./landing.md)) |
 | Theme / integrations / module toggles | `packages/database-service/repositories/appSettings.repo.ts` (see [`admin-settings.md`](./admin-settings.md)) |
 | Env config & encrypted credentials | `packages/config/` |
 | Root npm scripts | `package.json` (root) |

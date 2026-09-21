@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { Providers } from "./providers";
-import { GradientBackground } from "@/components/layout/GradientBackground";
+import { LabShell } from "@/components/layout/LabShell";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { OnboardingDrawer } from "@/components/onboarding/OnboardingDrawer";
@@ -96,17 +96,20 @@ export default async function RootLayout({
       <head />
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Providers>
-          <GradientBackground>
-            <Navbar session={session} />
-            <main className="mx-auto w-full max-w-6xl px-4 pt-20 pb-16 sm:px-6 md:pt-24">
-              {children}
-            </main>
-            <Footer />
-            {session && onboarding && !onboarding.completed_at && settings.modules_onboarding_enabled && (
-              <OnboardingDrawer initialProgress={onboarding} />
-            )}
-            {session && <SessionGuard />}
-          </GradientBackground>
+          <LabShell
+            navbar={<Navbar session={session} />}
+            footer={<Footer />}
+            overlays={
+              <>
+                {session && onboarding && !onboarding.completed_at && settings.modules_onboarding_enabled && (
+                  <OnboardingDrawer initialProgress={onboarding} />
+                )}
+                {session && <SessionGuard />}
+              </>
+            }
+          >
+            {children}
+          </LabShell>
         </Providers>
       </body>
     </html>

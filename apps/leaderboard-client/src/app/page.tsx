@@ -1,3 +1,4 @@
+import { Landing } from "@/components/landing/Landing";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { DEFAULT_DESCRIPTION, jsonLdGraph, labOrganizationJsonLd, pageMetadata, websiteJsonLd } from "@/lib/seo";
 
@@ -12,13 +13,13 @@ export const metadata = pageMetadata({
   path: "/",
 });
 
-// Placeholder : la nouvelle landing (sa propre DA, hors du système de thème)
-// arrive ici.
+// La landing a sa propre DA, hors du système de thème : elle sort du chrome du
+// Lab (`LabShell`) et tout son rendu vit dans `components/landing/`.
 export default function LandingPage() {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center">
+    <>
       <JsonLd data={jsonLdGraph(labOrganizationJsonLd(), websiteJsonLd())} />
-      <p className="text-2xl font-semibold text-white">Soon</p>
-    </div>
+      <Landing />
+    </>
   );
 }

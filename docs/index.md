@@ -36,6 +36,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`admin-settings.md`](./admin-settings.md) | Instance-wide theme, GitHub/Kaggle/Slack connections, and module toggles |
 | [`digest.md`](./digest.md) | Periodic, frozen snapshots of platform activity, browsable by admins |
 | [`sandbox.md`](./sandbox.md) | Contributor-proposed open challenges, community stars, and promotion into official challenges |
+| [`landing.md`](./landing.md) | The `/` landing: its own art direction outside the theme system, how it leaves the Lab chrome, its sections and assets |
 | [`seo.md`](./seo.md) | What search engines may index, the MyTwin Lab entity linked to mytwin.care, the `/` landing, the `/home` Lab home and legal pages |
 | [`news.md`](./news.md) | MyTwin Lab News: `/news` pages written in TSX, the template, the registry, structured data |
 | [`news-playbook.md`](./news-playbook.md) | Editorial playbook for the news: what deserves one, anatomy, YMYL wording, links, checklist, decision log |
