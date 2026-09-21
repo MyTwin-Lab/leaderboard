@@ -15,9 +15,9 @@ Everything lives in `components/landing/Landing.tsx`, styled by `landing.css`:
 | Layer | What |
 |-------|------|
 | Background | Two framings of the same scene, full screen (`object-fit: cover`), under a dark scrim so the title reads: `digital-twin-hologram.webp` (landscape) when the screen is wider than tall, `digital-twin-hologram-mobile.webp` (portrait) otherwise, both in `public/landing/hero/`. A `<picture>` built with `getImageProps` picks one by `orientation`, so the browser loads only that one. Decorative, empty `alt` |
-| Logo | The MyTwin Lab logo, small, top left: `public/landing/logo/mytwin-lab-logo-dark.png` (white "MyTwin", for dark backgrounds) |
-| Title | The H1, centred: "We are building the world's most advanced human digital twin" |
-| CTA | **Enter the Lab**, a white pill under the title, → `/home` |
+| Logo | The MyTwin Lab logo, small, top left: `public/landing/logo/mytwin-lab-logo-dark.png` (white "MyTwin", for dark backgrounds). Smaller still on a phone (under 768 px) |
+| Title | The H1, centred: "Building the world's most advanced human digital twin" |
+| CTA | **Enter the Lab**, a white pill under the title, → `/home`. On a phone held upright it sits lower, under the hologram's base: shifted with `top`, so the title stays centred |
 
 No scroll: `.landing` is `100svh` high with `overflow: hidden`, and nothing follows the screen, not even a footer (the legal pages stay linked from the Lab footer). A `min-height` of 20rem keeps the title and CTA whole on a very short screen (a phone held sideways), where the page would then scroll a little.
 
@@ -35,7 +35,8 @@ Motion is slow and quiet (one easing, `--l-ease`): the image settles in, then th
 The landing used to scroll through "Join our Community", four news stories and a closing statement.
 
 - **Join our Community** lives on `/home` (`HomeCommunity`), in the Lab's look. Its photos and flags are still served from `public/landing/contributors/` and `public/landing/flags/`.
-- **Three of the four stories' visuals** became the overview illustrations of their news (see [`news.md`](./news.md)): the top 3 contributors (Leaderboard), the pose skeleton (MyKine), the selfie scan (i-Virtual). The accessibility news shows a photo of the pictogram for visually impaired people instead; its screen reader and voice visual was dropped (last version in commit `334fafa`, `content/news/mytwin-accessibility/screen-reader-illustration.tsx`).
+- **Two of the four stories' visuals** are the overview illustrations of their news (see [`news.md`](./news.md)): the pose skeleton (MyKine), the selfie scan (i-Virtual).
+- **The other two are gone.** The accessibility news shows a photo of the pictogram for visually impaired people; its screen reader and voice visual was dropped (last version in commit `334fafa`, `content/news/mytwin-accessibility/screen-reader-illustration.tsx`). The top 3 contributors went with the Leaderboard news, removed on 2026-09-22 (last version in commit `8e86565`, `content/news/mytwin-lab-leaderboard-beta/`); `/home` shows the live top 3.
 
 ## Still open
 

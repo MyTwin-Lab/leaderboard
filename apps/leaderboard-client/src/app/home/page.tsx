@@ -33,19 +33,19 @@ export default async function HomePage() {
       {/* ── Our mission ─────────────────────────────────────────────── */}
       <HomeHero />
 
-      {/* ── MyTwin Lab News ─────────────────────────────────────────── */}
+      {/* ── News ─────────────────────────────────────────────────────── */}
       <HomeLatestNews />
 
-      {/* ── MyTwin Inside ───────────────────────────────────────────── */}
+      {/* ── Podcast (MyTwin Inside) ─────────────────────────────────── */}
       <HomePodcast />
 
       {/* ── Join our Community ──────────────────────────────────────── */}
       <HomeCommunity />
 
-      {/* ── Leaderboard: top 3 ──────────────────────────────────────── */}
+      {/* ── Top 3 contributors ──────────────────────────────────────── */}
       <HomeLeaderboardPreview podium={overview.podium} />
 
-      {/* ── Trending challenges ─────────────────────────────────────── */}
+      {/* ── Challenges (trending) ────────────────────────────────────── */}
       <HomeChallengesPreview challenges={overview.trendingChallenges} />
     </div>
   );

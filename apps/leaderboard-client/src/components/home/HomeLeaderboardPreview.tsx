@@ -2,26 +2,20 @@ import Link from "next/link";
 import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
 import { formatCP } from "@/lib/formatters";
 import type { HomeLeaderboardEntry } from "@/lib/types";
-import { HomeSectionHeader } from "./HomeSectionHeader";
+import { HomeSectionLink, HomeSectionTitle } from "./HomeSection";
 
 interface HomeLeaderboardPreviewProps {
   podium: HomeLeaderboardEntry[];
 }
 
 /**
- * Le top 3 du classement, en liste sobre : même dessin que l'illustration de la
- * news du Leaderboard (rang, avatar, nom, CP), mais lu en direct et aux
- * couleurs du thème. Le reste du classement est sur `/leaderboard`.
+ * Le top 3 du classement, en liste sobre (rang, avatar, nom, CP), lu en direct
+ * et aux couleurs du thème. Le reste du classement est sur `/leaderboard`.
  */
 export function HomeLeaderboardPreview({ podium }: HomeLeaderboardPreviewProps) {
   return (
     <section aria-labelledby="leaderboard-title" className="flex flex-col gap-4">
-      <HomeSectionHeader
-        id="leaderboard-title"
-        label="Live ranking"
-        title="Leaderboard – Top contributors"
-        link={{ href: "/leaderboard", label: "Full ranking" }}
-      />
+      <HomeSectionTitle id="leaderboard-title">Top 3 contributors</HomeSectionTitle>
 
       {podium.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/40">
@@ -63,6 +57,8 @@ export function HomeLeaderboardPreview({ podium }: HomeLeaderboardPreviewProps) 
           })}
         </ol>
       )}
+
+      <HomeSectionLink href="/leaderboard">Full ranking</HomeSectionLink>
     </section>
   );
 }

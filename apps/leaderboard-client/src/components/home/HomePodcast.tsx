@@ -1,22 +1,15 @@
-import { PODCAST_PLAYLIST_URL } from "@/components/podcast/episodes";
 import { PodcastVideos } from "@/components/podcast/PodcastVideos";
-import { HomeSectionHeader } from "./HomeSectionHeader";
+import { HomeSectionTitle } from "./HomeSection";
 
 /**
- * MyTwin Inside est le programme de la chaîne YouTube MyTwin, pas « le podcast
- * MyTwin » : c'est le nom qui titre, « Podcast » n'est que le libellé. Le
+ * Les épisodes de MyTwin Inside, le programme de la chaîne YouTube MyTwin. Le
  * fondateur est nommé avec son rôle, la relation personne → organisation
  * qu'on répète partout (stratégie SEO de mytwin.care).
  */
 export function HomePodcast() {
   return (
     <section aria-labelledby="podcast-title" className="flex flex-col gap-4">
-      <HomeSectionHeader
-        id="podcast-title"
-        label="Podcast"
-        title="MyTwin Inside"
-        link={{ href: PODCAST_PLAYLIST_URL, label: "All episodes" }}
-      />
+      <HomeSectionTitle id="podcast-title">Podcast</HomeSectionTitle>
       <p className="max-w-3xl text-sm leading-relaxed text-white/60 sm:text-base">
         Rubens Valcy, founder of MyTwin, sits down with the clinicians and founders behind the health
         technologies we build with.
@@ -27,8 +20,6 @@ export function HomePodcast() {
       <div className="-mx-4 mt-2 sm:-mx-6 md:mx-0">
         <PodcastVideos />
       </div>
-
-      <p className="text-xs text-white/40">Videos load from YouTube only when you press play.</p>
     </section>
   );
 }

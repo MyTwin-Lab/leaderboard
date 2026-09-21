@@ -8,7 +8,7 @@ interface SparkBarsProps {
 }
 
 /** Tiny 7-bar activity chart — the peak bar is solid brandCP, the rest translucent.
- * Shared by the home page's trending challenges and the challenges list card. */
+ * Used by the challenges list card. */
 export function SparkBars({ values, className, barClassName }: SparkBarsProps) {
   const max = Math.max(...values, 1);
 

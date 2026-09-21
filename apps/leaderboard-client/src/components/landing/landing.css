@@ -148,6 +148,23 @@ html:has(.landing) body {
   transform: translateX(3px);
 }
 
+/* ── Téléphone ────────────────────────────────────────────────────────── */
+
+/* Un logo plus discret, et, debout, le CTA descendu sous le titre, qui reste
+   au centre : `top` le décale sans rien déplacer autour de lui. */
+@media (max-width: 767px) {
+  .l-logo {
+    width: 5.25rem;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .l-button {
+    position: relative;
+    top: 5rem;
+  }
+}
+
 @keyframes l-backdrop-in {
   from {
     opacity: 0;

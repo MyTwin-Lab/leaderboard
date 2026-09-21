@@ -43,7 +43,7 @@ export function Landing() {
       </header>
 
       <main className="l-hero">
-        <h1 className="l-heading l-hero__title">We are building the world’s most advanced human digital twin</h1>
+        <h1 className="l-heading l-hero__title">Building the world’s most advanced human digital twin</h1>
         <Link href="/home" className="l-button">
           Enter the Lab
           <ArrowIcon />

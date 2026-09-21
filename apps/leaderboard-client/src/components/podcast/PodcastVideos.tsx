@@ -110,7 +110,7 @@ export function PodcastVideos() {
                   draggable={false}
                 />
                 <span className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-                <span className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-brandCP shadow-lg transition-transform duration-300 group-hover:scale-110">
+                <span className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#41ADA3] shadow-lg transition-transform duration-300 group-hover:scale-110">
                   <Play className="h-5 w-5 translate-x-0.5 fill-current" />
                 </span>
               </button>

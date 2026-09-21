@@ -135,7 +135,7 @@ export const Navbar = ({ session }: NavbarProps) => {
               {/* Logo */}
               <Link href="/" className="z-50 flex items-center">
                 <MyTwinLogo
-                  className="h-8 w-auto sm:h-9"
+                  className="h-6.5 w-auto sm:h-9"
                   style={{
                     color: invertNav ? "var(--background)" : undefined,
                     transition: "color 0.3s ease",

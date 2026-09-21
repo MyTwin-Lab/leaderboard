@@ -92,10 +92,9 @@ export function Footer() {
           </nav>
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-white/[0.07] pt-6 text-xs text-white/40 sm:flex-row sm:items-center sm:justify-between">
-          <span>© {new Date().getFullYear()} MyTwin Lab, a MyTwin initiative. All rights reserved.</span>
-          <span className="font-semibold text-brandCP">#WeAreNotWaiting</span>
-        </div>
+        <p className="border-t border-white/[0.07] pt-6 text-xs text-white/40">
+          © {new Date().getFullYear()} MyTwin Lab, a MyTwin initiative. All rights reserved.
+        </p>
       </div>
     </footer>
   );

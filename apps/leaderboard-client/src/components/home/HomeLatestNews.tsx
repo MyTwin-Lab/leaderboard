@@ -1,7 +1,7 @@
 import { NewsCard } from "@/components/news/NewsCard";
 import { getLatestNews } from "@/content/news";
 import { NEWS_PATH } from "@/lib/paths";
-import { HomeSectionHeader } from "./HomeSectionHeader";
+import { HomeSectionLink, HomeSectionTitle } from "./HomeSection";
 
 const LATEST_COUNT = 3;
 
@@ -12,17 +12,13 @@ export function HomeLatestNews() {
 
   return (
     <section aria-labelledby="latest-news-title" className="flex flex-col gap-4">
-      <HomeSectionHeader
-        id="latest-news-title"
-        label="MyTwin Lab News"
-        title="Latest from the Lab"
-        link={{ href: NEWS_PATH, label: "All news" }}
-      />
+      <HomeSectionTitle id="latest-news-title">News</HomeSectionTitle>
       <div className="grid gap-4 md:grid-cols-3">
         {latest.map((article) => (
           <NewsCard key={article.slug} article={article} compact />
         ))}
       </div>
+      <HomeSectionLink href={NEWS_PATH}>All news</HomeSectionLink>
     </section>
   );
 }

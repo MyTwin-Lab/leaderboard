@@ -1,13 +1,12 @@
 import { COMMUNITY_MEMBERS } from "@/content/community";
 import { HomeCommunityCarousel } from "./HomeCommunityCarousel";
+import { HomeSectionTitle } from "./HomeSection";
 
 /** « Join our Community » : les visages du Lab, en carousel. */
 export function HomeCommunity() {
   return (
     <section aria-labelledby="community-title" className="flex flex-col items-center gap-3 text-center">
-      <h2 id="community-title" className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-        Join our Community
-      </h2>
+      <HomeSectionTitle id="community-title">Join our Community</HomeSectionTitle>
       <p className="max-w-xl text-sm leading-relaxed text-white/60 sm:text-base">
         Students, engineers, clinicians, researchers and citizens, building the future of health together.
       </p>
