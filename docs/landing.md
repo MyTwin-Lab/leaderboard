@@ -35,7 +35,7 @@ Motion is slow and quiet (one easing, `--l-ease`): the image settles in, then th
 The landing used to scroll through "Join our Community", four news stories and a closing statement.
 
 - **Join our Community** lives on `/home` (`HomeCommunity`), in the Lab's look. Its photos and flags are still served from `public/landing/contributors/` and `public/landing/flags/`.
-- **The four stories' visuals** became the overview illustrations of their news (see [`news.md`](./news.md)): the top 3 contributors (Leaderboard), the screen reader and the voice (accessibility), the pose skeleton (MyKine), the selfie scan (i-Virtual).
+- **Three of the four stories' visuals** became the overview illustrations of their news (see [`news.md`](./news.md)): the top 3 contributors (Leaderboard), the pose skeleton (MyKine), the selfie scan (i-Virtual). The accessibility news shows a photo of the pictogram for visually impaired people instead; its screen reader and voice visual was dropped (last version in commit `334fafa`, `content/news/mytwin-accessibility/screen-reader-illustration.tsx`).
 
 ## Still open
 

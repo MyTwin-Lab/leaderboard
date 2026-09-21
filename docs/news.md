@@ -46,10 +46,10 @@ A news has two faces. The article page carries `title`, the entity-first H1 writ
 | `illustration.kind` | What | Where it lives |
 |---|---|---|
 | `image` | a photo, cropped to the landscape frame (`position` sets `object-position`) | `public/news/`, or an image the site already serves |
-| `visual` | a component drawn in HTML/SVG, on the frame's light panel or on its own (MyKine's is dark) | in the article's folder, next to its visual blocks (`top-contributors.tsx`, `access-illustration.tsx`, `screen-reader-illustration.tsx`, `pose-illustration.tsx`, `scan-illustration.tsx`) |
+| `visual` | a component drawn in HTML/SVG, on the frame's light panel or on its own (MyKine's is dark) | in the article's folder, next to its visual blocks (`top-contributors.tsx`, `access-illustration.tsx`, `pose-illustration.tsx`, `scan-illustration.tsx`) |
 
 - **`NewsIllustrationFrame` fixes the format, the illustration fills it.** On a card the frame is 16:10 above the text; on the featured card of `/news` it takes the right half.
-- **A visual is drawn in `em`.** The frame is a size container and sets its font size in `cqw`, so the whole drawing follows the width of the card. Colours are fixed (the panel stays light in both modes), never `currentColor` or `text-white`, which the light mode rewrites. An animation lives inside the component (a `<style>` with prefixed classes, `nhg-`, `nax-`, `niv-`) and stops under `prefers-reduced-motion`; SMIL ignores that query, so MyKine's pauses its SVG from a client effect.
+- **A visual is drawn in `em`.** The frame is a size container and sets its font size in `cqw`, so the whole drawing follows the width of the card. Colours are fixed (the panel stays light in both modes), never `currentColor` or `text-white`, which the light mode rewrites. An animation lives inside the component (a `<style>` with prefixed classes, `nhg-`, `niv-`) and stops under `prefers-reduced-motion`; SMIL ignores that query, so MyKine's pauses its SVG from a client effect.
 - **An SVG that fills the frame is framed in 16:10**, the card's format (`viewBox` 352 × 220 around the drawing, `slice`): a 4:3 drawing would lose its top and bottom.
 - **Always decorative in a card** (`aria-hidden`, empty `alt`): the title next to it already says what it shows. The `alt` of an image is there for the day it is shown on its own.
 - **No illustration, no frame**: the card stays text only.
