@@ -12,7 +12,7 @@ Ordre d'affichage (mois de l'événement, du plus récent au plus ancien) :
 | # | Slug | Catégorie | Mois | Statut |
 |---|---|---|---|---|
 | 1 | `mykine` | sandbox | 2026-09 | rédigée |
-| 2 | `mytwin-lab-leaderboard-beta` | community | 2026-08 | rédigée |
+| 2 | `mytwin-lab-leaderboard-beta` | community | 2026-08 | retirée le 2026-09-22 |
 | 3 | `mammography-ai-challenges` | challenge | 2026-07 | rédigée |
 | 4 | `healthguard-patient-controlled-records` | partnership | 2026-07 | rédigée |
 | 5 | `ensweet-cardiac-rehabilitation` | partnership | 2026-06 | rédigée |

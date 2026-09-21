@@ -3,6 +3,7 @@ import { NewsFigure } from "@/components/news/NewsFigure";
 import { NewsLink } from "@/components/news/NewsLink";
 import { PodcastEpisodeEmbed } from "@/components/podcast/PodcastEpisodeEmbed";
 import type { NewsArticle } from "../types";
+import { HomeSessionIllustration } from "./home-session-illustration";
 import { RehabPathway } from "./rehab-pathway";
 
 const ENSWEET = "https://www.ensweet.fr/";
@@ -29,6 +30,7 @@ export const ensweetCardiacRehabilitation: NewsArticle = {
   readingMinutes: 5,
   title: "Ensweet and MyTwin: keeping cardiac rehabilitation going at home",
   overviewTitle: "Cardiac rehabilitation doesn’t have to stop at the hospital door",
+  illustration: { kind: "visual", Visual: HomeSessionIllustration },
   seoTitle: "Ensweet x MyTwin: cardiac rehab at home",
   description:
     "Ensweet brings cardiac rehabilitation home, supervised by the care team. On MyTwin Inside, it announced its post-rehabilitation offer would come to MyTwin.",

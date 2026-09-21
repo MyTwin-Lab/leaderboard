@@ -2,6 +2,7 @@ import { NewsCallout } from "@/components/news/NewsCallout";
 import { NewsLink } from "@/components/news/NewsLink";
 import type { NewsArticle } from "../types";
 import { BenchmarkScope } from "./benchmark-scope";
+import { RiskWindowIllustration } from "./risk-window-illustration";
 
 const SOURCES = {
   bahr: "https://pubmed.ncbi.nlm.nih.gov/27095747/",
@@ -30,6 +31,7 @@ export const racketSportsInjuryRisk: NewsArticle = {
   readingMinutes: 5,
   title: "MyTwin builds a first injury-risk prototype for tennis, padel and pickleball",
   overviewTitle: "An early injury-risk signal for tennis, padel and pickleball players",
+  illustration: { kind: "visual", Visual: RiskWindowIllustration },
   seoTitle: "Racket sports injury risk: a MyTwin prototype",
   description:
     "MyTwin's first prototype flags injury risk in tennis, padel and pickleball players. What the early internal benchmark shows, and what comes next.",
