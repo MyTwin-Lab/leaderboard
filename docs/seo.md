@@ -9,7 +9,7 @@ The site has two jobs in search: rank its own pages (the `/` landing, the Lab ho
 | Path | Indexed | Notes |
 |---|---|---|
 | `/` | ✅ | the landing (own art direction, see [`landing.md`](./landing.md)): brand-first title, `Organization` + `WebSite` JSON-LD |
-| `/home` | ✅ | the Lab home (top contributors, trending challenges, news, podcast), reached from the landing and the navbar's "Home" |
+| `/home` | ✅ | the Lab home (our mission, news, podcast, community, top 3 contributors, trending challenges), reached from the landing and the navbar's "Home" |
 | `/news`, `/news/<slug>` | ✅ | `CollectionPage` on the index, `NewsArticle` + `BreadcrumbList` on each news, a generated OG image per news; unknown slug → `404` ([`news.md`](./news.md)) |
 | `/about` | ❌ `noindex, follow` | the former Lab landing, parked: out of the navigation and the sitemap, still open at its URL |
 | `/challenges`, `/challenges/<slug>` | ✅ public ones | `BreadcrumbList` JSON-LD on detail |
@@ -52,7 +52,7 @@ Where things live:
 
 ## Decisions
 
-**"Digital twin" appears only as the mission line.** In `DEFAULT_DESCRIPTION`, in the `/home` paragraph ("…the most advanced digital twin of the human body") and in the landing's H1, which states the mission. No `<title>` of the Lab — page or news — targets a "digital twin" query.
+**"Digital twin" appears only as the mission line.** In `DEFAULT_DESCRIPTION`, in the `/home` "Our mission" paragraph ("…the most advanced digital twin of the human body") and the `alt` of the diagram under it, and in the landing's H1, which states the mission. No `<title>` of the Lab — page or news — targets a "digital twin" query.
 
 **`/` carries the brand, `/home` carries the Lab.** The root is the landing that must rank on "MyTwin Lab": it keeps the brand-first title and the entity JSON-LD. What used to be the home page moved to `/home`, titled after what it shows so the two do not compete for the same query.
 

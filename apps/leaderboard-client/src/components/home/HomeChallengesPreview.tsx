@@ -5,6 +5,7 @@ import { formatCP } from "@/lib/formatters";
 import { challengePath } from "@/lib/paths";
 import type { HomeTrendingChallenge } from "@/lib/types";
 import { ArrowIcon } from "./ArrowIcon";
+import { HomeSectionHeader } from "./HomeSectionHeader";
 
 interface HomeChallengesPreviewProps {
   challenges: HomeTrendingChallenge[];
@@ -85,30 +86,25 @@ function ChallengeCard({ ch, index }: { ch: HomeTrendingChallenge; index: number
 
 export function HomeChallengesPreview({ challenges }: HomeChallengesPreviewProps) {
   return (
-    <div className="flex min-w-0 flex-col gap-4">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/45">Last 7 days</span>
-          <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">Trending challenges</h2>
-        </div>
-        <Link href="/challenges" className="inline-flex items-center gap-1.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:gap-2">
-          All challenges
-          <ArrowIcon />
-        </Link>
-      </div>
+    <section aria-labelledby="trending-challenges-title" className="flex min-w-0 flex-col gap-4">
+      <HomeSectionHeader
+        id="trending-challenges-title"
+        label="Last 7 days"
+        title="Trending challenges"
+        link={{ href: "/challenges", label: "All challenges" }}
+      />
 
       {challenges.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/40">
           No active challenge this week.
         </div>
       ) : (
-        <div className="flex flex-col gap-3.5 sm:gap-4">
+        <div className="grid gap-3.5 sm:gap-4 md:grid-cols-2">
           {challenges.map((ch, index) => (
             <ChallengeCard key={ch.id} ch={ch} index={index} />
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

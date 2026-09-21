@@ -3,8 +3,7 @@ import { ArrowIcon } from "./ArrowIcon";
 
 /**
  * L'en-tête des sections de l'accueil : libellé, titre, lien « voir tout » à
- * droite. Même grammaire que `HomeLeaderboardPreview` et
- * `HomeChallengesPreview`, qui gardent leur copie : on n'y touche pas.
+ * droite.
  *
  * Un lien externe (YouTube, mytwin.care) passe par un <a> : next/link ne sert
  * que ce site.

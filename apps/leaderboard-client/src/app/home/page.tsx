@@ -1,14 +1,14 @@
 import { fetchHomeOverview } from "@/lib/server/home";
 import { HomeHero } from "@/components/home/HomeHero";
-import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
-import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
 import { HomeLatestNews } from "@/components/home/HomeLatestNews";
 import { HomePodcast } from "@/components/home/HomePodcast";
+import { HomeCommunity } from "@/components/home/HomeCommunity";
+import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
+import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
 import { pageMetadata } from "@/lib/seo";
 
 // HomeStatsCard ("The Lab, right now") is temporarily hidden from the home
-// page — component kept in place, just not rendered here. HomeHero takes
-// the full width in its place.
+// page — component kept in place, just not rendered here.
 
 export const dynamic = "force-dynamic";
 
@@ -29,25 +29,24 @@ export default async function HomePage() {
   const overview = await fetchHomeOverview();
 
   return (
-    <div className="space-y-10 sm:space-y-14">
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
+    <div className="space-y-14 sm:space-y-20">
+      {/* ── Our mission ─────────────────────────────────────────────── */}
       <HomeHero />
-
-      {/* ── Leaderboard + Trending challenges ───────────────────────── */}
-      <div className="grid gap-8 lg:grid-cols-2">
-        <HomeLeaderboardPreview
-          podium={overview.podium}
-          rest={overview.rest}
-          contributorsRanked={overview.contributorsRanked}
-        />
-        <HomeChallengesPreview challenges={overview.trendingChallenges} />
-      </div>
 
       {/* ── MyTwin Lab News ─────────────────────────────────────────── */}
       <HomeLatestNews />
 
       {/* ── MyTwin Inside ───────────────────────────────────────────── */}
       <HomePodcast />
+
+      {/* ── Join our Community ──────────────────────────────────────── */}
+      <HomeCommunity />
+
+      {/* ── Leaderboard: top 3 ──────────────────────────────────────── */}
+      <HomeLeaderboardPreview podium={overview.podium} />
+
+      {/* ── Trending challenges ─────────────────────────────────────── */}
+      <HomeChallengesPreview challenges={overview.trendingChallenges} />
     </div>
   );
 }

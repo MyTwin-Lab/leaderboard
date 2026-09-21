@@ -24,7 +24,7 @@ Motion is slow and quiet (one easing, `--l-ease`), and `prefers-reduced-motion` 
 | Section | Component | Notes |
 |---------|-----------|-------|
 | Hero | `LandingHero` | The H1, then the MyTwin Lab logo centred under it, over four images that cross-fade every 7 s. No navbar: the landing has nowhere else to send a visitor. Scrolling sets `--p` (0 → 1) on the section; CSS derives the rounded `clip-path` that reveals the light background, and a light parallax |
-| Community | `LandingCommunity` | "Join our Community", the contributors carousel ported from the MyTwin Health landing (`/patients`), then the first **Enter the Lab**. The carousel is decorative; a visually hidden list carries the names |
+| Community | `LandingCommunity` | "Join our Community", the contributors carousel ported from the MyTwin Health landing (`/patients`), then the first **Enter the Lab**. The carousel is decorative; a visually hidden list carries the names. The list (`src/content/community.ts`) and the motion (`lib/useDragMarquee.ts`) are shared with `/home`, which shows the same section in the Lab's look, without the CTA (`HomeCommunity`) |
 | News | `LandingNews` | The title "MyTwin Lab News" and nothing else above the stories. One main story (the Leaderboard) and three secondary ones (the accessibility challenge, MyKine, the i-Virtual integration). They are chosen, not "the latest": each carries one dimension of the Lab. The copy is written for the landing, and each overview has its own visual. "Read more" is not a link yet |
 | Statement | `LandingStatement` | "Health innovation, built in the open", centred, in the serif, with the last **Enter the Lab**. It closes the page |
 | Footer | `LandingFooter` | The logo and the two legal pages, nothing else |
@@ -37,7 +37,7 @@ The other visuals illustrate and invent no result: the i-Virtual one shows a fac
 
 ## Assets
 
-`public/landing/logo/` (the two logos), `public/landing/hero/` (the four hero images, WebP), `public/landing/contributors/` (photos, same files as the Health landing) and `public/landing/flags/` (local copies, so the landing calls no third-party host).
+`public/landing/logo/` (the two logos), `public/landing/hero/` (the four hero images, WebP), `public/landing/contributors/` (photos, same files as the Health landing) and `public/landing/flags/` (local copies, so the landing calls no third-party host). `/home` reads the photos and flags too, for its own "Join our Community".
 
 ## Still open
 

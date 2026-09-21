@@ -18,7 +18,7 @@ Modelled on the blog of mytwin.care (`src/features/blog/` in mytwin-health-landi
 | `public/news/` | the overview images (WebP), one per illustrated news |
 | `src/content/top-contributors.ts` | the hand-written top 3 snapshot, shared by the landing and the Leaderboard news illustration |
 | `src/components/podcast/` | MyTwin Inside episodes: `PodcastVideos` (home grid / mobile carousel) and `PodcastEpisodeEmbed` (one episode inside a news) |
-| `src/components/home/HomeLatestNews.tsx` | "Latest from the Lab" on the home page, the three latest news |
+| `src/components/home/HomeLatestNews.tsx` | "Latest from the Lab" on the home page, the three latest news as `compact` cards |
 | `lib/paths.ts` | `NEWS_PATH`, `newsPath(slug)` |
 | `lib/seo.ts` | `articleMetadata`, `newsArticleJsonLd`, `collectionPageJsonLd`, `EDITORIAL_AUTHOR`, `authorJsonLd`; `buildSitemap` lists `/news` and every news |
 
@@ -53,6 +53,7 @@ A news has two faces. The article page carries `title`, the entity-first H1 writ
 - **A visual is drawn in `em`.** The frame is a size container and sets its font size in `cqw`, so the whole drawing follows the width of the card. Colours are fixed (the panel stays light in both modes); an animation lives inside the component and stops under `prefers-reduced-motion`.
 - **Always decorative in a card** (`aria-hidden`, empty `alt`): the title next to it already says what it shows. The `alt` of an image is there for the day it is shown on its own.
 - **No illustration, no frame**: the card stays text only.
+- **`compact` on `/home`**: the card keeps the illustration, the category, the month and the title, drops the excerpt, and its call shrinks to "Read". `/news` and "Keep reading" keep the full card.
 - **Same rule as a visual block**: an illustration illustrates and adds nothing, no figure or result that isn't in the article.
 
 ## SEO
@@ -66,7 +67,7 @@ A news has two faces. The article page carries `title`, the entity-first H1 writ
 - **Light mode flattens `text-white/xx`.** `globals.css` forces every `text-white*` class to the full foreground colour in light mode, so opacity-based text hierarchies collapse. Where a difference must survive (the active item of the table of contents), use `opacity-*` instead of a colour alpha.
 - **…and only on the element that carries the class.** The override matches `[class*="text-white"]`, so a descendant variant such as `[&_strong]:text-white` on a wrapper leaves the `<strong>` itself truly white on a light background. Style children from a parent with `text-foreground`, which follows the theme in both modes (`NewsProse` does).
 - **The OG image imports the registry**, hence every article module and its illustration components. Keep them free of side effects and server-only imports.
-- **Text-only cards next to illustrated ones** stretch to the row's height and show an empty band above "Read the news", on `/news` and under "Keep reading".
+- **Text-only cards next to illustrated ones** stretch to the row's height and show an empty band above "Read the news", on `/news` and under "Keep reading". On `/home` the band is taller: a `compact` card has no excerpt to fill it.
 - **No "story so far" timeline yet.** The playbook's continuity rule (§3) is applied in the content for now: links between chapters and an update callout on the previous one. Build a timeline in the template when a project has two chapters.
 - **The podcast data is duplicated from mytwin.care** (`components/podcast/episodes.ts`): a new episode there must be added here, thumbnail included (bundled, not hot-linked from YouTube).
 - **YouTube loads only on click** (`youtube-nocookie.com`), which is what the privacy policy (§ 9) states. Don't autoplay or preload an embed.
