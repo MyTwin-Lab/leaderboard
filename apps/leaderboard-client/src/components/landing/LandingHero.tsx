@@ -74,6 +74,14 @@ export function LandingHero() {
           <h1 className="l-heading l-hero__title">
             We are building the world’s most advanced human digital twin
           </h1>
+          <Image
+            src="/landing/logo/mytwin-lab-logo-dark.png"
+            alt="MyTwin Lab"
+            width={644}
+            height={246}
+            priority
+            className="l-hero__logo"
+          />
         </div>
 
         <div className="l-hero__ticks" aria-hidden>

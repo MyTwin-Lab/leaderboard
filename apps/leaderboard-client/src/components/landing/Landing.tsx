@@ -20,9 +20,9 @@ export function Landing() {
       </noscript>
       <main>
         <LandingHero />
-        <LandingStatement />
-        <LandingNews />
         <LandingCommunity />
+        <LandingNews />
+        <LandingStatement />
       </main>
       <LandingFooter />
     </div>

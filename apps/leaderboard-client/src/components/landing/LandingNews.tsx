@@ -1,13 +1,15 @@
 import type { CSSProperties, ReactNode } from "react";
-import Image from "next/image";
 
 import { ArrowIcon } from "./ArrowIcon";
+import { CameraCheckupVisual } from "./CameraCheckupVisual";
+import { LandingTopContributors } from "./LandingTopContributors";
 import { MyKineVisual } from "./MyKineVisual";
 import { Reveal } from "./Reveal";
 
 // Les articles de la landing sont choisis, pas « les derniers » : chacun porte
-// une dimension du Lab (le moteur, l'accessibilité, la communauté, les
-// partenaires). Le texte est écrit pour la landing, pas repris des articles.
+// une dimension du Lab (le moteur, l'accessibilité, la communauté, une
+// intégration partenaire). Le texte est écrit pour la landing, pas repris des
+// articles.
 //
 // « Read … » n'est pas encore un lien : le branchement sur les articles
 // (existants, à adapter ou à écrire) vient après la landing.
@@ -17,37 +19,6 @@ function ReadMore({ children }: { children: ReactNode }) {
       {children}
       <ArrowIcon />
     </span>
-  );
-}
-
-function ContributionLoopVisual() {
-  return (
-    <div className="l-loop">
-      <div className="l-loop__step">
-        <span className="l-loop__index">1</span>
-        <div>
-          <p className="l-loop__label">Tracked</p>
-          <p className="l-loop__value">Model submitted to a challenge</p>
-        </div>
-      </div>
-      <div className="l-loop__step">
-        <span className="l-loop__index">2</span>
-        <div>
-          <p className="l-loop__label">Evaluated</p>
-          <p className="l-loop__value">Scored on published criteria</p>
-          <div className="l-loop__meter">
-            <span />
-          </div>
-        </div>
-      </div>
-      <div className="l-loop__step l-loop__step--reward">
-        <span className="l-loop__index">3</span>
-        <div>
-          <p className="l-loop__label">Rewarded</p>
-          <p className="l-loop__cp">+240 CP</p>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -83,28 +54,9 @@ function AccessibilityVisual() {
   );
 }
 
-const APP_ICON_ROWS = [
-  [1, 6, 3, 8, 5, 2, 9],
-  [7, 4, 10, 1, 6, 3, 8],
-] as const;
-
-function PartnerAppsVisual() {
-  return (
-    <div className="l-apps" aria-hidden>
-      {APP_ICON_ROWS.map((row, rowIndex) => (
-        <div key={rowIndex} className="l-apps__row">
-          {row.map((icon, index) => (
-            <Image key={`${icon}-${index}`} src={`/home/app-icons/app-icon-${icon}.webp`} alt="" width={168} height={168} />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function LandingNews() {
   return (
-    <section className="l-section" aria-labelledby="landing-news-title">
+    <section className="l-section l-news" aria-labelledby="landing-news-title">
       <div className="l-container">
         <Reveal className="l-section__head">
           <h2 id="landing-news-title" className="l-heading l-section__title">
@@ -138,10 +90,10 @@ export function LandingNews() {
                   <dd>Contribution points (CP), visible on a public leaderboard</dd>
                 </div>
               </dl>
-              <ReadMore>Read the story</ReadMore>
+              <ReadMore>Read more</ReadMore>
             </div>
-            <div className="l-feature__visual" aria-hidden>
-              <ContributionLoopVisual />
+            <div className="l-feature__visual">
+              <LandingTopContributors />
             </div>
           </article>
         </Reveal>
@@ -153,8 +105,10 @@ export function LandingNews() {
                 <AccessibilityVisual />
               </div>
               <div className="l-card__body">
-                <p className="l-eyebrow">Accessibility</p>
-                <h3 className="l-heading l-card__title">Designing a health app with our eyes closed</h3>
+                <p className="l-eyebrow">MyTwin Accessibility Challenge</p>
+                <h3 className="l-heading l-card__title">
+                  Designing an app for visually impaired users was harder than we thought
+                </h3>
                 <p className="l-card__text">
                   Accessibility is not a layer of labels added at the end. Rethinking MyTwin for people who cannot
                   see the screen sent us back to the fundamentals of the product, and towards an app you can drive
@@ -185,14 +139,15 @@ export function LandingNews() {
           <Reveal delay={240}>
             <article className="l-card">
               <div className="l-card__visual">
-                <PartnerAppsVisual />
+                <CameraCheckupVisual />
               </div>
               <div className="l-card__body">
-                <p className="l-eyebrow">Partnerships</p>
-                <h3 className="l-heading l-card__title">The best health technologies, in a single app</h3>
+                <p className="l-eyebrow">Partner integration · i-Virtual</p>
+                <h3 className="l-heading l-card__title">Check your cardiovascular health with your smartphone camera</h3>
                 <p className="l-card__text">
-                  From AI skin checks to vital signs read by a camera, MyTwin brings partner technologies together
-                  in one application. Each integration starts in the Lab.
+                  MyTwin has integrated i-Virtual’s check-up into its mobile app, now in private beta. A 30-second
+                  selfie video is enough to estimate your heart rate, breathing rate, stress level and a cardiovascular
+                  health score. No watch, no cuff, no sensor.
                 </p>
                 <ReadMore>Read more</ReadMore>
               </div>
