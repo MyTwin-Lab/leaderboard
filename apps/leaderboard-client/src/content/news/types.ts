@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 /**
  * Une news du Lab, écrite en TSX et non en markdown : sections ancrées, encadré
@@ -60,6 +60,27 @@ export type NewsCta = {
   href: string;
 };
 
+/**
+ * L'illustration d'une news dans ses aperçus (cartes, landing) : une image, ou
+ * un visuel dessiné en HTML/SVG. Même règle qu'un bloc visuel : elle illustre
+ * et n'ajoute rien, ni chiffre ni résultat qui ne soit dans l'article.
+ */
+export type NewsIllustration =
+  | {
+      kind: "image";
+      /** Dans `public/news/`, ou une image déjà servie par le site. */
+      src: string;
+      /** Pour une image montrée seule. Dans une carte, le titre suffit : elle y est décorative. */
+      alt: string;
+      /** `object-position` : le cadre des aperçus est paysage, l'image est recadrée. */
+      position?: string;
+    }
+  | {
+      kind: "visual";
+      /** Dessiné pour le panneau clair du cadre, en `em` : il suit la largeur du cadre. */
+      Visual: ComponentType;
+    };
+
 export type NewsArticle = {
   /** Anglais, court, sans date : l'URL survit aux mises à jour de l'article. */
   slug: string;
@@ -77,6 +98,13 @@ export type NewsArticle = {
   readingMinutes: number;
   /** Le H1. */
   title: string;
+  /**
+   * Le titre des aperçus (cartes, landing) : plus court et plus accrocheur que
+   * le H1, qui garde l'entité et l'événement pour le référencement.
+   */
+  overviewTitle: string;
+  /** Sans illustration, l'aperçu reste en texte seul. */
+  illustration?: NewsIllustration;
   /** Sans « | MyTwin Lab », ajouté par la page : ≤ ~48 caractères. */
   seoTitle: string;
   /** ≤ ~155 caractères. */

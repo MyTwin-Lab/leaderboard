@@ -3,6 +3,7 @@ import { NewsFigure } from "@/components/news/NewsFigure";
 import { NewsLink } from "@/components/news/NewsLink";
 import { PodcastEpisodeEmbed } from "@/components/podcast/PodcastEpisodeEmbed";
 import type { NewsArticle } from "../types";
+import { AccessIllustration } from "./access-illustration";
 import { DocumentVsAccess } from "./document-vs-access";
 
 const HEALTHGUARD = "https://www.healthguard-project.com/";
@@ -28,6 +29,8 @@ export const healthguardPatientControlledRecords: NewsArticle = {
   category: "partnership",
   readingMinutes: 5,
   title: "HealthGuard: a hospital pharmacist’s project to put patients in control of their medical records",
+  overviewTitle: "Share access to your medical records, not copies",
+  illustration: { kind: "visual", Visual: AccessIllustration },
   seoTitle: "HealthGuard: patient-controlled medical records",
   description:
     "Hospital pharmacist Sébastien Saliques builds HealthGuard: medical documents shared as traced, revocable access, not copies. MyTwin plans to build it in.",

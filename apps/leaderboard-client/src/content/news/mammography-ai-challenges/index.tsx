@@ -37,6 +37,7 @@ export const mammographyAiChallenges: NewsArticle = {
   category: "challenge",
   readingMinutes: 7,
   title: "Two open challenges toward an AI second opinion on mammograms",
+  overviewTitle: "Open-source AI for a second look at mammograms",
   seoTitle: "Mammography AI: two open challenges",
   description:
     "MyTwin Lab opens two mammography AI challenges, classification and segmentation, on open models and public data: a first step toward an AI second opinion.",

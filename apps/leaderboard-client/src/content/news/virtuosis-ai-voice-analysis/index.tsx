@@ -27,6 +27,13 @@ export const virtuosisAiVoiceAnalysis: NewsArticle = {
   category: "partnership",
   readingMinutes: 5,
   title: "Virtuosis AI brings voice analysis to MyTwin",
+  overviewTitle: "Thirty seconds of speech, analysed for signals of stress",
+  illustration: {
+    kind: "image",
+    src: "/news/virtuosis.webp",
+    alt: "A person speaks into a phone, their voice drawn as waves of light",
+    position: "50% 42%",
+  },
   seoTitle: "Virtuosis AI x MyTwin: voice analysis in pilot",
   description:
     "Since May 2025, MyTwin has piloted Virtuosis AI's voice analysis in its private beta: 30 seconds of speech for signals linked to stress, anxiety and mood.",

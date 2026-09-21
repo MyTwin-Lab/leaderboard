@@ -29,6 +29,7 @@ export const racketSportsInjuryRisk: NewsArticle = {
   category: "research",
   readingMinutes: 5,
   title: "MyTwin builds a first injury-risk prototype for tennis, padel and pickleball",
+  overviewTitle: "An early injury-risk signal for tennis, padel and pickleball players",
   seoTitle: "Racket sports injury risk: a MyTwin prototype",
   description:
     "MyTwin's first prototype flags injury risk in tennis, padel and pickleball players. What the early internal benchmark shows, and what comes next.",

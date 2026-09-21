@@ -27,6 +27,13 @@ export const skiniveAiSkinChecks: NewsArticle = {
   category: "partnership",
   readingMinutes: 4,
   title: "Skinive brings AI skin checks to MyTwin",
+  overviewTitle: "A first look at a skin spot, straight from your phone",
+  illustration: {
+    kind: "image",
+    src: "/news/skinive.webp",
+    alt: "A person photographs a mole on their shoulder with a phone, the mole shown magnified",
+    position: "50% 60%",
+  },
   seoTitle: "Skinive x MyTwin: AI skin checks in pilot",
   description:
     "Since May 2025, MyTwin has piloted Skinive's AI skin checks: a photo, the probable lesion types and their risk, and simpler access to a dermatologist.",

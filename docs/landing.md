@@ -31,7 +31,7 @@ Motion is slow and quiet (one easing, `--l-ease`), and `prefers-reduced-motion` 
 
 ### The top 3
 
-The Leaderboard story shows the top 3 contributors (`LandingTopContributors`) on a light panel, next to the story's dark text. For now it is a **hand-written snapshot** of the `/leaderboard` ranking (names, bios, CP), so it can show the contributors' photos from `public/landing/contributors/`, which the accounts don't have. The page therefore stays static: no database read on `/`.
+The Leaderboard story shows the top 3 contributors (`LandingTopContributors`) on a light panel, next to the story's dark text. For now it is a **hand-written snapshot** of the `/leaderboard` ranking (names, bios, CP), so it can show the contributors' photos from `public/landing/contributors/`, which the accounts don't have. The page therefore stays static: no database read on `/`. The snapshot lives in `src/content/top-contributors.ts`, shared with the illustration of the Leaderboard news.
 
 The other visuals illustrate and invent no result: the i-Virtual one shows a face, a scan ring and a generic pulse wave, with no vital-sign figure.
 
@@ -42,6 +42,6 @@ The other visuals illustrate and invent no result: the i-Virtual one shows a fac
 ## Still open
 
 - **The top 3 is a snapshot.** Its CP drift from the real ranking as contributions land. Wiring it to `fetchLeaderboard()` makes `/` dynamic (like `/home`) and needs the photos to come from the accounts.
-- **The stories are not wired.** "Read more" is a `<span>`. The Leaderboard article has to be rewritten around the Leaderboard itself (MyTwin Lab was never "launched": it exists since MyTwin does), the accessibility article does not exist yet, and the i-Virtual card has to be aligned with the existing `i-virtual-camera-vital-signs` news.
+- **The stories are not wired.** "Read more" is a `<span>`, and the landing writes its own titles and visuals. The four articles exist (`mytwin-lab-leaderboard-beta`, `mytwin-accessibility`, `mykine`, `i-virtual-camera-vital-signs`), each with an `overviewTitle` and, for three of them, an `illustration` (see [`news.md`](./news.md)). The Leaderboard article still has to be rewritten around the Leaderboard itself (MyTwin Lab was never "launched": it exists since MyTwin does).
 - **The hero images are 1774 px wide**, short for a full-screen retina hero.
 - **`LabShell` is a stopgap.** A clean split (route groups or separate layouts) belongs to a later refactor of the web app, not to the landing work.

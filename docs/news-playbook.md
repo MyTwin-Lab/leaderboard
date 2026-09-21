@@ -72,6 +72,7 @@ The template renders the frame (`news.md`); the article provides these fields.
 | Field | Rule |
 |---|---|
 | `title` (H1) | Entity-first, says the event: *"Virtuosis AI brings voice analysis to MyTwin"*. No clickbait, no question. |
+| `overviewTitle` | The title of the cards and the landing: short and catchy (*"MyKine turns a phone camera into a physio’s measuring tool"*). It may drop the entity pair, never the YMYL rules: no diagnosis, no availability the news doesn't state. |
 | `seoTitle` | ≤ ~48 characters (the template appends ` \| MyTwin Lab`). The entity pair first. |
 | `description` | ≤ ~155 characters. The event + why it matters. Written for the person searching, not a copy of the lead. |
 | `excerpt` | 1–3 sentences under the H1 and on the cards. |
@@ -86,6 +87,7 @@ The template renders the frame (`news.md`); the article provides these fields.
 | `sources` | Every external claim. Partner and official pages count as sources for what they state about themselves. |
 | `mentions` | Every organisation, person or product the news is about, with its official URL. |
 | `keywords` | 4–8, the entity pairs and the project's own terms. |
+| `illustration` | Optional. A photo or a drawn visual for the overviews. Same rule as the visual blocks below: it illustrates, it adds nothing. |
 
 **Length.** Say what there is to say, nothing more: a partnership in pilot may take 400 words, a challenge with a vision 1,000. Never stretch a news to look like a blog article, never cut one that has a real story.
 
@@ -143,3 +145,5 @@ Anchors say where they lead (*"the MASAI randomised trial"*), never *"here"*. `N
 | 2026-09-16 | i-virtual | The product in MyTwin is Saphere, which i-Virtual doesn't present as a medical device. Caducy's CE scope (heart rate, respiratory rate) is mentioned as a separate product, with its contraindication for the darkest skin types. |
 | 2026-09-16 | mammography | Event month July 2026. Contributors named by first name, Alix and Hedi, as agreed. The vision (free AI second opinion in MyTwin for Patients, hospital licences) is stated with the steps it requires, and nothing is presented as available. |
 | 2026-09-16 | healthguard | Sébastien Saliques is presented as a hospital pharmacist, as he presents himself. HealthGuard is an alpha: no compliance is implied. |
+| 2026-09-21 | all | Each news gets an `overviewTitle` for its cards, shorter than the H1, which keeps the entity pair for search. Illustrations are optional and chosen per news; five news have none. |
+| 2026-09-21 | mytwin-accessibility | Category `research`: a first accessibility pass on the app, written from the team's account. The voice-driven mode is presented as an idea, nothing built. No accessibility challenge exists yet, so the CTA leads to the Sandbox; it should point to the challenge once it opens. External figures (WHO, WebAIM) are sourced; no claim about the app's current level of accessibility. |

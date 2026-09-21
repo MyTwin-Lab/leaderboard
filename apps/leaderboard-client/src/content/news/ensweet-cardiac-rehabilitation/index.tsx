@@ -28,6 +28,7 @@ export const ensweetCardiacRehabilitation: NewsArticle = {
   category: "partnership",
   readingMinutes: 5,
   title: "Ensweet and MyTwin: keeping cardiac rehabilitation going at home",
+  overviewTitle: "Cardiac rehabilitation doesn’t have to stop at the hospital door",
   seoTitle: "Ensweet x MyTwin: cardiac rehab at home",
   description:
     "Ensweet brings cardiac rehabilitation home, supervised by the care team. On MyTwin Inside, it announced its post-rehabilitation offer would come to MyTwin.",

@@ -3,6 +3,7 @@ import { healthguardPatientControlledRecords } from "./healthguard-patient-contr
 import { iVirtualCameraVitalSigns } from "./i-virtual-camera-vital-signs";
 import { mammographyAiChallenges } from "./mammography-ai-challenges";
 import { mykine } from "./mykine";
+import { mytwinAccessibility } from "./mytwin-accessibility";
 import { mytwinLabLeaderboardBeta } from "./mytwin-lab-leaderboard-beta";
 import { racketSportsInjuryRisk } from "./racket-sports-injury-risk";
 import { skiniveAiSkinChecks } from "./skinive-ai-skin-checks";
@@ -18,6 +19,7 @@ import { virtuosisAiVoiceAnalysis } from "./virtuosis-ai-voice-analysis";
  */
 const ARTICLES: readonly NewsArticle[] = [
   mykine,
+  mytwinAccessibility,
   mytwinLabLeaderboardBeta,
   mammographyAiChallenges,
   healthguardPatientControlledRecords,

@@ -3,6 +3,7 @@ import { newsPath } from "@/lib/paths";
 import { MYTWIN } from "@/lib/seo";
 import type { NewsArticle } from "../types";
 import { ContributionLoop } from "./contribution-loop";
+import { TopContributorsIllustration } from "./top-contributors";
 
 const GITHUB = "https://github.com/MyTwin-Lab";
 
@@ -13,6 +14,8 @@ export const mytwinLabLeaderboardBeta: NewsArticle = {
   category: "community",
   readingMinutes: 4,
   title: "The MyTwin Lab Leaderboard: from a first prototype to a public beta",
+  overviewTitle: "Every contribution tracked, evaluated and rewarded",
+  illustration: { kind: "visual", Visual: TopContributorsIllustration },
   seoTitle: "MyTwin Lab Leaderboard: from prototype to beta",
   description:
     "Prototyped in June 2025, the MyTwin Lab Leaderboard opened in public beta in August 2026: health challenges, evaluated work and contribution points.",

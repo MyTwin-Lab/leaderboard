@@ -31,6 +31,13 @@ export const iVirtualCameraVitalSigns: NewsArticle = {
   category: "partnership",
   readingMinutes: 5,
   title: "i-Virtual brings camera-based vital signs to MyTwin",
+  overviewTitle: "Check your cardiovascular health with your smartphone camera",
+  illustration: {
+    kind: "image",
+    src: "/news/i-virtual.webp",
+    alt: "A person holds a phone up to their face, a light mesh and a pulse line drawn over it",
+    position: "50% 40%",
+  },
   seoTitle: "i-Virtual x MyTwin: vital signs from a video",
   description:
     "Since April 2025, MyTwin has piloted i-Virtual's Saphere: a 30-second selfie video for heart rate, breathing, stress and a cardiovascular health score.",

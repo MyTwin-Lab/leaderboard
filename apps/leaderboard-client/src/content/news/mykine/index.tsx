@@ -26,6 +26,14 @@ export const mykine: NewsArticle = {
   category: "sandbox",
   readingMinutes: 5,
   title: "MyKine: guided physiotherapy sessions with on-device pose estimation",
+  overviewTitle: "MyKine turns a phone camera into a physio’s measuring tool",
+  // L'image du hero de la landing : un seul fichier pour les deux.
+  illustration: {
+    kind: "image",
+    src: "/landing/hero/movement-pose-estimation.webp",
+    alt: "A person squats in front of a phone on a tripod, their skeleton drawn on the screen behind them",
+    position: "60% 50%",
+  },
   seoTitle: "MyKine: home physio with pose estimation",
   description:
     "MyKine, a MyTwin Lab Sandbox project, uses the phone camera to count reps and measure joint angles in home physio, with no image leaving the device.",
