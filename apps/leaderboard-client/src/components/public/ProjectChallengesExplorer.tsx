@@ -196,6 +196,7 @@ export function ProjectChallengesExplorer({
   const canCreate = isAdmin || (statusFilter === "manage" && managedProjectIds.length > 0);
 
   return (
+    <>
     <div className={`vitrine v-challenges ${vitrineFontVars}`}>
       <div className="v-main v-ch-main">
         <ChallengesHero stats={heroStats} />
@@ -311,38 +312,47 @@ export function ProjectChallengesExplorer({
           </Link>
         </div>
       </div>
-
-      {/* Admin drawer */}
-      {isAdmin && (
-        <CreateChallengeDrawer
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          projects={projectOptions}
-          onCreated={(created) => router.push(`/admin/challenges/${created.uuid}`)}
-        />
-      )}
-
-      {/* Manager drawer */}
-      {!isAdmin && managedProjectIds.length > 0 && (
-        <CreateChallengeDrawer
-          open={managerDrawerOpen}
-          onClose={() => setManagerDrawerOpen(false)}
-          projects={managedProjectOptions}
-          onCreated={(created) => router.push(challengeManagePath(created.slug))}
-        />
-      )}
-
-      {/* Manager role popup */}
-      {popup && (
-        <ManagerRolePopup
-          x={popup.x}
-          y={popup.y}
-          challengeId={popup.challengeId}
-          challengeSlug={popup.challengeSlug}
-          isAdmin={isAdmin}
-          onClose={() => setPopup(null)}
-        />
-      )}
     </div>
+
+    {/* ── Ce qui flotte au-dessus de la page, monté hors de `.vitrine` ──
+        Le tiroir et le popup portent l'habillage du Lab, en utilitaires
+        Tailwind. Le réarmement d'éléments de `vitrine.css` n'est dans aucune
+        couche (`@layer`) et l'emporte donc sur eux quelle que soit sa
+        spécificité : rendus à l'intérieur, leurs boutons perdaient padding,
+        fond et bordure. `CreateSandboxModal` est dans l'autre cas — il porte
+        sa propre racine `.vitrine`, et reste donc monté dans la sienne. ── */}
+
+    {/* Admin drawer */}
+    {isAdmin && (
+      <CreateChallengeDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        projects={projectOptions}
+        onCreated={(created) => router.push(`/admin/challenges/${created.uuid}`)}
+      />
+    )}
+
+    {/* Manager drawer */}
+    {!isAdmin && managedProjectIds.length > 0 && (
+      <CreateChallengeDrawer
+        open={managerDrawerOpen}
+        onClose={() => setManagerDrawerOpen(false)}
+        projects={managedProjectOptions}
+        onCreated={(created) => router.push(challengeManagePath(created.slug))}
+      />
+    )}
+
+    {/* Manager role popup */}
+    {popup && (
+      <ManagerRolePopup
+        x={popup.x}
+        y={popup.y}
+        challengeId={popup.challengeId}
+        challengeSlug={popup.challengeSlug}
+        isAdmin={isAdmin}
+        onClose={() => setPopup(null)}
+      />
+    )}
+    </>
   );
 }
