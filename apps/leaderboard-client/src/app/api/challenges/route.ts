@@ -38,6 +38,9 @@ const createChallengeSchema = z.object({
   cp_per_validation: z.number().int().positive().optional(),
   required_validations: z.number().int().positive().optional(),
   compute_enabled: z.boolean().optional(),
+  // L'image de couverture : une image déposée (/api/images/<uuid>) ou une URL
+  // externe. La forme est revalidée par challengeSchema dans le repository.
+  cover_image_url: z.string().trim().max(2048).nullish(),
   // ML only, creation-only: whether to auto-create the API Packaging repo/step.
   // Omitted/true = created (default, unchanged behavior); false = skipped, so
   // the challenge only ever shows Dataset + Model.

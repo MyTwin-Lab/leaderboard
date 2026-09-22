@@ -1,5 +1,4 @@
 import { ProjectChallengesExplorer } from "@/components/public/ProjectChallengesExplorer";
-import { SandboxCTA } from "@/components/sandbox/SandboxCTA";
 import { fetchProjectsWithChallenges } from "@/lib/server/publicPages";
 import { getSessionUser } from "@/lib/auth";
 import { repositories } from "@/lib/db";
@@ -20,16 +19,14 @@ export default async function PublicChallengesPage() {
   const managedProjectIds = managedProjects.map(p => p.uuid);
   const { projects, joinedChallengeIds } = await fetchProjectsWithChallenges(session?.id, isAdmin, managedProjectIds);
 
+  // Le listing porte sa propre mise en page, d'après la maquette : bandeau de
+  // bas de page compris (voir `ProjectChallengesExplorer`).
   return (
-    <div className="space-y-6">
-      <ProjectChallengesExplorer
-        projects={projects}
-        joinedChallengeIds={joinedChallengeIds}
-        isAdmin={isAdmin}
-        managedProjectIds={managedProjectIds}
-      />
-
-      <SandboxCTA />
-    </div>
+    <ProjectChallengesExplorer
+      projects={projects}
+      joinedChallengeIds={joinedChallengeIds}
+      isAdmin={isAdmin}
+      managedProjectIds={managedProjectIds}
+    />
   );
 }

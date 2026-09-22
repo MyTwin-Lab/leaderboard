@@ -150,6 +150,7 @@ export class SandboxPromotionService {
           completion: draft.completion,
           project_id: draft.project_id,
           reward_rules: draft.reward_rules ?? null,
+          cover_image_url: draft.cover_image_url,
           workspace_mode: draft.workspace_mode,
           source_challenge_id: draft.source_challenge_id,
           cp_per_validation: draft.cp_per_validation,

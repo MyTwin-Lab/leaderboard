@@ -55,6 +55,20 @@ export const slugSchema = z.string().superRefine((value, ctx) => {
   if (problem) ctx.addIssue({ code: "custom", message: problem });
 });
 
+/**
+ * L'adresse d'une image de couverture : soit une image déposée dans l'app
+ * (`/api/images/<uuid>`), soit une URL http(s) externe. Une chaîne vide n'est
+ * pas une adresse — pour effacer la couverture, on envoie `null`.
+ */
+export const coverImageUrlSchema = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(
+    (value) => value.startsWith("/") || /^https?:\/\//i.test(value),
+    { message: "URL http(s) ou chemin interne attendu" },
+  );
+
 export const challengeSchema = z.object({
   uuid: z.string().uuid(),
   index: z.number().int().optional(),
@@ -70,6 +84,7 @@ export const challengeSchema = z.object({
   completion: z.number().min(0).max(1).default(0),
   project_id: z.string().uuid(),
   reward_rules: z.union([mlRewardRulesSchema, codeRewardRulesSchema]).nullish(),
+  cover_image_url: coverImageUrlSchema.nullish(),
   workspace_mode: z.enum(['provided_repo', 'own_repo']).nullish(),
   source_challenge_id: z.string().uuid().nullish(),
   cp_per_validation: z.number().int().nonnegative().nullish(),
@@ -539,6 +554,7 @@ export const sandboxCreateSchema = z
     repo_url: httpUrl,
     model_url: httpUrl.optional(),
     dataset_urls: z.array(httpUrl).max(10).default([]),
+    cover_image_url: coverImageUrlSchema.optional(),
   })
   .refine((input) => input.type !== "ml" || input.dataset_urls.length > 0, {
     message: "Un sandbox ML demande au moins une URL de dataset",
@@ -563,6 +579,7 @@ export const sandboxUpdateSchema = z.object({
   repo_url: httpUrl.optional(),
   model_url: httpUrl.nullable().optional(),
   dataset_urls: z.array(httpUrl).max(10).optional(),
+  cover_image_url: coverImageUrlSchema.nullable().optional(),
 });
 
 export type SandboxCreateInput = z.infer<typeof sandboxCreateSchema>;

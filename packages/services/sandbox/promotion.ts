@@ -61,6 +61,8 @@ export interface PromotedChallengeDraft {
   project_id: string;
   reward_rules: unknown;
   compute_enabled: boolean;
+  /** La couverture de la proposition, reprise telle quelle. */
+  cover_image_url: string | null;
   workspace_mode: "own_repo" | null;
   source_challenge_id: null;
   cp_per_validation: null;
@@ -116,7 +118,7 @@ export function buildPromotedDescription(
  * branche à lui créer. La colonne reste NULL pour un `ml`, qui n'a pas de mode.
  */
 export function buildPromotedChallengeDraft(
-  sandbox: Pick<Sandbox, "type" | "title" | "context" | "goals" | "why">,
+  sandbox: Pick<Sandbox, "type" | "title" | "context" | "goals" | "why" | "cover_image_url">,
   input: PromotionInput,
 ): PromotedChallengeDraft {
   const type = sandbox.type === "ml" ? "ml" : "code";
@@ -135,6 +137,9 @@ export function buildPromotedChallengeDraft(
     project_id: input.project_id,
     reward_rules: input.reward_rules ?? null,
     compute_enabled: type === "ml" ? input.compute_enabled ?? false : false,
+    // La couverture suit la proposition : le challenge s'ouvre avec l'image
+    // que la communauté a vue en la starant. L'admin peut la remplacer ensuite.
+    cover_image_url: sandbox.cover_image_url ?? null,
     workspace_mode: type === "code" ? "own_repo" : null,
     // Un challenge de validation dérive d'un challenge ML existant : il ne peut
     // pas naître d'une proposition, donc ces trois colonnes restent nulles.

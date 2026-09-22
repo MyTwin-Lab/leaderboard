@@ -26,6 +26,8 @@ const updateChallengeSchema = z.object({
   // instances on this branch, which breaks tsc structural checks).
   reward_rules: z.unknown().nullish(),
   compute_enabled: z.boolean().optional(),
+  // Présent et vide (null) efface la couverture ; absent la laisse en place.
+  cover_image_url: z.string().trim().max(2048).nullish(),
 });
 
 // GET /api/challenges/[id] - Récupérer un challenge

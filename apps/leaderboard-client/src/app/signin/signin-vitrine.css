@@ -1,0 +1,231 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Sign in — d'après `Sign In Vitrine.dc.html`.
+
+   Un écran à deux volets : la photo à gauche (avec le logo et la promesse du
+   Lab), le formulaire à droite. Sous ~22rem de large pour un volet, ils
+   s'empilent — c'est `flex-wrap` qui le fait, sans media query.
+
+   La page sort du chrome du Lab (voir `components/layout/LabShell.tsx`) : elle
+   porte son propre logo, et une navbar au-dessus d'une photo pleine hauteur
+   n'aurait rien à dire.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.v-signin {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  min-height: 100vh;
+  overflow-x: clip;
+  background: var(--v-bg);
+  color: var(--v-ink);
+  font-family: var(--v-font-s);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+@keyframes v-signin-in {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes v-signin-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.9rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Le volet photo ─────────────────────────────────────────────────────── */
+.v-signin-visual {
+  position: relative;
+  display: flex;
+  flex: 1 1 32rem;
+  min-width: min(100%, 22rem);
+  min-height: min(100vh, 26rem);
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--v-night);
+}
+
+.v-signin-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 52% 45%;
+  animation: v-signin-in 2.4s var(--v-ease) both;
+}
+
+.v-signin-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(8 12 14 / 0.42) 0%,
+    rgb(8 12 14 / 0.3) 50%,
+    rgb(8 12 14 / 0.55) 100%
+  );
+}
+
+.v-signin-logo {
+  position: absolute;
+  left: clamp(1.5rem, 3vw, 2.5rem);
+  top: clamp(1.5rem, 3vw, 2.5rem);
+  width: clamp(5rem, 7vw, 6.5rem);
+  height: auto;
+}
+
+.v-signin-claim-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(2rem, 4vw, 3.5rem);
+}
+
+.v-signin-claim {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  max-width: 20ch;
+  text-align: center;
+  color: #ffffff;
+  font-size: clamp(1.75rem, 3.2vw, 3rem);
+  line-height: 1.06;
+  text-shadow: 0 1px 3px rgb(8 12 14 / 0.45);
+}
+
+/* ── Le volet formulaire ────────────────────────────────────────────────── */
+.v-signin-form {
+  display: flex;
+  flex: 1 1 30rem;
+  min-width: min(100%, 22rem);
+  align-items: center;
+  justify-content: center;
+  padding: clamp(2rem, 6vw, 4.5rem) clamp(1.5rem, 5vw, 4rem);
+}
+
+.v-signin-card {
+  display: flex;
+  width: 100%;
+  max-width: 26rem;
+  flex-direction: column;
+  gap: 2rem;
+  animation: v-signin-rise 0.5s var(--v-ease) both;
+}
+
+.v-signin-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.v-signin-title {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-size: clamp(1.875rem, 3.4vw, 2.5rem);
+  line-height: 1.06;
+  text-wrap: balance;
+}
+
+.v-signin-line {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+/* La seconde ligne est du détail : elle porte le même corps, en plus discret. */
+.v-signin-line + .v-signin-line {
+  font-size: 0.9375rem;
+  color: var(--v-subtle);
+}
+
+.v-signin-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.v-signin-google {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  background: var(--v-ink);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #ffffff;
+  transition: transform 0.2s var(--v-ease), box-shadow 0.2s var(--v-ease);
+}
+
+.v-signin-google:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px -20px rgb(17 22 26 / 0.7);
+  color: #ffffff;
+}
+
+.v-signin-google:focus-visible {
+  outline: 2px solid rgb(11 122 100 / 0.5);
+  outline-offset: 3px;
+}
+
+.v-signin-google svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
+.v-signin-legal {
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1.65;
+  color: var(--v-subtle);
+}
+
+.v-signin-legal a {
+  color: var(--v-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.v-signin-legal a:hover {
+  color: var(--v-accent);
+}
+
+.v-signin-back {
+  align-self: center;
+  font-size: 0.75rem;
+  color: var(--v-subtle);
+  transition: color 0.2s var(--v-ease);
+}
+
+.v-signin-back:hover {
+  color: var(--v-ink);
+}
+
+/* Les deux entrées ne portent aucune information : qui les refuse voit la
+   page posée, sans mouvement. */
+@media (prefers-reduced-motion: reduce) {
+  .v-signin-photo,
+  .v-signin-card {
+    animation: none;
+  }
+}

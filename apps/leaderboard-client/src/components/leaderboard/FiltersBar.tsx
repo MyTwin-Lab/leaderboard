@@ -1,52 +1,94 @@
 "use client";
 
+import { useMemo } from "react";
+
 import { useLeaderboardContext } from "@/components/leaderboard/LeaderboardProvider";
-import { SelectDropdown } from "@/components/ui/SelectDropdown";
+import { ArrowTinyIcon, SearchIcon } from "@/components/vitrine/SearchIcon";
 
+/**
+ * La recherche du classement, dans la même grammaire que celle des challenges :
+ * une seule gélule pleine largeur, le filet au-dessus, et pas de menu déroulant.
+ *
+ * Les projets se trouvent par la recherche : ceux qui répondent s'affichent
+ * sous le champ, et en choisir un restreint le classement à ses contributions.
+ * Le champ se vide alors — les autres projets disparaissent, et le projet
+ * retenu reste en pastille, relâchable.
+ */
 export function FiltersBar() {
-  const { projectId, searchTerm, setProjectId, setSearchTerm, projects, isLoading } = useLeaderboardContext();
+  const { projectId, searchTerm, setProjectId, setSearchTerm, projects, isLoading } =
+    useLeaderboardContext();
 
-  const projectOptions = projects.map((p) => ({
-    value: p.id ?? "all",
-    label: p.name,
-  }));
+  const needle = searchTerm.trim().toLowerCase();
+
+  const matchingProjects = useMemo(() => {
+    if (!needle) return [];
+    return projects
+      .filter((project) => project.id !== null && project.name.toLowerCase().includes(needle))
+      .map((project) => ({ id: project.id as string, name: project.name }));
+  }, [projects, needle]);
+
+  const selectedProject = projects.find(
+    (project) => project.id !== null && project.id === projectId,
+  );
 
   return (
-    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
-      {/* Search */}
-      <div className="relative flex-1">
-        <svg
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-30"
-          style={{ color: "var(--foreground)" }}
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
-            clipRule="evenodd"
+    <section className="v-lb-filters">
+      <div className="v-lb-filters-row">
+        <div className="v-search">
+          <span className="v-search-icon">
+            <SearchIcon />
+          </span>
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search contributors and projects…"
+            disabled={isLoading}
           />
-        </svg>
-        <input
-          type="search"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search contributors…"
-          className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm transition-colors focus:border-brandCP/60 focus:bg-white/8 focus:outline-none disabled:opacity-50"
-          style={{ color: "var(--foreground)" }}
-          disabled={isLoading}
-        />
+        </div>
       </div>
 
-      {/* Project filter */}
-      <SelectDropdown
-        options={projectOptions}
-        value={projectId ?? "all"}
-        onChange={setProjectId}
-        disabled={isLoading}
-        className="sm:w-[180px]"
-      />
-    </div>
+      {selectedProject && (
+        <div className="v-pills">
+          <button type="button" className="v-chip" onClick={() => setProjectId("all")}>
+            {selectedProject.name}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {matchingProjects.length > 0 && (
+        <div className="v-projects">
+          <div className="v-projects-head">
+            <span className="v-projects-title">Projects</span>
+          </div>
+          <div className="v-projects-grid">
+            {matchingProjects.map((project) => (
+              <button
+                key={project.id}
+                type="button"
+                className="v-project"
+                data-on={projectId === project.id ? "true" : "false"}
+                onClick={() => {
+                  setProjectId(project.id);
+                  // La recherche a servi : elle s'efface, la liste des autres
+                  // projets disparaît, et le projet retenu reste en pastille.
+                  setSearchTerm("");
+                }}
+              >
+                <span className="v-project-go">
+                  <ArrowTinyIcon />
+                </span>
+                <span className="v-project-name">{project.name}</span>
+                <span className="v-project-meta">See its ranking</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

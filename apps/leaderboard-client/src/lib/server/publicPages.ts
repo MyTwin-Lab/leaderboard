@@ -119,6 +119,7 @@ export async function fetchProjectsWithChallenges(
           recentContributions: recentCountByChallenge.get(challenge.uuid) ?? 0,
           activeContributors: activeContributorsByChallenge.get(challenge.uuid)?.size ?? 0,
           spark: sparkFromContributions(now, contributionsByChallenge.get(challenge.uuid) ?? []),
+          coverImageUrl: challenge.cover_image_url ?? null,
         }));
 
       return {

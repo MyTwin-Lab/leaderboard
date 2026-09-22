@@ -16,17 +16,53 @@ type LabShellProps = PropsWithChildren<{
 // du Lab (fond, navbar, conteneur, footer). Approche conditionnelle assumée,
 // plutôt que des route groups, pour ne déplacer aucune page de la web app :
 // partout ailleurs, l'arbre rendu est exactement celui d'avant.
+/**
+ * Les trois listings refaits d'après les maquettes Claude Design. Ils posent
+ * eux-mêmes leur largeur, leur gouttière et leur fond — le conteneur du Lab
+ * les contraindrait à d'autres valeurs que celles de la maquette. Seule la
+ * réserve laissée à la navbar fixe reste ici, identique partout.
+ *
+ * Égalité stricte : `/challenges/<slug>` et `/sandbox/<slug>` gardent le
+ * chrome ordinaire.
+ */
+const VITRINE_BACKGROUNDS: Record<string, string> = {
+  "/leaderboard": "#fbfaf8",
+  "/challenges": "#fbfaf8",
+  "/sandbox": "#fbfaf8",
+};
+
+/**
+ * Les pages qui sortent entièrement du chrome du Lab.
+ *
+ * `/` est la landing, qui a sa propre DA. `/signin` est un écran à deux
+ * volets, plein cadre : il porte son propre logo, et une navbar posée sur sa
+ * photo pleine hauteur n'aurait rien à dire — pas plus qu'un footer sous un
+ * écran dont on ne sort que par « Back to home ».
+ */
+const BARE_ROUTES = new Set(["/", "/signin"]);
+
 export function LabShell({ navbar, footer, overlays, children }: LabShellProps) {
   const pathname = usePathname();
 
-  if (pathname === "/") {
+  if (BARE_ROUTES.has(pathname)) {
     return <>{children}</>;
   }
 
+  const vitrineBackground = VITRINE_BACKGROUNDS[pathname];
+  const vitrine = vitrineBackground !== undefined;
+
   return (
-    <GradientBackground>
+    <GradientBackground background={vitrineBackground}>
       {navbar}
-      <main className="mx-auto w-full max-w-6xl px-4 pt-20 pb-16 sm:px-6 md:pt-24">{children}</main>
+      <main
+        className={
+          vitrine
+            ? "w-full pt-20 md:pt-24"
+            : "mx-auto w-full max-w-6xl px-4 pt-20 pb-16 sm:px-6 md:pt-24"
+        }
+      >
+        {children}
+      </main>
       {footer}
       {overlays}
     </GradientBackground>

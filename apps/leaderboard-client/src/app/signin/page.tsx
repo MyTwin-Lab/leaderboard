@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
+
 import { resolveSignInVariant } from "@/lib/signin";
 import { safeInternalPath } from "@/lib/url";
+import { vitrineFontVars } from "@/components/vitrine/fonts";
+
+import "@/components/vitrine/vitrine.css";
+import "./signin-vitrine.css";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -18,7 +23,7 @@ interface SignInPageProps {
  *  before any network round-trip, and this is the one brand mark on it. */
 function GoogleMark() {
   return (
-    <svg className="h-[18px] w-[18px] shrink-0" viewBox="0 0 48 48" aria-hidden="true">
+    <svg viewBox="0 0 48 48" aria-hidden="true">
       <path
         fill="#4285F4"
         d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"
@@ -39,6 +44,14 @@ function GoogleMark() {
   );
 }
 
+/**
+ * `/signin`, d'après `Sign In Vitrine.dc.html`.
+ *
+ * Les deux variantes de texte restent celles de `lib/signin.ts` : la maquette
+ * les recopie, elle ne les décide pas. `reason=account-updated` couvre la
+ * session dont la ligne utilisateur a disparu (fusion ou suppression par un
+ * admin).
+ */
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const resolved = searchParams ? await searchParams : {};
   const from = safeInternalPath(resolved.from);
@@ -47,70 +60,60 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const authorizeUrl = `/api/google-auth/authorize?from=${encodeURIComponent(from)}`;
 
   return (
-    <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
-      <div className="animate-fade-up w-full max-w-md motion-reduce:animate-none">
-        <div className="flex flex-col gap-6 rounded-2xl border border-white/10 bg-white/[0.02] p-7 sm:p-9">
-          {/* Eyebrow — same rule-and-label device as the home hero, so this
-              reads as part of the product rather than a stock OAuth screen. */}
-          <div className="flex items-center gap-3">
-            <span className="h-[2px] w-8 rounded-full bg-brandCP" />
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-brandCP">
-              {variant.eyebrow}
-            </span>
-          </div>
+    <div className={`vitrine v-signin ${vitrineFontVars}`}>
+      {/* Le volet photo ne porte aucune information : il est décoratif, et la
+          promesse qu'il affiche est reprise par la page d'accueil. */}
+      <section className="v-signin-visual" aria-hidden="true">
+        {/* eslint-disable-next-line @next/next/no-img-element -- image de fond plein cadre, pas de mise en page à réserver */}
+        <img src="/landing/hero/digital-twin-hologram.webp" alt="" className="v-signin-photo" />
+        <div className="v-signin-scrim" />
 
-          <div className="flex flex-col gap-3">
-            <h1 className="text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
-              {variant.title}
-            </h1>
-            {variant.lines.map((line, index) => (
-              <p
-                key={line}
-                className={
-                  index === 0
-                    ? "text-sm leading-relaxed text-white/70 sm:text-base"
-                    : "text-xs leading-relaxed text-white/45 sm:text-sm"
-                }
-              >
+        {/* eslint-disable-next-line @next/next/no-img-element -- logo sur fond sombre, taille fixée en clamp() */}
+        <img
+          src="/landing/logo/mytwin-lab-logo-dark.png"
+          alt="MyTwin Lab"
+          className="v-signin-logo"
+        />
+
+        <div className="v-signin-claim-wrap">
+          <h2 className="v-signin-claim">
+            We are building the world&rsquo;s most advanced human digital twin
+          </h2>
+        </div>
+      </section>
+
+      <section className="v-signin-form">
+        <div className="v-signin-card">
+          <div className="v-signin-head">
+            <h1 className="v-signin-title">{variant.title}</h1>
+            {variant.lines.map((line) => (
+              <p key={line} className="v-signin-line">
                 {line}
               </p>
             ))}
           </div>
 
-          {/* Plain anchor, not next/link: the target is an API route that 302s
-              to Google, so the client router must not try to handle it. */}
-          <a
-            href={authorizeUrl}
-            className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-brandCP/20 px-6 py-3 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/30 hover:shadow-[0_0_16px_rgba(10,247,193,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCP/40"
-          >
-            <GoogleMark />
-            Continue with Google
-          </a>
-
-          {/* Les CGU font de la connexion le moment de leur acceptation : il
-              faut donc qu'elles soient sous les yeux à cet instant précis. */}
-          <p className="text-center text-xs leading-relaxed text-white/40">
-            By continuing, you agree to the{" "}
-            <a href="/terms-of-use" className="text-white/60 underline underline-offset-2 hover:text-brandCP">
-              Terms of Use
-            </a>{" "}
-            and acknowledge the{" "}
-            <a href="/privacy-policy" className="text-white/60 underline underline-offset-2 hover:text-brandCP">
-              Privacy Policy
+          <div className="v-signin-actions">
+            {/* Plain anchor, not next/link: the target is an API route that 302s
+                to Google, so the client router must not try to handle it. */}
+            <a href={authorizeUrl} className="v-signin-google">
+              <GoogleMark />
+              Continue with Google
             </a>
-            .
-          </p>
-        </div>
 
-        <div className="mt-5 text-center">
-          <a
-            href="/"
-            className="rounded text-xs text-white/40 transition-colors hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandCP/40"
-          >
+            {/* Les CGU font de la connexion le moment de leur acceptation : il
+                faut donc qu'elles soient sous les yeux à cet instant précis. */}
+            <p className="v-signin-legal">
+              By continuing, you agree to the <a href="/terms-of-use">Terms of Use</a> and
+              acknowledge the <a href="/privacy-policy">Privacy Policy</a>.
+            </p>
+          </div>
+
+          <a href="/home" className="v-signin-back">
             Back to home
           </a>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

@@ -47,6 +47,8 @@ interface Challenge {
   roadmap?: string;
   reward_rules?: MlRewardRules | null;
   compute_enabled?: boolean | null;
+  /** Repris tel quel par le tiroir d'édition : sans lui, enregistrer l'effacerait. */
+  cover_image_url?: string | null;
 }
 
 interface TeamMember { id: string; fullName: string; githubUsername?: string; avatarUrl?: string; }

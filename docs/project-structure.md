@@ -49,7 +49,7 @@ leaderboard/
 │       │   │   ├── home/              # Lab home (`/home`) sections
 │       │   │   ├── landing/           # the `/` landing: own art direction, scoped CSS, fonts
 │       │   │   ├── layout/            # navbar, navigation, session guard, background, LabShell
-│       │   │   ├── leaderboard/       # podium, table, filters
+│       │   │   ├── leaderboard/       # classement, filtres
 │       │   │   ├── onboarding/        # onboarding drawer + quests
 │       │   │   ├── public/            # challenge cards, filters, project explorer
 │       │   │   └── ui/                # design-system primitives (Button, Markdown, Toast…)

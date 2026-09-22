@@ -37,3 +37,5 @@ export { SandboxStarRepository } from "./sandboxStar.repo.js";
 export { SandboxRewardRepository } from "./sandboxReward.repo.js";
 export { NotificationRepository, buildGroupInviteDraft, NOTIFICATIONS_PAGE_SIZE } from "./notification.repo.js";
 export type { NotificationDraft } from "./notification.repo.js";
+export { ImageRepository } from "./image.repo";
+export type { ImageDraft, StoredImage } from "./image.repo";

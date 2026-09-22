@@ -189,7 +189,7 @@ Already-generated digests are immutable, so the tab renders the section only whe
 
 **Navigation.** Sandbox replaces About in the main navigation. `/about` is parked (`noindex`, see [`seo.md`](./seo.md)): the home hero and the footer no longer link to it, only the "How MyTwin Lab works" link in the listing header still does — in the "see all" link style, whose arrow lives in `components/home/ArrowIcon.tsx`.
 
-**Listing** (`/sandbox`) — search over title, author and context; sort by stars or recency; `Open` / `Promoted` / `Mine` pills with counts; header stats. A promoted card's call to action links to the challenge it became, not back to the sandbox. An archived sandbox appears only under `Mine`, and only for its author.
+**Listing** (`/sandbox`) — search over title, author and context; most-starred first; `Open` / `Promoted` / `Mine` pills with counts; header stats. Chaque carte porte l'image de couverture posée par l'auteur, ou une illustration de repli (`lib/coverImage.ts`). A promoted card's call to action links to the challenge it became, not back to the sandbox. An archived sandbox appears only under `Mine`, and only for its author.
 
 The sort control is `TabPills`, the same component as the profile tabs, so its fill slides between sorts instead of jumping. Changing sort or filter remounts the grid so the cards replay their entry; search is deliberately left out of that key, or the list would flicker on every keystroke.
 

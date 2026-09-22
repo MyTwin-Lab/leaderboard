@@ -67,6 +67,8 @@ export interface Challenge {
   completion: number;
   project_id: string; // FK -> projects.uuid
   reward_rules?: MlRewardRules | CodeRewardRules | null;
+  /** L'image de couverture, posée à la création et modifiable à l'édition. */
+  cover_image_url?: string | null;
   workspace_mode?: ChallengeWorkspaceMode | null; // Code challenges uniquement
   source_challenge_id?: string | null; // Validation uniquement — le challenge ML validé
   cp_per_validation?: number | null;   // Validation uniquement — CP fixe par validation
@@ -609,6 +611,8 @@ export interface Sandbox {
   /** ML uniquement, et optionnel : un sandbox ML peut démarrer sans artefact. */
   model_url: string | null;
   dataset_urls: string[];
+  /** L'image de couverture, posée à la création et modifiable par l'auteur. */
+  cover_image_url: string | null;
   status: SandboxStatus;
   promoted_challenge_id: string | null;
   promoted_at: Date | null;

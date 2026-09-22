@@ -21,6 +21,8 @@ export interface SandboxDraft {
   repo_url: string;
   model_url?: string | null;
   dataset_urls?: string[];
+  /** L'image de couverture. */
+  cover_image_url?: string | null;
 }
 
 /** Édition par l'auteur. Ni `type`, ni `status`, ni les champs d'évaluation : chacun a son chemin dédié. */
@@ -34,6 +36,8 @@ export interface SandboxPatch {
   repo_url?: string;
   model_url?: string | null;
   dataset_urls?: string[];
+  /** L'image de couverture. `null` l'efface. */
+  cover_image_url?: string | null;
 }
 
 /**
@@ -160,6 +164,7 @@ export class SandboxRepository {
           repo_url: draft.repo_url,
           model_url: draft.model_url ?? null,
           dataset_urls: draft.dataset_urls ?? [],
+          cover_image_url: draft.cover_image_url ?? null,
         })
         .returning();
       return toDomainSandbox(inserted);
@@ -185,6 +190,7 @@ export class SandboxRepository {
     if (patch.repo_url !== undefined) set.repo_url = patch.repo_url;
     if (patch.model_url !== undefined) set.model_url = patch.model_url;
     if (patch.dataset_urls !== undefined) set.dataset_urls = patch.dataset_urls;
+    if (patch.cover_image_url !== undefined) set.cover_image_url = patch.cover_image_url;
 
     let change: { from: string; to: string } | null = null;
     if (patch.slug !== undefined) {

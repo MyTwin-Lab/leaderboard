@@ -2,15 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+
 import type { ProjectWithChallenges, TeamMember } from "@/lib/types";
 import { ChallengeCard } from "@/components/public/ChallengeCard";
-import { ChallengesFiltersBar } from "@/components/public/ChallengesFiltersBar";
+import { ChallengesFiltersBar, type StatusFilter } from "@/components/public/ChallengesFiltersBar";
 import { ChallengesHero } from "@/components/public/ChallengesHero";
 import { CreateChallengeDrawer } from "@/components/admin/CreateChallengeDrawer";
 import { ManagerRolePopup } from "@/components/challenges/ManagerRolePopup";
 import { challengeManagePath } from "@/lib/paths";
 import { formatCP } from "@/lib/formatters";
-import { Plus } from "lucide-react";
+import { vitrineFontVars } from "@/components/vitrine/fonts";
+import { ArrowTinyIcon } from "@/components/vitrine/SearchIcon";
+
+import "@/components/vitrine/vitrine.css";
+import "./challenges-vitrine.css";
 
 interface ProjectChallengesExplorerProps {
   projects: ProjectWithChallenges[];
@@ -18,8 +24,6 @@ interface ProjectChallengesExplorerProps {
   isAdmin?: boolean;
   managedProjectIds?: string[];
 }
-
-type StatusFilter = 'all' | 'active' | 'completed' | 'draft' | 'manage';
 
 type FlatChallenge = {
   id: string;
@@ -39,9 +43,24 @@ type FlatChallenge = {
   recentContributions: number;
   activeContributors: number;
   spark: number[];
+  coverImageUrl: string | null;
 };
 
-export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmin = false, managedProjectIds = [] }: ProjectChallengesExplorerProps) {
+/**
+ * Le listing `/challenges`, d'après `Challenges Redesign Vitrine.dc.html`.
+ *
+ * Deux écarts assumés par rapport à la maquette, demandés avec elle :
+ *  - le menu déroulant des projets disparaît ;
+ *  - la recherche porte aussi sur les projets, et ceux qui répondent
+ *    s'affichent au-dessus de la grille. En choisir un restreint la grille à
+ *    ses challenges — c'est ce qui remplace le menu déroulant.
+ */
+export function ProjectChallengesExplorer({
+  projects,
+  joinedChallengeIds,
+  isAdmin = false,
+  managedProjectIds = [],
+}: ProjectChallengesExplorerProps) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("all");
@@ -51,6 +70,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
   const [popup, setPopup] = useState<{ x: number; y: number; challengeId: string; challengeSlug: string } | null>(null);
 
   const joinedSet = useMemo(() => new Set(joinedChallengeIds), [joinedChallengeIds]);
+  const managedSet = useMemo(() => new Set(managedProjectIds), [managedProjectIds]);
 
   const allChallenges = useMemo<FlatChallenge[]>(() => {
     return projects
@@ -73,6 +93,7 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
           recentContributions: challenge.recentContributions,
           activeContributors: challenge.activeContributors,
           spark: challenge.spark,
+          coverImageUrl: challenge.coverImageUrl,
         }))
       )
       // Most recent first; undated challenges have no place on that axis, so
@@ -84,38 +105,87 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
       });
   }, [projects]);
 
-  const managedSet = useMemo(() => new Set(managedProjectIds), [managedProjectIds]);
+  const needle = searchTerm.trim().toLowerCase();
 
   const managedProjectOptions = useMemo(
-    () => projects.filter(p => managedSet.has(p.id)).map(p => ({ id: p.id, name: p.title })),
+    () => projects.filter((project) => managedSet.has(project.id)).map((project) => ({ id: project.id, name: project.title })),
     [projects, managedSet],
   );
 
-  const filteredChallenges = useMemo(() => {
+  /**
+   * Les projets que la recherche fait remonter. Rien tant qu'on ne cherche
+   * pas : la maquette ne montre que des challenges au repos.
+   */
+  const matchingProjects = useMemo(() => {
+    if (!needle) return [];
+    return projects
+      .filter(
+        (project) =>
+          project.title.toLowerCase().includes(needle) ||
+          (project.description ?? "").toLowerCase().includes(needle),
+      )
+      .map((project) => {
+        const open = project.challenges.filter((challenge) => challenge.status === "active");
+        return {
+          id: project.id,
+          name: project.title,
+          description: project.description,
+          challengeCount: project.challenges.length,
+          openCP: open.reduce((sum, challenge) => sum + challenge.rewardPool, 0),
+        };
+      });
+  }, [projects, needle]);
+
+  /** La recherche, seule — c'est sur elle que se comptent les pills. */
+  const searchPool = useMemo(() => {
     return allChallenges.filter((challenge) => {
       const matchesSearch =
-        searchTerm === "" ||
-        challenge.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        challenge.projectName.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesProject =
-        selectedProjectId === "all" || challenge.projectId === selectedProjectId;
-      const matchesStatus =
-        statusFilter === "all"
-          ? true
-          : statusFilter === "manage"
-            ? managedSet.has(challenge.projectId)
-            : challenge.status === statusFilter;
-      return matchesSearch && matchesProject && matchesStatus;
+        !needle ||
+        challenge.title.toLowerCase().includes(needle) ||
+        challenge.projectName.toLowerCase().includes(needle);
+      const matchesProject = selectedProjectId === "all" || challenge.projectId === selectedProjectId;
+      return matchesSearch && matchesProject;
     });
-  }, [allChallenges, searchTerm, selectedProjectId, statusFilter, managedSet]);
+  }, [allChallenges, needle, selectedProjectId]);
 
-  const projectOptions = useMemo(() => {
-    return projects.map((p) => ({ id: p.id, name: p.title }));
-  }, [projects]);
+  const filteredChallenges = useMemo(() => {
+    return searchPool.filter((challenge) =>
+      statusFilter === "all"
+        ? true
+        : statusFilter === "manage"
+          ? managedSet.has(challenge.projectId)
+          : challenge.status === statusFilter,
+    );
+  }, [searchPool, statusFilter, managedSet]);
+
+  const pills = useMemo(() => {
+    const count = (predicate: (challenge: FlatChallenge) => boolean) => searchPool.filter(predicate).length;
+    return [
+      { value: "active" as StatusFilter, label: "Active", count: count((c) => c.status === "active") },
+      { value: "completed" as StatusFilter, label: "Completed", count: count((c) => c.status === "completed") },
+      { value: "all" as StatusFilter, label: "All", count: searchPool.length },
+      ...(isAdmin
+        ? [{ value: "draft" as StatusFilter, label: "Draft", count: count((c) => c.status === "draft") }]
+        : []),
+      ...(managedProjectIds.length > 0
+        ? [{ value: "manage" as StatusFilter, label: "Manage", count: count((c) => managedSet.has(c.projectId)) }]
+        : []),
+    ];
+  }, [searchPool, isAdmin, managedProjectIds.length, managedSet]);
+
+  const projectOptions = useMemo(
+    () => projects.map((project) => ({ id: project.id, name: project.title })),
+    [projects],
+  );
+
+  const selectedProject = useMemo(
+    () => projectOptions.find((project) => project.id === selectedProjectId) ?? null,
+    [projectOptions, selectedProjectId],
+  );
 
   const heroStats = useMemo(() => {
-    const active = allChallenges.filter((c) => c.status === "active");
-    const totalCP = active.reduce((sum, c) => sum + c.rewardPool, 0);
+    const active = allChallenges.filter((challenge) => challenge.status === "active");
+    const totalCP = active.reduce((sum, challenge) => sum + challenge.rewardPool, 0);
     return [
       { value: String(active.length), label: "Open now" },
       { value: formatCP(totalCP), label: "CP in play" },
@@ -123,55 +193,77 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
     ];
   }, [allChallenges, projects]);
 
+  const canCreate = isAdmin || (statusFilter === "manage" && managedProjectIds.length > 0);
+
   return (
-    <>
-      <div className="space-y-6 sm:space-y-8">
+    <div className={`vitrine v-challenges ${vitrineFontVars}`}>
+      <div className="v-main v-ch-main">
         <ChallengesHero stats={heroStats} />
 
         <ChallengesFiltersBar
-          projects={projectOptions}
+          searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          onProjectChange={setSelectedProjectId}
+          statusFilter={statusFilter}
           onStatusChange={setStatusFilter}
-          isAdmin={isAdmin}
-          hasManaged={managedProjectIds.length > 0}
-          rightSlot={isAdmin ? (
-            <button
-              onClick={() => setDrawerOpen(true)}
-              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-brandCP/25 bg-brandCP/10 px-4 py-2.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/20 hover:shadow-[0_0_16px_rgba(10,247,193,0.15)]"
-            >
-              <Plus className="h-4 w-4" />
-              New challenge
-            </button>
-          ) : statusFilter === 'manage' && managedProjectIds.length > 0 ? (
-            <button
-              onClick={() => setManagerDrawerOpen(true)}
-              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-brandCP/25 bg-brandCP/10 px-4 py-2.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/20 hover:shadow-[0_0_16px_rgba(10,247,193,0.15)]"
-            >
-              <Plus className="h-4 w-4" />
-              New challenge
-            </button>
-          ) : undefined}
+          pills={pills}
+          resultLabel={`${filteredChallenges.length} challenge${filteredChallenges.length === 1 ? "" : "s"} shown`}
+          selectedProject={selectedProject}
+          onClearProject={() => setSelectedProjectId("all")}
+          onCreate={canCreate ? () => (isAdmin ? setDrawerOpen(true) : setManagerDrawerOpen(true)) : undefined}
         />
 
+        {matchingProjects.length > 0 && (
+          <section className="v-projects">
+            <div className="v-projects-head">
+              <span className="v-projects-title">Projects</span>
+              <span className="v-ch-result">
+                {matchingProjects.length} project{matchingProjects.length === 1 ? "" : "s"} match
+              </span>
+            </div>
+            <div className="v-projects-grid">
+              {matchingProjects.map((project) => (
+                <button
+                  key={project.id}
+                  type="button"
+                  className="v-project"
+                  data-on={selectedProjectId === project.id ? "true" : "false"}
+                  onClick={() => {
+                    setSelectedProjectId(project.id);
+                    // La recherche a servi : elle s'efface, la liste des autres
+                    // projets disparaît, et le projet retenu reste en pastille.
+                    setSearchTerm("");
+                  }}
+                >
+                  <span className="v-project-go">
+                    <ArrowTinyIcon />
+                  </span>
+                  <span className="v-project-name">{project.name}</span>
+                  {project.description && (
+                    <span className="v-project-desc">{project.description}</span>
+                  )}
+                  <span className="v-project-meta">
+                    {project.challengeCount} challenge{project.challengeCount === 1 ? "" : "s"}
+                    {project.openCP > 0 ? ` · ${formatCP(project.openCP)} CP in play` : ""}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         {filteredChallenges.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] py-16 text-center">
-            <svg className="h-8 w-8 text-white/20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 15.803M10.5 7.5v6m3-3h-6" />
+          <div className="v-ch-empty">
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 15.803M10.5 7.5v6m3-3h-6"
+              />
             </svg>
-            <p className="text-sm text-white/40">No challenge found.</p>
-            {isAdmin && (
-              <button
-                onClick={() => setDrawerOpen(true)}
-                className="flex items-center gap-1.5 rounded-xl border border-brandCP/20 bg-brandCP/10 px-5 py-2 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/20"
-              >
-                <Plus className="h-4 w-4" />
-                Create the first challenge
-              </button>
-            )}
+            <span>No challenge matches this filter.</span>
           </div>
         ) : (
-          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="v-ch-grid">
             {filteredChallenges.map((challenge, i) => (
               <ChallengeCard
                 key={challenge.id}
@@ -185,19 +277,39 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
                 description={challenge.description}
                 rewardPool={challenge.rewardPool}
                 completion={challenge.completion}
+                coverImageUrl={challenge.coverImageUrl}
                 isMember={joinedSet.has(challenge.id)}
                 isAdmin={isAdmin}
                 teamMembers={challenge.teamMembers}
                 recentContributions={challenge.recentContributions}
-                activeContributors={challenge.activeContributors}
                 spark={challenge.spark}
-                onCardClick={(isAdmin || managedSet.has(challenge.projectId))
-                  ? (e) => setPopup({ x: e.clientX, y: e.clientY, challengeId: challenge.id, challengeSlug: challenge.slug })
-                  : undefined}
+                onCardClick={
+                  isAdmin || managedSet.has(challenge.projectId)
+                    ? (event) =>
+                        setPopup({
+                          x: event.clientX,
+                          y: event.clientY,
+                          challengeId: challenge.id,
+                          challengeSlug: challenge.slug,
+                        })
+                    : undefined
+                }
               />
             ))}
           </div>
         )}
+
+        <div className="v-strip v-ch-strip">
+          <div className="v-strip-text">
+            <span className="v-strip-title">Nothing here fits your skills?</span>
+            <span className="v-strip-sub">
+              Propose a challenge — projects are opened by contributors, not by a committee.
+            </span>
+          </div>
+          <Link href="/sandbox" className="v-strip-cta">
+            Propose a challenge
+          </Link>
+        </div>
       </div>
 
       {/* Admin drawer */}
@@ -231,6 +343,6 @@ export function ProjectChallengesExplorer({ projects, joinedChallengeIds, isAdmi
           onClose={() => setPopup(null)}
         />
       )}
-    </>
+    </div>
   );
 }

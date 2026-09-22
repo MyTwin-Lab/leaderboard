@@ -1,5 +1,38 @@
-import { PrimaryCta } from "@/components/about/primitives";
+import Link from "next/link";
+
+import { ArrowIcon } from "@/components/home/ArrowIcon";
 import type { NewsCta as NewsCtaData } from "@/content/news/types";
+
+/**
+ * Le bouton plein, aux couleurs `foreground` / `background` du thème — ces
+ * deux tokens s'échangent avec le mode, là où un `bg-white` opaque resterait
+ * blanc en mode clair. Les pages de mytwin.care passent par un `<a>` :
+ * `next/link` ne sert que ce site.
+ *
+ * Il vivait dans les primitives de la page « About », supprimée depuis : le
+ * seul appelant restant est cette bannière.
+ */
+function PrimaryCta({ href, children }: { href: string; children: React.ReactNode }) {
+  const className =
+    "inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition-all duration-200 hover:-translate-y-0.5 hover:gap-2.5";
+
+  const inner = (
+    <>
+      {children}
+      <ArrowIcon />
+    </>
+  );
+
+  return href.startsWith("http") ? (
+    <a href={href} className={className}>
+      {inner}
+    </a>
+  ) : (
+    <Link href={href} className={className}>
+      {inner}
+    </Link>
+  );
+}
 
 /**
  * Un seul appel à l'action, en fin d'article, et c'est l'action que la news

@@ -1,0 +1,918 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Sandbox — d'après `Sandbox Redesign Vitrine.dc.html`.
+   Deux mises en page, comme la maquette : l'écran, et le téléphone (le cadre
+   iOS). Bascule à 768px.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Le lien vers la présentation du Lab, gardé au-dessous de l'accroche. */
+.v-sb-about {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--v-accent);
+  transition: gap 0.2s var(--v-ease), color 0.2s var(--v-ease);
+}
+
+.v-sb-about:hover {
+  gap: 0.7rem;
+  color: var(--v-accent-dark);
+}
+
+.v-sb-about svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* ── Filtres ────────────────────────────────────────────────────────────── */
+.v-sb-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-top: 1px solid var(--v-line);
+  padding-top: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.v-sb-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.v-sb-count {
+  font-size: 0.8125rem;
+  color: var(--v-subtle);
+  margin-left: auto;
+}
+
+/* Le bouton de création, hors maquette du listing : c'est le même que celui
+   du bandeau de bas de page, en plus compact. */
+.v-sb-new {
+  display: inline-flex;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  background: var(--v-ink);
+  padding: 0.7rem 1.1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #f5f4f0;
+  transition: transform 0.3s var(--v-ease), box-shadow 0.3s var(--v-ease);
+}
+
+.v-sb-new:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -18px rgb(17 22 26 / 0.9);
+}
+
+.v-sb-new svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* ── La grille ──────────────────────────────────────────────────────────── */
+.v-sb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: clamp(1rem, 1.8vw, 1.25rem);
+  align-items: stretch;
+}
+
+/* La carte de cette page a le grand rayon de la maquette, pas les 20px de
+   la page Challenges. */
+.v-sandbox .v-card {
+  border-radius: var(--v-radius);
+}
+
+.v-sandbox .v-card-shot {
+  padding: clamp(1rem, 1.8vw, 1.25rem);
+}
+
+.v-sandbox .v-card-bottom {
+  gap: 0.45rem;
+  padding-top: clamp(1.25rem, 3vw, 2rem);
+}
+
+.v-sandbox .v-card-title {
+  font-size: clamp(1.1875rem, 2vw, 1.375rem);
+}
+
+.v-sandbox .v-card-desc {
+  font-size: 0.8125rem;
+}
+
+.v-sandbox .v-card-body {
+  gap: 0.875rem;
+  padding: clamp(1rem, 1.8vw, 1.25rem);
+}
+
+.v-sb-promoted {
+  display: inline-flex;
+  align-items: center;
+  height: 1.375rem;
+  padding-inline: 0.55rem;
+  border-radius: 999px;
+  background: rgb(11 122 100 / 0.85);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── L'étoile, posée sur la photo ───────────────────────────────────────── */
+.v-sb-star {
+  display: inline-flex;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  background: rgb(255 255 255 / 0.12);
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  transition: background-color 0.2s var(--v-ease), border-color 0.2s var(--v-ease);
+}
+
+.v-sb-star[data-on="true"] {
+  border-color: rgb(11 122 100 / 0.9);
+  background: rgb(11 122 100 / 0.85);
+}
+
+.v-sb-star[data-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.v-sb-star svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.v-sb-star-error {
+  position: relative;
+  max-width: 14rem;
+  text-align: right;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: #ffd7d7;
+  text-shadow: 0 1px 2px rgb(8 12 14 / 0.6);
+}
+
+.v-sb-star-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+/* ── Le pied de carte : l'auteur, puis l'appel à l'action ──────────────── */
+.v-sb-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: auto;
+}
+
+.v-sb-author {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.v-sb-author-text {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.v-sb-author-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v-sb-author-date {
+  font-size: 0.75rem;
+  color: var(--v-muted);
+}
+
+.v-sandbox .v-card-cta {
+  height: 2.375rem;
+  padding-inline: 1.125rem 0.9rem;
+  font-size: 0.8125rem;
+  color: #ffffff;
+  background: var(--v-ink);
+}
+
+.v-sandbox .v-card-cta[data-quiet="true"] {
+  background: rgb(17 22 26 / 0.06);
+  color: var(--v-ink);
+}
+
+.v-sandbox .v-card-cta svg {
+  width: 0.8125rem;
+  height: 0.8125rem;
+}
+
+/* ── Les paliers, sous la grille ────────────────────────────────────────── */
+.v-sb-tiers {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--v-subtle);
+}
+
+/* ── Le squelette de chargement ─────────────────────────────────────────── */
+.v-sb-skeleton {
+  height: 22rem;
+  border: 1px solid var(--v-line);
+  border-radius: var(--v-radius);
+  background: var(--v-surface);
+  opacity: 0.7;
+  animation: v-live 2.4s var(--v-ease) infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   La modale « New sandbox ».
+   ───────────────────────────────────────────────────────────────────────── */
+.v-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: clamp(1rem, 4vh, 3.5rem) 1.25rem;
+}
+
+.v-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(13 19 22 / 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.v-modal-card {
+  position: relative;
+  display: flex;
+  width: 100%;
+  max-width: 32rem;
+  flex-direction: column;
+  gap: 1rem;
+  border-radius: 1.5rem;
+  border: 1px solid var(--v-line);
+  background: var(--v-surface);
+  padding: 1.5rem;
+  box-shadow: 0 40px 80px -30px rgb(17 22 26 / 0.45);
+  will-change: transform, opacity;
+}
+
+.v-modal-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.v-modal-head-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.v-modal-title {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+}
+
+.v-modal-sub {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--v-muted);
+}
+
+.v-modal-close {
+  display: flex;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+  border-radius: 0.6rem;
+  padding: 0.35rem;
+  color: var(--v-subtle);
+  transition: background-color 0.2s var(--v-ease), color 0.2s var(--v-ease);
+}
+
+.v-modal-close:hover {
+  background: rgb(17 22 26 / 0.05);
+  color: var(--v-ink);
+}
+
+.v-modal-close svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.v-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.v-field-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--v-ink);
+}
+
+.v-field-hint {
+  font-weight: 400;
+  color: var(--v-subtle);
+}
+
+.v-field input[type="text"],
+.v-field input[type="url"],
+.v-field textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--v-line);
+  background: var(--v-surface);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--v-ink);
+  outline: none;
+  transition: border-color 0.2s var(--v-ease);
+}
+
+.v-field textarea {
+  resize: vertical;
+}
+
+.v-field input:focus,
+.v-field textarea:focus {
+  border-color: rgb(11 122 100 / 0.5) !important;
+}
+
+.v-field-error {
+  font-size: 0.6875rem;
+  color: #b42318;
+}
+
+/* Le choix du type. */
+.v-types {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.v-types-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+.v-types-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.v-type {
+  display: flex;
+  cursor: pointer;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--v-line);
+  background: rgb(17 22 26 / 0.02);
+  padding: 0.75rem 1rem;
+  transition: border-color 0.2s var(--v-ease), background-color 0.2s var(--v-ease);
+}
+
+.v-type[data-on="true"] {
+  border-color: rgb(11 122 100 / 0.4);
+  background: rgb(11 122 100 / 0.08);
+}
+
+.v-type[data-locked="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.v-type > svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--v-subtle);
+}
+
+.v-type[data-on="true"] > svg {
+  color: var(--v-accent);
+}
+
+.v-type-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.v-type-name {
+  font-family: var(--v-font-h);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--v-muted);
+}
+
+.v-type[data-on="true"] .v-type-name {
+  color: var(--v-ink);
+}
+
+.v-type-hint {
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: var(--v-muted);
+}
+
+/* L'adresse : le préfixe et la saisie dans une seule boîte. */
+.v-slug {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 12px;
+  border: 1px solid var(--v-line);
+  background: var(--v-surface);
+  padding: 0 0.75rem;
+}
+
+.v-slug-prefix {
+  flex-shrink: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  color: var(--v-subtle);
+}
+
+.v-slug input {
+  min-width: 0;
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.6rem 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  color: var(--v-ink);
+  outline: none;
+}
+
+.v-slug-state {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--v-subtle);
+}
+
+.v-slug-state[data-ok="true"] {
+  color: var(--v-accent);
+}
+
+.v-slug-use {
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  background: rgb(11 122 100 / 0.1);
+  padding: 0.15rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--v-accent);
+}
+
+/* Le point de départ : dépôt, dataset, modèle. */
+.v-start {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid var(--v-line);
+  background: rgb(17 22 26 / 0.02);
+  padding: 1rem;
+}
+
+.v-start-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+}
+
+.v-soon {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 12px;
+  border: 1px dashed rgb(17 22 26 / 0.16);
+  padding: 0.6rem 0.75rem;
+  opacity: 0.6;
+}
+
+.v-soon > svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+  color: var(--v-subtle);
+}
+
+.v-soon-text {
+  font-size: 0.75rem;
+  color: var(--v-muted);
+}
+
+.v-soon-badge {
+  margin-left: auto;
+  border-radius: 999px;
+  background: rgb(17 22 26 / 0.06);
+  padding: 0.1rem 0.55rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--v-subtle);
+}
+
+/* La couverture, dans la langue de la maquette. */
+.v-cover {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.v-cover-drop {
+  display: flex;
+  height: 8rem;
+  width: 100%;
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 12px;
+  border: 1px dashed rgb(17 22 26 / 0.16);
+  background: rgb(17 22 26 / 0.02);
+  color: var(--v-muted);
+  transition: border-color 0.2s var(--v-ease);
+}
+
+.v-cover-drop:hover {
+  border-color: rgb(11 122 100 / 0.5);
+}
+
+.v-cover-drop svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.v-cover-drop-title {
+  font-size: 0.75rem;
+}
+
+.v-cover-drop-hint {
+  font-size: 0.6875rem;
+  color: var(--v-subtle);
+}
+
+.v-cover-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--v-line);
+}
+
+.v-cover-preview img {
+  height: 8rem;
+  width: 100%;
+  object-fit: cover;
+}
+
+.v-cover-remove {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+  display: flex;
+  cursor: pointer;
+  border-radius: 999px;
+  background: rgb(8 12 14 / 0.6);
+  padding: 0.35rem;
+  color: #ffffff;
+}
+
+.v-cover-remove svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.v-cover-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.v-cover-replace {
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 12px;
+  border: 1px solid var(--v-line);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--v-muted);
+  transition: border-color 0.2s var(--v-ease);
+}
+
+.v-cover-replace:hover {
+  border-color: rgb(17 22 26 / 0.25);
+}
+
+/* Le pied de la modale. */
+.v-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.v-modal-submit {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  background: var(--v-ink);
+  padding: 0.65rem 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #ffffff;
+  transition: opacity 0.2s var(--v-ease);
+}
+
+.v-modal-submit[data-valid="false"] {
+  cursor: not-allowed;
+  background: rgb(17 22 26 / 0.06);
+  color: var(--v-subtle);
+}
+
+.v-modal-cancel {
+  cursor: pointer;
+  padding: 0.65rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--v-muted);
+  transition: color 0.2s var(--v-ease);
+}
+
+.v-modal-cancel:hover {
+  color: var(--v-ink);
+}
+
+.v-modal-hint {
+  font-size: 0.75rem;
+  color: var(--v-muted);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Téléphone — la vue du cadre iOS de la maquette.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .v-sandbox .v-main {
+    gap: 0;
+    padding: 0.5rem 0 2rem;
+  }
+
+  .v-sandbox .v-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0.5rem 1rem 0;
+  }
+
+  .v-sandbox .v-head-text {
+    flex: 0 0 auto;
+    gap: 0.625rem;
+  }
+
+  .v-sandbox .v-eyebrow {
+    font-size: 0.625rem;
+  }
+
+  /* La pastille ne bat pas dans la maquette téléphone. */
+  .v-sandbox .v-eyebrow-dot {
+    width: 0.35rem;
+    height: 0.35rem;
+    animation: none;
+  }
+
+  .v-sandbox .v-title {
+    font-size: 2rem;
+  }
+
+  .v-sandbox .v-lede {
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+
+  .v-sb-about {
+    font-size: 0.8125rem;
+  }
+
+  /* La maquette téléphone n'affiche pas les chiffres d'en-tête. */
+  .v-sandbox .v-stats {
+    display: none;
+  }
+
+  .v-sb-filters {
+    gap: 0.625rem;
+    border-top: none;
+    padding: 1.25rem 1rem 0;
+  }
+
+  .v-sb-count {
+    display: none;
+  }
+
+  .v-sandbox .v-pills {
+    flex-wrap: nowrap;
+    gap: 0.375rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .v-sandbox .v-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .v-sandbox .v-pill {
+    gap: 0.4rem;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .v-sandbox .v-pill-count {
+    padding: 0 0.35rem;
+    font-size: 0.65rem;
+  }
+
+  .v-sb-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem 1rem 0;
+  }
+
+  .v-sandbox .v-card {
+    border-radius: 1.125rem;
+  }
+
+  .v-sandbox .v-card-shot {
+    min-height: 11.5rem;
+    padding: 0.875rem;
+  }
+
+  .v-sandbox .v-card-top {
+    flex-wrap: nowrap;
+    gap: 0.625rem;
+  }
+
+  .v-sb-promoted {
+    height: 1.25rem;
+    padding-inline: 0.5rem;
+    font-size: 0.625rem;
+  }
+
+  .v-sb-star {
+    margin-left: auto;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.75rem;
+  }
+
+  .v-sb-star svg {
+    width: 0.8125rem;
+    height: 0.8125rem;
+  }
+
+  .v-sandbox .v-card-bottom {
+    gap: 0.35rem;
+    padding-top: 1.25rem;
+  }
+
+  .v-sandbox .v-card-title {
+    font-size: 1.0625rem;
+  }
+
+  .v-sandbox .v-card-desc {
+    font-size: 0.75rem;
+    line-height: 1.5;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  /* Le pied passe sur une seule ligne, sans la date. */
+  .v-sandbox .v-card-body {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.625rem;
+    padding: 0.75rem 0.875rem;
+  }
+
+  .v-sb-foot {
+    flex: 1;
+    flex-wrap: nowrap;
+    gap: 0.625rem;
+  }
+
+  .v-sb-author {
+    gap: 0.5rem;
+  }
+
+  .v-sb-author > * {
+    width: 1.625rem !important;
+    height: 1.625rem !important;
+    box-shadow: none !important;
+  }
+
+  .v-sb-author-text {
+    width: auto !important;
+    height: auto !important;
+  }
+
+  .v-sb-author-name {
+    font-size: 0.8125rem;
+    font-weight: 400;
+  }
+
+  .v-sb-author-date {
+    display: none;
+  }
+
+  .v-sandbox .v-card-cta {
+    height: 2.125rem;
+    padding-inline: 0.9rem 0.7rem;
+    font-size: 0.75rem;
+  }
+
+  .v-sandbox .v-card-cta svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  /* Le bandeau devient une carte sombre, sous les propositions. */
+  .v-sandbox .v-strip {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    border-radius: 1.125rem;
+    margin: 0.75rem 1rem 0;
+    padding: 1rem 1.125rem;
+  }
+
+  .v-sandbox .v-strip-title {
+    font-size: 0.9375rem;
+  }
+
+  .v-sandbox .v-strip-sub {
+    font-size: 0.75rem;
+  }
+
+  .v-sandbox .v-strip-cta {
+    align-self: flex-start;
+    margin-top: 0.25rem;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.75rem;
+  }
+
+  .v-sb-tiers {
+    padding: 1rem 1rem 0;
+  }
+
+  .v-sandbox .v-empty,
+  .v-sandbox .v-lb-error {
+    margin: 1.25rem 1rem 0;
+  }
+}

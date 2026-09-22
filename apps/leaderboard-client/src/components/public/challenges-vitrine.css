@@ -1,0 +1,496 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Challenges — d'après `Challenges Redesign Vitrine.dc.html`.
+   La maquette a deux mises en page : l'écran, et le téléphone (le cadre iOS).
+   La bascule se fait ici à 768px, la largeur à laquelle la maquette elle-même
+   bascule (`matchMedia("(min-width: 768px)")`).
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Même conteneur que les deux autres pages (`.v-main`), posé au-dessus de la
+   lueur. */
+.v-ch-main {
+  position: relative;
+  z-index: 10;
+}
+
+/* L'en-tête vit dans `vitrine.css` : les trois pages portent le même. */
+
+/* ── Filtres ────────────────────────────────────────────────────────────── */
+.v-ch-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-top: 1px solid var(--v-line);
+  padding-top: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.v-ch-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* La recherche de cette page est une gélule, et non un champ à coins doux. */
+.v-challenges .v-search {
+  flex: 1 1 240px;
+}
+
+.v-ch-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v-challenges .v-pills {
+  gap: 6px;
+}
+
+.v-challenges .v-pill {
+  gap: 7px;
+  padding: 7px 14px;
+  font-size: 13px;
+  transition: background-color 0.3s var(--v-ease), color 0.3s var(--v-ease);
+}
+
+.v-challenges .v-pill-count {
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.v-ch-result {
+  font-size: 13px;
+  color: var(--v-subtle);
+}
+
+/* Le bouton d'un admin ou d'un manager : hors maquette publique, habillé
+   comme le bouton du bandeau de bas de page. */
+.v-ch-new {
+  display: inline-flex;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  background: var(--v-ink);
+  padding: 11px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #f5f4f0;
+  transition: transform 0.3s var(--v-ease), box-shadow 0.3s var(--v-ease);
+}
+
+.v-ch-new:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -18px rgb(17 22 26 / 0.9);
+}
+
+.v-ch-new svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── La grille des challenges ───────────────────────────────────────────── */
+.v-ch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: clamp(16px, 1.8vw, 20px);
+  align-items: stretch;
+}
+
+.v-ch-project-name-on-shot {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: rgb(255 255 255 / 0.78);
+  text-shadow: 0 1px 2px rgb(8 12 14 / 0.5);
+}
+
+.v-ch-pool {
+  display: grid;
+  gap: 1px;
+  justify-items: end;
+  flex: none;
+}
+
+.v-ch-pool-value {
+  font-family: var(--v-font-h);
+  font-size: clamp(19px, 2vw, 22px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px rgb(8 12 14 / 0.5);
+}
+
+.v-ch-pool-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #0af7c1;
+}
+
+.v-ch-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--v-line);
+}
+
+.v-ch-activity {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.v-ch-spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 22px;
+  flex: none;
+}
+
+.v-ch-spark span {
+  width: 4px;
+  border-radius: 2px;
+}
+
+.v-ch-activity-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--v-muted);
+}
+
+.v-ch-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+
+.v-ch-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: rgb(17 22 26 / 0.08);
+  overflow: hidden;
+}
+
+.v-ch-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--v-accent);
+  transition: width 0.7s var(--v-ease);
+}
+
+.v-ch-bar[data-done="true"] span {
+  background: rgb(11 122 100 / 0.4);
+}
+
+.v-ch-pct {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.v-ch-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.v-ch-team {
+  display: flex;
+  align-items: center;
+}
+
+.v-ch-team > * {
+  margin-right: -8px;
+}
+
+.v-ch-team-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #eceae3;
+  color: var(--v-muted);
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 0 0 2px var(--v-surface);
+}
+
+.v-ch-team-solo {
+  font-size: 12.5px;
+  color: var(--v-subtle);
+  margin-right: 0;
+}
+
+/* ── L'état vide ────────────────────────────────────────────────────────── */
+.v-ch-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border-radius: 20px;
+  border: 1px dashed rgb(17 17 17 / 0.14);
+  background: var(--v-surface);
+  padding: 56px 24px;
+  text-align: center;
+}
+
+.v-ch-empty svg {
+  width: 28px;
+  height: 28px;
+  color: var(--v-subtle);
+}
+
+.v-ch-empty span {
+  font-size: 14px;
+  color: var(--v-muted);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Téléphone — la vue du cadre iOS de la maquette.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .v-challenges .v-main {
+    gap: 0;
+    padding: 6px 0 28px;
+  }
+
+  .v-challenges .v-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 6px 16px 0;
+  }
+
+  .v-challenges .v-head-text {
+    flex: 0 0 auto;
+    gap: 10px;
+  }
+
+  .v-challenges .v-eyebrow {
+    font-size: 10px;
+  }
+
+  .v-challenges .v-title {
+    font-size: 32px;
+  }
+
+  .v-challenges .v-lede {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* Les chiffres d'en-tête sortent : sur un écran de téléphone, ils prennent
+     la place de la première carte sans rien dire de plus. */
+  .v-challenges .v-stats {
+    display: none;
+  }
+
+  .v-ch-filters {
+    gap: 10px;
+    padding: 16px 16px 0;
+  }
+
+  /* Sur téléphone, la maquette garde les pills et laisse tomber le filet et
+     le compteur de résultats. */
+  .v-ch-pills-row {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .v-challenges .v-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .v-challenges .v-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .v-challenges .v-pill {
+    gap: 6px;
+    padding: 6px 13px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+
+  .v-challenges .v-pill-count {
+    padding: 0 6px;
+    font-size: 10.5px;
+  }
+
+  .v-ch-result {
+    display: none;
+  }
+
+  .v-challenges .v-projects {
+    padding: 16px 16px 0;
+  }
+
+  .v-ch-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 16px 0;
+  }
+
+  .v-challenges .v-card {
+    border-radius: 18px;
+  }
+
+  .v-challenges .v-card-shot {
+    min-height: 132px;
+    padding: 13px 14px;
+  }
+
+  .v-challenges .v-card-top {
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  .v-challenges .v-card-tag {
+    height: 21px;
+    font-size: 10.5px;
+  }
+
+  /* Le nom du projet quitte la photo : il rejoint la ligne de progression. */
+  .v-ch-project-name-on-shot {
+    display: none;
+  }
+
+  .v-ch-pool-value {
+    font-size: 17px;
+  }
+
+  .v-ch-pool-label {
+    font-size: 9px;
+  }
+
+  .v-challenges .v-card-bottom {
+    gap: 6px;
+    padding-top: 20px;
+  }
+
+  .v-challenges .v-card-title {
+    font-size: 18px;
+  }
+
+  .v-challenges .v-card-desc {
+    font-size: 12.5px;
+    line-height: 1.5;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .v-challenges .v-card-body {
+    gap: 11px;
+    padding: 13px 14px;
+  }
+
+  /* La sparkline et sa légende sortent : la ligne se réduit à la progression
+     et au nom du projet. */
+  .v-ch-meta {
+    gap: 10px;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .v-ch-activity {
+    display: none;
+  }
+
+  .v-ch-progress {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .v-ch-pct {
+    font-size: 11.5px;
+  }
+
+  .v-ch-project-inline {
+    min-width: 0;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11.5px;
+    color: var(--v-subtle);
+  }
+
+  .v-ch-foot {
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  /* `!important` : les avatars portent leur diamètre en style en ligne, la
+     maquette téléphone les veut plus petits. */
+  .v-ch-team > * {
+    margin-right: -7px;
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  .v-ch-team-more {
+    font-size: 10px;
+  }
+
+  .v-ch-team-solo {
+    width: auto !important;
+    height: auto !important;
+  }
+
+  .v-ch-team-solo {
+    font-size: 11.5px;
+  }
+
+  .v-challenges .v-card-cta {
+    height: 34px;
+    padding-inline: 15px 12px;
+    font-size: 12.5px;
+  }
+
+  .v-challenges .v-card-cta svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* La maquette téléphone s'arrête aux cartes. */
+  .v-ch-strip {
+    display: none;
+  }
+}
+
+/* Le nom du projet n'apparaît sur la ligne de progression que sur téléphone. */
+.v-ch-project-inline {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .v-ch-project-inline {
+    display: inline;
+  }
+}

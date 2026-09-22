@@ -75,6 +75,10 @@ export const challenges = pgTable("challenges", {
   // 'provided_repo' = repo GitHub du challenge, branche perso par contributeur
   // 'own_repo'      = chaque contributeur fournit l'URL de son propre repo
   workspace_mode: varchar("workspace_mode", { length: 20 }).default("provided_repo"),
+  // L'image de couverture, posée à la création et modifiable à l'édition.
+  // Une URL : soit celle d'une image déposée ici (`/api/images/<uuid>`), soit
+  // une URL externe. NULL = la carte retombe sur une illustration par défaut.
+  cover_image_url: text("cover_image_url"),
   // Date de création réelle du challenge. `start_date` est une date métier,
   // optionnelle et éditable — elle ne peut pas servir de date de création.
   created_at: timestamp("created_at").defaultNow().notNull(),
@@ -981,6 +985,10 @@ export const sandboxes = pgTable("sandboxes", {
   // artefact), au moins un dataset est requis à la création.
   model_url: text("model_url"),
   dataset_urls: jsonb("dataset_urls").$type<string[]>().notNull().default([]),
+  // L'image de couverture de la proposition, posée à la création et
+  // modifiable par son auteur — même colonne que `challenges.cover_image_url`,
+  // et elle suit la proposition jusqu'au challenge à la promotion.
+  cover_image_url: text("cover_image_url"),
   // 'open' | 'promoted' | 'archived'. Créé directement 'open' : aucune
   // validation admin n'est nécessaire pour exister.
   status: varchar("status", { length: 10 }).notNull().default("open"),
@@ -1245,6 +1253,28 @@ export const onboardingProgressRelations = relations(onboarding_progress, ({ one
 
 // --- DATABASE CLIENT ---
 
+// --- IMAGES ---
+// Les images déposées depuis l'app : la couverture d'un challenge ou d'une
+// proposition. Stockées ici plutôt que sur un stockage objet, que le Lab n'a
+// pas : le volume attendu se compte en dizaines de fichiers de quelques
+// centaines de kilo-octets, et l'interface les réduit avant l'envoi.
+//
+// Servies par `GET /api/images/<uuid>`, avec un cache long : l'octet d'une
+// image n'est jamais réécrit — remplacer la couverture crée une nouvelle ligne
+// et repointe `cover_image_url`.
+export const images = pgTable("images", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  // Qui l'a déposée. ON DELETE SET NULL : supprimer un compte ne doit pas
+  // faire disparaître la couverture d'un challenge encore ouvert.
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "set null" }),
+  mime_type: varchar("mime_type", { length: 64 }).notNull(),
+  byte_size: integer("byte_size").notNull(),
+  data: bytea("data").notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_images_user_id").on(table.user_id),
+}));
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL!,
   // Toutes les colonnes de dates sont des `timestamp` sans fuseau, et elles
@@ -1314,6 +1344,7 @@ export const db = drizzle(pool, {
     validation_scenario_steps,
     validation_scenario_runs,
     validation_step_feedbacks,
+    images,
   },
 });
 

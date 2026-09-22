@@ -3,9 +3,11 @@
 import { formatCP } from "@/lib/formatters";
 import { useLeaderboardContext } from "@/components/leaderboard/LeaderboardProvider";
 
-/** Leaderboard page header — eyebrow + H1 + a row of at-a-glance stats
- * (CP distributed, contributors ranked, scored contributions) that track
- * the selected project, independent of the search box. */
+/**
+ * L'en-tête de la maquette : la pastille « Live ranking » qui bat, le titre,
+ * l'accroche, et les trois chiffres à droite. Ils suivent le projet choisi,
+ * pas la recherche — chercher un nom ne change pas le total distribué.
+ */
 export function LeaderboardHero() {
   const { scoredEntries, projectId } = useLeaderboardContext();
 
@@ -14,38 +16,31 @@ export function LeaderboardHero() {
 
   const headStats = [
     { value: formatCP(poolCP), label: projectId === "all" ? "CP distributed" : "CP on this project" },
-    { value: String(scoredEntries.length), label: "contributors ranked" },
-    { value: String(totalItems), label: "scored contributions" },
+    { value: String(scoredEntries.length), label: "Contributors" },
+    { value: String(totalItems), label: "Scored contributions" },
   ];
 
   return (
-    <div className="animate-fade-up flex flex-wrap items-end justify-between gap-6">
-      <div className="flex min-w-0 flex-col gap-3">
-        <span className="flex items-center gap-2.5">
-          <span className="animate-ping-slow inline-block h-1.5 w-1.5 rounded-full bg-brandCP" />
-          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-brandCP">
-            Live ranking
-          </span>
-        </span>
-        <h1 className="text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl">
-          Leaderboard
-        </h1>
-        <p className="max-w-lg text-sm leading-relaxed text-white/60 sm:text-base">
-          Every contribution is detected, evaluated and rewarded in CP by the agent. No
-          gatekeepers, no invisible work.
+    <section className="v-head">
+      <div className="v-head-text">
+        <p className="v-eyebrow">
+          <span className="v-eyebrow-dot" />
+          Live ranking
+        </p>
+        <h1 className="v-title">Leaderboard</h1>
+        <p className="v-lede">
+          Every contribution is detected, evaluated and rewarded, no invisible work.
         </p>
       </div>
 
-      <div className="hidden flex-wrap items-baseline gap-x-6 gap-y-2.5 sm:flex">
+      <dl className="v-stats">
         {headStats.map((stat) => (
-          <div key={stat.label} className="flex flex-col gap-0.5">
-            <span className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-              {stat.value}
-            </span>
-            <span className="text-[11px] text-white/45">{stat.label}</span>
+          <div key={stat.label} className="v-stat">
+            <dd className="v-stat-value">{stat.value}</dd>
+            <dt className="v-stat-label">{stat.label}</dt>
           </div>
         ))}
-      </div>
-    </div>
+      </dl>
+    </section>
   );
 }

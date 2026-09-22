@@ -2,8 +2,6 @@ export type SignInVariantKey = 'default' | 'account-updated';
 
 export interface SignInVariant {
   key: SignInVariantKey;
-  /** Uppercase label sitting next to the brandCP rule, as on the home hero. */
-  eyebrow: string;
   title: string;
   /** lines[0] leads and is set larger; the rest is supporting detail. */
   lines: string[];
@@ -23,16 +21,13 @@ export interface SignInVariant {
 const VARIANTS: Record<SignInVariantKey, SignInVariant> = {
   default: {
     key: 'default',
-    eyebrow: 'Sign in',
-    title: 'Sign in to track your work',
+    title: 'Sign in',
     lines: [
       'To follow your contributions, evaluate them and reward you in CP, we need to know who you are.',
-      'We only read your name, your email address and your profile picture. Nothing is posted on your behalf, and nothing else in your Google account is accessed.',
     ],
   },
   'account-updated': {
     key: 'account-updated',
-    eyebrow: 'Reconnect',
     title: 'Please sign in again',
     lines: [
       'Your account was updated by an administrator.',

@@ -1,41 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, GitBranch } from "lucide-react";
+import { useRouter } from "next/navigation";
+
 import type { SandboxView } from "@/lib/public/sandbox";
-import { SandboxTypeBadge } from "./SandboxTypeBadge";
-import { StarButton, type StarState } from "./StarButton";
-import { toScore10 } from "../../../../../packages/services/challenge/repo-score";
+import { useStarToggle, type StarState } from "./StarButton";
 import { challengePath, sandboxPath } from "@/lib/paths";
+import { coverShot } from "@/lib/coverImage";
+import { VitrineAvatar } from "@/components/vitrine/VitrineAvatar";
+import { ArrowTinyIcon } from "@/components/vitrine/SearchIcon";
 
 interface SandboxCardProps {
   sandbox: SandboxView;
   /** L'utilisateur connecté, ou `null` — sert à reconnaître « ma » proposition. */
   currentUserId: string | null;
+  /** Le rang dans le listing : il choisit l'illustration de repli. */
   index?: number;
   onStarState?: (sandboxId: string, state: StarState) => void;
-}
-
-/** Le repo, sans le protocole ni l'hôte : c'est `owner/name` qui identifie. */
-function repoLabel(url: string): string {
-  return url.replace(/^https?:\/\//i, "").replace(/^(www\.)?github\.com\//i, "");
-}
-
-/**
- * Le score formatif sur 10, ou `null`.
- *
- * La conversion /9 → /10 est celle du pipeline de scoring (`toScore10`), pas
- * une seconde implémentation : le score affiché sur une carte est exactement
- * celui que l'évaluation a produit.
- *
- * L'API a déjà filtré : `evaluation` n'est servi qu'à l'auteur et aux admins.
- * Ce composant n'a donc aucune règle de visibilité à appliquer.
- */
-function score10(sandbox: SandboxView): string | null {
-  if (sandbox.evaluation_status !== "done") return null;
-  const global = (sandbox.evaluation as { globalScore?: number } | null)?.globalScore;
-  if (typeof global !== "number" || Number.isNaN(global)) return null;
-  return toScore10(global).toFixed(1);
 }
 
 const dateFmt = new Intl.DateTimeFormat("en-US", {
@@ -45,24 +26,21 @@ const dateFmt = new Intl.DateTimeFormat("en-US", {
 });
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "-";
+  if (!iso) return "—";
   return dateFmt.format(new Date(iso));
 }
 
+/**
+ * La carte d'une proposition, d'après `Sandbox Redesign Vitrine.dc.html` :
+ * la photo occupe le haut, l'étoile se pose dessus, et le pied porte l'auteur
+ * et l'appel à l'action.
+ */
 export function SandboxCard({ sandbox, currentUserId, index = 0, onStarState }: SandboxCardProps) {
+  const router = useRouter();
+
   const mine = currentUserId !== null && sandbox.user_id === currentUserId;
   const promoted = sandbox.status === "promoted";
-  const archived = sandbox.status === "archived";
-  const score = score10(sandbox);
-
-  const statusLabel = promoted ? "Promoted" : archived ? "Archived" : mine ? "Your sandbox" : "Open";
-  const statusStyle = promoted
-    ? "bg-violet-500/10 text-violet-400"
-    : archived
-      ? "bg-white/[0.06] text-white/40"
-      : mine
-        ? "bg-brandCP/10 text-brandCP"
-        : "bg-white/[0.06] text-white/50";
+  const shot = coverShot(sandbox.cover_image_url, index, "sandbox");
 
   // Un sandbox promu ou archivé n'accepte plus de star (409 côté service) ;
   // l'auteur, lui, n'a jamais pu starer le sien (403).
@@ -71,93 +49,118 @@ export function SandboxCard({ sandbox, currentUserId, index = 0, onStarState }: 
     ? "You can’t star your own sandbox"
     : "This sandbox is no longer open to stars";
 
+  const { count, starred, pending, error, toggle } = useStarToggle({
+    sandboxId: sandbox.uuid,
+    starCount: sandbox.star_count,
+    myStar: sandbox.my_star,
+    disabled: starDisabled,
+    onState: (state) => onStarState?.(sandbox.uuid, state),
+  });
+
   // Le CTA d'un sandbox promu mène au challenge, pas à la proposition : c'est
-  // là qu'il y a désormais quelque chose à faire. Le titre, lui, continue
+  // là qu'il y a désormais quelque chose à faire. La carte, elle, continue
   // d'ouvrir le détail du sandbox.
+  const detail = sandboxPath(sandbox.slug);
   const ctaHref =
     promoted && sandbox.promoted_challenge_id
       ? challengePath(sandbox.promoted_challenge_slug ?? sandbox.promoted_challenge_id)
-      : sandboxPath(sandbox.slug);
-  const ctaLabel = promoted && sandbox.promoted_challenge_id ? "See challenge" : "Open";
+      : detail;
+  const ctaLabel = promoted ? "See the challenge" : mine ? "Open my sandbox" : "Read the proposal";
 
   return (
     <div
-      className={`animate-fade-up group flex min-w-0 flex-col gap-3.5 rounded-2xl border p-4 shadow-[0_14px_40px_-26px_rgba(0,0,0,0.6)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/[0.06] sm:p-5 ${
-        promoted
-          ? "border-violet-500/20 bg-white/[0.04] hover:border-violet-500/35"
-          : "border-white/10 bg-white/[0.04] hover:border-brandCP/25"
-      }`}
-      style={{ animationDelay: `${Math.min(index * 60, 480)}ms` }}
+      role="button"
+      tabIndex={0}
+      onClick={() => router.push(detail)}
+      onKeyDown={(event) => event.key === "Enter" && router.push(detail)}
+      className="v-card"
+      style={{ cursor: "pointer" }}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${statusStyle}`}
-            >
-              {statusLabel}
-            </span>
-            <SandboxTypeBadge type={sandbox.type} />
-            <span className="text-xs text-white/45">
-              {mine ? "by you" : `by ${sandbox.author?.full_name ?? "someone"}`}
-            </span>
+      <div className="v-card-shot">
+        {/* eslint-disable-next-line @next/next/no-img-element -- source libre : banque locale ou /api/images */}
+        <img src={shot.src} alt="" className="v-card-img" style={{ objectPosition: shot.position }} />
+        <div className="v-card-scrim" aria-hidden />
+
+        <div className="v-card-top">
+          <div className="v-card-top-left">
+            {promoted && <span className="v-sb-promoted">Promoted</span>}
           </div>
-          <Link
-            href={sandboxPath(sandbox.slug)}
-            className="text-lg font-semibold leading-snug tracking-tight text-white transition-colors duration-200 hover:text-brandCP"
-          >
-            {sandbox.title}
-          </Link>
+
+          <div className="v-sb-star-wrap">
+            <button
+              type="button"
+              className="v-sb-star"
+              data-on={starred ? "true" : "false"}
+              data-disabled={starDisabled ? "true" : "false"}
+              disabled={starDisabled || pending}
+              title={starDisabled ? starReason : undefined}
+              aria-pressed={starred}
+              aria-label={`${starred ? "Unstar" : "Star"} this sandbox`}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void toggle();
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill={starred ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+              {count}
+            </button>
+            {error && <span className="v-sb-star-error">{error}</span>}
+          </div>
         </div>
 
-        <StarButton
-          sandboxId={sandbox.uuid}
-          starCount={sandbox.star_count}
-          myStar={sandbox.my_star}
-          disabled={starDisabled}
-          disabledReason={starReason}
-          onState={(state) => onStarState?.(sandbox.uuid, state)}
-        />
+        <div className="v-card-bottom">
+          {/* Un vrai lien pour les moteurs, que ni un onClick ni un router.push
+              ne remplacent. Le clic simple reste géré par la carte. */}
+          <h3 className="v-card-title">
+            <Link
+              href={detail}
+              onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) event.stopPropagation();
+                else event.preventDefault();
+              }}
+              tabIndex={-1}
+            >
+              {sandbox.title}
+            </Link>
+          </h3>
+          {sandbox.context && <p className="v-card-desc">{sandbox.context}</p>}
+        </div>
       </div>
 
-      {sandbox.context && (
-        <p className="line-clamp-2 text-sm leading-relaxed text-white/55">{sandbox.context}</p>
-      )}
-
-      <div className="mt-auto flex flex-col gap-3.5">
-        <div className="flex flex-wrap gap-1.5">
-          <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-lg bg-white/[0.05] px-2.5 py-1 font-mono text-[11px] text-white/50">
-            <GitBranch className="h-3 w-3 shrink-0" />
-            {repoLabel(sandbox.repo_url)}
-          </span>
-          {score && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-brandCP/10 px-2.5 py-1 text-[11px] font-semibold text-brandCP">
-              <CheckCircle2 className="h-3 w-3" />
-              {score}/10
+      <div className="v-card-body">
+        <div className="v-sb-foot">
+          <div className="v-sb-author">
+            <VitrineAvatar
+              name={sandbox.author?.full_name ?? "Someone"}
+              avatarUrl={sandbox.author?.avatar_url}
+              size="1.875rem"
+            />
+            <span className="v-sb-author-text">
+              <span className="v-sb-author-name">
+                {mine ? "You" : sandbox.author?.full_name ?? "Someone"}
+              </span>
+              <span className="v-sb-author-date">{formatDate(sandbox.created_at)}</span>
             </span>
-          )}
-        </div>
+          </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] pt-3.5">
-          <span className="text-xs text-white/45">
-            {promoted ? "Now an official challenge" : `Created ${formatDate(sandbox.created_at)}`}
-          </span>
           <Link
             href={ctaHref}
-            className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all duration-200 group-hover:gap-2.5 ${
-              promoted
-                ? "bg-violet-500/15 text-violet-300"
-                : "bg-white/[0.06] text-white hover:bg-white/10"
-            }`}
+            className="v-card-cta"
+            data-quiet={promoted ? "true" : "false"}
+            onClick={(event) => event.stopPropagation()}
           >
             {ctaLabel}
-            <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z"
-                clipRule="evenodd"
-              />
-            </svg>
+            <ArrowTinyIcon />
           </Link>
         </div>
       </div>

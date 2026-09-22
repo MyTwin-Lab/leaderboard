@@ -48,25 +48,26 @@ function messageForStatus(status: number): string {
 }
 
 /**
- * Le bouton étoile, optimiste.
+ * La bascule d'une star, optimiste — sans aucun habillage.
  *
- * Le compteur bouge avant la réponse : starer est un geste sans conséquence
- * pour celui qui le fait, attendre un aller-retour serveur n'apporterait rien
- * qu'un délai. La réponse fait autorité et remplace l'estimation ; une erreur
- * la défait et s'explique juste en dessous.
- *
- * Public — un visiteur non connecté star aussi, et c'est `PUT /star` qui lui
- * pose alors son cookie d'identité anonyme.
+ * Extrait du bouton pour que la carte de la maquette vitrine, qui pose son
+ * étoile sur la photo, partage exactement le même comportement : le compteur
+ * bouge avant la réponse, la réponse fait autorité, une erreur défait
+ * l'estimation et s'explique.
  */
-export function StarButton({
+export function useStarToggle({
   sandboxId,
   starCount,
   myStar,
   disabled = false,
-  disabledReason,
-  variant = "compact",
   onState,
-}: StarButtonProps) {
+}: {
+  sandboxId: string;
+  starCount: number;
+  myStar: boolean;
+  disabled?: boolean;
+  onState?: (state: StarState) => void;
+}) {
   const [count, setCount] = useState(starCount);
   const [starred, setStarred] = useState(myStar);
   const [pending, setPending] = useState(false);
@@ -112,6 +113,37 @@ export function StarButton({
       setPending(false);
     }
   };
+
+  return { count, starred, pending, error, toggle };
+}
+
+/**
+ * Le bouton étoile, optimiste.
+ *
+ * Le compteur bouge avant la réponse : starer est un geste sans conséquence
+ * pour celui qui le fait, attendre un aller-retour serveur n'apporterait rien
+ * qu'un délai. La réponse fait autorité et remplace l'estimation ; une erreur
+ * la défait et s'explique juste en dessous.
+ *
+ * Public — un visiteur non connecté star aussi, et c'est `PUT /star` qui lui
+ * pose alors son cookie d'identité anonyme.
+ */
+export function StarButton({
+  sandboxId,
+  starCount,
+  myStar,
+  disabled = false,
+  disabledReason,
+  variant = "compact",
+  onState,
+}: StarButtonProps) {
+  const { count, starred, pending, error, toggle } = useStarToggle({
+    sandboxId,
+    starCount,
+    myStar,
+    disabled,
+    onState,
+  });
 
   const compact = variant === "compact";
   const label = disabled ? "Stars" : starred ? "Starred" : "Star";

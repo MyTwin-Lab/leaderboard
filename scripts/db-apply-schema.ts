@@ -798,6 +798,33 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
     sql: `ALTER TABLE sandboxes ADD COLUMN IF NOT EXISTS slug varchar(80)`,
   },
   slugStatement("sandboxes", "sandbox_slug_redirects"),
+  // ── Images de couverture ────────────────────────────────────────────
+  // Les fichiers déposés depuis l'app, faute de stockage objet. Réduits par
+  // l'interface avant l'envoi, et plafonnés côté API.
+  {
+    label: "images (table)",
+    sql: `
+      CREATE TABLE IF NOT EXISTS images (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid REFERENCES users(uuid) ON DELETE SET NULL,
+        mime_type varchar(64) NOT NULL,
+        byte_size integer NOT NULL,
+        data bytea NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+  {
+    label: "images.user_id (index)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_images_user_id ON images (user_id)`,
+  },
+  {
+    label: "challenges.cover_image_url",
+    sql: `ALTER TABLE challenges ADD COLUMN IF NOT EXISTS cover_image_url text`,
+  },
+  {
+    label: "sandboxes.cover_image_url",
+    sql: `ALTER TABLE sandboxes ADD COLUMN IF NOT EXISTS cover_image_url text`,
+  },
 ];
 
 async function main() {

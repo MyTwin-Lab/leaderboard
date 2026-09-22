@@ -12,15 +12,16 @@ interface LeaderboardContextValue {
   setSearchTerm: (term: string) => void;
   /** Project-scoped, unranked-zero-CP-excluded, NOT search-filtered — powers the hero stats. */
   scoredEntries: LeaderboardEntry[];
-  /** Search-filtered on top of scoredEntries — powers the podium + list. */
+  /** Search-filtered on top of scoredEntries — powers the list. */
   entries: LeaderboardEntry[];
-  /** Top 3 of `entries`, only while there's no active search (mirrors the design's "Podium" section). */
-  podium: LeaderboardEntry[];
-  /** Ranks 4+ when the podium is shown, otherwise every entry. */
+  /**
+   * La ligne « Leader », telle que la maquette la dessine : le premier du
+   * classement, et seulement hors recherche — une recherche rend une liste de
+   * résultats, pas un podium.
+   */
+  leader: LeaderboardEntry | null;
+  /** Le reste du classement : les rangs 2+ hors recherche, tous les résultats sinon. */
   rest: LeaderboardEntry[];
-  hasPodium: boolean;
-  /** Whether the "Other contributors" list + CTA banner should render at all. */
-  showList: boolean;
   isLoading: boolean;
   error: string | null;
   projects: ProjectFilter[];
@@ -115,7 +116,7 @@ export function LeaderboardProvider({
   };
 
   // Contributors with 0 CP aren't "ranked" yet — exclude them from the
-  // leaderboard's stats/podium/list, same as the home page's overview.
+  // leaderboard's stats/list, same as the home page's overview.
   const scoredEntries = useMemo(
     () => rawEntries.filter((entry) => entry.totalCP > 0),
     [rawEntries]
@@ -132,15 +133,14 @@ export function LeaderboardProvider({
     );
   }, [scoredEntries, searchTerm]);
 
-  const hasPodium = searchTerm.trim().length === 0 && filteredEntries.length > 0;
-  const { podium, rest } = useMemo(
+  const hasLeader = searchTerm.trim().length === 0 && filteredEntries.length > 0;
+  const { leader, rest } = useMemo(
     () => ({
-      podium: hasPodium ? filteredEntries.slice(0, 3) : [],
-      rest: hasPodium ? filteredEntries.slice(3) : filteredEntries,
+      leader: hasLeader ? filteredEntries[0] : null,
+      rest: hasLeader ? filteredEntries.slice(1) : filteredEntries,
     }),
-    [hasPodium, filteredEntries]
+    [hasLeader, filteredEntries]
   );
-  const showList = rest.length > 0 || filteredEntries.length === 0;
 
   const value = useMemo<LeaderboardContextValue>(
     () => ({
@@ -150,17 +150,15 @@ export function LeaderboardProvider({
       setSearchTerm: handleSearchChange,
       scoredEntries,
       entries: filteredEntries,
-      podium,
+      leader,
       rest,
-      hasPodium,
-      showList,
       isLoading,
       error,
       projects,
       currentUserId,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projectId, searchTerm, scoredEntries, filteredEntries, podium, rest, hasPodium, showList, isLoading, error, projects, currentUserId]
+    [projectId, searchTerm, scoredEntries, filteredEntries, leader, rest, isLoading, error, projects, currentUserId]
   );
 
   return <LeaderboardContext.Provider value={value}>{children}</LeaderboardContext.Provider>;

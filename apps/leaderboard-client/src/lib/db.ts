@@ -14,6 +14,7 @@ import {
   SandboxRepository,
   SandboxStarRepository,
   SandboxRewardRepository,
+  ImageRepository,
 } from "../../../../packages/database-service/repositories/index";
 
 export const repositories = {
@@ -30,6 +31,7 @@ export const repositories = {
   sandbox: new SandboxRepository(),
   sandboxStar: new SandboxStarRepository(),
   sandboxReward: new SandboxRewardRepository(),
+  image: new ImageRepository(),
 };
 
 export type Repositories = typeof repositories;

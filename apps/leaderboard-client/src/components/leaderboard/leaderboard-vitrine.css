@@ -1,0 +1,257 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Leaderboard — d'après `Leaderboard Vitrine.dc.html`.
+   Une seule mise en page, qui se plie aux largeurs par `clamp()` : la maquette
+   n'a pas de version téléphone distincte ici.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── La barre de filtres ────────────────────────────────────────────────
+   Même grammaire que celle des challenges : le filet au-dessus, une gélule
+   pleine largeur, et pas de menu déroulant. */
+.v-lb-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-top: 1px solid var(--v-line);
+  padding-top: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.v-lb-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+
+/* ── La liste ───────────────────────────────────────────────────────────── */
+.v-lb-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.v-lb-list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--v-line);
+  border-radius: var(--v-radius);
+  background: var(--v-surface);
+}
+
+.v-lb-item {
+  display: flex;
+  border-top: 1px solid rgb(17 22 26 / 0.08);
+}
+
+/* La première ligne de la liste n'a pas de trait au-dessus : c'est le bord de
+   la carte qui le porte déjà. */
+.v-lb-item:first-child {
+  border-top-color: transparent;
+}
+
+/* ── Les lignes ─────────────────────────────────────────────────────────
+   Le leader a exactement les mêmes mesures que les autres : seuls son fond,
+   son rang en vert et sa pastille « LEADER » le distinguent. */
+.v-lb-row[data-leader="true"] {
+  background: rgb(11 122 100 / 0.05);
+}
+
+.v-lb-row[data-leader="true"]:hover {
+  background: rgb(11 122 100 / 0.09);
+}
+
+.v-lb-row[data-leader="true"] .v-lb-row-rank {
+  color: var(--v-accent);
+}
+
+.v-lb-kicker {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+.v-lb-row {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: clamp(0.75rem, 1.6vw, 1.125rem);
+  padding: 1rem clamp(1rem, 2.2vw, 1.625rem);
+  background: transparent;
+  color: inherit;
+  transition: background 0.16s var(--v-ease);
+}
+
+.v-lb-row[data-me="true"] {
+  background: rgb(11 122 100 / 0.04);
+}
+
+.v-lb-row:hover {
+  background: rgb(11 122 100 / 0.05);
+  color: inherit;
+}
+
+.v-lb-row-rank {
+  width: 1.5rem;
+  flex-shrink: 0;
+  text-align: center;
+  font-family: var(--v-font-h);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--v-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.v-lb-row-text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.v-lb-row-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.v-lb-row-name {
+  min-width: 0;
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.015em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v-lb-row-bio {
+  font-size: 0.8125rem;
+  color: var(--v-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v-lb-row-cp {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.v-lb-row-cp-value {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.v-lb-row-cp-unit {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--v-accent);
+}
+
+.v-lb-row-arrow {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: rgb(17 22 26 / 0.25);
+}
+
+/* ── Le badge « YOU » ───────────────────────────────────────────────────── */
+.v-lb-you {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: rgb(11 122 100 / 0.12);
+  padding: 0.1rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--v-accent);
+}
+
+/* ── L'état vide, dans la carte ─────────────────────────────────────────── */
+.v-lb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 3.25rem 1.25rem;
+}
+
+.v-lb-empty-title {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.v-lb-empty-sub {
+  font-size: 0.875rem;
+  color: var(--v-muted);
+}
+
+/* ── Le message d'erreur ────────────────────────────────────────────────── */
+.v-lb-error {
+  border-radius: var(--v-radius);
+  border: 1px solid rgb(190 40 40 / 0.25);
+  background: rgb(190 40 40 / 0.06);
+  padding: 1rem 1.25rem;
+  font-size: 0.9375rem;
+  color: #8f2323;
+}
+
+/* ── La ligne « mise à jour » sous la liste ─────────────────────────────── */
+.v-lb-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem clamp(1rem, 2.2vw, 1.625rem);
+  border-top: 1px solid rgb(17 22 26 / 0.08);
+  font-size: 0.75rem;
+  color: var(--v-subtle);
+}
+
+.v-lb-loading-dot {
+  display: inline-block;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: var(--v-accent);
+  animation: v-live 2.4s var(--v-ease) infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Téléphone.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Les chiffres d'en-tête sortent, comme sur Sandbox et Challenges : sur un
+     écran de téléphone, ils repoussent le classement sous la ligne de flottaison
+     sans rien dire de plus. */
+  .v-leaderboard .v-stats {
+    display: none;
+  }
+
+  .v-leaderboard .v-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .v-leaderboard .v-head-text {
+    flex: 0 0 auto;
+  }
+
+  /* La pastille « LEADER » sort : sur 390px, elle rognait le nom qu'elle
+     désigne. Le fond vert et le rang en vert le disent déjà. */
+  .v-lb-kicker {
+    display: none;
+  }
+}

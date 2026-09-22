@@ -78,6 +78,8 @@ export interface SandboxView {
   repo_url: string;
   model_url: string | null;
   dataset_urls: string[];
+  /** L'image de couverture, posée par l'auteur. `null` = illustration par défaut. */
+  cover_image_url: string | null;
   status: string;
   promoted_challenge_id: string | null;
   /**
@@ -151,6 +153,7 @@ export function toSandboxView(input: SandboxViewInput): SandboxView {
     repo_url: s.repo_url,
     model_url: s.model_url ?? null,
     dataset_urls: Array.isArray(s.dataset_urls) ? s.dataset_urls : [],
+    cover_image_url: s.cover_image_url ?? null,
     status: s.status,
     promoted_challenge_id: s.promoted_challenge_id ?? null,
     promoted_challenge_slug: s.promoted_challenge_id ? input.promotedChallengeSlug ?? null : null,

@@ -1,25 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { ArrowIcon } from "@/components/home/ArrowIcon";
+
 import { fetchJson } from "@/lib/fetchJson";
-import { formatCP } from "@/lib/formatters";
-import { TabPills } from "@/components/ui/TabPills";
 import type { SandboxView } from "@/lib/public/sandbox";
 import type { SandboxStarTier } from "../../../../../packages/database-service/domain/entities";
+import { vitrineFontVars } from "@/components/vitrine/fonts";
+import { SearchIcon } from "@/components/vitrine/SearchIcon";
 import { CreateSandboxModal } from "./CreateSandboxModal";
 import { SandboxCard } from "./SandboxCard";
 import {
   filterAndSort,
   searchPool,
   statusCounts,
-  type SandboxSort,
   type SandboxStatusFilter,
 } from "./sandboxFilters";
 import type { StarState } from "./StarButton";
+
+import "@/components/vitrine/vitrine.css";
+import "./sandbox-vitrine.css";
 
 interface SandboxListResponse {
   sandboxes: SandboxView[];
@@ -39,11 +41,6 @@ interface SandboxListResponse {
  */
 const CREATOR_ROLES = ["admin", "contributor", "medical_pro"];
 
-const SORTS: { key: SandboxSort; label: string }[] = [
-  { key: "stars", label: "Most starred" },
-  { key: "recent", label: "Newest" },
-];
-
 const PILLS: { key: SandboxStatusFilter; label: string }[] = [
   { key: "open", label: "Open" },
   { key: "promoted", label: "Promoted" },
@@ -51,20 +48,27 @@ const PILLS: { key: SandboxStatusFilter; label: string }[] = [
 ];
 
 /**
- * Le listing public des propositions.
+ * Le listing public des propositions, d'après
+ * `Sandbox Redesign Vitrine.dc.html`.
  *
- * Rendu par `app/sandbox/page.tsx`. Tout se lit ici, côté client, parce que
- * l'état du visiteur (sa star, ses propositions) dépend de sa session — sauf
- * pour un visiteur sans aucun cookie (`knownAnonymous`), à qui la page serveur
+ * Deux écarts assumés par rapport à la maquette, demandés avec elle : le menu
+ * déroulant des types disparaît, et le lien « How MyTwin Lab works » reste
+ * sous l'accroche.
+ *
+ * Tout se lit côté client, parce que l'état du visiteur (sa star, ses
+ * propositions, son droit de créer) dépend de sa session — sauf pour un
+ * visiteur sans aucun cookie (`knownAnonymous`), à qui la page serveur
  * pré-remplit le listing pour qu'il arrive dans le HTML.
  */
 export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: boolean }) {
   const queryClient = useQueryClient();
 
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SandboxSort>("stars");
   const [status, setStatus] = useState<SandboxStatusFilter>("open");
   const [createOpen, setCreateOpen] = useState(false);
+  // Le rectangle du bouton cliqué : la modale s'ouvre depuis lui.
+  const [origin, setOrigin] = useState<{ x: number; y: number; w: number } | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   /**
    * **Le fetch qui rafraîchit la session.**
@@ -73,7 +77,7 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
    * n'y joue, et un access_token expiré y ferait passer un connecté pour un
    * anonyme — plus de « Mine », plus de « my_star », plus de bouton de
    * création. `/api/contributors/me`, lui, est dans le matcher : c'est ce
-   * fetch-là qui renouvelle le jeton, exactement comme sur `challenges/[slug]`.
+   * fetch-là qui renouvelle le jeton.
    *
    * `retry: false` : un 401 est ici un état normal (visiteur non connecté), pas
    * une panne à réessayer trois fois.
@@ -103,24 +107,23 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
   const canCreate = !!me && CREATOR_ROLES.includes(me.role);
 
   const sandboxes = useMemo(() => listQuery.data?.sandboxes ?? [], [listQuery.data]);
-  const tiers = listQuery.data?.tiers ?? [];
-  const promotionBonusCp = listQuery.data?.promotion_bonus_cp ?? 0;
 
   const pool = useMemo(() => searchPool(sandboxes, query), [sandboxes, query]);
   const counts = useMemo(() => statusCounts(pool, currentUserId), [pool, currentUserId]);
+  // Le tri de la maquette : les plus étoilées d'abord.
   const visible = useMemo(
-    () => filterAndSort(sandboxes, { query, status, sort, currentUserId }),
-    [sandboxes, query, status, sort, currentUserId],
+    () => filterAndSort(sandboxes, { query, status, sort: "stars", currentUserId }),
+    [sandboxes, query, status, currentUserId],
   );
 
   const headStats = useMemo(() => {
-    const open = sandboxes.filter((s) => s.status === "open").length;
-    const promoted = sandboxes.filter((s) => s.status === "promoted").length;
-    const stars = sandboxes.reduce((sum, s) => sum + s.star_count, 0);
+    const open = sandboxes.filter((sandbox) => sandbox.status === "open").length;
+    const promoted = sandboxes.filter((sandbox) => sandbox.status === "promoted").length;
+    const stars = sandboxes.reduce((sum, sandbox) => sum + sandbox.star_count, 0);
     return [
       { value: String(open), label: "Open sandboxes" },
-      { value: formatCP(stars), label: "Stars given" },
-      { value: String(promoted), label: "Promoted" },
+      { value: String(stars), label: "Stars given" },
+      { value: String(promoted), label: "Promoted so far" },
     ];
   }, [sandboxes]);
 
@@ -134,15 +137,15 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
       if (!current) return current;
       return {
         ...current,
-        sandboxes: current.sandboxes.map((s) =>
-          s.uuid === sandboxId
+        sandboxes: current.sandboxes.map((sandbox) =>
+          sandbox.uuid === sandboxId
             ? {
-                ...s,
+                ...sandbox,
                 star_count: state.star_count,
                 my_star: state.my_star,
                 paid_tier_thresholds: state.paid_tier_thresholds,
               }
-            : s,
+            : sandbox,
         ),
       };
     });
@@ -157,182 +160,105 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
     setStatus("mine");
   };
 
+  const openCreate = (event: React.MouseEvent<HTMLElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setOrigin({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, w: rect.width });
+    setCreateOpen(true);
+  };
+
   const loading = listQuery.isPending || !sessionKnown;
 
   return (
-    <>
-      <div className="space-y-6 sm:space-y-8">
+    <div className={`vitrine v-sandbox ${vitrineFontVars}`}>
+      <div className="v-main">
         {/* ── En-tête ─────────────────────────────────────────────── */}
-        <div className="animate-fade-up flex flex-wrap items-end justify-between gap-6">
-          <div className="flex min-w-0 flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <span className="h-[2px] w-7 rounded-full bg-brandCP" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-brandCP">
-                Community proposals
-              </span>
-            </div>
-            <h1 className="text-4xl font-bold leading-[1.06] tracking-tight text-white sm:text-5xl">
-              Sandbox
-            </h1>
-            <p className="max-w-xl text-sm leading-relaxed text-white/60 sm:text-base">
-              Anyone can propose an open challenge in the health domain. The community stars what it
-              wants built, and the best ideas get promoted into official challenges.
+        <section className="v-head">
+          <div className="v-head-text">
+            <p className="v-eyebrow">
+              <span className="v-eyebrow-dot" />
+              Open proposals
             </p>
-            {/* L'entrée vers la landing du Lab : la navbar garde « Sandbox » sur ce
-                listing, c'est donc ici que se lit « à quoi sert tout ça ». */}
-            <Link
-              href="/about"
-              className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:gap-2"
-            >
-              How MyTwin Lab works
-              <ArrowIcon />
-            </Link>
+            <h1 className="v-title">Sandbox</h1>
+            <p className="v-lede">Anyone can propose a health project here — no committee.</p>
           </div>
 
-          <div className="hidden flex-wrap gap-2.5 sm:flex">
+          <dl className="v-stats">
             {headStats.map((stat) => (
-              <div key={stat.label} className="flex min-w-[104px] flex-col gap-0.5 px-4 py-3">
-                <span className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-                  {stat.value}
-                </span>
-                <span className="text-[11px] text-white/45">{stat.label}</span>
+              <div key={stat.label} className="v-stat">
+                <dd className="v-stat-value">{stat.value}</dd>
+                <dt className="v-stat-label">{stat.label}</dt>
               </div>
             ))}
-          </div>
-        </div>
+          </dl>
+        </section>
 
-        {/* ── Recherche, tri, création ────────────────────────────── */}
-        <div className="flex flex-col gap-3.5">
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
-            <div className="relative flex-1">
-              <svg
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
-                  clipRule="evenodd"
-                />
-              </svg>
+        {/* ── Recherche et pills ──────────────────────────────────── */}
+        <section className="v-sb-filters">
+          <div className="v-sb-filters-row">
+            <div className="v-search">
+              <span className="v-search-icon">
+                <SearchIcon />
+              </span>
               <input
                 type="search"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search sandboxes…"
-                className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-white/30 transition-colors focus:border-brandCP/60 focus:outline-none"
               />
             </div>
 
-            {/* Le même sélecteur que les onglets du profil : le fond glisse
-                d'un tri à l'autre au lieu de sauter, et ses couleurs sortent
-                des tokens de thème — un `bg-white` opaque resterait blanc sur
-                fond clair, `globals.css` ne rattrapant que les translucides. */}
-            <TabPills
-              tabs={SORTS.map(({ label }) => ({ label }))}
-              active={SORTS.findIndex(({ key }) => key === sort)}
-              onChange={(index) => setSort(SORTS[index].key)}
-              className="hidden shrink-0 sm:block"
-            />
-
             {canCreate && (
-              <button
-                type="button"
-                onClick={() => setCreateOpen(true)}
-                className="hidden shrink-0 items-center gap-1.5 rounded-xl border border-brandCP/25 sm:flex bg-brandCP/10 px-4 py-2.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/20 hover:shadow-[0_0_16px_rgba(10,247,193,0.15)]"
-              >
-                <Plus className="h-4 w-4" />
+              <button type="button" className="v-sb-new" onClick={openCreate}>
+                <Plus />
                 New sandbox
               </button>
             )}
           </div>
 
-          {/* ── Pills de statut ──────────────────────────────────── */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] pt-3.5">
-            <div className="flex flex-wrap gap-1.5">
-              {PILLS.map(({ key, label }) => {
-                const active = status === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setStatus(key)}
-                    className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
-                      active
-                        ? "bg-brandCP/20 text-brandCP shadow-[0_0_10px_rgba(10,247,193,0.12)]"
-                        : "text-white/45 hover:bg-white/[0.05] hover:text-white/70"
-                    }`}
-                  >
-                    {label}
-                    <span
-                      className={`rounded-full px-1.5 py-px text-[10px] font-bold ${
-                        active ? "bg-brandCP/20 text-brandCP" : "bg-white/[0.06] text-white/40"
-                      }`}
-                    >
-                      {counts[key]}
-                    </span>
-                  </button>
-                );
-              })}
+          <div className="v-sb-filters-row">
+            <div className="v-pills">
+              {PILLS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  className="v-pill"
+                  data-on={status === key ? "true" : "false"}
+                  onClick={() => setStatus(key)}
+                >
+                  {label}
+                  <span className="v-pill-count">{counts[key]}</span>
+                </button>
+              ))}
             </div>
-            <span className="text-xs text-white/40">
-              {visible.length} sandbox{visible.length !== 1 ? "es" : ""} shown
+            <span className="v-sb-count">
+              {visible.length} sandbox{visible.length === 1 ? "" : "es"} shown
             </span>
           </div>
-        </div>
+        </section>
 
-        {/* ── Grille ──────────────────────────────────────────────── */}
+        {/* ── La grille ───────────────────────────────────────────── */}
         {loading ? (
-          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="v-sb-grid">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-56 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
+              <div key={i} className="v-sb-skeleton" />
             ))}
           </div>
         ) : listQuery.isError ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] py-14 text-center text-sm text-white/40">
-            Couldn’t load the sandboxes. Reload the page to try again.
+          <div className="v-empty">
+            <span className="v-empty-title">Couldn’t load the sandboxes</span>
+            <span className="v-empty-sub">Reload the page to try again.</span>
           </div>
         ) : visible.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/12 bg-white/[0.02] py-16 text-center">
-            <svg
-              className="h-8 w-8 text-white/20"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 15.803M10.5 7.5v6m3-3h-6"
-              />
-            </svg>
-            <p className="text-sm text-white/40">
+          <div className="v-empty">
+            <span className="v-empty-title">
               {status === "mine" && sandboxes.length > 0
-                ? "You haven’t proposed anything yet."
-                : "No sandbox matches this filter."}
-            </p>
-            {canCreate && (
-              <button
-                type="button"
-                onClick={() => setCreateOpen(true)}
-                className="flex items-center gap-1.5 rounded-xl border border-brandCP/20 bg-brandCP/10 px-5 py-2 text-sm font-semibold text-brandCP transition-all duration-200 hover:bg-brandCP/20"
-              >
-                <Plus className="h-4 w-4" />
-                Propose something
-              </button>
-            )}
+                ? "You haven’t proposed anything yet"
+                : "No sandbox matches this filter"}
+            </span>
+            <span className="v-empty-sub">Try another filter, or clear the search.</span>
           </div>
         ) : (
-          // `key` sur le tri et le filtre, comme le panneau des onglets du
-          // profil : React remonte la grille, donc les cartes rejouent leur
-          // apparition au lieu de se réordonner sans transition. La recherche
-          // n'y est pas — la liste se réduirait à chaque frappe.
-          <div
-            key={`${sort}-${status}`}
-            className="animate-fade-up grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3"
-          >
+          <div ref={gridRef} className="v-sb-grid">
             {visible.map((sandbox, index) => (
               <SandboxCard
                 key={sandbox.uuid}
@@ -345,21 +271,36 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
           </div>
         )}
 
-        {tiers.length > 0 && (
-          <p className="text-center text-[11px] text-white/25">
-            Star milestones: {tiers.map((tier) => `${tier.stars}★ = ${formatCP(tier.cp)} CP`).join(" · ")}
-            {promotionBonusCp > 0 && ` · promotion bonus ${formatCP(promotionBonusCp)} CP`}
-          </p>
-        )}
+        {/* ── Le bandeau de bas de page ───────────────────────────── */}
+        <section className="v-strip">
+          <div className="v-strip-text">
+            <span className="v-strip-title">Got a project of your own?</span>
+            <span className="v-strip-sub">
+              Open a sandbox with your repository — you stay its only author, and the stars it
+              collects pay you as it grows.
+            </span>
+          </div>
+          {canCreate ? (
+            <button type="button" className="v-strip-cta" onClick={openCreate}>
+              New sandbox
+            </button>
+          ) : (
+            <Link href="/signin?from=/sandbox" className="v-strip-cta">
+              Sign in to propose
+            </Link>
+          )}
+        </section>
+
       </div>
 
-      {/* Monté hors du conteneur animé : une modale `fixed` rendue dans un
-          sous-arbre transformé se retrouverait confinée dans sa boîte. */}
+      {/* Monté hors du conteneur : une modale `fixed` rendue dans un sous-arbre
+          transformé se retrouverait confinée dans sa boîte. */}
       <CreateSandboxModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSaved={onCreated}
+        origin={origin}
       />
-    </>
+    </div>
   );
 }

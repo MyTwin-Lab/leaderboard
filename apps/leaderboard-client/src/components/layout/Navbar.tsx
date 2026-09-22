@@ -77,8 +77,8 @@ export const Navbar = ({ session }: NavbarProps) => {
     return () => { document.body.style.overflow = "unset"; };
   }, [mobileMenuOpen]);
 
+  // Pas de « Home » : c'est le logo, à gauche, qui y mène.
   const navLinks = [
-    { name: "Home", path: "/home" },
     { name: "Sandbox", path: "/sandbox" },
     { name: "Leaderboard", path: "/leaderboard" },
     { name: "Challenges", path: "/challenges" },
@@ -133,7 +133,7 @@ export const Navbar = ({ session }: NavbarProps) => {
               }}
             >
               {/* Logo */}
-              <Link href="/" className="z-50 flex items-center">
+              <Link href="/home" className="z-50 flex items-center">
                 <MyTwinLogo
                   className="h-6.5 w-auto sm:h-9"
                   style={{

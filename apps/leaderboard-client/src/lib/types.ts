@@ -159,6 +159,8 @@ export type ProjectChallengeSummary = {
   activeContributors: number;
   /** 7 daily contribution counts for this challenge, oldest → newest. */
   spark: number[];
+  /** L'image de couverture, posée à la création ou à l'édition. */
+  coverImageUrl: string | null;
 };
 
 export type ProjectWithChallenges = {

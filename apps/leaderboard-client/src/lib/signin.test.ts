@@ -28,10 +28,9 @@ describe('resolveSignInVariant', () => {
     expect(resolveSignInVariant('Account-Updated').key).toBe('default');
   });
 
-  it('gives every variant an eyebrow, a title and at least one line of body copy', () => {
+  it('gives every variant a title and at least one line of body copy', () => {
     for (const reason of [null, 'account-updated']) {
       const variant = resolveSignInVariant(reason);
-      expect(variant.eyebrow.length).toBeGreaterThan(0);
       expect(variant.title.length).toBeGreaterThan(0);
       expect(variant.lines.length).toBeGreaterThan(0);
       expect(variant.lines.every((line) => line.length > 0)).toBe(true);

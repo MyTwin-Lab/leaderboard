@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
   CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck, Cpu, Package,
-  ListTodo, Trash2, FileText, Eye, Rocket,
+  ListTodo, Trash2, FileText, Eye, Rocket, Image as ImageIcon,
 } from 'lucide-react';
 import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
@@ -15,6 +15,7 @@ import { ChallengeTasksEditor } from '@/components/admin/ChallengeTasksEditor';
 import { ChallengeSlackSignalsEditor } from '@/components/admin/ChallengeSlackSignalsEditor';
 import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
 import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
+import { CoverImageField } from '@/components/admin/CoverImageField';
 import { flushTemplateTasks } from './templateTasksFlush';
 import { flushBrief } from './briefFlush';
 import { buildPromotionRequestBody } from './promotionRequestBody';
@@ -58,6 +59,7 @@ export interface EditableChallenge {
   required_validations?: number | null;
   compute_enabled?: boolean | null;
   workspace_mode?: 'provided_repo' | 'own_repo' | null;
+  cover_image_url?: string | null;
 }
 
 /**
@@ -137,6 +139,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [endDate, setEndDate] = useState('');
   const [cp, setCp] = useState(100);
   const [description, setDescription] = useState('');
+  const [coverImageUrl, setCoverImageUrl] = useState('');
   const [roadmap, setRoadmap] = useState('');
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [githubRepo, setGithubRepo] = useState('');
@@ -201,6 +204,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setEndDate(toDateInput(challenge.end_date));
       setCp(challenge.contribution_points_reward);
       setDescription(challenge.description ?? '');
+      setCoverImageUrl(challenge.cover_image_url ?? '');
       setRoadmap(challenge.roadmap ?? '');
       setShowRoadmap(!!challenge.roadmap);
       setWorkspaceMode(challenge.workspace_mode ?? 'provided_repo');
@@ -298,6 +302,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     setEndDate('');
     setCp(100);
     setDescription('');
+    setCoverImageUrl('');
     setRoadmap('');
     setShowRoadmap(false);
     setGithubRepo('');
@@ -369,6 +374,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         start_date: startDate || null,
         end_date: endDate || null,
         description: description.trim() || undefined,
+        // Vide = on efface : `null` est une valeur, l'absence n'en est pas une.
+        cover_image_url: coverImageUrl.trim() || null,
         roadmap: roadmap.trim() || undefined,
         // Without rules an ML/code challenge awards nothing — the service has
         // nothing to score against.
@@ -854,6 +861,13 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
               )}
             </Field>
           )}
+
+          {/* ── Couverture ──
+              L'image que porteront la carte du listing et l'en-tête de la
+              page du challenge. Posée à la création, modifiable ici. ── */}
+          <Field icon={<ImageIcon className="h-3.5 w-3.5" />} label="Cover image">
+            <CoverImageField value={coverImageUrl} onChange={setCoverImageUrl} />
+          </Field>
 
           {/* ── Description ── */}
           <Field icon={<AlignLeft className="h-3.5 w-3.5" />} label="Description">
