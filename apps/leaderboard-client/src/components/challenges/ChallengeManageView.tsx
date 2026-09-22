@@ -49,6 +49,8 @@ interface Challenge {
   compute_enabled?: boolean | null;
   /** Repris tel quel par le tiroir d'édition : sans lui, enregistrer l'effacerait. */
   cover_image_url?: string | null;
+  /** Même raison : le tiroir le relit pour ne pas l'effacer en enregistrant. */
+  host?: string | null;
 }
 
 interface TeamMember { id: string; fullName: string; githubUsername?: string; avatarUrl?: string; }

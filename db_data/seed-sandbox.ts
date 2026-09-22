@@ -1,4 +1,5 @@
 import { eq, and } from "drizzle-orm";
+import { logBriefs, logHosts } from "./challenge-content.js";
 import { db, sandboxes, users, projects } from "../packages/database-service/db/drizzle.js";
 import {
   AppSettingsRepository,
@@ -394,6 +395,11 @@ async function main() {
       ? "✓ Sandbox « DICOM anonymiser » créé + 6 stars (palier 5), archivé"
       : "✓ Sandbox « DICOM anonymiser » déjà présent"
   );
+
+  // La proposition promue est devenue un challenge : il lui faut son brief,
+  // comme aux autres. Voir `db_data/briefs.ts`.
+  await logBriefs();
+  await logHosts();
 
   console.log("\n✅ Sandbox seed terminé avec succès !");
   console.log("   /sandbox — 3 open, 1 promoted, 1 archived (visible de son auteur seul)");

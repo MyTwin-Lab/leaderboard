@@ -139,13 +139,16 @@ html[data-mode="light"] .vitrine textarea.v-bare {
   }
 }
 
+/* L'onde reprend la couleur de la pastille (`--v-dot`), pour qu'un thème qui
+   change la seconde n'en laisse pas la première en vert. Repli sur l'accent
+   de la maquette : c'est la valeur que l'animation portait en dur. */
 @keyframes v-live {
   0% {
-    box-shadow: 0 0 0 0 rgb(11 122 100 / 0.45);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--v-dot, var(--v-accent)) 45%, transparent);
   }
   70%,
   100% {
-    box-shadow: 0 0 0 0.45rem rgb(11 122 100 / 0);
+    box-shadow: 0 0 0 0.45rem color-mix(in srgb, var(--v-dot, var(--v-accent)) 0%, transparent);
   }
 }
 
@@ -200,12 +203,21 @@ html[data-mode="light"] .vitrine textarea.v-bare {
   color: var(--v-subtle);
 }
 
+/* `--v-dot` porte la couleur de la pastille et celle de son onde : les deux
+   doivent bouger ensemble, et `v-live` la lit plutôt que de la coder en dur.
+   Par défaut l'accent de la maquette ; `data-brand` prend celle du thème. */
 .v-eyebrow-dot {
+  --v-dot: var(--v-accent);
   width: 0.4rem;
   height: 0.4rem;
+  flex: none;
   border-radius: 999px;
-  background: var(--v-accent);
+  background: var(--v-dot);
   animation: v-live 2.4s var(--v-ease) infinite;
+}
+
+.v-eyebrow-dot[data-brand="true"] {
+  --v-dot: var(--theme-primary);
 }
 
 .v-title {

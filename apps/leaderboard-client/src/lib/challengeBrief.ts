@@ -35,6 +35,21 @@ export function findBrief<T extends { filename: string }>(docs: T[]): T | null {
 }
 
 /**
+ * Ce qu'on sait du groupe quand le visiteur arrive par un lien d'invitation —
+ * la réponse de `GET /api/challenges/[id]/group/[token]`.
+ *
+ * Ici plutôt que dans le composant qui l'affiche : c'est la forme d'une
+ * réponse d'API, et l'écran qui la rend a déjà changé une fois.
+ */
+export interface GroupInvite {
+  ownerName: string;
+  size: number;
+  maxSize: number;
+  joinable: boolean;
+  reason: string | null;
+}
+
+/**
  * Types de challenge dont l'accès passe par le brief.
  *
  * Les challenges de validation en sont exclus : aucune de leurs routes ne

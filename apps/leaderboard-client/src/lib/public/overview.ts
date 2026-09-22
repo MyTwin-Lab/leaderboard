@@ -17,6 +17,10 @@ export interface PublicOverview {
     type: string; start_date: string | null; end_date: string | null;
     contribution_points_reward: number; project_id: string;
     workspace_mode: string | null;
+    /** L'en-tête photo de la page publique — la même image que la carte du listing. */
+    cover_image_url: string | null;
+    /** Qui porte le challenge, tel que la page le rend. */
+    host: string | null;
   };
   team: Array<{ uuid: string; full_name: string; avatar_url: string | null; github_username: string | null }>;
   tasks: Array<{ uuid: string; user_id: string | null; status: string; parent_task_id: string | null }>;
@@ -55,6 +59,8 @@ export function toPublicOverview(data: any): PublicOverview {
       contribution_points_reward: c.contribution_points_reward ?? 0,
       project_id: c.project_id,
       workspace_mode: c.workspace_mode ?? null,
+      cover_image_url: c.cover_image_url ?? null,
+      host: c.host ?? null,
     },
     team: (data?.team ?? []).map(toPublicTeamMember),
     tasks: (data?.tasks ?? []).map(toTaskProgress),

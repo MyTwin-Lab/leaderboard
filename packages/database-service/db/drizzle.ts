@@ -79,6 +79,10 @@ export const challenges = pgTable("challenges", {
   // Une URL : soit celle d'une image déposée ici (`/api/images/<uuid>`), soit
   // une URL externe. NULL = la carte retombe sur une illustration par défaut.
   cover_image_url: text("cover_image_url"),
+  // Qui porte le challenge — le partenaire clinique ou l'équipe du Lab, en
+  // texte libre : c'est une phrase lue sur la page publique, pas une clé vers
+  // une table. NULL = la page n'affiche pas la carte de l'hôte.
+  host: text("host"),
   // Date de création réelle du challenge. `start_date` est une date métier,
   // optionnelle et éditable — elle ne peut pas servir de date de création.
   created_at: timestamp("created_at").defaultNow().notNull(),

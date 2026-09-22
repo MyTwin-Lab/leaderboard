@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
 import { ChallengeRepository } from "../packages/database-service/repositories/challenge.repo.js";
 import { SLUG_FALLBACK, slugify } from "../packages/database-service/domain/slug.js";
+import { logBriefs } from "./challenge-content.js";
 
 /**
  * Additive seed — inserts only missing data, never deletes or overwrites.
@@ -186,6 +187,15 @@ async function seed() {
     teamsInserted++;
   }
   console.log(`✓ Challenge teams: ${teamsInserted} inserted`);
+
+  // --- Briefs (un document `brief.md` par challenge, cf. challenge-content.ts) ---
+  // En dernier : la fonction retrouve ses challenges par leur slug, qui vient
+  // d'être posé au-dessus pour ceux que ce seed a créés.
+  //
+  // Les hôtes (`seedHosts`) ne sont pas posés ici, et c'est délibéré : ce seed
+  // tourne aussi contre la production, et `db_data/hosts.json` cite des
+  // établissements en exemple. Voir le commentaire de `seedHosts`.
+  await logBriefs();
 
   console.log("\n✅ Seed terminé avec succès!");
   process.exit(0);

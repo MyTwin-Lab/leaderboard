@@ -170,6 +170,8 @@ export class ChallengeRepository {
     if (validated.reward_rules !== undefined) dbData.reward_rules = validated.reward_rules ?? null;
     if (validated.compute_enabled !== undefined) dbData.compute_enabled = validated.compute_enabled;
     if (validated.cover_image_url !== undefined) dbData.cover_image_url = validated.cover_image_url ?? null;
+    // Vide = effacé : la carte de l'hôte disparaît de la page publique.
+    if (validated.host !== undefined) dbData.host = validated.host || null;
     // Without this, MlRewardsService.award() writing { completion } here was a
     // silent no-op — the field passed Zod validation but never made it into
     // dbData, so challenges.completion stayed 0 no matter how much CP was

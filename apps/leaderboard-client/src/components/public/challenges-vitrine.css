@@ -478,9 +478,21 @@
     height: 13px;
   }
 
-  /* La maquette téléphone s'arrête aux cartes. */
+  /* La maquette téléphone s'arrête aux cartes ; la page réelle garde son appel
+     à proposer — un listing où rien ne correspond doit dire où aller. Il
+     reprend donc la gouttière des sections : à cette largeur `.v-main` ne pose
+     plus de marge horizontale, chaque bloc porte la sienne, et sans celle-ci
+     le bandeau touchait les deux bords. */
   .v-ch-strip {
-    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin: 16px 16px 0;
+    padding: 18px;
+  }
+
+  .v-ch-strip .v-strip-cta {
+    justify-content: center;
   }
 }
 

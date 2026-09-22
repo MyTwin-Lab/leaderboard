@@ -9,14 +9,20 @@
  * brut interprété — le contenu vient d'un document rédigé par un admin,
  * mais rien ici ne peut injecter de balise.
  *
- * Deux échelles typographiques :
+ * Trois échelles typographiques :
  *  - `compact` : le tiroir Docs, où le document est lu dans un panneau
  *    latéral étroit. Classes identiques à l'implémentation d'origine.
  *  - `prose`   : le brief affiché pleine page avant de rejoindre un
  *    challenge, sur une colonne de lecture large.
+ *  - `vitrine` : le même brief sur la page vitrine d'un challenge. Seule
+ *    variante à ne pas porter d'utilitaires Tailwind : la maquette pose ses
+ *    propres tailles et couleurs, et `globals.css` réécrit `text-white/*` en
+ *    mode clair. Les classes `v-md-*` sont définies par
+ *    `components/challenges/vitrine/challenge-vitrine.css`, qui rattrape aussi
+ *    l'inline (gras, liens, code), commun aux trois variantes.
  */
 
-export type MarkdownVariant = 'compact' | 'prose';
+export type MarkdownVariant = 'compact' | 'prose' | 'vitrine';
 
 interface VariantStyles {
   h1: string; h2: string; h3: string;
@@ -53,6 +59,20 @@ const STYLES: Record<MarkdownVariant, VariantStyles> = {
     blockquote: 'my-4 border-l-2 border-brandCP/35 pl-4 text-sm leading-[1.75] text-white/45',
     pre: 'my-4 overflow-x-auto rounded-xl bg-white/[0.05] p-4 font-mono text-xs leading-relaxed text-white/75',
     hr: 'my-6 border-white/10',
+  },
+  vitrine: {
+    h1: 'v-md-h1',
+    h2: 'v-md-h2',
+    h3: 'v-md-h3',
+    p: 'v-md-p',
+    ul: 'v-md-ul',
+    ol: 'v-md-ol',
+    li: 'v-md-li',
+    bullet: 'v-md-bullet',
+    marker: 'v-md-marker',
+    blockquote: 'v-md-quote',
+    pre: 'v-md-pre',
+    hr: 'v-md-hr',
   },
 };
 

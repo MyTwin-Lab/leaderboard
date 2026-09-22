@@ -28,6 +28,8 @@ const updateChallengeSchema = z.object({
   compute_enabled: z.boolean().optional(),
   // Présent et vide (null) efface la couverture ; absent la laisse en place.
   cover_image_url: z.string().trim().max(2048).nullish(),
+  // Même règle pour l'hôte : présent et vide, il disparaît de la page.
+  host: z.string().trim().max(500).nullish(),
 });
 
 // GET /api/challenges/[id] - Récupérer un challenge

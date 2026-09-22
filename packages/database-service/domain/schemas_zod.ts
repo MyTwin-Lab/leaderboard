@@ -85,6 +85,7 @@ export const challengeSchema = z.object({
   project_id: z.string().uuid(),
   reward_rules: z.union([mlRewardRulesSchema, codeRewardRulesSchema]).nullish(),
   cover_image_url: coverImageUrlSchema.nullish(),
+  host: z.string().trim().max(500).nullish(),
   workspace_mode: z.enum(['provided_repo', 'own_repo']).nullish(),
   source_challenge_id: z.string().uuid().nullish(),
   cp_per_validation: z.number().int().nonnegative().nullish(),

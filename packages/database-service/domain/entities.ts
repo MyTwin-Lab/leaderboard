@@ -69,6 +69,8 @@ export interface Challenge {
   reward_rules?: MlRewardRules | CodeRewardRules | null;
   /** L'image de couverture, posée à la création et modifiable à l'édition. */
   cover_image_url?: string | null;
+  /** Qui porte le challenge, en une phrase. NULL = la page n'en dit rien. */
+  host?: string | null;
   workspace_mode?: ChallengeWorkspaceMode | null; // Code challenges uniquement
   source_challenge_id?: string | null; // Validation uniquement — le challenge ML validé
   cp_per_validation?: number | null;   // Validation uniquement — CP fixe par validation

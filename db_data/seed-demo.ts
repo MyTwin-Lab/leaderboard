@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { eq, and } from "drizzle-orm";
+import { logBriefs, logHosts } from "./challenge-content.js";
 import {
   db,
   projects,
@@ -479,6 +480,15 @@ async function main() {
     await runClaimAndVote(targetBroken, i, "broken");
   }
   console.log(`✓ Validation claims/observations/reveals/verdicts recorded — both targets should now be resolved`);
+
+  // Les deux challenges de démonstration ont un brief dans `db_data/briefs/`,
+  // que `seed.ts` n'a pas pu poser : ils n'existaient pas encore quand il a
+  // tourné. La fonction ne touche qu'aux challenges présents, donc l'appeler
+  // ici ne repose rien de ce qu'il a déjà écrit.
+  await logBriefs();
+  // Les hôtes vivent ici et non dans `seed.ts` : ce sont des exemples, et ce
+  // script-là est le seul à ne jamais tourner contre la production.
+  await logHosts();
 
   console.log("\n✅ Demo seed terminé avec succès!");
   console.log(`   ML challenge: ${mlChallengeId}`);

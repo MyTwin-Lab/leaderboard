@@ -825,6 +825,10 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
     label: "sandboxes.cover_image_url",
     sql: `ALTER TABLE sandboxes ADD COLUMN IF NOT EXISTS cover_image_url text`,
   },
+  {
+    label: "challenges.host",
+    sql: `ALTER TABLE challenges ADD COLUMN IF NOT EXISTS host text`,
+  },
 ];
 
 async function main() {

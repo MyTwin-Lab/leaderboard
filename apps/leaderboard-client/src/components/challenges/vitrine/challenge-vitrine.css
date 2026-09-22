@@ -1,0 +1,1033 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   La page d'un challenge avant d'y avoir rejoint — d'après
+   `Challenge Vitrine.dc.html`.
+
+   Mêmes règles que les trois listings : tout est scopé sous `.vitrine .v-cd`,
+   préfixé `v-cd-`, et reprend les jetons de `vitrine.css` (mêmes valeurs que
+   la maquette). Aucun utilitaire Tailwind `text-white` / `bg-white/…` ici :
+   `globals.css` les réécrit en mode clair.
+
+   La maquette a deux mises en page, l'écran et le cadre iOS. La bascule se
+   fait à 768px, comme sur les listings et comme la maquette elle-même
+   (`matchMedia("(min-width: 768px)")`).
+   ───────────────────────────────────────────────────────────────────────── */
+
+.v-cd {
+  /* La colonne de lecture du brief, le seul jeton que la maquette ajoute. */
+  --v-read: 44rem;
+  /* `.vitrine` réserve une hauteur d'écran pour que son fond couvre la
+     fenêtre ; ici le fond est peint par le chrome, et cette réserve ne ferait
+     qu'ajouter du vide sous la page. */
+  min-height: 0;
+}
+
+/* Le fond de la maquette est peint sur le chrome, pas ici : `useVitrineChrome`
+   pose `--background` sur `<html>` le temps de la visite, pour que la navbar
+   et le footer reposent sur la même couleur que la page — comme les trois
+   listings, dont LabShell règle le fond par leur URL. */
+
+@keyframes v-cd-in {
+  from {
+    opacity: 0;
+    scale: 1.05;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes v-cd-title {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    translate: 0 1.25rem;
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    translate: 0 0;
+  }
+}
+
+/* Les sections entrent au défilement, comme la maquette.
+   `data-reveal-ready` est posé par le composant, au montage : sans lui rien
+   n'est masqué. C'est ce qui sépare cette page de la maquette — celle-ci est
+   servie en HTML à un visiteur sans cookie, crawlers compris, et masquer son
+   contenu en attendant un script reviendrait à ne rien publier. */
+.v-cd[data-reveal-ready="1"] [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 1.25rem, 0);
+  transition: opacity 1s var(--v-ease), transform 1s var(--v-ease);
+}
+
+.v-cd[data-reveal-ready="1"] [data-reveal][data-revealed="1"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v-cd[data-reveal-ready="1"] [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .v-cd-hero-img,
+  .v-cd-hero-title {
+    animation: none !important;
+  }
+}
+
+/* ── Le hero photo ──────────────────────────────────────────────────────── */
+.v-cd-hero {
+  position: relative;
+}
+
+/* `stretch` et non `flex-end` : le contenu occupe toute la hauteur de la photo,
+   pour que les pastilles tiennent en haut et le titre en bas. */
+.v-cd-hero-card {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  min-height: min(40rem, 78svh);
+  border-radius: var(--v-radius);
+  background: var(--v-night);
+}
+
+.v-cd-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: v-cd-in 2.2s var(--v-ease) both;
+}
+
+.v-cd-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(8 12 14 / 0.62) 0%,
+    rgb(8 12 14 / 0.25) 42%,
+    rgb(8 12 14 / 0.82) 100%
+  );
+}
+
+/* Deux extrémités : les pastilles en haut de la photo, le reste posé en bas. */
+.v-cd-hero-body {
+  position: relative;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+  /* Moitié moins haut que la maquette : à cette largeur de page, son écart
+     laissait une bande vide entre le bord de la photo et ce qu'elle porte. */
+  padding: clamp(1.25rem, 3vw, 2.5rem) clamp(1.25rem, 4vw, 4rem);
+}
+
+.v-cd-hero-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.v-cd-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+/* La pastille de la maquette, qui porte le statut réel du challenge :
+   Active, Closed, Draft, Archived. */
+.v-cd-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  background: rgb(255 255 255 / 0.1);
+  padding: 0.3rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+/* La maquette pose `#0af7c1`, qui est la couleur primaire du thème par défaut :
+   on lit le jeton, pour qu'un thème changé emporte aussi la pastille et son
+   onde (`--v-dot`, voir `v-live` dans vitrine.css). */
+.v-cd-status-dot {
+  --v-dot: var(--theme-primary);
+  width: 0.4rem;
+  height: 0.4rem;
+  flex: none;
+  border-radius: 999px;
+  background: var(--v-dot);
+}
+
+/* Seul un challenge ouvert bat : sur un challenge clos, la pulsation
+   annoncerait une activité qui n'existe plus. */
+.v-cd-status[data-live="true"] .v-cd-status-dot {
+  animation: v-live 2.4s var(--v-ease) infinite;
+}
+
+.v-cd-status[data-status="completed"] .v-cd-status-dot {
+  --v-dot: #22c55e;
+}
+
+.v-cd-status[data-status="draft"] .v-cd-status-dot {
+  --v-dot: rgb(255 255 255 / 0.45);
+}
+
+.v-cd-status[data-status="archived"] .v-cd-status-dot {
+  --v-dot: rgb(255 255 255 / 0.25);
+}
+
+.v-cd-kind {
+  font-size: 0.8125rem;
+  color: rgb(255 255 255 / 0.72);
+}
+
+.v-cd-hero-title {
+  max-width: 26ch;
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: clamp(2.125rem, 4.6vw, 4rem);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  color: #ffffff;
+  animation: v-cd-title 1.4s var(--v-ease) 0.15s both;
+}
+
+.v-cd-hero-lede {
+  max-width: 42rem;
+  font-size: clamp(1rem, 1.3vw, 1.1875rem);
+  color: rgb(255 255 255 / 0.78);
+  text-wrap: pretty;
+  text-shadow: 0 1px 2px rgb(8 12 14 / 0.45), 0 0 18px rgb(8 12 14 / 0.4);
+}
+
+.v-cd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.v-cd-cta {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.55rem;
+  height: 3.25rem;
+  padding-inline: 1.6rem;
+  border-radius: 999px;
+  background: var(--v-accent);
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+  white-space: nowrap;
+  transition: transform 0.2s var(--v-ease), box-shadow 0.2s var(--v-ease);
+}
+
+.v-cd-cta:hover {
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px -18px rgb(11 122 100 / 0.9);
+}
+
+.v-cd-cta[data-busy="true"] {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.v-cd-cta svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+}
+
+.v-cd-cta-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 3.25rem;
+  padding-inline: 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  background: rgb(255 255 255 / 0.1);
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+  white-space: nowrap;
+  transition: background-color 0.2s var(--v-ease);
+}
+
+.v-cd-cta-ghost:hover {
+  background: rgb(255 255 255 / 0.18);
+  color: #ffffff;
+}
+
+/* La ligne de mesures que la maquette pose sous le hero n'est pas rendue : le
+   pool et les contributeurs sont déjà dans la colonne de droite du brief, et
+   les répéter sur la photo donnait deux fois le même chiffre. */
+
+/* ── « Why this challenge exists » ──────────────────────────────────────── */
+.v-cd-why {
+  padding-top: clamp(3.5rem, 8vw, 7rem);
+}
+
+.v-cd-why-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.v-cd-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+}
+
+.v-cd-eyebrow::before {
+  content: "";
+  width: 1.5rem;
+  height: 1px;
+  flex: none;
+  background: var(--v-accent);
+}
+
+.v-cd-why-lead {
+  max-width: 24ch;
+  font-family: var(--v-font-d);
+  font-weight: 400;
+  font-size: clamp(2rem, 3.8vw, 3.25rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  color: var(--v-ink);
+}
+
+/* Spécificité 0,2,0 : `.v-cd-md`, défini plus bas, poserait sinon son propre
+   `gap` par ordre de cascade. */
+.v-cd-md.v-cd-why-body {
+  max-width: 36rem;
+  gap: 1rem;
+}
+
+/* ── « Who hosts this challenge » ───────────────────────────────────────── */
+.v-cd-host {
+  padding-top: clamp(3rem, 6vw, 5rem);
+}
+
+.v-cd-host-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  border-radius: var(--v-radius);
+  background: var(--v-night);
+  color: var(--v-on-night);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.v-cd-host-text {
+  display: flex;
+  flex: 1 1 22rem;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.v-cd-host-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--v-on-night-muted);
+}
+
+.v-cd-host-name {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+/* ── « The brief » ──────────────────────────────────────────────────────── */
+.v-cd-brief {
+  padding-top: clamp(3.5rem, 7vw, 6rem);
+  /* « Read the brief » est une ancre : la navbar fixe ne doit pas manger le
+     haut de la section en y arrivant. */
+  scroll-margin-top: 6rem;
+}
+
+.v-cd-brief-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: clamp(1.75rem, 4vw, 3rem);
+}
+
+.v-cd-brief-read {
+  display: flex;
+  flex: 1 1 30rem;
+  min-width: 0;
+  max-width: var(--v-read);
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.v-cd-brief-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.v-cd-brief-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+}
+
+.v-cd-brief-rule {
+  height: 2px;
+  width: 100%;
+  border-radius: 999px;
+  background: var(--v-line);
+}
+
+.v-cd-brief-note {
+  font-size: 0.8125rem;
+  color: var(--v-subtle);
+}
+
+.v-cd-brief-error {
+  font-size: 0.8125rem;
+  color: #b3261e;
+}
+
+/* Le Markdown du brief, à la typographie de la maquette (variante `vitrine`
+   de `components/ui/Markdown.tsx`). */
+.v-cd-md {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.v-md-h1,
+.v-md-h2 {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 1.375rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+}
+
+.v-md-h3 {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: var(--v-ink);
+}
+
+/* Un titre ouvre un bloc : le `gap` du conteneur suffit entre deux blocs, le
+   titre se rapproche de ce qu'il annonce. */
+.v-cd-md .v-md-h1 + *,
+.v-cd-md .v-md-h2 + *,
+.v-cd-md .v-md-h3 + * {
+  margin-top: -0.75rem;
+}
+
+.v-md-p {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-md-ul,
+.v-md-ol {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.v-md-li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-md-bullet {
+  margin-top: 0.6rem;
+  width: 0.3rem;
+  height: 0.3rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--v-accent);
+}
+
+.v-md-marker {
+  flex-shrink: 0;
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--v-accent);
+}
+
+.v-md-quote {
+  border-left: 2px solid rgb(11 122 100 / 0.35);
+  padding-left: 1rem;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--v-subtle);
+}
+
+.v-md-pre {
+  overflow-x: auto;
+  border-radius: 1rem;
+  background: var(--v-tint);
+  padding: 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--v-ink);
+}
+
+.v-md-hr {
+  border: none;
+  border-top: 1px solid var(--v-line);
+}
+
+/* L'inline du rendu Markdown porte ses classes en dur, les mêmes pour les
+   trois variantes : on les rattrape ici plutôt que de les dupliquer là-bas. */
+.v-cd-md strong {
+  color: var(--v-ink) !important;
+  font-weight: 600;
+}
+
+.v-cd-md em {
+  color: var(--v-muted) !important;
+}
+
+.v-cd-md code {
+  background: var(--v-tint) !important;
+  color: var(--v-ink) !important;
+}
+
+.v-cd-md a {
+  color: var(--v-accent) !important;
+}
+
+/* ── La colonne de droite du brief ──────────────────────────────────────── */
+.v-cd-aside {
+  position: sticky;
+  /* Sous la navbar fixe, pas sous le bord de la fenêtre. */
+  top: 6rem;
+  display: flex;
+  flex: 1 1 17rem;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.v-cd-card {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid var(--v-line);
+  border-radius: 1.25rem;
+  background: var(--v-surface);
+  padding: 1.25rem 1.375rem;
+}
+
+.v-cd-card-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+.v-cd-card-value {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 1.75rem;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  color: var(--v-ink);
+}
+
+.v-cd-card-unit {
+  font-size: 0.9375rem;
+  color: var(--v-accent);
+}
+
+.v-cd-bar {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(17 22 26 / 0.08);
+}
+
+.v-cd-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--v-accent);
+  transition: width 0.7s var(--v-ease);
+}
+
+.v-cd-card-meta {
+  font-size: 0.8125rem;
+  color: var(--v-muted);
+}
+
+.v-cd-people {
+  gap: 0.75rem;
+}
+
+.v-cd-people-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.v-cd-faces {
+  display: flex;
+}
+
+/* Le liseré de `VitrineAvatar` est une ombre portée ; la maquette le veut en
+   bordure ici, pour que les photos se chevauchent proprement. */
+.v-cd-faces > * {
+  margin-left: -0.5rem;
+  width: 2.125rem !important;
+  height: 2.125rem !important;
+}
+
+.v-cd-faces > *:first-child {
+  margin-left: 0;
+}
+
+.v-cd-people-count {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--v-ink);
+}
+
+.v-cd-join {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  background: var(--v-ink);
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+  transition: background-color 0.2s var(--v-ease);
+}
+
+.v-cd-join:hover {
+  background: var(--v-accent);
+  color: #ffffff;
+}
+
+.v-cd-join[data-busy="true"] {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Sans quoi le « + » de l'icône prend la hauteur du bouton : un `svg` sans
+   dimension se dessine à sa taille intrinsèque. */
+.v-cd-join svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+}
+
+/* ── Membre sur téléphone : l'espace de travail n'y tient pas ───────────── */
+/* Rejoindre depuis un téléphone ne renvoie nulle part — la page reste celle-ci,
+   et ce bandeau prend la place du bouton pour dire où le travail se poursuit.
+   Posé sous le hero, sur le fond clair, et non sur la photo : c'est un état,
+   pas un appel à l'action. */
+.v-cd-notice {
+  padding-top: 1.25rem;
+}
+
+.v-cd-desk {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border: 1px solid rgb(11 122 100 / 0.3);
+  border-radius: 1.25rem;
+  background: rgb(11 122 100 / 0.07);
+  padding: 1.125rem 1.25rem;
+}
+
+.v-cd-desk-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: -0.015em;
+  color: var(--v-accent);
+}
+
+.v-cd-desk-title svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+
+.v-cd-desk-body {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+/* ── L'en-tête de la maquette téléphone ─────────────────────────────────── */
+/* Retour + pool : la maquette écran n'en a pas (la navbar y suffit). */
+.v-cd-mobile-bar {
+  display: none;
+}
+
+/* La ligne de contributeurs posée sur la photo n'existe que sur téléphone :
+   sur écran, ils vivent dans la colonne de droite du brief. */
+.v-cd-hero-people {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Téléphone — la vue du cadre iOS de la maquette.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .v-cd-mobile-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 0.875rem;
+  }
+
+  .v-cd-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--v-muted);
+  }
+
+  .v-cd-back svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .v-cd-mobile-pool {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+  }
+
+  .v-cd-mobile-pool b {
+    font-family: var(--v-font-h);
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--v-ink);
+  }
+
+  .v-cd-mobile-pool span {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--v-accent);
+  }
+
+  .v-cd-hero-card {
+    min-height: 24rem;
+    align-items: stretch;
+    border-radius: 1.5rem;
+  }
+
+  .v-cd-hero-body {
+    gap: 0.875rem;
+    padding: 1.125rem;
+  }
+
+  .v-cd-hero-foot {
+    gap: 0.875rem;
+  }
+
+  .v-cd-badges {
+    gap: 0.4rem 0.5rem;
+  }
+
+  .v-cd-status {
+    padding: 0.25rem 0.65rem;
+    font-size: 0.6875rem;
+    background: rgb(255 255 255 / 0.12);
+  }
+
+  .v-cd-status-dot {
+    width: 0.35rem;
+    height: 0.35rem;
+  }
+
+  /* Sur un écran de téléphone la pulsation gêne plus qu'elle n'informe. */
+  .v-cd-status[data-live="true"] .v-cd-status-dot {
+    animation: none;
+  }
+
+  .v-cd-kind {
+    font-size: 0.75rem;
+  }
+
+  .v-cd-hero-title {
+    max-width: none;
+    font-size: 1.75rem;
+    text-shadow: 0 1px 3px rgb(8 12 14 / 0.5);
+  }
+
+  .v-cd-hero-lede {
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: rgb(255 255 255 / 0.8);
+    text-shadow: 0 1px 2px rgb(8 12 14 / 0.5), 0 0 16px rgb(8 12 14 / 0.4);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .v-cd-actions {
+    padding-top: 0;
+  }
+
+  /* Un seul bouton, pleine largeur : « Read the brief » n'a pas lieu d'être
+     sur une page qu'on parcourt au pouce. */
+  .v-cd-cta {
+    flex: 1;
+    justify-content: center;
+    height: 2.875rem;
+    padding-inline: 1.25rem;
+    font-size: 0.9375rem;
+  }
+
+  .v-cd-cta svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .v-cd-cta-ghost {
+    display: none;
+  }
+
+  /* La ligne de contributeurs de la maquette téléphone, posée sur la photo. */
+  .v-cd-hero-people {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    border-top: 1px solid rgb(255 255 255 / 0.18);
+    padding-top: 0.875rem;
+  }
+
+  .v-cd-hero-people .v-cd-faces > * {
+    margin-left: 0;
+    margin-right: -0.5rem;
+    width: 1.875rem !important;
+    height: 1.875rem !important;
+    box-shadow: 0 0 0 2px rgb(8 12 14 / 0.5) !important;
+  }
+
+  .v-cd-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    flex: none;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.18);
+    backdrop-filter: blur(6px);
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: #ffffff;
+    box-shadow: 0 0 0 2px rgb(8 12 14 / 0.5);
+  }
+
+  .v-cd-hero-people-text {
+    margin-left: 0.35rem;
+    font-size: 0.75rem;
+    color: rgb(255 255 255 / 0.72);
+  }
+
+  .v-cd-why {
+    padding-top: 2rem;
+  }
+
+  .v-cd-why-inner {
+    gap: 1rem;
+  }
+
+  .v-cd-eyebrow {
+    gap: 0.5rem;
+    font-size: 0.625rem;
+  }
+
+  .v-cd-eyebrow::before {
+    width: 1.25rem;
+  }
+
+  .v-cd-why-lead {
+    max-width: none;
+    font-size: 1.875rem;
+  }
+
+  .v-cd-why-body {
+    max-width: none;
+    font-size: 0.9375rem;
+  }
+
+  .v-cd-host {
+    padding-top: 1.75rem;
+  }
+
+  .v-cd-host-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.625rem;
+    border-radius: 1.5rem;
+    padding: 1.25rem;
+  }
+
+  /* En colonne, le `flex-basis: 22rem` de la disposition en deux blocs devient
+     une **hauteur** : la carte faisait 22rem de haut pour deux lignes de
+     texte. */
+  .v-cd-host-text {
+    flex: 0 0 auto;
+  }
+
+  .v-cd-host-label {
+    font-size: 0.625rem;
+  }
+
+  .v-cd-host-name {
+    font-size: 1.0625rem;
+    line-height: 1.25;
+  }
+
+  .v-cd-brief {
+    padding-top: 2rem;
+  }
+
+  /* `align-items: flex-start`, hérité de la disposition en deux colonnes, fait
+     rétrécir chaque enfant à son contenu une fois la direction passée en
+     colonne — c'est ce qui empêchait le bouton de prendre toute la largeur. */
+  .v-cd-brief-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
+  }
+
+  .v-cd-brief-read {
+    flex: 1 1 auto;
+    max-width: none;
+    gap: 1.25rem;
+  }
+
+  .v-cd-brief-head {
+    gap: 0.5rem;
+  }
+
+  .v-cd-brief-label {
+    font-size: 0.625rem;
+  }
+
+  .v-cd-md {
+    gap: 1.25rem;
+  }
+
+  .v-md-h1,
+  .v-md-h2 {
+    font-size: 1.0625rem;
+  }
+
+  .v-md-h3 {
+    font-size: 0.9375rem;
+  }
+
+  .v-cd-md .v-md-h1 + *,
+  .v-cd-md .v-md-h2 + *,
+  .v-cd-md .v-md-h3 + * {
+    margin-top: -0.75rem;
+  }
+
+  .v-md-p,
+  .v-md-li {
+    font-size: 0.9375rem;
+    line-height: 1.65;
+  }
+
+  .v-md-ul,
+  .v-md-ol {
+    gap: 0.5rem;
+  }
+
+  .v-md-li {
+    gap: 0.6rem;
+  }
+
+  .v-md-bullet {
+    margin-top: 0.55rem;
+  }
+
+  /* La colonne de droite n'existe pas sur téléphone : le pool est déjà en
+     tête de page, les contributeurs sur la photo. Seul le bouton reste, en
+     bas du brief comme sur la maquette. */
+  .v-cd-aside {
+    position: static;
+    flex: 1 1 auto;
+  }
+
+  .v-cd-card {
+    display: none;
+  }
+
+  .v-cd-join {
+    height: 2.875rem;
+    font-size: 0.9375rem;
+  }
+}

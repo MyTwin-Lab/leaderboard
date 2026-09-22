@@ -25,43 +25,26 @@ export interface HeroStat {
  * titre par un simple filet : la maquette leur retire leur cadre pour qu'ils
  * se lisent comme la suite du hero, pas comme un bloc concurrent.
  *
- * `orientation="column"` sert l'écran du brief, où la même ligne se dresse à
- * droite de la lecture. Les éléments y sont trop étroits pour rester sur un
- * rang : le libellé, la valeur, la barre et le commentaire s'empilent, et un
- * filet sépare les mesures que la ligne séparait par du vide.
+ * Une seule disposition depuis que l'écran vitrine a remplacé celui du brief :
+ * la variante en colonne servait sa colonne de droite, qui ne porte plus de
+ * mesures.
  */
 export function HeroStats({
   stats,
-  orientation = 'row',
   className = '',
 }: {
   stats: HeroStat[];
-  orientation?: 'row' | 'column';
   className?: string;
 }) {
-  const column = orientation === 'column';
-
   return (
-    <div
-      className={
-        column
-          ? `flex flex-col divide-y divide-white/[0.07] rounded-[18px] border border-white/[0.08] bg-white/[0.03] px-4 ${className}`
-          : `flex flex-wrap items-center gap-x-7 gap-y-3 border-t border-white/[0.09] pt-3.5 ${className}`
-      }
-    >
+    <div className={`flex flex-wrap items-center gap-x-7 gap-y-3 border-t border-white/[0.09] pt-3.5 ${className}`}>
       {stats.map((stat) => (
         <div
           key={stat.key}
-          className={
-            column
-              // `items-start` : dans la colonne, la barre et le commentaire
-              // occupent toute la largeur, le libellé ne les centre pas.
-              ? 'flex min-w-0 flex-col items-start gap-1.5 py-3.5'
-              // Le contenu d'une mesure peut lui-même passer à la ligne : sur
-              // un téléphone, libellé + valeur + barre + commentaire dépassent
-              // la largeur de l'écran, et `nowrap` les ferait déborder.
-              : 'flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1'
-          }
+          // Le contenu d'une mesure peut lui-même passer à la ligne : sur un
+          // téléphone, libellé + valeur + barre + commentaire dépassent la
+          // largeur de l'écran, et `nowrap` les ferait déborder.
+          className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1"
         >
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] whitespace-nowrap text-white/40">
             {stat.label}
@@ -79,11 +62,7 @@ export function HeroStats({
           </span>
 
           {stat.barWidth && (
-            <div
-              className={`h-[3px] overflow-hidden rounded-full bg-white/8 ${
-                column ? 'w-full' : 'w-[clamp(56px,9vw,110px)]'
-              }`}
-            >
+            <div className="h-[3px] w-[clamp(56px,9vw,110px)] overflow-hidden rounded-full bg-white/8">
               <div
                 className="h-full rounded-full bg-brandCP transition-[width] duration-700 ease-out"
                 style={{ width: stat.barWidth }}

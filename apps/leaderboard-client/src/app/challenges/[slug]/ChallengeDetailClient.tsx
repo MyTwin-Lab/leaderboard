@@ -17,7 +17,6 @@ import { ValidationChallengeFlow } from '@/components/challenges/ValidationChall
 import { ScenarioChallengeFlow } from '@/components/challenges/ScenarioChallengeFlow';
 import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseAuthorPanel';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
-import { ChallengeBrief, type GroupInvite } from '@/components/challenges/ChallengeBrief';
 import { GroupInviteModal } from '@/components/challenges/GroupInviteModal';
 import { JoinModal } from '@/components/challenges/JoinModal';
 // groupPolicy et non group : ce dernier instancie un repository, donc un
@@ -34,9 +33,11 @@ import { fetchJson } from '@/lib/fetchJson';
 import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
 import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
-import { shouldShowBrief } from '@/lib/challengeBrief';
+import { BRIEF_GATED_TYPES, shouldShowBrief, type GroupInvite } from '@/lib/challengeBrief';
 import { showJoinInHeader } from '@/lib/joinGate';
 import { useJoinChallenge } from '@/lib/useJoinChallenge';
+import { useIsPhone } from '@/lib/useIsPhone';
+import { ChallengeVitrine } from '@/components/challenges/vitrine/ChallengeVitrine';
 
 const ML_REPO_TYPES = ['kaggle_dataset', 'kaggle_model'];
 
@@ -52,6 +53,10 @@ interface Challenge {
   contribution_points_reward: number;
   project_id: string;
   workspace_mode?: string;
+  /** L'en-tête photo de l'écran vitrine — la même image que la carte du listing. */
+  cover_image_url?: string | null;
+  /** Qui porte le challenge, rendu par l'écran vitrine. */
+  host?: string | null;
 }
 
 // A task row from the overview — either a template task (no `user_id`) or
@@ -143,6 +148,10 @@ export default function ChallengeDetailClient({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  // Pas une affaire de style : sur un téléphone, l'espace de travail n'a pas
+  // lieu d'être (il demande un éditeur et un terminal). Un membre y reste donc
+  // sur l'écran vitrine, qui le renvoie vers un ordinateur.
+  const isPhone = useIsPhone();
 
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
   const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
@@ -319,7 +328,9 @@ export default function ChallengeDetailClient({
   // Le brief s'adresse à qui n'a pas encore rejoint, connecté ou non — un
   // membre, lui, le retrouve dans le tiroir Docs. La requête suit : elle part
   // sans session, la route `documents` étant publique en lecture.
-  const briefNeeded = !isMember && !!challenge;
+  // Un membre le relit sur téléphone : c'est tout ce que cet écran-là peut
+  // lui montrer, faute d'espace de travail.
+  const briefNeeded = !!challenge && (!isMember || isPhone);
   const briefQuery = useQuery({
     queryKey: ['challenge-brief', challengeId],
     queryFn: async () => {
@@ -340,9 +351,13 @@ export default function ChallengeDetailClient({
   // The brief only holds the page for the visitor it can actually redirect:
   // rendering the workspace first and swapping it for the brief a tick later
   // would be a visible flash.
+  // `!isMember` et non `briefNeeded` : un membre sur téléphone reçoit sa page
+  // tout de suite, et le brief s'y pose en arrivant. Le faire attendre ferait
+  // clignoter un squelette entre l'espace de travail du premier rendu — où
+  // `isPhone` vaut encore false, avant le montage — et l'écran vitrine.
   const loading = overviewQuery.isLoading || modulesQuery.isLoading
     || (meQuery.isLoading && !meQuery.isError)
-    || (briefNeeded && briefQuery.isLoading);
+    || (briefNeeded && !isMember && briefQuery.isLoading);
 
   if (loading) return <Skeleton />;
 
@@ -386,6 +401,18 @@ export default function ChallengeDetailClient({
     challengeType: challenge.type,
     challengeStatus: challenge.status,
   });
+
+  // ── L'écran vitrine ──
+  // Il prend toute la page pour qui n'a pas rejoint — c'est lui, désormais, la
+  // page publique d'un challenge. Un membre ne le voit que sur téléphone, où
+  // l'espace de travail n'a rien à montrer : la maquette le garde sur cette
+  // page et lui dit de passer sur un ordinateur.
+  //
+  // `shouldShowBrief` reste la porte du non-membre (il lui faut un brief à
+  // lire) ; le membre sur téléphone n'a pas cette condition — son écran vaut
+  // pour le renvoi qu'il porte, brief ou pas.
+  const showVitrine = BRIEF_GATED_TYPES.includes(challenge.type)
+    && (isMember ? isPhone : showBrief);
 
   const upcomingMeetings = meetings
     .filter(m => ['scheduled', 'in_progress'].includes(m.status))
@@ -444,6 +471,40 @@ export default function ChallengeDetailClient({
     unit: team.length === 1 ? 'participant' : 'participants',
     meta: 'join the challenge to start your board',
   };
+
+  if (showVitrine) {
+    return (
+      <>
+        <ChallengeVitrine
+          challenge={challenge}
+          brief={briefQuery.data ?? null}
+          team={team}
+          participantCount={participants.length || team.length}
+          awardedTotal={awardedTotal}
+          isMember={isMember}
+          isAnonymous={isAnonymous}
+          signInHref={challengeSignInPath(challengeSlug, inviteToken)}
+          canJoin={joinInHeader}
+          onJoin={() => setJoinModalOpen(true)}
+          invite={inviteToken ? inviteQuery.data ?? null : null}
+          onAcceptInvite={acceptInvite}
+          joining={joining}
+          joinError={joinError}
+        />
+        {/* Hors de l'écran : un transform casserait le positionnement fixed
+            de l'overlay, comme pour les tiroirs plus bas. */}
+        {joinModalOpen && (
+          <JoinModal
+            challengeId={challengeId}
+            challengeSlug={challengeSlug}
+            challengeType={challenge.type ?? 'code'}
+            onClose={() => setJoinModalOpen(false)}
+            onJoined={reloadBoard}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -544,14 +605,14 @@ export default function ChallengeDetailClient({
           </p>
         )}
 
-        {/* KPI du hero — remplacés par la colonne de droite du brief */}
-        {!showBrief && (
-          <HeroStats stats={[cpAwardedStat, middleStat, teamStat]} className="mt-5" />
-        )}
+        {/* KPI du hero — l'écran vitrine, lui, n'en porte aucun : ils parlent
+            d'un board, d'une branche et d'une soumission qu'un visiteur qui
+            n'a pas rejoint n'a pas encore. */}
+        <HeroStats stats={[cpAwardedStat, middleStat, teamStat]} className="mt-5" />
       </div>
 
       {/* ── Groupe : rappel du lien, seul endroit où il se retrouve ── */}
-      {!showBrief && myGroupId && (
+      {myGroupId && (
         <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[16px] border border-brandCP/20 bg-brandCP/[0.06] px-4 py-3">
           <Users className="h-4 w-4 shrink-0 text-brandCP" />
           <div className="min-w-0 flex-1">
@@ -571,39 +632,13 @@ export default function ChallengeDetailClient({
         </div>
       )}
 
-      {/* ── Brief: le visiteur qui n'a pas encore rejoint ──
-          Deux colonnes, sur la grille du détail sandbox : la lecture à gauche,
-          les KPI à droite. `items-start` pour que la colonne ne s'étire pas à
-          la hauteur d'un brief long. Sur mobile la grille s'effondre et les
-          cartes passent sous le brief — c'est lui qu'on vient lire.
-
-          Deux mesures et non trois : pour un non-membre, celle du milieu
-          affiche `team.length`, exactement comme Team. Alignées sur une ligne
-          le doublon passe ; empilé dans une colonne étroite, il saute aux
-          yeux. */}
-      {showBrief && (
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)] lg:gap-7">
-          <div className="min-w-0">
-            <ChallengeBrief
-              content={briefQuery.data!}
-              challengeType={challenge.type}
-              onAcceptInvite={acceptInvite}
-              joining={joining}
-              error={joinError}
-              invite={inviteToken ? inviteQuery.data ?? null : null}
-            />
-          </div>
-          <HeroStats stats={[cpAwardedStat, teamStat]} orientation="column" className="min-w-0" />
-        </div>
-      )}
-
       {/* ── Signed out: one block, no tabs ───────────────── */}
       {/* Every interactive panel below needs an account, so an anonymous
           visitor gets the single thing worth showing for this challenge type:
           its dataset and model metrics, or how far each contributor has got.
-          Sauf quand le brief est là : il occupe déjà la page, et ces blocs
-          reviendraient à lui coller un second écran par-dessous. */}
-      {isAnonymous && !showBrief && (
+          Un challenge code ou ML n'arrive pas jusqu'ici : son visiteur anonyme
+          a reçu l'écran vitrine, qui occupe déjà la page. */}
+      {isAnonymous && (
         isML
           ? <ChallengeMetrics repoActivity={repoActivity} />
           : (
@@ -617,7 +652,7 @@ export default function ChallengeDetailClient({
       )}
 
       {/* ── Tabs ─────────────────────────────────────────── */}
-      {!isAnonymous && !showBrief && (
+      {!isAnonymous && (
       <ContributorTabs
         // Membres et admins seulement : l'overview ne sert le lien Meet qu'à
         // eux, un non-membre verrait des réunions qu'il ne peut pas rejoindre.
@@ -678,7 +713,7 @@ export default function ChallengeDetailClient({
           déjà un : sur l'écran du brief, le `Join` de l'en-tête mène lui aussi
           à la connexion, et le répéter en bas de page demande deux fois la
           même chose. */}
-      {isAnonymous && !showBrief && (
+      {isAnonymous && (
         <div className="mt-10 flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-6 py-8 text-center">
           <p className="text-sm text-white/60">
             Sign in to join this challenge and start your own board.

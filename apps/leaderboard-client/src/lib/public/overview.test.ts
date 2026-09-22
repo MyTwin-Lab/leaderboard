@@ -9,6 +9,8 @@ const RAW = {
     type: 'code', start_date: '2026-01-01', end_date: '2026-02-01',
     contribution_points_reward: 1000, project_id: 'p1',
     workspace_mode: 'provided_repo',
+    cover_image_url: '/api/images/i1',
+    host: 'CHU de Montpellier',
     roadmap: 'internal roadmap notes',
     reward_rules: { model: { metric: 'auc' } },
   },
@@ -69,6 +71,9 @@ describe('toPublicOverview', () => {
       type: 'code', start_date: '2026-01-01', end_date: '2026-02-01',
       contribution_points_reward: 1000, project_id: 'p1',
       workspace_mode: 'provided_repo',
+      // L'en-tête photo et l'hôte de l'écran vitrine : la page est publique,
+      // ils lui sont donc servis sans session.
+      cover_image_url: '/api/images/i1', host: 'CHU de Montpellier',
     });
     expect(result.team).toEqual([
       { uuid: 'u1', full_name: 'Alix C', avatar_url: 'https://x/a.png', github_username: 'alix' },

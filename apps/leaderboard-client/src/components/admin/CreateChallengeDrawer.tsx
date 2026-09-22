@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
   CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck, Cpu, Package,
-  ListTodo, Trash2, FileText, Eye, Rocket, Image as ImageIcon,
+  ListTodo, Trash2, FileText, Eye, Rocket, Image as ImageIcon, Building2,
 } from 'lucide-react';
 import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
@@ -60,6 +60,7 @@ export interface EditableChallenge {
   compute_enabled?: boolean | null;
   workspace_mode?: 'provided_repo' | 'own_repo' | null;
   cover_image_url?: string | null;
+  host?: string | null;
 }
 
 /**
@@ -140,6 +141,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [cp, setCp] = useState(100);
   const [description, setDescription] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [host, setHost] = useState('');
   const [roadmap, setRoadmap] = useState('');
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [githubRepo, setGithubRepo] = useState('');
@@ -205,6 +207,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setCp(challenge.contribution_points_reward);
       setDescription(challenge.description ?? '');
       setCoverImageUrl(challenge.cover_image_url ?? '');
+      setHost(challenge.host ?? '');
       setRoadmap(challenge.roadmap ?? '');
       setShowRoadmap(!!challenge.roadmap);
       setWorkspaceMode(challenge.workspace_mode ?? 'provided_repo');
@@ -376,6 +379,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         description: description.trim() || undefined,
         // Vide = on efface : `null` est une valeur, l'absence n'en est pas une.
         cover_image_url: coverImageUrl.trim() || null,
+        // Même règle : vide = effacé, la carte de l'hôte disparaît.
+        host: host.trim() || null,
         roadmap: roadmap.trim() || undefined,
         // Without rules an ML/code challenge awards nothing — the service has
         // nothing to score against.
@@ -867,6 +872,21 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
               page du challenge. Posée à la création, modifiable ici. ── */}
           <Field icon={<ImageIcon className="h-3.5 w-3.5" />} label="Cover image">
             <CoverImageField value={coverImageUrl} onChange={setCoverImageUrl} />
+          </Field>
+
+          {/* ── Hôte ──
+              Qui porte le challenge : le partenaire clinique, l'équipe du Lab.
+              Une phrase, rendue telle quelle sur la page publique ; vide, la
+              carte « Who hosts this challenge » n'y apparaît pas. ── */}
+          <Field icon={<Building2 className="h-3.5 w-3.5" />} label="Host">
+            <input
+              value={host}
+              onChange={e => setHost(e.target.value)}
+              placeholder="CHU de Montpellier, service de médecine physique et de réadaptation"
+              maxLength={500}
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
+              style={{ color: 'var(--foreground)' }}
+            />
           </Field>
 
           {/* ── Description ── */}
