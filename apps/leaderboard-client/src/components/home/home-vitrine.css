@@ -318,6 +318,7 @@ html[data-mode="light"] .v-home .v-home-marquee [class*="text-white/50"] {
   /* Les trois rails débordent la gouttière : ils défilent jusqu'au bord de
      l'écran, pas jusqu'au bord du texte. */
   .v-home-news,
+  .v-home-challenges,
   .v-home-podcast-rail,
   .v-home-marquee {
     margin-inline: calc(-1 * var(--v-gutter));
@@ -379,5 +380,30 @@ html[data-mode="light"] .v-home .v-home-marquee [class*="text-white/50"] {
      sans cette règle, la première vignette colle au bord de l'écran. */
   .v-home-podcast-rail ul {
     padding-inline: var(--v-gutter);
+  }
+
+  /* Les challenges passent en carrousel eux aussi — deux cartes de cette
+     hauteur empilées, c'est un écran entier de défilement. Même dispositif que
+     les news, à ceci près qu'il tourne seul (voir `HomeCarousel`). */
+  .v-home-challenges {
+    display: flex;
+    grid-template-columns: none;
+    gap: 12px;
+    overflow-x: auto;
+    padding-inline: var(--v-gutter);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .v-home-challenges::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Les cartes sont posées par `ChallengeCard`, sans classe à nous : c'est le
+     rail qui les dimensionne. */
+  .v-home-challenges > * {
+    flex: 0 0 85%;
+    scroll-snap-align: center;
   }
 }

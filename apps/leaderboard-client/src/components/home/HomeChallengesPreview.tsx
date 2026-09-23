@@ -1,9 +1,13 @@
 import { ChallengeCard } from "@/components/public/ChallengeCard";
 import type { HomeTrendingChallenge } from "@/lib/types";
+import { HomeCarousel } from "./HomeCarousel";
 import { HomeSectionHead } from "./HomeSection";
 
 import "@/components/vitrine/vitrine.css";
 import "@/components/public/challenges-vitrine.css";
+
+/** Le rythme du carrousel sur téléphone : le temps de lire une carte. */
+const CAROUSEL_INTERVAL_MS = 5000;
 
 interface HomeChallengesPreviewProps {
   challenges: HomeTrendingChallenge[];
@@ -39,7 +43,11 @@ export function HomeChallengesPreview({ challenges }: HomeChallengesPreviewProps
       {challenges.length === 0 ? (
         <div className="v-home-empty">No active challenge this week.</div>
       ) : (
-        <div className="v-home-challenges">
+        <HomeCarousel
+          railClassName="v-home-challenges"
+          itemNoun="challenge"
+          autoAdvanceMs={CAROUSEL_INTERVAL_MS}
+        >
           {challenges.map((challenge, index) => (
             <ChallengeCard
               key={challenge.id}
@@ -59,7 +67,7 @@ export function HomeChallengesPreview({ challenges }: HomeChallengesPreviewProps
               spark={challenge.spark}
             />
           ))}
-        </div>
+        </HomeCarousel>
       )}
     </section>
   );

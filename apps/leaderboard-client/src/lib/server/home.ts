@@ -213,20 +213,25 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
   const isTrendable = (c: (typeof challenges)[number]) =>
     !["draft", "archived"].includes(c.status);
 
-  let trendingSource = challenges
+  // What actually moved in the last 7 days, busiest first.
+  const movingNow = challenges
     .filter((c) => isTrendable(c) && recentCountByChallenge.has(c.uuid))
     .sort((a, b) => (recentCountByChallenge.get(b.uuid) ?? 0) - (recentCountByChallenge.get(a.uuid) ?? 0));
 
-  if (trendingSource.length === 0) {
-    // No activity in the last 7 days → fall back to the most recently
-    // created challenges. There is no created_at column, but `index` is a
-    // serial, so a higher index means a later creation.
-    trendingSource = challenges
-      .filter(isTrendable)
-      .sort((a, b) => (b.index ?? 0) - (a.index ?? 0));
-  }
+  // Topped up with the most recently created challenges, not replaced by them.
+  // A quiet week used to be the only case this covered, but the section is a
+  // two-card grid: with a single challenge active it rendered one card and an
+  // empty column. Activity still wins the first slots; recency only fills what
+  // is left. There is no created_at column, but `index` is a serial, so a
+  // higher index means a later creation.
+  const alreadyPicked = new Set(movingNow.map((c) => c.uuid));
+  const mostRecent = challenges
+    .filter((c) => isTrendable(c) && !alreadyPicked.has(c.uuid))
+    .sort((a, b) => (b.index ?? 0) - (a.index ?? 0));
 
-  const trendingChallenges = trendingSource.slice(0, TRENDING_LIMIT).map(toTrending);
+  const trendingChallenges = [...movingNow, ...mostRecent]
+    .slice(0, TRENDING_LIMIT)
+    .map(toTrending);
 
   return { stats, spark, podium, rest, contributorsRanked, trendingChallenges };
 }

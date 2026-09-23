@@ -131,6 +131,38 @@ describe("fetchHomeOverview", () => {
     expect(overview.trendingChallenges[0].recentContributions).toBe(0);
   });
 
+  it("tops a single trending challenge up with the most recent one", async () => {
+    // The section is a two-card grid. Activity alone used to fill it, and the
+    // recency fallback only ran on an empty list — so one active challenge
+    // rendered one card and an empty column next to it.
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+
+    vi.spyOn(repositories.project, "findAll").mockResolvedValue([
+      { uuid: "p1", title: "P", description: null, created_at: new Date() },
+    ] as any);
+    vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([
+      { uuid: "c1", title: "Busy", status: "active", type: "code", index: 1, contribution_points_reward: 100, completion: 0, project_id: "p1", start_date: new Date(), end_date: new Date() },
+      { uuid: "c2", title: "Quiet", status: "active", type: "code", index: 2, contribution_points_reward: 100, completion: 0, project_id: "p1", start_date: new Date(), end_date: new Date() },
+      { uuid: "c3", title: "Older", status: "active", type: "code", index: 0, contribution_points_reward: 100, completion: 0, project_id: "p1", start_date: new Date(), end_date: new Date() },
+      { uuid: "c4", title: "Hidden", status: "draft", type: "code", index: 9, contribution_points_reward: 100, completion: 0, project_id: "p1", start_date: new Date(), end_date: new Date() },
+    ] as any);
+    vi.spyOn(repositories.user, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(repositories.contribution, "findAll").mockResolvedValue([
+      // Only c1 moved this week.
+      { uuid: "a1", challenge_id: "c1", user_id: "u1", submitted_at: TWO_DAYS_AGO, reward: 1, title: "T", type: "code" },
+    ] as any);
+    vi.spyOn(repositories.challengeTeam, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([] as any);
+    vi.spyOn(repositories.sandboxReward, "findAll").mockResolvedValue([] as any);
+
+    const overview = await fetchHomeOverview();
+
+    // What moved keeps the first slot; recency fills the second, and a draft
+    // never does — even with the highest index.
+    expect(overview.trendingChallenges.map((c) => c.id)).toEqual(["c1", "c2"]);
+  });
+
   it("keeps archived challenges out of trending even when they saw recent activity", async () => {
     // Recent activity on an archived challenge is exactly when it would surface,
     // and it is the one time it must not: the fallback path already states that
