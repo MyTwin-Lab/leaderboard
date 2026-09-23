@@ -21,6 +21,7 @@ import {
   evaluation_grid_subcriteria,
   validation_targets,
   validation_scenario_steps,
+  images,
 } from "../packages/database-service/db/drizzle.js";
 import {
   AppSettingsRepository,
@@ -42,7 +43,8 @@ import { logBriefs, logHosts } from "./challenge-content.js";
  *   1. Les données de production, dérivées d'un dump et figées dans
  *      `db_data/*.json`. C'est l'essentiel : projets, contributeurs,
  *      challenges, dépôts, contributions, récompenses, signaux, grilles
- *      d'évaluation, onboarding, propositions du Sandbox.
+ *      d'évaluation, onboarding, propositions du Sandbox, et les images de
+ *      couverture déposées dans l'application.
  *   2. Le challenge de validation MyCoach (MyKine), qui n'existe pas en prod
  *      mais qui est le seul exemple de validation en mode scénario.
  *   3. Les propositions de démonstration du Sandbox, derrière `--demo`.
@@ -334,6 +336,44 @@ async function seedRepos() {
   }
 
   console.log(`✓ Repos: ${inserted} inserted, ${data.length - inserted} already exist`);
+}
+
+/**
+ * Les images déposées dans l'application, et que des couvertures désignent.
+ *
+ * Une couverture est soit une URL externe — elle vit alors telle quelle dans
+ * `challenges.cover_image_url`, il n'y a rien d'autre à seeder — soit une image
+ * déposée, qui vit en `bytea` dans cette table et s'adresse en
+ * `/api/images/<uuid>`. Sans cette étape, la seconde forme pointerait dans le
+ * vide et la carte retomberait sur la banque d'images de la landing.
+ *
+ * Les octets sont dans `db_data/images/`, hors du JSON : un `bytea` en base64
+ * dans un fichier de données le rendrait illisible, et le manifeste reste
+ * relisible à l'œil.
+ *
+ * `user_id` passe par `ref()` comme partout ailleurs, et retombe à `null` si
+ * l'auteur n'est pas en base : la colonne est `ON DELETE SET NULL`, une
+ * couverture n'a pas à disparaître avec le compte qui l'a déposée.
+ */
+async function seedImages() {
+  const data = read<any[]>("images.json");
+  let inserted = 0;
+
+  for (const image of data) {
+    if (await bySeedUuid(images, image.uuid)) continue;
+
+    await db.insert(images).values({
+      uuid: image.uuid,
+      user_id: ref(image.user_id),
+      mime_type: image.mime_type,
+      byte_size: image.byte_size,
+      data: readFileSync(`${DATA_DIR}/images/${image.file}`),
+      created_at: ts(image.created_at) ?? new Date(),
+    });
+    inserted++;
+  }
+
+  console.log(`✓ Images: ${inserted} inserted, ${data.length - inserted} already exist`);
 }
 
 /**
@@ -1188,6 +1228,7 @@ async function resetAll() {
     ["challenges", () => db.delete(challenges)],
     ["repos", () => db.delete(repos)],
     ["onboarding_progress", () => db.delete(onboarding_progress)],
+    ["images", () => db.delete(images)],
     ["users", () => db.delete(users)],
     ["projects", () => db.delete(projects)],
   ];
@@ -1209,6 +1250,7 @@ async function main() {
 
   await seedProjects();
   await seedUsers();
+  await seedImages();
   await seedRepos();
   await seedChallenges();
   await seedChallengeRepos();

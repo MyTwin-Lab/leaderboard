@@ -19,8 +19,10 @@
  * Ce qui est traduit vers le schéma courant, en avance sur la prod :
  *   - `sandboxes`  perd type/repo_url/model_url/dataset_urls/evaluation* —
  *     colonnes supprimées par la migration 0025 (« un sandbox est un projet »)
- *   - `challenges` gagne cover_image_url/host, laissés NULL : les cartes
- *     retombent sur la banque d'images de la landing (lib/coverImage.ts)
+ *   - `challenges` gagne cover_image_url/host : `host` reste NULL, et
+ *     cover_image_url est repris de COVER_IMAGES plus bas — un slug absent de
+ *     cette table retombe sur la banque d'images de la landing
+ *     (lib/coverImage.ts)
  */
 import {readFileSync, writeFileSync, mkdirSync} from 'fs';
 import {createHash} from 'crypto';
@@ -207,17 +209,23 @@ const STATUS_OVERRIDES = {
 // pas encore la colonne `cover_image_url` — mais du travail de cadrage fait
 // dans l'application, qu'on fige ici pour que le seed le repose.
 //
-// Des URL externes, et non des images déposées : une image déposée vit en
-// `bytea` dans la table `images` et s'adresse en `/api/images/<uuid>`, donc la
-// seeder demanderait d'embarquer ses octets dans le dépôt. Un slug absent
-// d'ici garde `null` et retombe sur la banque d'images de la landing
-// (`lib/coverImage.ts`), ce qui reste un rendu correct.
+// Deux formes. Une URL externe se suffit à elle-même. Une image déposée vit en
+// `bytea` dans la table `images` et s'adresse en `/api/images/<uuid>` : ses
+// octets sont dans `db_data/images/`, son manifeste dans `db_data/images.json`,
+// et `seedImages()` repose la ligne avant que les challenges ne la citent.
+// Regénérer ce fichier ne les reconstitue pas — `scripts/dump-to-seed-data.mjs`
+// ne lit qu'un dump SQL, pas des `bytea` — ils sont exportés à part depuis la
+// base, une fois, et suivis dans le dépôt.
+//
+// Un slug absent d'ici garde `null` et retombe sur la banque d'images de la
+// landing (`lib/coverImage.ts`), ce qui reste un rendu correct.
 const COVER_IMAGES = {
   'mammography': 'https://www.cdc.gov/breast-cancer/media/images/mammogram-b1200x675.jpg',
   'mammography-classification': 'https://www.cdc.gov/breast-cancer/media/images/mammogram-b1200x675.jpg',
   'mammography-segmentation': 'https://www.cdc.gov/breast-cancer/media/images/mammogram-b1200x675.jpg',
   'poc-injury-prediction-in-tennis':
     'https://www.docdusport.com/wp-content/uploads/2021/12/Tennis-sante-conseils-et-bonne-pratique-1024x681.jpg',
+  'contributor-experience-update': '/api/images/9ecf1d01-1238-4fe1-80d4-691a89778192',
 };
 
 const challengeRows = rowsOf(dump, schema, 'challenges', {drop: ['index']});
