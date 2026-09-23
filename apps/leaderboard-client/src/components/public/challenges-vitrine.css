@@ -308,9 +308,18 @@
     display: none;
   }
 
+  /* Le filet, exactement celui de `/leaderboard` — qui n'a pas de règle
+     téléphone du tout et garde donc `.v-main` : le trait est posé dans la
+     gouttière, pas d'un bord à l'autre de l'écran, et il est écarté de
+     l'accroche par le gap du conteneur.
+     Ici les deux se reconstruisent à la main : à cette largeur `.v-main` met
+     son gap à 0 et rend sa gouttière, pour que les cartes touchent les bords.
+     La gouttière passe donc en marge — c'est elle qui rentre le filet, un
+     padding l'aurait laissé traverser — et la marge haute rejoue le gap. */
   .v-ch-filters {
     gap: 10px;
-    padding: 16px 16px 0;
+    margin: clamp(24px, 3vw, 32px) 16px 0;
+    padding: clamp(1.25rem, 2.5vw, 1.75rem) 0 0;
   }
 
   /* Sur téléphone, la maquette garde les pills et laisse tomber le filet et
