@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 
 import { SearchIcon } from "@/components/vitrine/SearchIcon";
 
-export type StatusFilter = "all" | "active" | "completed" | "draft" | "manage";
+export type StatusFilter = "all" | "active" | "completed" | "archived" | "draft" | "manage";
 
 export interface StatusPill {
   value: StatusFilter;

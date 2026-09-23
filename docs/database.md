@@ -22,10 +22,13 @@ npm run db:generate
 # Open Drizzle Studio (browser UI to inspect your DB)
 npm run db:studio
 
-# Wipe and re-seed the database with initial data
+# Seed the database. Additive: inserts only what is missing, overwrites nothing
 npm run db:seed          # alias: npm run populate-db
-npm run db:seed:force    # skip the destructive-action confirmation
-npm run db:seed:demo     # demo data on top of the base seed
+npm run db:seed:demo     # + the Sandbox demo proposals (pays CP — dev only)
+npm run db:seed:force    # wipe every seeded table first (DESTRUCTIVE)
+
+# Re-derive db_data/*.json from a production pg_dump
+npm run db:seed-data path/to/dump.sql
 
 # Schema + seed in one go
 npm run db:setup
@@ -191,24 +194,57 @@ digests (standalone — no FK; the payload is denormalized on purpose)
 
 ## Seeding the database
 
-The seed script clears all tables (in dependency order) and re-inserts data from JSON files:
+`db_data/seed.ts` is the only seed. It is **additive**: every object is matched
+on a stable natural key before being inserted, so re-running it duplicates
+nothing and overwrites nothing — in particular not the OAuth accounts created
+since. It runs against production too (`db:setup`, `populate-db`).
 
 ```bash
-npm run populate-db
+npm run db:seed           # additive — inserts only what is missing
+npm run db:seed:demo      # + the Sandbox demo proposals (pays CP — dev only)
+npm run db:seed:force     # wipes every table it knows, then re-seeds (DESTRUCTIVE)
 ```
 
-Data files:
-- `db_data/projects.json`
-- `db_data/users.json`
-- `db_data/challenges.json`
-- `db_data/contributions.json`
+It has three tiers:
 
-Two extra seeds sit alongside it, run directly with `tsx`:
+1. **Production data**, read from `db_data/*.json`: projects, users, repos,
+   challenges, challenge repos and teams, contributions, reward entries,
+   challenge signals, onboarding, Sandbox proposals, evaluation grids.
+2. **The MyCoach (MyKine) validation challenge**, from
+   `db_data/mykine-validation.json` — the only example of scenario-mode
+   validation, and absent from production. It casts no verdict, so it pays no CP.
+3. **The Sandbox demo proposals**, from `db_data/demo-sandboxes.json`, behind
+   `--demo`. Starring one past a tier **pays real CP** into `sandbox_rewards`,
+   which surface in the leaderboard — hence the flag. This tier alone goes
+   through the real services (`SandboxService.star()`,
+   `SandboxPromotionService.promote()`) so counters, paid tiers and ledger come
+   out consistent with each other.
 
-- `db_data/seed-demo.ts` (`npm run db:seed:demo`) — demo data on top of the base seed
-- `db_data/seed-validation-mammo.ts` — a ready-made validation challenge for local work
+### Refreshing the data from production
 
-> **Warning:** This is destructive — it deletes existing rows. UUIDs are regenerated on each run.
+The JSON files are not written by hand — they are derived from a `pg_dump` of
+production, and `scripts/dump-to-seed-data.mjs` is the only path:
+
+```bash
+npm run db:seed-data path/to/dump.sql
+```
+
+It types each column against the Drizzle schema (the COPY stream carries only
+text), keeps the production UUIDs so foreign keys re-wire without translation,
+and writes `db_data/*.json` plus one `db_data/briefs/<slug>.md` per brief.
+
+Never carried over: `refresh_tokens` (live sessions), `app_settings`
+(encrypted Slack/GitHub/OpenAI/Scaleway tokens), `challenge_slack_configs` (a
+real team channel), and `users.email` / `.google_user_id` / `.avatar_url` —
+OAuth account data, rebuilt on first login, with no place in a public repo.
+
+Two things the script translates, because the schema is ahead of production:
+`sandboxes` drops `type` / `repo_url` / `model_url` / `dataset_urls` /
+`evaluation*` (removed by migration 0025, "a sandbox is a project"), and
+`challenges.index` is dropped — it is a `serial`, production holds four
+duplicate pairs of it, so it identifies nothing. Challenges are matched on
+their **slug** instead. `TYPE_OVERRIDES` at the top of the script fixes types
+production gets wrong, by slug.
 
 ---
 
@@ -222,4 +258,4 @@ If you change the schema in `packages/database-service/db/drizzle.ts`, always ru
 
 **Slugs are backfilled there, in TypeScript.** `slugStatement()` adds the column nullable, then, in one transaction per table under a `SHARE ROW EXCLUSIVE` lock, computes the missing slugs with the application's own `slugify` (`planSlugBackfill`, oldest row first, collisions numbered), writes them — logging each `uuid → slug` — and only then sets `NOT NULL` and the unique index. The lock matters because the release still serving traffic during a Scalingo postdeploy creates rows without a slug; the transaction means a failure leaves the column nullable and that release working. Once the column is `NOT NULL` the step is a no-op. The slug steps sit at the very end of the script on purpose — see [`deployment.md`](./deployment.md#deploying-on-scalingo). To read what a backfill would write against any database (production through `scalingo db-tunnel`, say), run `npm run db:preview-slugs`: it writes nothing.
 
-Seeds that insert challenges with raw Drizzle calls (`db_data/seed.ts`, `db_data/seed-validation-mykine.ts`) derive a free slug themselves; every repository or service path (`ChallengeRepository.create`, `SandboxRepository.create`, the promotion) derives one from the title when the caller gives none.
+Seeds that insert challenges with raw Drizzle calls (`db_data/seed.ts`) derive a free slug themselves; every repository or service path (`ChallengeRepository.create`, `SandboxRepository.create`, the promotion) derives one from the title when the caller gives none.

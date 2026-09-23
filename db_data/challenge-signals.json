@@ -1,0 +1,72 @@
+[
+  {
+    "uuid": "43c12b79-f4d7-4f11-bf4b-9fe879e880cc",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "label": "Helped a peer",
+    "description": "The message provides concrete help to another participant in response to a difficulty they raised earlier in the conversation — a fix, a working snippet, a diagnosis, a pointer to the cause. The help must be substantive; agreement, encouragement, or \"same problem here\" does not count.",
+    "reward_cp": 5,
+    "icon": "handshake",
+    "position": 0,
+    "created_at": "2026-08-05 16:14:31.215367"
+  },
+  {
+    "uuid": "def20cbf-7086-4ad8-93d3-c0e5ff56da7c",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "label": "Unblocked a discussion",
+    "description": "The message resolves an open question or a disagreement that was left hanging earlier in the channel, by supplying the missing information or the decisive argument. Only counts if the earlier question is visible in the conversation.",
+    "reward_cp": 5,
+    "icon": "wrench",
+    "position": 0,
+    "created_at": "2026-08-05 16:14:55.814348"
+  },
+  {
+    "uuid": "6ddc7493-e782-4d12-a812-a2f6b372f245",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "label": "Proposed an idea",
+    "description": "The message proposes a concrete direction for the challenge — an approach, an architecture, a preprocessing strategy, an evaluation protocol — with enough substance to be acted on. A question or a vague suggestion does not count.",
+    "reward_cp": 5,
+    "icon": "lightbulb",
+    "position": 0,
+    "created_at": "2026-08-05 16:15:14.548349"
+  },
+  {
+    "uuid": "bf9a6017-3c2c-434b-8d88-5181172149fd",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "label": "Shared a technical finding",
+    "description": "The message reports a concrete experimental result the author obtained themselves: a metric value, a comparison between approaches, an ablation, a failed experiment with its outcome. Must contain a specific observation, not a plan or an intention. \"I tried X and got Y\" counts; \"I'm going to try X\" does not.",
+    "reward_cp": 5,
+    "icon": "zap",
+    "position": 0,
+    "created_at": "2026-08-05 16:15:46.558145"
+  },
+  {
+    "uuid": "5a5a2711-911c-47f9-80d2-b87949a0ffef",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "label": "Shared a resource",
+    "description": "The message shares an external resource relevant to the challenge — a paper, a dataset, a repository, a tutorial, a tool — with at least a brief indication of why it's relevant. A bare link with no context does not count.",
+    "reward_cp": 5,
+    "icon": "search",
+    "position": 0,
+    "created_at": "2026-08-05 16:16:05.931393"
+  },
+  {
+    "uuid": "7aeffcf1-d4d3-4c43-920a-16ee17737ee0",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "label": "Reported a problem",
+    "description": "The message reports a concrete technical problem the author encountered: a bug, a data quality issue, a label inconsistency, a broken pipeline, a leakage risk. The problem must be described specifically enough to be actionable, not a general complaint.",
+    "reward_cp": 5,
+    "icon": "target",
+    "position": 0,
+    "created_at": "2026-08-05 16:16:43.761025"
+  },
+  {
+    "uuid": "1b253460-e26d-4ed9-8bb7-54882a33ef80",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "label": "Answered a technical question",
+    "description": "The message provides a technical answer or solution addressed to someone else, identifiable by the message itself (mentioning a person, quoting the issue, or explicitly framing it as a response). Must contain actual content — a pointer, a fix, an explanation — not just acknowledgment.",
+    "reward_cp": 5,
+    "icon": "message",
+    "position": 0,
+    "created_at": "2026-08-05 16:17:01.506416"
+  }
+]

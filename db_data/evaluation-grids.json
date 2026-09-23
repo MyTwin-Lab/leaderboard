@@ -1,0 +1,1194 @@
+[
+  {
+    "id": "51c1a609-6fb1-45e7-85cb-eca4b3fc98c4",
+    "slug": "api",
+    "name": "API Packaging Model",
+    "description": null,
+    "version": 1,
+    "status": "published",
+    "instructions": "INSTRUCTIONS SPÉCIFIQUES À CETTE GRILLE\n\n1. Objet de l'évaluation\nCette grille évalue la couche de service : le code qui charge un modèle déjà\nentraîné et l'expose derrière une API HTTP. Elle n'évalue pas la qualité du\nmodèle (mesurée par sa métrique), ni la qualité de code générique du dépôt\n(évaluée sur l'étape « model code »), ni le fait que l'endpoint déployé réponde\ncorrectement (mesuré séparément par le challenge de validation).\nConcrètement : ne note que ce qui n'existe dans ce dépôt que parce qu'on expose\nle modèle. La structure du code, le nommage, la lisibilité, l'organisation des\nmodules ne sont pas notés ici — un service en un seul fichier peut atteindre la\nnote maximale s'il fait correctement son travail.\n\n2. Ne note que ce qui est observable dans ce dépôt\nTu ne disposes que du dépôt de packaging. Tu n'as accès ni à l'endpoint déployé,\nni au dépôt d'entraînement, ni au dataset : n'infère jamais un comportement\nd'exécution ou une correspondance avec l'entraînement que ce dépôt ne montre\npas. Si un élément demandé par un critère est introuvable, note d'après\nl'absence et justifie-la explicitement.\nSi le contexte est manifestement tronqué (arborescence partielle, fichiers\ncoupés), signale-le dans la justification au lieu d'inférer.\n\n3. Calibrage de l'échelle\nLe repère est le suivant : un service qui sert correctement le modèle mais n'est\npas livrable en l'état — on ne sait pas le démarrer sans deviner, rien ne vérifie\nqu'il fonctionne — se situe en haut de la bande « average ». La conteneurisation,\nl'épinglage des dépendances et une vérification automatisée font partie du socle\nattendu, pas du bonus : ils font entrer dans la bande « good ». La bande « poor »\nest réservée aux défauts structurels du service, pas au manque de soin.\nUtilise réellement le bas de l'échelle. Toute note haute doit s'appuyer sur un\nélément concret cité dans la justification, pas sur une impression générale.\n\n4. Procédure de notation\nPour chaque critère, retiens la bande la plus haute dont le descripteur est\nintégralement satisfait — pas partiellement. À l'intérieur de la bande, prends la\nborne basse par défaut ; ne monte à la borne haute que si aucun élément du\ndescripteur n'est incertain. En cas d'hésitation entre deux bandes, choisis\nsystématiquement la plus basse et écris dans la justification quelle condition\nmanquante a fixé le plafond.\nÉvalue les critères dans l'ordre de la grille, chacun isolément : la qualité d'un\ncritère ne doit pas influencer le suivant. Un même défaut n'est pénalisé qu'une\nseule fois, sur le critère qui le nomme explicitement ; s'il ressort ailleurs,\nmentionne-le sans baisser la note une seconde fois.\n\n5. Le code prime sur le déclaratif\nLes affirmations du README ne valent que si le dépôt les corrobore. La présence\nd'un fichier ne suffit pas : un Dockerfile qui ne construit pas le service, un\nrequirements.txt sans le framework serveur, un fichier de test qui n'appelle\naucune route ne comptent pas comme vérifiés.\n\n6. Signal critique (plafond impératif)\nSi le prétraitement est réimplémenté dans le code de service avec des valeurs\nfigées recopiées à la main — constantes de normalisation, mapping de catégories,\nvocabulaire d'encodage — le critère « Provenance du prétraitement » ne peut pas\ndépasser 2, quelle que soit la propreté du reste. Nomme explicitement le signal\ndétecté dans la justification.\n\n7. Cas d'ambiguïté sur le prétraitement\nSi le service charge un artefact et appelle directement la prédiction sur\nl'entrée reçue, deux situations opposées produisent la même trace : le\nprétraitement est embarqué dans l'artefact, ou il est purement absent. Ne tranche\npas au hasard : note sur la bande « average » et signale explicitement\nl'ambiguïté dans la justification.\n\n8. Proportionnalité au contexte\nJuge le service par rapport au besoin réel : exposer un modèle pour un challenge\ninterne. Un service compact, correctement construit, conteneurisé et vérifié est\nune contribution forte ; une architecture surdimensionnée n'est pas un bonus. Ne\nréclame ni orchestration, ni file d'attente, ni authentification d'entreprise si\nrien dans le dépôt ne les rend nécessaires.\n\n9. Format des justifications\nUne à trois phrases par critère, en français, citant au moins un élément concret\n(nom de fichier, fonction, route, ligne de configuration) et, si la note est\nplafonnée, la condition manquante qui l'a fixée. Pas de reformulation du libellé\ndu critère, pas de conseil d'amélioration, pas de mention de la note dans le\ntexte.",
+    "created_at": "2026-08-04 14:58:01.992592",
+    "updated_at": "2026-08-04 14:58:16.358",
+    "published_at": null,
+    "created_by": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "categories": [
+      {
+        "id": "550e859c-befd-4d46-8970-dc0a9d549d70",
+        "grid_id": "51c1a609-6fb1-45e7-85cb-eca4b3fc98c4",
+        "name": "Fidélité de l'inférence",
+        "weight": 0.5,
+        "type": "objective",
+        "position": 0,
+        "subcriteria": [
+          {
+            "id": "2b73d262-0c10-462a-924b-69d219a37a6c",
+            "category_id": "550e859c-befd-4d46-8970-dc0a9d549d70",
+            "criterion": "Chargement de l'artefact",
+            "description": "Évalue si le modèle entraîné est chargé une seule fois, au démarrage du service, depuis un artefact existant, et non rechargé ou reconstruit à chaque requête.",
+            "weight": null,
+            "metrics": [
+              "Nombre de chargements de l'artefact par requête (0 attendu)",
+              "Chargement effectué au démarrage du processus (oui / non)",
+              "Chemin de l'artefact configurable plutôt que codé en dur (oui / non)",
+              "Échec de chargement détecté au lancement plutôt qu'au premier appel (oui / non)",
+              "Entraînement déclenché depuis le chemin de service (oui / non)"
+            ],
+            "indicators": [
+              "Chargement en portée module, dans un lifespan / startup event, ou via un singleton mémoïsé",
+              "joblib.load / torch.load / from_pretrained placé à l'intérieur du handler de requête",
+              "fit(), train() ou équivalent appelé dans le chemin de service",
+              "Chemin absolu local vers les poids",
+              "Variable d'environnement ou paramètre de configuration désignant l'artefact"
+            ],
+            "scoring_excellent": "Artefact chargé une fois au démarrage, chemin configurable, échec de chargement détecté immédiatement au lancement du service.",
+            "scoring_good": "Chargement unique au démarrage, mais chemin codé en dur ou échec de chargement non traité explicitement.",
+            "scoring_average": "Chargement à la première requête sans garantie d'unicité, ou dépendance à un chemin absolu local.",
+            "scoring_poor": "Modèle rechargé à chaque appel, ou entraîné dans le chemin de service.",
+            "position": 0
+          },
+          {
+            "id": "318d91aa-985f-4089-bb80-57666028c5d3",
+            "category_id": "550e859c-befd-4d46-8970-dc0a9d549d70",
+            "criterion": "Provenance du prétraitement",
+            "description": "Évalue d'où viennent les transformations appliquées à une requête avant la prédiction : de l'artefact chargé, d'un mécanisme partagé, ou d'une réimplémentation manuelle dans le service. Le dépôt d'entraînement n'étant pas visible, ce critère juge la présence d'un mécanisme prévenant la divergence, pas la divergence elle-même.",
+            "weight": null,
+            "metrics": [
+              "Transformations embarquées dans l'artefact chargé (oui / non / non déterminable)",
+              "Nombre de valeurs figées recopiées dans le code de service (moyennes, écarts-types, mapping de catégories, vocabulaire)",
+              "Ordre et nommage des features contraints côté service (oui / non)",
+              "Nombre de transformations construites à la main dans le handler"
+            ],
+            "indicators": [
+              "Pipeline sérialisé englobant prétraitement et modèle, chargé d'un seul bloc",
+              "Import d'un module de prétraitement versionné ou installé comme dépendance",
+              "Moyennes, écarts-types ou dictionnaires de catégories écrits littéralement dans le fichier de service",
+              "Construction du vecteur de features par concaténation manuelle dans le handler",
+              "Schéma d'entrée nommant explicitement chaque feature attendue",
+              "Prédiction appelée directement sur l'entrée reçue, sans transformation visible"
+            ],
+            "scoring_excellent": "Les transformations proviennent entièrement de l'artefact chargé ou d'un module partagé versionné ; l'ordre et le nommage des features sont contraints côté service.",
+            "scoring_good": "Prétraitement issu de l'artefact ou d'un module partagé, avec une adaptation mineure et explicite dans le service.",
+            "scoring_average": "Prétraitement réimplémenté dans le service sans valeur figée recopiée, ou provenance non déterminable depuis ce dépôt seul.",
+            "scoring_poor": "Prétraitement réimplémenté à partir de valeurs figées recopiées à la main : rien ne prévient une divergence avec l'entraînement.",
+            "position": 1
+          }
+        ]
+      },
+      {
+        "id": "e930f08f-45fb-4ce7-aad5-71db710e5cf3",
+        "grid_id": "51c1a609-6fb1-45e7-85cb-eca4b3fc98c4",
+        "name": "Contrat & robustesse",
+        "weight": 0.34,
+        "type": "objective",
+        "position": 1,
+        "subcriteria": [
+          {
+            "id": "0749703c-76fb-4640-a357-4c00f9409bd8",
+            "category_id": "e930f08f-45fb-4ce7-aad5-71db710e5cf3",
+            "criterion": "Traitement des entrées invalides",
+            "description": "Évalue le comportement du service face à une requête mal formée, incomplète ou hors domaine : refus explicite plutôt que prédiction silencieuse ou erreur non maîtrisée.",
+            "weight": null,
+            "metrics": [
+              "Nombre de classes d'entrées invalides traitées explicitement (champ manquant, type incorrect, valeur hors bornes, catégorie inconnue, format de fichier inattendu)",
+              "Code de statut renvoyé pour une entrée invalide (4xx attendu)",
+              "Message d'erreur nommant le champ fautif (oui / non)",
+              "Prédiction renvoyée malgré une entrée incomplète (oui / non)"
+            ],
+            "indicators": [
+              "Validation déclarative rejetant la requête avant d'atteindre le modèle",
+              "HTTPException / abort avec un code 400 ou 422 et un message ciblé",
+              "Valeur manquante remplacée par une valeur par défaut silencieuse",
+              "Catégorie inconnue mappée implicitement sur une valeur existante",
+              "except large renvoyant une réponse d'apparence valide",
+              "Erreur de validation remontant en 500"
+            ],
+            "scoring_excellent": "Les classes d'entrées invalides pertinentes sont rejetées avant le modèle, avec un code 4xx et un message nommant le champ fautif.",
+            "scoring_good": "Entrées invalides rejetées avec un code approprié, message générique ou classes de cas partiellement couvertes.",
+            "scoring_average": "Entrée invalide provoquant une erreur serveur non maîtrisée, ou complétée par une valeur par défaut sans signalement.",
+            "scoring_poor": "Aucune validation : une requête incomplète produit une prédiction silencieusement fausse.",
+            "position": 0
+          },
+          {
+            "id": "acedb5e2-9026-4b70-9552-d61ae5a838fb",
+            "category_id": "e930f08f-45fb-4ce7-aad5-71db710e5cf3",
+            "criterion": "Contrat d'entrée / sortie",
+            "description": "Évalue si le format attendu en entrée et le format renvoyé en sortie sont définis de façon contraignante et découvrables sans lire le code du handler.",
+            "weight": null,
+            "metrics": [
+              "Proportion de routes dont l'entrée est décrite par un schéma typé",
+              "Proportion de routes dont la sortie est décrite par un schéma typé",
+              "Nombre de champs de sortie nommés (vs valeur brute renvoyée)",
+              "Présence d'un exemple d'appel complet et cohérent avec la signature réelle (oui / non)",
+              "Spécification exposée automatiquement par le service (oui / non)"
+            ],
+            "indicators": [
+              "Modèles pydantic, dataclasses, TypedDict, marshmallow, JSON Schema",
+              "response_model= renseigné sur la route",
+              "/docs ou /openapi.json accessibles",
+              "request.json[\"...\"] lu directement sans schéma",
+              "Sortie renvoyée comme scalaire nu ou comme str(prediction)",
+              "Exemple curl mentionnant une route ou un champ absent du code"
+            ],
+            "scoring_excellent": "Entrée et sortie décrites par des schémas typés et contraignants ; spécification exposée ou exemple d'appel complet strictement cohérent avec le code.",
+            "scoring_good": "Schéma typé en entrée, sortie structurée et nommée mais non contrainte par un schéma déclaré.",
+            "scoring_average": "Lecture directe du corps de la requête sans schéma, ou sortie renvoyée en valeur brute : le contrat se déduit du code seulement.",
+            "scoring_poor": "Format d'entrée indéductible et sortie non structurée : l'API n'est pas appelable sans essais-erreurs.",
+            "position": 1
+          }
+        ]
+      },
+      {
+        "id": "62c378eb-4093-47cc-bbad-2c17e78248a6",
+        "grid_id": "51c1a609-6fb1-45e7-85cb-eca4b3fc98c4",
+        "name": "Livrabilité",
+        "weight": 0.16,
+        "type": "objective",
+        "position": 2,
+        "subcriteria": [
+          {
+            "id": "8b43a444-2ce8-4f7b-a87b-749a4a086792",
+            "category_id": "62c378eb-4093-47cc-bbad-2c17e78248a6",
+            "criterion": "Démarrage depuis un dépôt frais",
+            "description": "Évalue ce qu'il faut faire pour obtenir un service qui tourne à partir de ce dépôt seul, et ce qui atteste qu'il fonctionne.",
+            "weight": null,
+            "metrics": [
+              "Nombre d'étapes manuelles pour démarrer le service",
+              "Présence d'un Dockerfile construisant réellement le service (oui / non)",
+              "Proportion de dépendances avec version épinglée",
+              "Nombre de tests appelant effectivement une route du service",
+              "Nombre de chemins absolus locaux dans le code de service"
+            ],
+            "indicators": [
+              "Dockerfile, docker-compose.yml, Makefile, run.sh, point d'entrée CLI paramétré",
+              "requirements.txt avec ==, poetry.lock, uv.lock, image de base avec tag précis",
+              "TestClient ou requête HTTP de test exerçant la route de prédiction",
+              "Section « how to run » cohérente avec l'arborescence réelle",
+              "Chemins de type /Users/..., C:\\..., /content/drive/...",
+              "Dépendances listées sans contrainte de version, image de base :latest",
+              "Démarrage passant par l'exécution manuelle de cellules de notebook"
+            ],
+            "scoring_excellent": "Une commande documentée démarre le service depuis un dépôt frais, conteneurisation cohérente avec le code, dépendances épinglées, et au moins un test exerçant la route de prédiction.",
+            "scoring_good": "Service conteneurisé ou démarrable en quelques étapes exactes, dépendances majoritairement contraintes ; vérification automatisée présente mais partielle.",
+            "scoring_average": "Service démarrable mais rien ne l'atteste : ni conteneurisation, ni versions épinglées, ni test — il faut deviner l'ordre, les chemins ou les paramètres.",
+            "scoring_poor": "Non démarrable en l'état : chemins absolus locaux, dépendances manquantes, ou service accessible seulement par exécution manuelle de cellules.",
+            "position": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "04d28ea1-ce3d-4425-a396-3e601559b131",
+    "slug": "dataset",
+    "name": "Dataset Kaggle",
+    "description": null,
+    "version": 1,
+    "status": "published",
+    "instructions": "INSTRUCTIONS SPÉCIFIQUES À CETTE GRILLE\n\n1. Objet de l'évaluation\nCette grille évalue un jeu de données livré, pas le code qui l'a produit ni un\npipeline de prétraitement. Le contributeur soumet une URL Kaggle : le contexte\nfourni est la dataset card, la liste des fichiers, le schéma et l'historique des\nversions. N'attends aucun dépôt de code, aucun script d'entraînement, aucune\nmétrique de modèle, et ne pénalise jamais leur absence.\n\n2. Ne note que ce qui est observable\nUn jeu de données ne se laisse pas inspecter ligne à ligne : tu ne peux juger que\nce qui est visible dans les métadonnées ou explicitement documenté par le\ncontributeur. Si un élément demandé par un critère est introuvable (protocole\nd'annotation, licence, dictionnaire de colonnes), note 0–1 sur ce critère et\njustifie par l'absence. N'infère jamais qu'une bonne pratique a été appliquée\nhors du contexte visible.\nÀ l'inverse, si le contexte est manifestement tronqué (card coupée, arborescence\npartielle), signale-le dans la justification au lieu de conclure à l'absence.\n\n3. La preuve prime sur l'affirmation\nUne qualité annoncée sans élément vérifiable ne vaut pas mieux qu'une qualité\nnon annoncée. « Données nettoyées et vérifiées » sans chiffre, sans méthode et\nsans trace ne dépasse pas 3. Toute note ≥ 8 doit s'appuyer sur un élément\nconcret cité dans la justification : nom de fichier, nom de colonne, section de\nla card, numéro de version, valeur chiffrée.\n\n4. Calibrage de l'échelle\nLe repère central est 5 : un jeu de données correct, exploitable, sans rien de\nremarquable. Réserve 8–9 aux jeux qu'un praticien citerait en référence, et\nutilise réellement le bas de l'échelle.\n\n5. Signaux critiques (fuite et intégrité)\nSi tu observes l'un des éléments suivants, aucun critère de la catégorie\n« Intégrité & fiabilité des données » ne peut dépasser 2 :\n  - présence d'une colonne trivialement dérivée de la cible parmi les features ;\n  - splits fournis qui chevauchent (même identifiant présent dans train et test) ;\n  - split aléatoire livré sur des données temporelles ou groupées par individu ;\n  - labels manifestement produits par un modèle sans que ce soit annoncé.\nNomme explicitement le signal détecté dans la justification concernée.\n\n6. Proportionnalité au contexte\nJuge le jeu de données par rapport à la tâche visée par le challenge, pas par\nrapport à un idéal absolu. Un petit jeu spécialisé, bien documenté et bien\ndélimité, vaut mieux qu'un gros jeu générique sans card. Le volume ne compense\njamais l'absence de documentation.\n\n7. Données brutes\nUn jeu volontairement brut, non transformé, n'est pas un défaut en soi : c'est\nun choix qui doit être assumé et documenté. Ce qui est pénalisable, c'est\nl'ambiguïté — un jeu dont on ne sait pas s'il est brut, partiellement traité, ou\ndéjà filtré.\n\n8. Format des justifications\nUne à trois phrases par critère, citant au moins un élément concret : nom de\nfichier, nom de colonne, section de la card, numéro de version. Pas de\nreformulation du libellé du critère. Rédige en français.",
+    "created_at": "2026-08-04 17:08:02.148244",
+    "updated_at": "2026-08-04 17:08:11.137",
+    "published_at": null,
+    "created_by": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "categories": [
+      {
+        "id": "ecab3cb0-34ee-4980-978a-223f81153148",
+        "grid_id": "04d28ea1-ce3d-4425-a396-3e601559b131",
+        "name": "Cadrage & pertinence",
+        "weight": 0.15,
+        "type": "mixed",
+        "position": 0,
+        "subcriteria": [
+          {
+            "id": "6046588c-3a81-40e6-83b2-c5a2084c1908",
+            "category_id": "ecab3cb0-34ee-4980-978a-223f81153148",
+            "criterion": "Adéquation à la tâche du challenge",
+            "description": "Évalue si le jeu de données répond réellement au besoin posé par le challenge, et si ce lien est explicité plutôt que laissé à déduire.",
+            "weight": null,
+            "metrics": [
+              "Correspondance entre le domaine du jeu et l'énoncé du challenge",
+              "Présence d'une cible exploitable pour la tâche visée (oui / non)",
+              "Proportion du périmètre demandé effectivement couverte",
+              "Nombre d'usages aval explicitement cités"
+            ],
+            "indicators": [
+              "Section « objectif » ou « usage prévu » dans la dataset card",
+              "Argumentaire reliant le contenu du jeu au besoin du challenge",
+              "Colonne cible nommée et décrite",
+              "Écart entre le domaine annoncé et le contenu réel des fichiers"
+            ],
+            "scoring_excellent": "Le lien avec la tâche du challenge est posé explicitement, la cible est identifiée, l'usage aval est décrit.",
+            "scoring_good": "Jeu pertinent et exploitable, lien avec le challenge évident mais non argumenté.",
+            "scoring_average": "Pertinence seulement déductible du contenu ; aucun cadrage écrit.",
+            "scoring_poor": "Hors sujet, ou aucune cible exploitable pour la tâche visée.",
+            "position": 0
+          },
+          {
+            "id": "6153f885-5f18-421f-adc0-d3e80effef85",
+            "category_id": "ecab3cb0-34ee-4980-978a-223f81153148",
+            "criterion": "Volume, granularité & valeur ajoutée",
+            "description": "Évalue si le jeu est dimensionné pour la tâche et s'il apporte autre chose qu'une redistribution d'un jeu public existant.",
+            "weight": null,
+            "metrics": [
+              "Nombre de lignes / fichiers / échantillons",
+              "Granularité temporelle, spatiale ou par entité",
+              "Part du contenu issue d'une collecte ou d'un enrichissement propre",
+              "Nombre de sources agrégées"
+            ],
+            "indicators": [
+              "Statistiques de volume annoncées dans la card",
+              "Mention des sources d'origine et de ce qui leur a été ajouté",
+              "Jeu public connu repris sans transformation ni mention",
+              "Adéquation entre le volume et la complexité de la tâche visée"
+            ],
+            "scoring_excellent": "Volume et granularité proportionnés à la tâche, apport propre (collecte, agrégation, enrichissement) explicité.",
+            "scoring_good": "Volume suffisant, apport réel mais modeste ou peu détaillé.",
+            "scoring_average": "Volume juste, ou reprise d'un jeu existant avec un apport marginal non explicité.",
+            "scoring_poor": "Volume insuffisant pour tout apprentissage, ou copie brute d'un jeu public renommé.",
+            "position": 1
+          }
+        ]
+      },
+      {
+        "id": "039e8ffd-bd95-42a9-830a-ca682bb2bd0e",
+        "grid_id": "04d28ea1-ce3d-4425-a396-3e601559b131",
+        "name": "Intégrité & fiabilité des données",
+        "weight": 0.25,
+        "type": "objective",
+        "position": 1,
+        "subcriteria": [
+          {
+            "id": "5c457852-eccb-491c-a23d-e3da61bdb16a",
+            "category_id": "039e8ffd-bd95-42a9-830a-ca682bb2bd0e",
+            "criterion": "État des données livrées",
+            "description": "Évalue ce que l'on sait de l'état du jeu tel qu'il est livré : manquants, doublons, valeurs aberrantes. On ne note pas un travail de nettoyage, on note ce qui est mesuré et déclaré.",
+            "weight": null,
+            "metrics": [
+              "Taux de valeurs manquantes rapporté par colonne",
+              "Taux de doublons rapporté",
+              "Convention d'encodage des manquants explicitée (oui / non)",
+              "Plages de valeurs déclarées par champ numérique"
+            ],
+            "indicators": [
+              "Section « qualité » ou « limites connues » avec des chiffres",
+              "Convention unique et annoncée pour les manquants",
+              "Mélange de conventions dans un même champ (vide, NA, -1, 0)",
+              "Statut du jeu (brut / filtré / consolidé) annoncé sans ambiguïté"
+            ],
+            "scoring_excellent": "État du jeu mesuré et chiffré (manquants, doublons, aberrants), conventions d'encodage explicites, statut du jeu assumé.",
+            "scoring_good": "État global décrit qualitativement, sans chiffres, mais sans ambiguïté sur le statut du jeu.",
+            "scoring_average": "Aucune information sur l'état des données ; anomalies visibles dans le schéma et non commentées.",
+            "scoring_poor": "Conventions incohérentes, doublons ou champs corrompus manifestes, aucune mention.",
+            "position": 0
+          },
+          {
+            "id": "4a207457-1960-4288-8ed7-60a20d8bad5f",
+            "category_id": "039e8ffd-bd95-42a9-830a-ca682bb2bd0e",
+            "criterion": "Origine et fiabilité des annotations",
+            "description": "Évalue ce qui garantit la valeur des labels : qui les a produits, selon quel guide, avec quel niveau d'accord. Sans objet si le jeu ne comporte aucune annotation, à signaler comme tel.",
+            "weight": null,
+            "metrics": [
+              "Nombre d'annotateurs",
+              "Métrique d'accord inter-annotateurs rapportée (kappa, alpha)",
+              "Part du jeu doublement annotée",
+              "Origine des labels (humaine / automatique / dérivée)"
+            ],
+            "indicators": [
+              "Guide d'annotation joint ou résumé dans la card",
+              "Mention explicite de labels produits par un modèle",
+              "Procédure de résolution des désaccords décrite",
+              "Labels présents sans un mot sur leur provenance"
+            ],
+            "scoring_excellent": "Protocole d'annotation documenté, origine des labels claire, accord inter-annotateurs mesuré et rapporté.",
+            "scoring_good": "Origine des labels claire et protocole décrit, sans mesure d'accord.",
+            "scoring_average": "Labels présents, origine vague ou déduite.",
+            "scoring_poor": "Labels sans provenance, ou labels automatiques présentés comme des vérités terrain.",
+            "position": 1
+          },
+          {
+            "id": "08f4d986-4eee-4e46-993a-b30eb6ed23db",
+            "category_id": "039e8ffd-bd95-42a9-830a-ca682bb2bd0e",
+            "criterion": "Cohérence du schéma & absence de fuite",
+            "description": "Évalue si le schéma est cohérent et si le jeu ne contient pas de champ qui rendrait la tâche triviale ou qui trahirait la cible.",
+            "weight": null,
+            "metrics": [
+              "Nombre de colonnes au type incohérent avec leur contenu",
+              "Nombre de colonnes dérivées de la cible identifiées",
+              "Unicité effective des identifiants",
+              "Cohérence des unités entre fichiers d'un même jeu"
+            ],
+            "indicators": [
+              "Colonne postérieure à l'événement à prédire laissée parmi les features",
+              "Identifiant dupliqué entre fichiers censés être disjoints",
+              "Unités ou formats de date différents selon les fichiers",
+              "Mention explicite des colonnes à exclure de l'apprentissage"
+            ],
+            "scoring_excellent": "Schéma cohérent et typé, colonnes à risque de fuite identifiées et signalées comme à exclure.",
+            "scoring_good": "Schéma cohérent, aucun risque de fuite apparent, mais le sujet n'est pas abordé.",
+            "scoring_average": "Incohérences ponctuelles de type, d'unité ou de format entre fichiers.",
+            "scoring_poor": "Fuite manifeste, ou schéma incohérent au point de rendre le jeu inexploitable tel quel.",
+            "position": 2
+          }
+        ]
+      },
+      {
+        "id": "b4db7b7d-a2c0-4c0b-99f2-f1fd2321202a",
+        "grid_id": "04d28ea1-ce3d-4425-a396-3e601559b131",
+        "name": "Documentation (dataset card)",
+        "weight": 0.25,
+        "type": "mixed",
+        "position": 2,
+        "subcriteria": [
+          {
+            "id": "e48ca2c1-d580-486d-85dc-d2b13f954669",
+            "category_id": "b4db7b7d-a2c0-4c0b-99f2-f1fd2321202a",
+            "criterion": "Complétude de la dataset card",
+            "description": "Évalue si la card permet à un tiers de décider seul si le jeu convient à son usage, sans avoir à le télécharger.",
+            "weight": null,
+            "metrics": [
+              "Nombre de sections attendues présentes (motivation, collecte, contenu, limites)",
+              "Longueur utile hors remplissage",
+              "Présence d'une section « limites connues » (oui / non)",
+              "Présence d'une section « usages déconseillés » (oui / non)"
+            ],
+            "indicators": [
+              "Structure en sections identifiables plutôt qu'un paragraphe unique",
+              "Limites du jeu énoncées par le contributeur lui-même",
+              "Description réduite à une reformulation du titre",
+              "Cohérence entre ce que décrit la card et les fichiers réellement présents"
+            ],
+            "scoring_excellent": "Card structurée couvrant motivation, méthode de collecte, contenu, limites connues et usages déconseillés.",
+            "scoring_good": "Card informative couvrant l'essentiel, sans section sur les limites.",
+            "scoring_average": "Quelques phrases de description générique.",
+            "scoring_poor": "Absente, ou en décalage avec le contenu réel du jeu.",
+            "position": 0
+          },
+          {
+            "id": "67d7eeba-9476-4ffd-930f-f64403fd3372",
+            "category_id": "b4db7b7d-a2c0-4c0b-99f2-f1fd2321202a",
+            "criterion": "Dictionnaire de données",
+            "description": "Évalue la description champ par champ : type, unité, domaine de valeurs, signification métier.",
+            "weight": null,
+            "metrics": [
+              "Proportion de colonnes documentées",
+              "Proportion de colonnes avec unité précisée",
+              "Proportion de champs catégoriels dont le domaine est énuméré",
+              "Nombre d'abréviations de colonnes laissées sans explication"
+            ],
+            "indicators": [
+              "Tableau colonne / type / unité / description",
+              "Modalités des variables catégorielles listées",
+              "Noms de colonnes cryptiques laissés tels quels",
+              "Fichier de schéma joint au jeu"
+            ],
+            "scoring_excellent": "Chaque champ documenté avec type, unité et signification ; modalités des catégorielles énumérées.",
+            "scoring_good": "Champs principaux documentés, quelques colonnes secondaires laissées de côté.",
+            "scoring_average": "Documentation partielle, unités absentes, abréviations non explicitées.",
+            "scoring_poor": "Aucune description des colonnes.",
+            "position": 1
+          },
+          {
+            "id": "98243811-79a5-4a9b-aac7-9757de747a91",
+            "category_id": "b4db7b7d-a2c0-4c0b-99f2-f1fd2321202a",
+            "criterion": "Traçabilité de la collecte",
+            "description": "Évalue si l'on peut remonter à l'origine des données : sources, période couverte, méthode d'obtention, critères d'inclusion et d'exclusion.",
+            "weight": null,
+            "metrics": [
+              "Nombre de sources nommées",
+              "Période couverte explicitée (oui / non)",
+              "Critères d'inclusion / exclusion énoncés (oui / non)",
+              "Méthode d'obtention décrite (API, export, capteur, saisie)"
+            ],
+            "indicators": [
+              "Sources citées avec leur lien ou leur référence",
+              "Dates de début et de fin de collecte",
+              "Filtres appliqués avant livraison, annoncés explicitement",
+              "Origine décrite en termes vagues (« données publiques »)"
+            ],
+            "scoring_excellent": "Sources nommées, période couverte, méthode d'obtention et critères de sélection décrits ; un tiers pourrait reconstituer une collecte équivalente.",
+            "scoring_good": "Sources et méthode indiquées, sans détail sur les critères de sélection.",
+            "scoring_average": "Origine évoquée en termes généraux.",
+            "scoring_poor": "Provenance opaque : on ne sait ni d'où viennent les données ni comment elles ont été retenues.",
+            "position": 2
+          },
+          {
+            "id": "9fbfaaa0-818e-4470-952f-811ba534a6d0",
+            "category_id": "b4db7b7d-a2c0-4c0b-99f2-f1fd2321202a",
+            "criterion": "Exploitabilité immédiate",
+            "description": "Évalue ce que la card offre pour démarrer : exemple de lecture, découpage suggéré, point de comparaison de référence.",
+            "weight": null,
+            "metrics": [
+              "Présence d'un extrait de code de chargement (oui / non)",
+              "Présence d'un aperçu ou d'un échantillon de lignes (oui / non)",
+              "Présence d'une baseline chiffrée (oui / non)",
+              "Découpage recommandé explicité (oui / non)"
+            ],
+            "indicators": [
+              "Snippet de lecture directement exécutable",
+              "Tableau d'aperçu des premières lignes",
+              "Score de référence annoncé avec sa métrique et son protocole",
+              "Recommandation de split assortie de sa justification"
+            ],
+            "scoring_excellent": "Exemple de chargement exécutable, aperçu des données, découpage recommandé et baseline chiffrée.",
+            "scoring_good": "Exemple de chargement ou aperçu fourni, sans baseline.",
+            "scoring_average": "Rien d'autre que la description ; le jeu est utilisable mais tout est à découvrir.",
+            "scoring_poor": "Format et structure à deviner avant même de pouvoir ouvrir les fichiers.",
+            "position": 3
+          }
+        ]
+      },
+      {
+        "id": "0fa39da4-c4ec-4483-bff1-afaf26661a5b",
+        "grid_id": "04d28ea1-ce3d-4425-a396-3e601559b131",
+        "name": "Structure & réutilisabilité",
+        "weight": 0.15,
+        "type": "objective",
+        "position": 3,
+        "subcriteria": [
+          {
+            "id": "f3011a4f-9ac3-4b1c-b9c4-043adb8baa9e",
+            "category_id": "0fa39da4-c4ec-4483-bff1-afaf26661a5b",
+            "criterion": "Format & encodage",
+            "description": "Évalue si les fichiers sont dans des formats ouverts, lisibles par les outils standards, et sans piège d'encodage.",
+            "weight": null,
+            "metrics": [
+              "Formats employés",
+              "Encodage des fichiers texte",
+              "Cohérence des séparateurs et des formats de date",
+              "Poids total et poids du plus gros fichier"
+            ],
+            "indicators": [
+              "CSV, Parquet, JSONL, formats images ou audio standards",
+              "Encodage UTF-8 sans caractères corrompus",
+              "Classeurs multi-onglets, PDF, formats propriétaires",
+              "Séparateur ou format de date variable d'un fichier à l'autre"
+            ],
+            "scoring_excellent": "Formats ouverts et adaptés au volume, encodage et conventions homogènes sur l'ensemble des fichiers.",
+            "scoring_good": "Formats standards, quelques irrégularités mineures de convention.",
+            "scoring_average": "Format praticable mais mal choisi au regard du volume ou de la modalité.",
+            "scoring_poor": "Format propriétaire, encodage corrompu, ou données enfermées dans un support non tabulaire.",
+            "position": 0
+          },
+          {
+            "id": "5dc138cb-19f9-4d90-b61b-fe251ffdab5c",
+            "category_id": "0fa39da4-c4ec-4483-bff1-afaf26661a5b",
+            "criterion": "Organisation & versionnage",
+            "description": "Évalue la lisibilité de l'arborescence et la gestion de l'historique des versions du jeu.",
+            "weight": null,
+            "metrics": [
+              "Nombre de versions publiées",
+              "Proportion de versions accompagnées d'une note de changement",
+              "Profondeur et régularité de l'arborescence",
+              "Nombre de fichiers au nom non conforme à la convention annoncée"
+            ],
+            "indicators": [
+              "Répertoires à rôle explicite (raw / processed, train / test, par classe)",
+              "Convention de nommage constante et prévisible",
+              "Notes de version décrivant ce qui a changé",
+              "Noms de fichiers de travail laissés en l'état (final, v3, copie)"
+            ],
+            "scoring_excellent": "Arborescence et nommage systématiques, versions successives documentées par des notes de changement.",
+            "scoring_good": "Organisation claire, versionnage présent mais sans notes détaillées.",
+            "scoring_average": "Fichiers exploitables mais nommage irrégulier, version unique non datée.",
+            "scoring_poor": "Fichiers en vrac, nommage arbitraire, aucun repère de version.",
+            "position": 1
+          },
+          {
+            "id": "059f0067-4558-401d-9fa0-89838af3f28f",
+            "category_id": "0fa39da4-c4ec-4483-bff1-afaf26661a5b",
+            "criterion": "Découpages fournis",
+            "description": "Évalue si le jeu propose des découpages prêts à l'emploi et si leur construction respecte la structure des données.",
+            "weight": null,
+            "metrics": [
+              "Nombre de jeux distincts fournis",
+              "Proportions de chaque découpage",
+              "Stratification, groupement ou ordre temporel appliqué (oui / non)",
+              "Nombre d'identifiants partagés entre découpages"
+            ],
+            "indicators": [
+              "Fichiers train / validation / test distincts",
+              "Méthode de découpage décrite dans la card",
+              "Découpage aléatoire livré sur des données temporelles ou groupées",
+              "Aucun découpage fourni ni recommandé"
+            ],
+            "scoring_excellent": "Découpages fournis, disjoints, construits selon la structure des données (stratifiés, groupés ou temporels), méthode décrite.",
+            "scoring_good": "Découpages fournis et disjoints, méthode non détaillée.",
+            "scoring_average": "Aucun découpage fourni, mais la structure du jeu permet d'en construire un sainement.",
+            "scoring_poor": "Découpages fournis mais chevauchants, ou construits en contradiction avec la structure des données.",
+            "position": 2
+          }
+        ]
+      },
+      {
+        "id": "bfe5f88b-9cdb-4400-aaa9-f8abe0db02e5",
+        "grid_id": "04d28ea1-ce3d-4425-a396-3e601559b131",
+        "name": "Représentativité & biais",
+        "weight": 0.12,
+        "type": "contextual",
+        "position": 4,
+        "subcriteria": [
+          {
+            "id": "82ed098f-9831-4e81-80d0-33eef208bd97",
+            "category_id": "bfe5f88b-9cdb-4400-aaa9-f8abe0db02e5",
+            "criterion": "Couverture & distribution",
+            "description": "Évalue si la composition du jeu est décrite et si elle couvre les situations que le modèle rencontrera, y compris les cas rares.",
+            "weight": null,
+            "metrics": [
+              "Distribution des classes ou de la cible rapportée",
+              "Ratio de déséquilibre de la classe minoritaire",
+              "Nombre de contextes de collecte distincts (sites, périodes, appareils, langues)",
+              "Part du jeu correspondant aux cas limites"
+            ],
+            "indicators": [
+              "Tableau ou graphique de distribution dans la card",
+              "Cas limites ou situations rares explicitement mentionnés",
+              "Jeu collecté dans un contexte unique sans que ce soit signalé",
+              "Répartition annoncée contredite par la taille des fichiers ou des répertoires"
+            ],
+            "scoring_excellent": "Distribution chiffrée, diversité des contextes de collecte documentée, cas limites présents et signalés.",
+            "scoring_good": "Distribution rapportée, couverture correcte mais concentrée sur les cas courants.",
+            "scoring_average": "Composition non décrite ; déséquilibre visible et non commenté.",
+            "scoring_poor": "Jeu très déséquilibré ou issu d'un contexte unique, présenté comme général.",
+            "position": 0
+          },
+          {
+            "id": "29b44cea-f83c-4407-9674-18e0eb7c583a",
+            "category_id": "bfe5f88b-9cdb-4400-aaa9-f8abe0db02e5",
+            "criterion": "Biais identifiés & limites d'usage",
+            "description": "Évalue la lucidité du contributeur sur ce que son jeu ne représente pas et sur les conclusions qu'il ne permet pas de tirer.",
+            "weight": null,
+            "metrics": [
+              "Nombre de biais explicitement nommés",
+              "Nombre d'usages déconseillés énoncés",
+              "Populations ou situations sous-représentées identifiées",
+              "Écart entre périmètre annoncé et périmètre réel"
+            ],
+            "indicators": [
+              "Section « biais » ou « limites » nommant des biais précis, pas génériques",
+              "Mention des populations absentes ou minoritaires du jeu",
+              "Généralisation implicite d'un échantillon local à une population large",
+              "Aucune limite mentionnée alors que la collecte en impose évidemment"
+            ],
+            "scoring_excellent": "Biais nommés précisément, populations sous-représentées identifiées, usages déconseillés énoncés.",
+            "scoring_good": "Limites générales évoquées, sans identification précise des biais.",
+            "scoring_average": "Sujet non abordé alors que la nature de la collecte l'appelle.",
+            "scoring_poor": "Jeu présenté comme représentatif alors qu'il est manifestement biaisé.",
+            "position": 1
+          }
+        ]
+      },
+      {
+        "id": "32adc369-2b6c-4d08-abca-ed41c8ea9645",
+        "grid_id": "04d28ea1-ce3d-4425-a396-3e601559b131",
+        "name": "Conformité & impact",
+        "weight": 0.08,
+        "type": "contextual",
+        "position": 5,
+        "subcriteria": [
+          {
+            "id": "9bd261d2-2daa-4c38-b244-f150880f1026",
+            "category_id": "32adc369-2b6c-4d08-abca-ed41c8ea9645",
+            "criterion": "Licence & droits sur la source",
+            "description": "Évalue si les conditions de réutilisation du jeu sont explicites et compatibles avec les conditions des sources dont il est issu.",
+            "weight": null,
+            "metrics": [
+              "Licence déclarée (oui / non)",
+              "Compatibilité entre la licence déclarée et celle des sources",
+              "Nombre de sources dont les conditions sont citées",
+              "Restrictions d'usage commercial ou de redistribution mentionnées"
+            ],
+            "indicators": [
+              "Champ licence renseigné avec une licence nommée",
+              "Conditions d'utilisation de la source citées et respectées",
+              "Licence laissée à « unknown » ou absente",
+              "Contenu collecté par extraction automatique sans mention des conditions du site"
+            ],
+            "scoring_excellent": "Licence explicite, compatible avec celle des sources, conditions de chaque source citées.",
+            "scoring_good": "Licence déclarée, compatibilité avec les sources non vérifiée.",
+            "scoring_average": "Licence absente ou indéterminée.",
+            "scoring_poor": "Redistribution manifestement contraire aux conditions de la source.",
+            "position": 0
+          },
+          {
+            "id": "ed60f086-14f9-4cf3-a38f-b421fa05ea55",
+            "category_id": "32adc369-2b6c-4d08-abca-ed41c8ea9645",
+            "criterion": "Données personnelles & sensibles",
+            "description": "Évalue la présence de données identifiantes ou sensibles et le traitement qui leur a été appliqué.",
+            "weight": null,
+            "metrics": [
+              "Nombre de champs directement identifiants",
+              "Nombre de champs quasi-identifiants combinables",
+              "Méthode d'anonymisation ou de pseudonymisation décrite (oui / non)",
+              "Présence de contenus sensibles (santé, opinions, biométrie)"
+            ],
+            "indicators": [
+              "Colonnes nom, email, téléphone, adresse, identifiant national",
+              "Visages, voix ou textes personnels non floutés ni anonymisés",
+              "Section décrivant la méthode d'anonymisation appliquée",
+              "Base légale ou consentement mentionné pour des données personnelles"
+            ],
+            "scoring_excellent": "Aucune donnée personnelle, ou anonymisation appliquée et sa méthode décrite.",
+            "scoring_good": "Pseudonymisation appliquée, risque de ré-identification par croisement non discuté.",
+            "scoring_average": "Quasi-identifiants présents sans aucune mention du sujet.",
+            "scoring_poor": "Identifiants directs ou contenus sensibles exposés en clair.",
+            "position": 1
+          },
+          {
+            "id": "1bedc40e-37cb-4399-8844-a4ad51927429",
+            "category_id": "32adc369-2b6c-4d08-abca-ed41c8ea9645",
+            "criterion": "Exploitabilité par l'étape suivante",
+            "description": "Évalue l'utilité concrète du jeu pour la suite de la chaîne du challenge, en particulier l'entraînement du modèle.",
+            "weight": null,
+            "metrics": [
+              "Compatibilité du format avec un chargement d'entraînement standard",
+              "Effort de transformation restant avant utilisation",
+              "Proportion du besoin aval couverte",
+              "Adéquation du volume aux ressources d'entraînement attendues"
+            ],
+            "indicators": [
+              "Jeu chargeable et entraînable sans retraitement lourd",
+              "Correspondance entre la cible fournie et la tâche du challenge",
+              "Jeu solide mais portant sur une tâche différente de celle demandée",
+              "Format imposant une reconstruction complète avant tout usage"
+            ],
+            "scoring_excellent": "Directement exploitable par l'étape de modélisation, couvre le besoin posé par le challenge.",
+            "scoring_good": "Exploitable moyennant des transformations mineures et évidentes.",
+            "scoring_average": "Utilisable au prix d'un travail de remise en forme important.",
+            "scoring_poor": "Inexploitable en l'état, ou décorrélé du besoin du challenge.",
+            "position": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "69b184c6-2562-448c-bbc2-3aca6dbb4ab9",
+    "slug": "model_code",
+    "name": "Model Kaggle",
+    "description": null,
+    "version": 1,
+    "status": "published",
+    "instructions": "INSTRUCTIONS SPÉCIFIQUES À CETTE GRILLE\n\n1. Objet de l'évaluation\nCette grille évalue la démarche de modélisation, pas le niveau de performance\natteint. La métrique du modèle (AUC / F1 / accuracy) est mesurée séparément par\nun autre système. Ne récompense ni ne pénalise le niveau absolu annoncé : un\nmodèle à 0,95 avec un protocole douteux doit être noté plus bas qu'un modèle à\n0,78 avec une validation propre.\n\n2. Ne note que ce qui est observable\nNote uniquement ce qui apparaît dans le contexte fourni. Si un élément demandé\npar un critère est introuvable (pas de seeds, pas de model card, pas de courbes\nd'apprentissage), note 0–1 sur ce critère et justifie explicitement par\nl'absence. Ne suppose jamais qu'une bonne pratique est appliquée hors du\ncontexte visible.\nÀ l'inverse, si le contexte est manifestement tronqué (fichiers coupés,\narborescence partielle), signale-le dans la justification au lieu d'inférer.\n\n3. Calibrage de l'échelle\nLe repère central est 5 : une pratique standard, correcte, sans rien de\nremarquable. Réserve 8–9 aux contributions dont un ingénieur ML senior\ns'inspirerait, et utilise réellement le bas de l'échelle. Toute note ≥ 8 doit\ns'appuyer sur un élément concret cité dans la justification, pas sur une\nimpression générale.\n\n4. Le code prime sur le déclaratif\nLes affirmations du README ou de la model card ne valent que si le code les\ncorrobore. Si le README annonce une validation croisée et que le code ne montre\nqu'un train_test_split, note d'après le code et mentionne l'écart dans la\njustification.\n\n5. Signaux critiques (fuite de données)\nSi tu observes l'un des éléments suivants, aucun critère de la catégorie\n« Évaluation & robustesse » ne peut dépasser 2, quelle que soit la qualité du\nreste :\n  - normalisation, encodage ou imputation ajustés avant le découpage train/test ;\n  - sélection d'hyperparamètres ou d'architecture faite sur le jeu de test ;\n  - découpage aléatoire sur des données temporelles ou groupées par individu ;\n  - métrique rapportée calculée sur les données d'entraînement.\nNomme explicitement le signal détecté dans la justification concernée.\n\n6. Proportionnalité au contexte\nJuge les choix par rapport à la nature et au volume des données, pas par rapport\nà un idéal absolu. Une régression logistique sur un jeu tabulaire de 2 000\nlignes n'est pas une contribution faible ; un transformer sur ce même jeu n'est\npas une contribution forte. L'absence de validation croisée n'est pas\npénalisable si le volume rend un hold-out unique statistiquement suffisant, à\ncondition que ce choix soit assumé.\n\n7. Notebooks\nUn notebook d'exploration n'est pas en soi un défaut. Ce qui est pénalisable,\nc'est qu'il soit le seul chemin d'exécution : entraînement non rejouable sans\nexécuter manuellement des cellules dans un ordre non spécifié.\n\n8. Format des justifications\nUne à trois phrases par critère, citant au moins un élément concret : nom de\nfichier, fonction, ligne de configuration, section du README. Pas de\nreformulation du libellé du critère. Rédige en français.",
+    "created_at": "2026-08-04 14:29:58.101109",
+    "updated_at": "2026-08-04 17:08:21.589",
+    "published_at": null,
+    "created_by": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "categories": [
+      {
+        "id": "44592e7e-1815-4d77-9b73-1d33e07a336d",
+        "grid_id": "69b184c6-2562-448c-bbc2-3aca6dbb4ab9",
+        "name": "Cadrage & données",
+        "weight": 0.15,
+        "type": "mixed",
+        "position": 0,
+        "subcriteria": [
+          {
+            "id": "4a87b4ad-9e6b-4e6a-aabb-7f1eecc7c650",
+            "category_id": "44592e7e-1815-4d77-9b73-1d33e07a336d",
+            "criterion": "Adéquation du cadrage au problème",
+            "description": "La tâche (classification / régression / ranking…), la métrique cible et la baseline de référence sont explicitement posées et cohérentes avec le besoin du challenge.",
+            "weight": null,
+            "metrics": [
+              "Nombre de métriques cibles définies et justifiées Ratio de déséquilibre des classes explicitement pris en compte (oui / non) Présence d'une valeur cible chiffrée à atteindre Nombre d'alternatives de métrique discutées"
+            ],
+            "indicators": [
+              "Section « objectif » / « problème posé » dans le README ou la model card Argumentaire reliant le choix de métrique au coût des erreurs ou au déséquilibre Baseline nommée avec sa valeur de référence Cohérence entre la métrique annoncée et celle réellement calculée dans le code"
+            ],
+            "scoring_excellent": "Tâche, métrique et baseline posées et justifiées ; le choix de métrique est discuté au regard du déséquilibre de classes ou du coût des erreurs.",
+            "scoring_good": "Cadrage clair et correct, mais accepté sans discussion des alternatives.",
+            "scoring_average": "Cadrage implicite, déductible du code seulement ; métrique choisie par défaut.",
+            "scoring_poor": "Aucun cadrage : on ne sait pas ce que le modèle prédit ni contre quoi il est comparé.",
+            "position": 0
+          },
+          {
+            "id": "3055a57a-dbef-4537-8327-c53e623f4be1",
+            "category_id": "44592e7e-1815-4d77-9b73-1d33e07a336d",
+            "criterion": "Intégrité du découpage (train / val / test)",
+            "description": "Évalue si le découpage des données protège réellement l'estimation de performance : trois jeux distincts, stratégie adaptée à la structure des données, jeu de test préservé.",
+            "weight": null,
+            "metrics": [
+              "Nombre de jeux distincts (2 ou 3) Proportion allouée au test Nombre d'occurrences du jeu de test dans le code d'entraînement ou de sélection Stratification / groupement / ordre temporel appliqué (oui / non)"
+            ],
+            "indicators": [
+              "train_test_split(...",
+              "stratify=...)",
+              "GroupKFold",
+              "TimeSeriesSplit",
+              "StratifiedKFold Ordre des opérations : fit du prétraitement placé après ou avant le split Mention explicite d'une vérification de fuite (leakage) Colonnes dérivées de la cible présentes parmi les features"
+            ],
+            "scoring_excellent": "Split explicite et stratifié / groupé / temporel selon la structure des données ; test hold-out jamais touché pendant le développement ; fuite activement vérifiée.",
+            "scoring_good": "Split correct en trois jeux, sans vérification explicite de fuite.",
+            "scoring_average": "Split train/test seulement, ou split aléatoire sur des données groupées/temporelles.",
+            "scoring_poor": "Évaluation sur les données d'entraînement, ou fuite manifeste (target encodée avant split, normalisation globale).",
+            "position": 1
+          },
+          {
+            "id": "5ff02faa-8294-4b50-9e2f-04b0208ed5b4",
+            "category_id": "44592e7e-1815-4d77-9b73-1d33e07a336d",
+            "criterion": "Prétraitement & feature engineering",
+            "description": "Évalue si les transformations appliquées aux données sont justifiées, cohérentes, et rejouables à l'identique au moment de l'inférence.",
+            "weight": null,
+            "metrics": [
+              "Proportion de transformations encapsulées dans un pipeline unique Nombre de transformations dupliquées entre entraînement et inférence Nombre de features créées et proportion justifiée fit du prétraitement appliqué au train seul (oui / non)"
+            ],
+            "indicators": [
+              "Pipeline",
+              "ColumnTransformer",
+              "module de preprocessing partagé Duplication de la logique de nettoyage entre le script d'entraînement et celui de prédiction Commentaires ou README expliquant l'intérêt des features créées Valeurs de normalisation calculées sur l'ensemble du dataset"
+            ],
+            "scoring_excellent": "Chaque transformation est justifiée et encapsulée dans un pipeline appliqué identiquement au train et à l'inférence.",
+            "scoring_good": "Prétraitement propre et cohérent, mais dupliqué entre entraînement et inférence.",
+            "scoring_average": "Transformations ad hoc, dispersées, non reproductibles à l'inférence.",
+            "scoring_poor": "Prétraitement absent alors que les données l'exigent, ou incohérent entre les phases.",
+            "position": 2
+          }
+        ]
+      },
+      {
+        "id": "4439baa1-d4a5-4a01-b96e-881b98b008c3",
+        "grid_id": "69b184c6-2562-448c-bbc2-3aca6dbb4ab9",
+        "name": "Architecture & choix de modélisation",
+        "weight": 0.2,
+        "type": "contextual",
+        "position": 1,
+        "subcriteria": [
+          {
+            "id": "3d05d446-dfa6-43d8-ac17-430cbc3d4366",
+            "category_id": "4439baa1-d4a5-4a01-b96e-881b98b008c3",
+            "criterion": "Pertinence de l'architecture",
+            "description": "Évalue l'adéquation entre l'architecture retenue et la nature, la modalité et le volume des données, ainsi que les contraintes d'exploitation.",
+            "weight": null,
+            "metrics": [
+              "Rapport nombre de paramètres / nombre d'échantillons d'entraînement Volume du dataset (lignes",
+              "taille) Adéquation modalité ↔ famille d'architecture Contraintes de latence ou de mémoire posées et respectées"
+            ],
+            "indicators": [
+              "Définition du modèle (classe",
+              "couches",
+              "profondeur",
+              "nombre d'estimateurs) Modèle pré-entraîné réutilisé plutôt qu'entraîné de zéro sur peu de données Commentaire ou section justifiant le choix Écart entre la complexité déclarée et le volume réel des données"
+            ],
+            "scoring_excellent": "Architecture adaptée à la nature et au volume des données ; capacité proportionnée.",
+            "scoring_good": "Choix raisonnable et fonctionnel, standard du domaine.",
+            "scoring_average": "Choix inadapté sur un axe (capacité, modalité, contrainte de latence) mais partiellement compensé.",
+            "scoring_poor": "Architecture incompatible avec la tâche ou les données.",
+            "position": 0
+          },
+          {
+            "id": "659848f4-ef74-4987-ba5d-b8f52c1b7934",
+            "category_id": "4439baa1-d4a5-4a01-b96e-881b98b008c3",
+            "criterion": "Comparaison à une baseline et alternatives",
+            "description": "Évalue si le modèle retenu a été mis en concurrence avec au moins un point de comparaison, dans des conditions identiques et avec un gain chiffré.",
+            "weight": null,
+            "metrics": [
+              "Nombre de modèles comparés Identité des conditions de comparaison (mêmes splits",
+              "mêmes métriques) Écart chiffré entre le modèle retenu et la baseline Nombre d'ablations menées"
+            ],
+            "indicators": [
+              "Tableau comparatif dans le README ou un fichier de résultats Baseline triviale explicite (DummyClassifier",
+              "prédiction de la médiane",
+              "règle métier) Script d'expérimentation unique paramétré par modèle Alternatives citées en prose sans chiffre associé"
+            ],
+            "scoring_excellent": "Baseline triviale et au moins un modèle alternatif comparés dans les mêmes conditions ; le gain est chiffré.",
+            "scoring_good": "Une baseline comparée, ou plusieurs modèles testés sans protocole strictement identique.",
+            "scoring_average": "Alternatives mentionnées mais non mesurées.",
+            "scoring_poor": "Un seul modèle, aucun point de comparaison.",
+            "position": 1
+          },
+          {
+            "id": "94b28856-ffbc-41fa-a1a3-4878bcb258b4",
+            "category_id": "4439baa1-d4a5-4a01-b96e-881b98b008c3",
+            "criterion": "Contrôle de la capacité et régularisation",
+            "description": "Évalue si le sur- ou sous-apprentissage a été diagnostiqué et traité, avec un effet mesuré.",
+            "weight": null,
+            "metrics": [
+              "Écart train/validation en points de métrique Nombre de techniques de régularisation employées Effet mesuré avant / après régularisation Évolution de l'écart au fil des époques"
+            ],
+            "indicators": [
+              "dropout",
+              "weight_decay",
+              "alpha",
+              "max_depth",
+              "min_samples_leaf",
+              "augmentation de données Courbes d'apprentissage train vs validation Commentaire de diagnostic explicite (« overfitting après l'époque 12 ») Écart train/val important laissé sans mention"
+            ],
+            "scoring_excellent": "Sur/sous-apprentissage diagnostiqué explicitement et traité, avec effet mesuré.",
+            "scoring_good": "Régularisation présente et cohérente, sans diagnostic explicité.",
+            "scoring_average": "Réglages par défaut, écart train/val visible et non commenté.",
+            "scoring_poor": "Surapprentissage massif ignoré.",
+            "position": 2
+          }
+        ]
+      },
+      {
+        "id": "7292b884-df02-4ddf-bb1c-fe95cddc6d7b",
+        "grid_id": "69b184c6-2562-448c-bbc2-3aca6dbb4ab9",
+        "name": "Qualité de l'entraînement",
+        "weight": 0.15,
+        "type": "mixed",
+        "position": 2,
+        "subcriteria": [
+          {
+            "id": "f8f57f19-37f3-4a24-87bb-b52bcee47191",
+            "category_id": "7292b884-df02-4ddf-bb1c-fe95cddc6d7b",
+            "criterion": "Protocole et recherche d'hyperparamètres",
+            "description": "Évalue la méthode de sélection des hyperparamètres et, surtout, le jeu de données sur lequel cette sélection a été faite.",
+            "weight": null,
+            "metrics": [
+              "Nombre d'hyperparamètres explorés Taille de l'espace de recherche / nombre d'essais Jeu utilisé pour la sélection (validation ou test) Résultats de la recherche consignés (oui / non)"
+            ],
+            "indicators": [
+              "GridSearchCV",
+              "RandomizedSearchCV",
+              "Optuna",
+              "fichier de sweep Fichier ou tableau des essais avec leurs scores Valeurs codées en dur sans trace d'exploration Sélection du meilleur essai effectuée sur le jeu de test"
+            ],
+            "scoring_excellent": "Espace de recherche défini, méthode explicite, sélection faite sur la validation uniquement, résultats consignés.",
+            "scoring_good": "Quelques hyperparamètres explorés manuellement et documentés.",
+            "scoring_average": "Valeurs codées en dur sans justification ni trace d'exploration.",
+            "scoring_poor": "Sélection faite sur le jeu de test.",
+            "position": 0
+          },
+          {
+            "id": "a760cd24-c9bb-4c18-8879-e10625837251",
+            "category_id": "7292b884-df02-4ddf-bb1c-fe95cddc6d7b",
+            "criterion": "Stabilité & convergence",
+            "description": "Évalue si l'entraînement converge de façon contrôlée et si la variabilité du résultat a été mesurée.",
+            "weight": null,
+            "metrics": [
+              "Nombre de seeds évaluées Écart-type inter-seeds de la métrique principale Époque d'arrêt vs époque du meilleur score de validation Amplitude des oscillations de la loss en fin d'entraînement"
+            ],
+            "indicators": [
+              "Courbes de loss et de métrique par époque Callback d'early stopping avec patience et critère explicites Logs d'entraînement conservés Nombre d'époques fixé arbitrairement sans critère"
+            ],
+            "scoring_excellent": "Courbes d'apprentissage fournies, critère d'arrêt motivé, variance inter-seeds évaluée.",
+            "scoring_good": "Convergence vérifiable, critère d'arrêt raisonnable, une seule seed.",
+            "scoring_average": "Nombre d'époques arbitraire, aucune visibilité sur la convergence.",
+            "scoring_poor": "Entraînement instable ou divergent, livré tel quel.",
+            "position": 1
+          },
+          {
+            "id": "632dd5d9-2156-4f6f-8e13-d9b71464e076",
+            "category_id": "7292b884-df02-4ddf-bb1c-fe95cddc6d7b",
+            "criterion": "Efficience des ressources",
+            "description": "Évalue le coût de l'entraînement au regard du gain obtenu, et la présence d'optimisations conscientes.",
+            "weight": null,
+            "metrics": [
+              "Temps d'entraînement rapporté Mémoire / GPU requis Coût rapporté au gain de performance Nombre d'opérations redondantes identifiées"
+            ],
+            "indicators": [
+              "Mention du matériel et de la durée dans le README batch_size ajusté",
+              "mixed precision",
+              "num_workers",
+              "mise en cache Boucles Python ligne à ligne sur un DataFrame volumineux Rechargement ou recalcul du dataset à chaque époque"
+            ],
+            "scoring_excellent": "Coût mesuré et rapporté ; optimisations conscientes.",
+            "scoring_good": "Coût raisonnable, non mesuré mais sans gaspillage évident.",
+            "scoring_average": "Inefficiences notables.",
+            "scoring_poor": "Entraînement impraticable à reproduire au regard du gain obtenu.",
+            "position": 2
+          }
+        ]
+      },
+      {
+        "id": "2ae016bf-7e54-4013-8377-e17e09421c0f",
+        "grid_id": "69b184c6-2562-448c-bbc2-3aca6dbb4ab9",
+        "name": "Évaluation & robustesse",
+        "weight": 0.2,
+        "type": "objective",
+        "position": 3,
+        "subcriteria": [
+          {
+            "id": "935b7e2a-f4b5-4880-b252-eeff538d0030",
+            "category_id": "2ae016bf-7e54-4013-8377-e17e09421c0f",
+            "criterion": "Rigueur du protocole d'évaluation",
+            "description": "Évalue la solidité statistique des chiffres annoncés : répétition, incertitude, pluralité des métriques.",
+            "weight": null,
+            "metrics": [
+              "Nombre de folds ou de répétitions Incertitude rapportée (écart-type",
+              "intervalle de confiance) Nombre de métriques rapportées Reproductibilité des chiffres annoncés depuis le code fourni"
+            ],
+            "indicators": [
+              "cross_val_score",
+              "KFold",
+              "boucle multi-seeds Résultats présentés sous forme moyenne ± écart-type Jeu de test isolé et utilisé une seule fois Un chiffre unique sans protocole associé"
+            ],
+            "scoring_excellent": "Validation croisée ou répétitions multi-seeds, incertitude rapportée, métriques multiples cohérentes avec le cadrage.",
+            "scoring_good": "Hold-out unique propre, plusieurs métriques rapportées.",
+            "scoring_average": "Une seule métrique, un seul run, aucune notion de variance.",
+            "scoring_poor": "Chiffres non reproductibles ou incohérents avec le code fourni.",
+            "position": 0
+          },
+          {
+            "id": "40e3474e-8778-4887-b443-6b12dafe2a56",
+            "category_id": "2ae016bf-7e54-4013-8377-e17e09421c0f",
+            "criterion": "Analyse d'erreurs et par segments",
+            "description": "Évalue si les faiblesses du modèle sont caractérisées au-delà du score agrégé.",
+            "weight": null,
+            "metrics": [
+              "Nombre de segments ou sous-populations analysés Écart de performance entre le meilleur et le pire segment Nombre d'exemples mal classés examinés qualitativement Couverture des classes dans l'analyse"
+            ],
+            "indicators": [
+              "Matrice de confusion",
+              "courbe ROC / précision-rappel groupby sur une variable de segmentation suivi du calcul de métrique Exemples d'erreurs affichés ou commentés Section « limites » nommant des cas d'échec concrets"
+            ],
+            "scoring_excellent": "Erreurs analysées qualitativement et par sous-population ; les faiblesses sont nommées.",
+            "scoring_good": "Analyse agrégée présente, sans segmentation.",
+            "scoring_average": "Un score global et rien d'autre.",
+            "scoring_poor": "Aucune analyse ; les erreurs ne sont pas caractérisées.",
+            "position": 1
+          },
+          {
+            "id": "5f4585b7-36c8-4592-9d35-459f57b63feb",
+            "category_id": "2ae016bf-7e54-4013-8377-e17e09421c0f",
+            "criterion": "Robustesse et comportement hors distribution",
+            "description": "Évalue la tenue du modèle face à des entrées dégradées, inattendues ou décalées dans le temps.",
+            "weight": null,
+            "metrics": [
+              "Nombre de types de perturbations testés Dégradation en points de métrique par perturbation Comportement sur entrée invalide (erreur explicite / prédiction silencieuse) Taux de valeurs manquantes toléré"
+            ],
+            "indicators": [
+              "Tests avec bruit injecté",
+              "valeurs manquantes",
+              "catégories inconnues Gestion explicite des NaN et des modalités hors vocabulaire à l'inférence Validation du schéma d'entrée avant prédiction try / except avalant l'erreur et renvoyant une valeur par défaut"
+            ],
+            "scoring_excellent": "Testé sur perturbations réalistes ; dégradation quantifiée.",
+            "scoring_good": "Cas limites gérés dans le code sans test dédié.",
+            "scoring_average": "Robustesse évoquée, non testée ; casse sur une entrée légèrement hors format.",
+            "scoring_poor": "Aucune considération ; toute entrée non nominale échoue ou produit une prédiction silencieusement fausse.",
+            "position": 2
+          }
+        ]
+      },
+      {
+        "id": "d7d6366d-8150-4564-abe3-df5094d65214",
+        "grid_id": "69b184c6-2562-448c-bbc2-3aca6dbb4ab9",
+        "name": "Reproductibilité & packaging",
+        "weight": 0.15,
+        "type": "objective",
+        "position": 4,
+        "subcriteria": [
+          {
+            "id": "59f70d5a-39bd-4800-9f21-dd363c54683c",
+            "category_id": "d7d6366d-8150-4564-abe3-df5094d65214",
+            "criterion": "Déterminisme et versionnage de l'environnement",
+            "description": "Évalue la capacité d'un tiers à recréer exactement l'environnement et à retrouver les mêmes résultats.",
+            "weight": null,
+            "metrics": [
+              "Proportion de dépendances avec version épinglée Nombre de sources d'aléa avec seed fixée Version ou instantané des données référencé (oui / non) Version de Python / CUDA spécifiée"
+            ],
+            "indicators": [
+              "Lockfile",
+              "Dockerfile",
+              "environment.yml",
+              "requirements.txt avec == random_state=",
+              "torch.manual_seed",
+              "np.random.seed",
+              "PYTHONHASHSEED Référence explicite à une version de dataset Kaggle Dépendances listées sans contrainte de version"
+            ],
+            "scoring_excellent": "Seeds fixées partout, dépendances épinglées, version des données référencée explicitement.",
+            "scoring_good": "Seeds fixées et fichier de dépendances présent, versions partiellement contraintes.",
+            "scoring_average": "Dépendances listées sans versions ; résultat non reproductible à l'identique.",
+            "scoring_poor": "Ni seeds ni dépendances.",
+            "position": 0
+          },
+          {
+            "id": "ecb58f9e-7e7b-448c-82df-65f85ba9e7e6",
+            "category_id": "d7d6366d-8150-4564-abe3-df5094d65214",
+            "criterion": "Artefacts produits",
+            "description": "Évalue si le modèle entraîné est livré sous une forme réutilisable sans réentraînement.",
+            "weight": null,
+            "metrics": [
+              "Nombre d'artefacts exportés (poids",
+              "config",
+              "pipeline de prétraitement) Modèle chargeable sans réentraînement (oui / non) Artefact versionné ou horodaté (oui / non) Cohérence entre l'artefact livré et le code d'entraînement"
+            ],
+            "indicators": [
+              "Fichiers .pkl",
+              ".joblib",
+              ".pt",
+              ".onnx",
+              "saved_model/ Config d'entraînement sérialisée à côté des poids Fonction ou script de chargement documenté Seul un notebook livré",
+              "sans artefact"
+            ],
+            "scoring_excellent": "Poids, config et pipeline de prétraitement exportés ensemble, chargeables sans réentraînement ; artefact versionné.",
+            "scoring_good": "Poids exportés, config partiellement reconstituable.",
+            "scoring_average": "Seul le notebook existe ; le modèle doit être réentraîné pour être utilisé.",
+            "scoring_poor": "Aucun artefact exploitable.",
+            "position": 1
+          },
+          {
+            "id": "ded00cc2-bbf2-4c7b-aaed-ce424c887001",
+            "category_id": "d7d6366d-8150-4564-abe3-df5094d65214",
+            "criterion": "Facilité de ré-exécution",
+            "description": "Évalue le nombre et la clarté des étapes nécessaires pour rejouer entraînement et évaluation de bout en bout.",
+            "weight": null,
+            "metrics": [
+              "Nombre d'étapes manuelles requises Présence d'une commande unique (oui / non) Nombre de chemins absolus dans le code Nombre de paramètres à renseigner sans valeur par défaut"
+            ],
+            "indicators": [
+              "Makefile",
+              "run.sh",
+              "entrée CLI",
+              "main.py paramétré Section « how to run » du README",
+              "testée et cohérente avec l'arborescence Chemins de type /Users/...",
+              "C:\\...",
+              "/content/drive/... Cellules de notebook à exécuter dans un ordre non spécifié"
+            ],
+            "scoring_excellent": "Chemin documenté et testé de bout en bout : une commande reproduit entraînement et évaluation.",
+            "scoring_good": "Reproductible avec quelques étapes manuelles clairement documentées.",
+            "scoring_average": "Reproduction possible mais nécessite de deviner l'ordre, les chemins ou les paramètres.",
+            "scoring_poor": "Chemins absolus locaux, ordre d'exécution non spécifié.",
+            "position": 2
+          }
+        ]
+      },
+      {
+        "id": "b8f87c1e-a491-4321-9562-6a686054f056",
+        "grid_id": "69b184c6-2562-448c-bbc2-3aca6dbb4ab9",
+        "name": "Documentation & transparence",
+        "weight": 0.1,
+        "type": "mixed",
+        "position": 5,
+        "subcriteria": [
+          {
+            "id": "dcfa3f80-697e-4b21-86de-02bd6358cfa0",
+            "category_id": "b8f87c1e-a491-4321-9562-6a686054f056",
+            "criterion": "Model card",
+            "description": "Évalue la présence et la qualité de la fiche décrivant l'usage prévu du modèle, ses données, ses performances et ses limites.",
+            "weight": null,
+            "metrics": [
+              "Nombre de sections présentes parmi : usage prévu",
+              "données d'entraînement",
+              "métriques + protocole",
+              "limites",
+              "contre-indications Métriques annoncées accompagnées de leur protocole (oui / non) Cohérence entre les chiffres de la fiche et ceux du code"
+            ],
+            "indicators": [
+              "MODEL_CARD.md ou section dédiée du README / de la page Kaggle Limites formulées en termes concrets",
+              "pas en formules génériques Cas d'usage déconseillés mentionnés Chiffre de performance isolé",
+              "sans contexte ni protocole"
+            ],
+            "scoring_excellent": "Usage prévu, données, métriques avec leur protocole, limites connues et cas d'usage déconseillés.",
+            "scoring_good": "Description et métriques présentes, limites survolées.",
+            "scoring_average": "Une ligne de description et un chiffre de performance sans contexte.",
+            "scoring_poor": "Absente, ou trompeuse par rapport à ce que fait réellement le code.",
+            "position": 0
+          },
+          {
+            "id": "29cc8acd-302e-4b22-92cb-d7b967dfe1c1",
+            "category_id": "b8f87c1e-a491-4321-9562-6a686054f056",
+            "criterion": "Lisibilité du code",
+            "description": "Évalue la structure et la clarté du code, indépendamment de la qualité de la modélisation.",
+            "weight": null,
+            "metrics": [
+              "Longueur moyenne des fonctions Taux de duplication apparent Ratio code modulaire / code en notebook Nombre de blocs de code mort ou commenté"
+            ],
+            "indicators": [
+              "Séparation en modules à responsabilité claire (data",
+              "model",
+              "train",
+              "evaluate) Nommage explicite des variables et fonctions Notebooks réservés à l'exploration",
+              "logique déportée en modules Copier-coller entre cellules ou entre scripts"
+            ],
+            "scoring_excellent": "Code structuré en modules à responsabilité claire, nommage explicite, notebooks réservés à l'exploration.",
+            "scoring_good": "Lisible et suivable, quelques longues fonctions ou duplications.",
+            "scoring_average": "Notebook monolithique, variables opaques, copier-coller entre cellules.",
+            "scoring_poor": "Illisible : code mort, sorties contradictoires, aucune structure.",
+            "position": 1
+          },
+          {
+            "id": "b5841983-4b52-4c84-974d-fdf6c3ed4db6",
+            "category_id": "b8f87c1e-a491-4321-9562-6a686054f056",
+            "criterion": "Traçabilité des expérimentations",
+            "description": "Évalue la possibilité de relier chaque score annoncé à la configuration qui l'a produit.",
+            "weight": null,
+            "metrics": [
+              "Nombre de runs consignés Proportion de runs reliés à leur configuration Historique conservé au-delà du meilleur run (oui / non)"
+            ],
+            "indicators": [
+              "MLflow",
+              "Weights & Biases",
+              "fichier CSV / JSON de résultats Tableau comparatif des expériences dans le README Commits successifs documentant les essais Seul le meilleur run mentionné",
+              "sans son historique"
+            ],
+            "scoring_excellent": "Historique des runs conservé, reliant configs et scores.",
+            "scoring_good": "Résultats principaux consignés manuellement dans le README.",
+            "scoring_average": "Seul le meilleur run est mentionné, sans historique.",
+            "scoring_poor": "Aucune trace ; le chiffre annoncé n'est rattachable à aucune configuration.",
+            "position": 2
+          }
+        ]
+      },
+      {
+        "id": "98df3bd3-950e-4812-b112-d80aca676227",
+        "grid_id": "69b184c6-2562-448c-bbc2-3aca6dbb4ab9",
+        "name": "Éthique, risques & impact",
+        "weight": 0.05,
+        "type": "contextual",
+        "position": 6,
+        "subcriteria": [
+          {
+            "id": "dca9c52d-4691-4303-8c8c-20806d4bc108",
+            "category_id": "98df3bd3-950e-4812-b112-d80aca676227",
+            "criterion": "Biais et équité",
+            "description": "Évalue si les écarts de performance entre sous-groupes pertinents ont été mesurés ou, à défaut, identifiés comme risque. Non applicable en pleine rigueur si les données ne portent pas sur des personnes.",
+            "weight": null,
+            "metrics": [
+              "Nombre de sous-groupes sensibles évalués Écart maximal de performance entre groupes Présence d'attributs sensibles dans les données (oui / non)"
+            ],
+            "indicators": [
+              "Ventilation des métriques par groupe Discussion du risque de biais dans le README ou la model card Attributs sensibles utilisés comme features sans justification Données manifestement liées à des personnes",
+              "sans aucune mention du sujet"
+            ],
+            "scoring_excellent": "Performance ventilée sur les sous-groupes pertinents, écarts constatés et commentés.",
+            "scoring_good": "Risque de biais identifié et discuté, sans mesure.",
+            "scoring_average": "Non abordé alors que les données s'y prêtent.",
+            "scoring_poor": "Biais manifeste introduit ou amplifié sans aucune mention.",
+            "position": 0
+          },
+          {
+            "id": "55fda30d-f392-4cf9-a319-ef6898f67b42",
+            "category_id": "98df3bd3-950e-4812-b112-d80aca676227",
+            "criterion": "Données personnelles & licences",
+            "description": "Évalue la conformité de la provenance des données et l'absence d'exposition de données sensibles ou de secrets dans le dépôt.",
+            "weight": null,
+            "metrics": [
+              "Nombre de fichiers de données bruts commités Nombre de secrets détectés (clés",
+              "tokens",
+              "identifiants) Licence des données identifiée et compatible (oui / non)"
+            ],
+            "indicators": [
+              ".env",
+              "clés d'API",
+              "identifiants en clair dans le code ou l'historique Fichiers contenant des données personnelles versionnés Section citant la source et la licence des données Fichier LICENSE ou mention des conditions d'usage du dataset"
+            ],
+            "scoring_excellent": "Provenance et licence explicites et compatibles ; aucune donnée personnelle exposée.",
+            "scoring_good": "Provenance indiquée, licence non vérifiée.",
+            "scoring_average": "Origine des données floue.",
+            "scoring_poor": "Données personnelles, secrets ou jeux sous licence restrictive commités.",
+            "position": 1
+          },
+          {
+            "id": "772514c3-ef8d-408d-8ac3-1870eee386dc",
+            "category_id": "98df3bd3-950e-4812-b112-d80aca676227",
+            "criterion": "Impact sur le besoin du challenge",
+            "description": "Évalue l'utilité réelle de la contribution pour l'objectif du challenge et pour l'étape suivante de la chaîne.",
+            "weight": null,
+            "metrics": [
+              "Adéquation aux objectifs énoncés du challenge Exploitabilité directe par l'étape de packaging API Proportion du périmètre demandé effectivement couverte"
+            ],
+            "indicators": [
+              "Interface d'inférence claire (fonction predict",
+              "signature d'entrée/sortie) Correspondance entre le livrable et l'énoncé du challenge Format de sortie compatible avec l'usage aval Travail techniquement solide mais sur une tâche différente de celle demandée"
+            ],
+            "scoring_excellent": "Répond au besoin posé et directement exploitable par l'étape suivante.",
+            "scoring_good": "Contribution utile mais partielle.",
+            "scoring_average": "Techniquement correct, décorrélé du besoin.",
+            "scoring_poor": "Hors sujet.",
+            "position": 2
+          }
+        ]
+      }
+    ]
+  }
+]

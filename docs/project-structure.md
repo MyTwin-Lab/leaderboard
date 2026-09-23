@@ -123,7 +123,7 @@ leaderboard/
 │   └── test/                          # ad-hoc scripts (not Vitest)
 │
 ├── db_data/                           # seed data
-│   ├── seed.ts  seed-demo.ts  seed-validation-mammo.ts
+│   ├── seed.ts
 │   └── projects.json  users.json  challenges.json  contributions.json
 │
 ├── drizzle/                           # generated SQL migrations

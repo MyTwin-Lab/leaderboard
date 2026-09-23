@@ -160,10 +160,18 @@ export function ProjectChallengesExplorer({
 
   const pills = useMemo(() => {
     const count = (predicate: (challenge: FlatChallenge) => boolean) => searchPool.filter(predicate).length;
+    const archivedCount = count((c) => c.status === "archived");
     return [
       { value: "active" as StatusFilter, label: "Active", count: count((c) => c.status === "active") },
       { value: "completed" as StatusFilter, label: "Completed", count: count((c) => c.status === "completed") },
       { value: "all" as StatusFilter, label: "All", count: searchPool.length },
+      // Conditionnée au compte, et non au rôle : un challenge archivé
+      // n'atteint le client que pour un admin ou le manager de son projet
+      // (voir `lib/server/publicPages.ts`). Se fier au compte évite de
+      // redire cette règle ici, et de montrer une pastille toujours vide.
+      ...(archivedCount > 0
+        ? [{ value: "archived" as StatusFilter, label: "Archived", count: archivedCount }]
+        : []),
       ...(isAdmin
         ? [{ value: "draft" as StatusFilter, label: "Draft", count: count((c) => c.status === "draft") }]
         : []),

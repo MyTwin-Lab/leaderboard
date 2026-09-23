@@ -1,116 +1,162 @@
 [
   {
-    "uuid": 1,
-    "role": "contributor",
-    "full_name": "Antoine",
-    "bio": "Software Engineer",
-    "github_username": "kaodje"
-  },
-  {
-    "uuid": 2,
-    "role": "contributor",
-    "full_name": "Alix Chagot",
-    "bio": "Software Engineer",
-    "github_username": "akralan"
-  },
-  {
-    "uuid": 3,
+    "uuid": "50a5b3d1-bf8b-4c95-bd94-3179f312ef25",
     "role": "contributor",
     "full_name": "Victor Xu",
+    "github_username": null,
     "bio": "Business Developer",
-    "github_username": null
+    "created_at": "2026-03-19 16:19:14.12958"
   },
   {
-    "uuid": 4,
+    "uuid": "0949d95b-43c4-4e51-9383-181b721317e1",
     "role": "contributor",
     "full_name": "Samir Touinssi",
+    "github_username": null,
     "bio": "Community Manager",
-    "github_username": null
+    "created_at": "2026-03-19 16:19:14.132221"
   },
   {
-    "uuid": 5,
+    "uuid": "507ae966-d00d-42f4-807d-6903a1229349",
     "role": "contributor",
     "full_name": "Mahdi Lamriben",
+    "github_username": null,
     "bio": "Fullstack, Data & AI Engineer",
-    "github_username": null
+    "created_at": "2026-03-19 16:19:14.1348"
   },
-
   {
-    "uuid": 6,
+    "uuid": "1bddabd9-cb8b-4e94-9ff4-d6aa75a7214a",
     "role": "contributor",
     "full_name": "Camille Daverio",
+    "github_username": "Inarinokaze",
     "bio": "Fullstack Developer",
-    "github_username": "Inarinokaze"
+    "created_at": "2026-03-19 16:19:14.13794"
   },
   {
-    "uuid": 7,
+    "uuid": "b038a099-b2a9-489d-9838-b9e77f9b2c54",
     "role": "contributor",
     "full_name": "Fatoumata Corop Mballo",
+    "github_username": "FatoumataM-27",
     "bio": "Fullstack Developer",
-    "github_username": "FatoumataM-27"
+    "created_at": "2026-03-19 16:19:14.140426"
   },
   {
-    "uuid": 8,
+    "uuid": "84811e88-9d5a-4a95-8704-5b20f5d96381",
     "role": "contributor",
     "full_name": "Christyl Hodonou",
+    "github_username": "Chrishdn",
     "bio": "Software & Machine Learning Engineer",
-    "github_username": "Chrishdn"
+    "created_at": "2026-03-19 16:19:14.143442"
   },
   {
-    "uuid": 9,
+    "uuid": "3e72fadd-a4ab-4a04-959d-619c621e40b3",
     "role": "contributor",
     "full_name": "Mickael Andrieu",
+    "github_username": "Mickael-Ndr",
     "bio": "Data & AI Engineer",
-    "github_username": "Mickael-Ndr"
+    "created_at": "2026-03-19 16:19:14.146452"
   },
-
   {
-    "uuid": 10,
+    "uuid": "119e43f8-5385-4458-b54a-a18fb7399467",
     "role": "contributor",
     "full_name": "Patricia Novi",
+    "github_username": "n-patricia",
     "bio": "Software & Machine Learning Engineer",
-    "github_username": "n-patricia"
+    "created_at": "2026-03-19 16:19:14.149626"
   },
   {
-    "uuid": 11,
+    "uuid": "5cb6e828-820f-4e03-80cd-5ee000f8bddb",
     "role": "contributor",
     "full_name": "Shriya",
+    "github_username": null,
     "bio": "Machine Learning Engineer",
-    "github_username": null
+    "created_at": "2026-03-19 16:19:14.151542"
   },
   {
-    "uuid": 12,
+    "uuid": "8df3c899-ac67-471b-b019-259db6337774",
     "role": "contributor",
     "full_name": "Asmaa Khaled",
+    "github_username": null,
     "bio": "Biomedical & Software Engineer",
-    "github_username": null
+    "created_at": "2026-03-19 16:19:14.153552"
   },
   {
-    "uuid": 13,
+    "uuid": "78ac7bab-ff1f-4b78-8004-884045e5b9da",
     "role": "contributor",
     "full_name": "Shane",
+    "github_username": null,
     "bio": "Associate Professor",
-    "github_username": null
+    "created_at": "2026-03-19 16:19:14.155401"
   },
   {
-    "uuid": 14,
+    "uuid": "04e068b5-911e-4ffc-9584-b61f7c2a1dbf",
     "role": "contributor",
     "full_name": "Duncan",
+    "github_username": null,
     "bio": "Machine Learning Engineer",
-    "github_username": null
+    "created_at": "2026-03-19 16:19:14.157369"
   },
   {
-    "uuid": 15,
+    "uuid": "8774d749-4212-4f47-8af3-0807d72149db",
     "role": "contributor",
     "full_name": "Govind",
+    "github_username": null,
     "bio": "Biomedical Engineer",
-    "github_username": null
+    "created_at": "2026-03-19 16:19:14.159302"
   },
   {
-    "uuid": 16,
+    "uuid": "5d50dc2f-d095-4edf-b85b-8e0a1a2f7e78",
     "role": "contributor",
     "full_name": "Kunal",
+    "github_username": null,
     "bio": "Data Scientist",
-    "github_username": null
+    "created_at": "2026-03-19 16:19:14.161148"
+  },
+  {
+    "uuid": "8c403ed9-cb8f-4944-b040-2f048e9697ec",
+    "role": "contributor",
+    "full_name": "Antoine Tessier",
+    "github_username": null,
+    "bio": null,
+    "created_at": "2026-07-14 18:02:56.510997"
+  },
+  {
+    "uuid": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "role": "admin",
+    "full_name": "Alix Chagot",
+    "github_username": "akralan",
+    "bio": null,
+    "created_at": "2026-03-19 12:10:43.413307"
+  },
+  {
+    "uuid": "91ce48a1-88a6-40b6-a846-cca5d37e6c33",
+    "role": "contributor",
+    "full_name": "mohamed hedi",
+    "github_username": null,
+    "bio": null,
+    "created_at": "2026-08-28 10:15:43.499542"
+  },
+  {
+    "uuid": "42026e1e-100b-4ca8-9c9d-6522c78401d7",
+    "role": "contributor",
+    "full_name": "Antoine",
+    "github_username": "",
+    "bio": null,
+    "created_at": "2026-06-22 09:48:33.354522"
+  },
+  {
+    "uuid": "c9a7a2aa-13a4-442f-b764-062cb7d2592b",
+    "role": "admin",
+    "full_name": "Antoine Tessier",
+    "github_username": "kaodje",
+    "bio": null,
+    "created_at": "2026-03-19 08:56:59.903675"
+  },
+  {
+    "uuid": "003487de-5170-4159-aeec-b63b197a3295",
+    "role": "contributor",
+    "full_name": "Alix Chagot",
+    "github_username": null,
+    "bio": null,
+    "created_at": "2026-09-22 14:44:51.701968"
   }
 ]

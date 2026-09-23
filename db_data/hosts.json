@@ -1,15 +1,11 @@
 {
-  "_comment": "Qui porte chaque challenge, par slug — la carte « Who hosts this challenge » de la page publique. Données de démonstration : seul `seed-demo.ts` et `seed-sandbox.ts` les posent, jamais `seed.ts`, qui tourne aussi contre la production. Les établissements cités ici sont des exemples à remplacer avant toute publication.",
-
-  "detection-de-lesion-ligamentaire-du-genou-irm": "CHU de Montpellier, service d'imagerie musculosquelettique",
-  "validation-clinique-qualifiee-api-lesion-ligamentaire": "CHU de Montpellier, service de médecine physique et de réadaptation",
-  "reference-api-harness-for-clinical-model-endpoints": "MyTwin Lab, équipe Plateforme",
+  "_comment": "Qui porte chaque challenge, par slug — la carte « Who hosts this challenge » de la page publique. Données de démonstration : seul `seed.ts --demo` les pose, jamais le seed par défaut, qui tourne aussi contre la production. Les établissements cités ici sont des exemples à remplacer avant toute publication.",
   "poc-injury-prediction-in-tennis": "INSEP, département médical et performance",
-  "breast-cancer-detection": "Institut Curie, département d'imagerie médicale",
   "leaderboard-poc": "MyTwin Lab, équipe Digital Twin",
   "evaluator-update-1": "MyTwin Lab, équipe Digital Twin",
   "oauth-integration": "MyTwin Lab, équipe Plateforme",
   "collaboration-patterns": "MyTwin Lab, équipe Plateforme",
   "unified-ui": "MyTwin Lab, équipe Produit",
-  "contributor-experience-update": "MyTwin Lab, équipe Produit"
+  "contributor-experience-update": "MyTwin Lab, équipe Produit",
+  "mammography": "Institut Curie, département d'imagerie médicale"
 }

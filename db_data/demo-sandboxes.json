@@ -1,0 +1,76 @@
+[
+  {
+    "_comment": "Très staré : les trois paliers franchis.",
+    "author_full_name": "Camille Daverio",
+    "title": "Open wearable ingestion pipeline for continuous vitals",
+    "context": "Consumer wearables expose heart rate, HRV and SpO2 through a dozen incompatible APIs. Anyone building on top of them re-writes the same normalisation layer, and none of those layers are open.",
+    "goals": [
+      "A single ingestion client for Apple Health, Fitbit, Garmin and Withings",
+      "Normalise every stream into one time-series schema with explicit units",
+      "Backfill and gap detection, because wearables drop data far more often than their docs admit",
+      "A conformance suite any new connector has to pass"
+    ],
+    "why": "Continuous vitals are the highest-frequency signal a digital twin can get. Today the cost of collecting them cleanly is what stops most teams before they start modelling anything.",
+    "created_days_ago": 46,
+    "stars": {
+      "account": 14,
+      "anonymous": 20,
+      "prefix": "demo-anon-hot"
+    }
+  },
+  {
+    "_comment": "Deux paliers franchis, pour que la barre de progression ait un reste.",
+    "author_full_name": "Patricia Novi",
+    "title": "Gait asymmetry detection from a single phone camera",
+    "context": "Clinical gait analysis needs a motion lab. A phone on a tripod and thirty seconds of walking should be enough to flag an asymmetry worth a real consultation — not to diagnose, to triage.",
+    "goals": [
+      "Pose estimation robust to a hand-held phone and indoor lighting",
+      "Stride-level asymmetry index, comparable across recordings",
+      "Calibrate against the lab-grade recordings in the reference dataset",
+      "Publish the failure modes as loudly as the accuracy"
+    ],
+    "why": "Post-injury rehab is monitored by memory and self-report between appointments. A measurable weekly number is the difference between adjusting a protocol and guessing at it.",
+    "created_days_ago": 24,
+    "stars": {
+      "account": 12,
+      "anonymous": 6,
+      "prefix": "demo-anon-gait"
+    }
+  },
+  {
+    "_comment": "Tout frais : sous le premier palier.",
+    "author_full_name": "Samir Touinssi",
+    "title": "Consent ledger for health data reuse",
+    "context": "A contributor who hands over a recording has no way to see where it ended up, and no way to withdraw it from a model that has already been trained.",
+    "goals": [
+      "Append-only ledger tying each consent grant to the datasets it covers",
+      "Withdrawal that propagates to downstream derivations, not just the original row",
+      "An audit export a data protection officer can actually read"
+    ],
+    "why": "Every other proposal on this board assumes the data is there. This is what makes people willing to hand it over twice.",
+    "created_days_ago": 5,
+    "stars": {
+      "account": 3,
+      "anonymous": 0,
+      "prefix": "demo-anon-consent"
+    }
+  },
+  {
+    "_comment": "Archivé : visible du seul auteur, sous l'onglet « Mine ». Staré avant archivage — une proposition qui n'est plus `open` refuse toute nouvelle star, et un palier franchi n'est jamais repris.",
+    "author_full_name": "Mahdi Lamriben",
+    "title": "Browser-side DICOM anonymiser",
+    "context": "Stripping identifiers from a DICOM study before it leaves the hospital network, without installing anything.",
+    "goals": [
+      "Parse and rewrite DICOM tags entirely client-side",
+      "Burned-in text detection on the pixel data itself"
+    ],
+    "why": "Retiré au profit d'un outil existant qui fait déjà la même chose, mieux.",
+    "created_days_ago": 120,
+    "stars": {
+      "account": 6,
+      "anonymous": 0,
+      "prefix": "demo-anon-dicom"
+    },
+    "archive": true
+  }
+]

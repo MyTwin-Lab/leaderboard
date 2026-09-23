@@ -1,0 +1,741 @@
+[
+  {
+    "uuid": "44b234a9-d584-49bc-9b37-c92138100bb6",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "6b723f59-af03-4db2-9405-8e1d0e776a6b",
+    "rule_key": "model_metric",
+    "points": 132,
+    "source_user_id": null,
+    "meta": {
+      "metricValue": 0.764,
+      "normalizedMetric": 0.528
+    },
+    "created_at": "2026-08-05 16:18:45.137846"
+  },
+  {
+    "uuid": "468d8230-646f-4c87-9c64-53a83159f6f3",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "6b723f59-af03-4db2-9405-8e1d0e776a6b",
+    "rule_key": "beat_best",
+    "points": 400,
+    "source_user_id": null,
+    "meta": {
+      "metricValue": 0.764,
+      "previousBest": null
+    },
+    "created_at": "2026-08-05 16:18:45.137846"
+  },
+  {
+    "uuid": "dc97a7d1-56d5-48e1-8704-c8d06c7d066f",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "42f7204f-078c-4aaa-ab05-958bddc2e256",
+    "rule_key": "dataset",
+    "points": 89,
+    "source_user_id": null,
+    "meta": {
+      "agentScore": 0.2973148148148148
+    },
+    "created_at": "2026-08-05 16:55:44.885875"
+  },
+  {
+    "uuid": "94dd373c-8920-4318-b224-9724b708c5fd",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "42f7204f-078c-4aaa-ab05-958bddc2e256",
+    "rule_key": "dataset",
+    "points": 118,
+    "source_user_id": null,
+    "meta": {
+      "agentScore": 0.39453703703703713
+    },
+    "created_at": "2026-08-05 16:55:49.773218"
+  },
+  {
+    "uuid": "8def8507-1fac-47b9-acdd-c58b01c30a70",
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "42f7204f-078c-4aaa-ab05-958bddc2e256",
+    "rule_key": "dataset",
+    "points": 102,
+    "source_user_id": null,
+    "meta": {
+      "agentScore": 0.3390740740740741
+    },
+    "created_at": "2026-09-14 21:03:10.14369"
+  },
+  {
+    "uuid": "f41eccf6-e7bd-5cf8-ab2f-e2ca0b205b68",
+    "challenge_id": "8e077522-c016-4d27-8901-f32b35b6c4d9",
+    "user_id": "c9a7a2aa-13a4-442f-b764-062cb7d2592b",
+    "contribution_id": "dcb7476a-26fa-4695-8bd4-4d167101e65d",
+    "rule_key": "code_fixed",
+    "points": 2000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-06-20 10:30:00"
+  },
+  {
+    "uuid": "3b46b1ba-bd55-5ba0-801a-9f8e081ca068",
+    "challenge_id": "8e077522-c016-4d27-8901-f32b35b6c4d9",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "a4d0ea59-94d6-4669-83a6-1dc42154e708",
+    "rule_key": "code_fixed",
+    "points": 2000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-06-21 14:15:00"
+  },
+  {
+    "uuid": "eb553bf1-4eb5-5485-afc3-9a3430ff2705",
+    "challenge_id": "8e077522-c016-4d27-8901-f32b35b6c4d9",
+    "user_id": "507ae966-d00d-42f4-807d-6903a1229349",
+    "contribution_id": "5ade7a9e-b8f6-45f7-8748-466d05dd1d41",
+    "rule_key": "code_fixed",
+    "points": 2500,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-06-28 09:45:00"
+  },
+  {
+    "uuid": "60e94af3-0c46-5048-a0d5-ec25c98a6b3a",
+    "challenge_id": "8e077522-c016-4d27-8901-f32b35b6c4d9",
+    "user_id": "507ae966-d00d-42f4-807d-6903a1229349",
+    "contribution_id": "903bfcc0-afc1-4f0c-9d9e-b1c21330dc9b",
+    "rule_key": "code_fixed",
+    "points": 2000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-07-05 16:20:00"
+  },
+  {
+    "uuid": "f0d193ab-a9fa-5c1d-8dcc-69c935330597",
+    "challenge_id": "8e077522-c016-4d27-8901-f32b35b6c4d9",
+    "user_id": "507ae966-d00d-42f4-807d-6903a1229349",
+    "contribution_id": "d37802fc-501d-48e7-aa07-d5a5ca3034a8",
+    "rule_key": "code_fixed",
+    "points": 1500,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-07-12 11:00:00"
+  },
+  {
+    "uuid": "0bebde33-7877-55be-8f32-46874174db1f",
+    "challenge_id": "8e077522-c016-4d27-8901-f32b35b6c4d9",
+    "user_id": "c9a7a2aa-13a4-442f-b764-062cb7d2592b",
+    "contribution_id": "b021ce03-358f-4ad1-8672-aea0ad8cc743",
+    "rule_key": "code_fixed",
+    "points": 500,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-07-18 13:30:00"
+  },
+  {
+    "uuid": "a75711da-d4f4-5a71-81ee-0a0de3508b79",
+    "challenge_id": "8e077522-c016-4d27-8901-f32b35b6c4d9",
+    "user_id": "c9a7a2aa-13a4-442f-b764-062cb7d2592b",
+    "contribution_id": "ac1bcc16-6d06-47b2-96c0-4f81f8d96770",
+    "rule_key": "code_fixed",
+    "points": 1500,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-07-25 15:45:00"
+  },
+  {
+    "uuid": "4a6f5252-0478-5a24-a317-0931ab0d166a",
+    "challenge_id": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
+    "user_id": "c9a7a2aa-13a4-442f-b764-062cb7d2592b",
+    "contribution_id": "23a488a5-d647-436e-9676-ab7cdb84dd60",
+    "rule_key": "code_fixed",
+    "points": 200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-09-14 09:00:00"
+  },
+  {
+    "uuid": "4045ceb2-a482-54c5-84ea-2983ec3f05f1",
+    "challenge_id": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "f481a312-040e-45a6-b22b-75060128febc",
+    "rule_key": "code_fixed",
+    "points": 200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-09-15 10:30:00"
+  },
+  {
+    "uuid": "5455615d-1215-5609-bc05-3b0a0db3deea",
+    "challenge_id": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
+    "user_id": "119e43f8-5385-4458-b54a-a18fb7399467",
+    "contribution_id": "e8df7f19-4ce1-48de-8200-19924a42d40d",
+    "rule_key": "code_fixed",
+    "points": 200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-09-16 14:20:00"
+  },
+  {
+    "uuid": "144163c0-bf21-576b-91c5-0dbdbbbd6bf5",
+    "challenge_id": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
+    "user_id": "04e068b5-911e-4ffc-9584-b61f7c2a1dbf",
+    "contribution_id": "4c5a9896-1174-4dfd-a4be-f4e0f270ff91",
+    "rule_key": "code_fixed",
+    "points": 200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-09-17 11:15:00"
+  },
+  {
+    "uuid": "886bc0dc-8cd0-5bac-bc13-cbba54468797",
+    "challenge_id": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
+    "user_id": "119e43f8-5385-4458-b54a-a18fb7399467",
+    "contribution_id": "14b421a3-23f9-4df9-a5da-ad6f7ccb287e",
+    "rule_key": "code_fixed",
+    "points": 800,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-09-25 16:00:00"
+  },
+  {
+    "uuid": "126ed230-7f24-5a9f-9dec-c49da470788d",
+    "challenge_id": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
+    "user_id": "8df3c899-ac67-471b-b019-259db6337774",
+    "contribution_id": "0550b74d-0791-4ca0-860f-ae484c41c17b",
+    "rule_key": "code_fixed",
+    "points": 600,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-09-28 10:45:00"
+  },
+  {
+    "uuid": "5e7d9046-9d35-5967-bff9-a9657240e446",
+    "challenge_id": "b3e04604-e03a-4c42-ba49-9c82144e6c91",
+    "user_id": "c9a7a2aa-13a4-442f-b764-062cb7d2592b",
+    "contribution_id": "0c040d89-7e7a-48d8-ae90-82b0880ac264",
+    "rule_key": "code_fixed",
+    "points": 1300,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-10-11 09:30:00"
+  },
+  {
+    "uuid": "7cad502d-8a28-5672-a09f-89de5c8e9f3e",
+    "challenge_id": "b3e04604-e03a-4c42-ba49-9c82144e6c91",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "ade32691-1e8f-44cd-a3c9-af1217af3a16",
+    "rule_key": "code_fixed",
+    "points": 1300,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-10-12 10:15:00"
+  },
+  {
+    "uuid": "56193cfa-fdce-5855-85a1-198306640982",
+    "challenge_id": "b3e04604-e03a-4c42-ba49-9c82144e6c91",
+    "user_id": "c9a7a2aa-13a4-442f-b764-062cb7d2592b",
+    "contribution_id": "e81bad3d-5569-4fba-9d1c-ca559a26cd27",
+    "rule_key": "code_fixed",
+    "points": 700,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-10-14 14:00:00"
+  },
+  {
+    "uuid": "76316563-46b4-588c-913b-0432102f48ff",
+    "challenge_id": "b3e04604-e03a-4c42-ba49-9c82144e6c91",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "5b3157fd-c9e7-4f43-a168-94b5575e8813",
+    "rule_key": "code_fixed",
+    "points": 700,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-10-15 11:30:00"
+  },
+  {
+    "uuid": "d7636077-1c56-555f-9395-66100a5963fa",
+    "challenge_id": "b3e04604-e03a-4c42-ba49-9c82144e6c91",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "d516bd93-beb6-4942-8f43-fb15240eef6f",
+    "rule_key": "code_fixed",
+    "points": 1200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-10-17 15:20:00"
+  },
+  {
+    "uuid": "d6064da5-f92f-57f8-b66e-c9795f692755",
+    "challenge_id": "b3e04604-e03a-4c42-ba49-9c82144e6c91",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "98f8139b-924a-4be3-9578-447c258aa2b3",
+    "rule_key": "code_fixed",
+    "points": 900,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-10-19 09:45:00"
+  },
+  {
+    "uuid": "a6aadfc4-97e6-5c22-8a32-1222e96fb32c",
+    "challenge_id": "b3e04604-e03a-4c42-ba49-9c82144e6c91",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "5f392456-1684-4983-8c1e-6d54f58be4a0",
+    "rule_key": "code_fixed",
+    "points": 1000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-10-20 16:30:00"
+  },
+  {
+    "uuid": "cba80ab2-3ac0-5eb8-aa9d-ecfd8d4221ef",
+    "challenge_id": "b3e04604-e03a-4c42-ba49-9c82144e6c91",
+    "user_id": "c9a7a2aa-13a4-442f-b764-062cb7d2592b",
+    "contribution_id": "c4411ff5-1fc2-4825-b1e7-10727029781a",
+    "rule_key": "code_fixed",
+    "points": 400,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-10-21 10:00:00"
+  },
+  {
+    "uuid": "f86dc882-a4b2-54a7-b573-87bf2a0ed370",
+    "challenge_id": "b3e04604-e03a-4c42-ba49-9c82144e6c91",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "2124fd20-14db-40ad-b496-bb0ba4f09b89",
+    "rule_key": "code_fixed",
+    "points": 500,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-10-22 13:45:00"
+  },
+  {
+    "uuid": "0d68579b-0214-5e7f-a0a7-66dcb5ddd19f",
+    "challenge_id": "ac47eb47-6b1d-4adc-ab00-be7a16bd95ea",
+    "user_id": "c9a7a2aa-13a4-442f-b764-062cb7d2592b",
+    "contribution_id": "c37d39d3-c523-49bf-8e9f-091cd3d253a5",
+    "rule_key": "code_fixed",
+    "points": 1000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-10-28 10:30:00"
+  },
+  {
+    "uuid": "d79eb218-f2de-5799-b8d0-82469d371bbc",
+    "challenge_id": "ac47eb47-6b1d-4adc-ab00-be7a16bd95ea",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "afb67064-3632-43d3-aa2e-30bd8a457e75",
+    "rule_key": "code_fixed",
+    "points": 1000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-11-02 14:15:00"
+  },
+  {
+    "uuid": "64d7d791-164e-5104-ab20-dffa4bb78685",
+    "challenge_id": "ac47eb47-6b1d-4adc-ab00-be7a16bd95ea",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "15ea8469-0d56-42ff-b001-b4ab892cc56f",
+    "rule_key": "code_fixed",
+    "points": 1000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-11-08 11:00:00"
+  },
+  {
+    "uuid": "2cd7c017-65b3-5df3-a027-87d5cab690af",
+    "challenge_id": "ac47eb47-6b1d-4adc-ab00-be7a16bd95ea",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "2f853bff-941e-44f7-a36c-fbbdd8bc5aa9",
+    "rule_key": "code_fixed",
+    "points": 1000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-11-13 16:45:00"
+  },
+  {
+    "uuid": "cb19a804-a1e6-5782-80f3-990d42f1800b",
+    "challenge_id": "460dcebd-73e5-4d67-8b0b-50da5ededca0",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "79f6c648-3b1f-4c5d-bbdf-193b2d05fd22",
+    "rule_key": "code_fixed",
+    "points": 1000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-12-03 09:30:00"
+  },
+  {
+    "uuid": "dc81eb31-c780-52cd-a321-ed37a5b4d816",
+    "challenge_id": "460dcebd-73e5-4d67-8b0b-50da5ededca0",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "081f5c1f-2a28-4ad0-b3f0-31ec6454636d",
+    "rule_key": "code_fixed",
+    "points": 1000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-12-05 14:20:00"
+  },
+  {
+    "uuid": "d9f7fa30-3fb4-5c67-a1e0-5dd889eb6fc9",
+    "challenge_id": "460dcebd-73e5-4d67-8b0b-50da5ededca0",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "cfb26d7c-f53b-4c67-a76a-b7a9ce48c94f",
+    "rule_key": "code_fixed",
+    "points": 1000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-12-07 10:15:00"
+  },
+  {
+    "uuid": "1034727b-24a5-58e1-bb6c-579a8456e179",
+    "challenge_id": "460dcebd-73e5-4d67-8b0b-50da5ededca0",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "c95303fc-675c-4e4a-ad2e-6f1fbdd6167c",
+    "rule_key": "code_fixed",
+    "points": 1000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-12-09 15:30:00"
+  },
+  {
+    "uuid": "9fb81269-36f5-5c3f-9e54-a3c3d78d6ba9",
+    "challenge_id": "53e1998d-55d7-44c0-8c7e-d5058bc5187c",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "d739ebe4-da01-49ce-8a89-ee27cf2e7f4a",
+    "rule_key": "code_fixed",
+    "points": 1200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-12-02 11:00:00"
+  },
+  {
+    "uuid": "d5f02f0a-28fd-5554-ae47-46b9b806cd5d",
+    "challenge_id": "53e1998d-55d7-44c0-8c7e-d5058bc5187c",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "079e503b-9f89-46ea-b9a6-1e9695728e0a",
+    "rule_key": "code_fixed",
+    "points": 800,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-12-03 16:30:00"
+  },
+  {
+    "uuid": "7719ac67-5a1e-5b57-8889-98723368e377",
+    "challenge_id": "53e1998d-55d7-44c0-8c7e-d5058bc5187c",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "977ea6a6-1e74-4cbf-9925-89c11b4843c4",
+    "rule_key": "code_fixed",
+    "points": 1800,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-12-05 09:45:00"
+  },
+  {
+    "uuid": "72af83f6-8637-58c6-b9e3-de0caa77f4bb",
+    "challenge_id": "53e1998d-55d7-44c0-8c7e-d5058bc5187c",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "2d5918fe-660c-4700-b645-067505429284",
+    "rule_key": "code_fixed",
+    "points": 1200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-12-06 14:00:00"
+  },
+  {
+    "uuid": "29d2c233-0f56-5eb5-8cd4-c120f967919a",
+    "challenge_id": "53e1998d-55d7-44c0-8c7e-d5058bc5187c",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "51887f51-2775-4f9f-92f4-80361499e507",
+    "rule_key": "code_fixed",
+    "points": 600,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-12-07 10:30:00"
+  },
+  {
+    "uuid": "42ac5c75-a2f3-5903-b036-51c0730c247a",
+    "challenge_id": "53e1998d-55d7-44c0-8c7e-d5058bc5187c",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "e485d637-cd28-4e75-9101-df1d97c501da",
+    "rule_key": "code_fixed",
+    "points": 1000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-12-08 15:15:00"
+  },
+  {
+    "uuid": "9c8ab065-ebc1-5159-b7fe-9f7980b70246",
+    "challenge_id": "53e1998d-55d7-44c0-8c7e-d5058bc5187c",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "contribution_id": "fc30a29b-5275-47f9-bcf8-8406126c582e",
+    "rule_key": "code_fixed",
+    "points": 1400,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2025-12-09 11:45:00"
+  },
+  {
+    "uuid": "304a0bfb-6daf-5324-a45c-e5b0c5850666",
+    "challenge_id": "1463073a-e5ca-486a-bcc1-ea4072361dc2",
+    "user_id": "3e72fadd-a4ab-4a04-959d-619c621e40b3",
+    "contribution_id": "7db110e5-907d-4c17-b963-c049e3ed9d6c",
+    "rule_key": "code_fixed",
+    "points": 4000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2026-08-28 11:02:29.078"
+  },
+  {
+    "uuid": "ac05e896-1647-565d-a35c-878977de08fe",
+    "challenge_id": "1463073a-e5ca-486a-bcc1-ea4072361dc2",
+    "user_id": "1bddabd9-cb8b-4e94-9ff4-d6aa75a7214a",
+    "contribution_id": "40e307ec-d6b4-4ae7-a5be-c38ca74bbc6a",
+    "rule_key": "code_fixed",
+    "points": 4000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2026-08-28 11:02:56.827"
+  },
+  {
+    "uuid": "8c688b06-9997-5a80-87ed-6f236a31ece8",
+    "challenge_id": "1463073a-e5ca-486a-bcc1-ea4072361dc2",
+    "user_id": "84811e88-9d5a-4a95-8704-5b20f5d96381",
+    "contribution_id": "163ac620-d578-4fea-ab91-a7becbbbb39d",
+    "rule_key": "code_fixed",
+    "points": 4000,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2026-08-28 11:03:13.632"
+  },
+  {
+    "uuid": "44862855-488d-5563-ab3d-f83c85602611",
+    "challenge_id": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
+    "user_id": "8774d749-4212-4f47-8af3-0807d72149db",
+    "contribution_id": "278dfc3a-09e3-43a7-8187-9a7f367427de",
+    "rule_key": "code_fixed",
+    "points": 200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2026-08-28 11:54:09.764"
+  },
+  {
+    "uuid": "1dc9b1bd-f09f-5157-b902-bb5dba65dcbc",
+    "challenge_id": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
+    "user_id": "5d50dc2f-d095-4edf-b85b-8e0a1a2f7e78",
+    "contribution_id": "35d87542-5577-4987-88b9-79fcaaf4932d",
+    "rule_key": "code_fixed",
+    "points": 200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2026-08-28 11:55:24.948"
+  },
+  {
+    "uuid": "4ad65ec5-64f2-53f6-a012-47a46c7d1814",
+    "challenge_id": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
+    "user_id": "91ce48a1-88a6-40b6-a846-cca5d37e6c33",
+    "contribution_id": "89c3eab0-07dc-466e-b2e8-4036903e55ee",
+    "rule_key": "code_fixed",
+    "points": 4500,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2026-08-28 11:56:06.785"
+  },
+  {
+    "uuid": "dbf7f5db-5e44-5341-b3d8-00036b75fcc2",
+    "challenge_id": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
+    "user_id": "78ac7bab-ff1f-4b78-8004-884045e5b9da",
+    "contribution_id": "4c7fdf52-4546-4f77-ba23-7f6cdf7d8b4d",
+    "rule_key": "code_fixed",
+    "points": 200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2026-08-28 11:56:59.296"
+  },
+  {
+    "uuid": "76077ec9-1566-5c87-952e-586c6955d1b3",
+    "challenge_id": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
+    "user_id": "5cb6e828-820f-4e03-80cd-5ee000f8bddb",
+    "contribution_id": "e908b6f3-f585-4f70-86b1-274127c46a47",
+    "rule_key": "code_fixed",
+    "points": 200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2026-08-28 11:57:19.482"
+  },
+  {
+    "uuid": "32f08609-327b-5887-bbe8-68bad07c3d1e",
+    "challenge_id": "6743d540-3b3f-46ef-9831-f14826c49a52",
+    "user_id": "0949d95b-43c4-4e51-9383-181b721317e1",
+    "contribution_id": "1529a134-b187-413a-a2c0-d578552794de",
+    "rule_key": "code_fixed",
+    "points": 2800,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2026-08-28 12:06:05.184"
+  },
+  {
+    "uuid": "e0643daf-4dad-5a74-9127-7e3e08372cb9",
+    "challenge_id": "948473a8-5a61-44cd-b77b-b256e679fea8",
+    "user_id": "50a5b3d1-bf8b-4c95-bd94-3179f312ef25",
+    "contribution_id": "28e04a90-1ecf-43d3-a4af-aeb44badc01f",
+    "rule_key": "code_fixed",
+    "points": 3200,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2026-08-28 12:11:24.795"
+  },
+  {
+    "uuid": "0dbcebb0-9d4a-5465-81dc-8ce97eae953c",
+    "challenge_id": "6743d540-3b3f-46ef-9831-f14826c49a52",
+    "user_id": "0949d95b-43c4-4e51-9383-181b721317e1",
+    "contribution_id": "1a86a6fb-0b4c-475b-b528-fe0326f65466",
+    "rule_key": "code_fixed",
+    "points": 2050,
+    "source_user_id": null,
+    "meta": {
+      "backfilled": true,
+      "source": "contributions.reward"
+    },
+    "created_at": "2026-08-28 12:12:00.439"
+  }
+]

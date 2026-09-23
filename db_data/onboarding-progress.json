@@ -1,0 +1,68 @@
+[
+  {
+    "user_id": "42026e1e-100b-4ca8-9c9d-6522c78401d7",
+    "clicked_challenge": true,
+    "assigned_task": false,
+    "evaluated_contribution": true,
+    "validated_task": false,
+    "joined_meeting": false,
+    "completed_at": null,
+    "created_at": "2026-06-22 09:48:33.359158",
+    "updated_at": "2026-09-14 19:43:52.95"
+  },
+  {
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "clicked_challenge": true,
+    "assigned_task": true,
+    "evaluated_contribution": true,
+    "validated_task": false,
+    "joined_meeting": true,
+    "completed_at": null,
+    "created_at": "2026-03-19 12:10:43.416831",
+    "updated_at": "2026-09-14 21:01:36.603"
+  },
+  {
+    "user_id": "003487de-5170-4159-aeec-b63b197a3295",
+    "clicked_challenge": false,
+    "assigned_task": false,
+    "evaluated_contribution": false,
+    "validated_task": false,
+    "joined_meeting": false,
+    "completed_at": null,
+    "created_at": "2026-09-22 14:44:51.704379",
+    "updated_at": "2026-09-22 14:44:51.704379"
+  },
+  {
+    "user_id": "91ce48a1-88a6-40b6-a846-cca5d37e6c33",
+    "clicked_challenge": true,
+    "assigned_task": false,
+    "evaluated_contribution": false,
+    "validated_task": false,
+    "joined_meeting": false,
+    "completed_at": null,
+    "created_at": "2026-08-28 10:15:43.517632",
+    "updated_at": "2026-08-28 10:15:44.446"
+  },
+  {
+    "user_id": "8c403ed9-cb8f-4944-b040-2f048e9697ec",
+    "clicked_challenge": true,
+    "assigned_task": false,
+    "evaluated_contribution": false,
+    "validated_task": false,
+    "joined_meeting": false,
+    "completed_at": null,
+    "created_at": "2026-07-14 18:02:56.513368",
+    "updated_at": "2026-07-17 09:04:40.212"
+  },
+  {
+    "user_id": "c9a7a2aa-13a4-442f-b764-062cb7d2592b",
+    "clicked_challenge": true,
+    "assigned_task": true,
+    "evaluated_contribution": false,
+    "validated_task": false,
+    "joined_meeting": true,
+    "completed_at": null,
+    "created_at": "2026-03-19 08:56:59.907525",
+    "updated_at": "2026-09-02 14:20:35.727"
+  }
+]

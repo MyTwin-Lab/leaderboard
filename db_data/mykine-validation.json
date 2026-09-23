@@ -1,0 +1,79 @@
+{
+  "_comment": "Challenge de validation en mode scénario, adossé à un challenge `code`, avec MyCoach (MyKine) déjà déployé comme cible. En mode scénario il n'y a ni quorum ni résolution : chaque walkthrough complétée paie, d'où `required_validations: null`.",
+
+  "project": {
+    "title": "MyCoach",
+    "description": "Démo patient du usecase MyTwin « MyCoach » : pose estimation on-device, scoring par angles articulaires, replay du mouvement."
+  },
+
+  "author": {
+    "github_username": "akralan",
+    "full_name": "Alix Chagot",
+    "role": "contributor",
+    "bio": "Software Engineer"
+  },
+
+  "repo_url": "https://github.com/Akralan/MyKine",
+  "deployed_url": "https://mytwin-sandbox-mykine.osc-fr1.scalingo.io/",
+
+  "code_challenge": {
+    "title": "MyCoach — démo patient (parcours mobile)",
+    "status": "completed",
+    "type": "code",
+    "description": "Construire la démo web du parcours patient MyCoach : six écrans, séance du jour, séance live avec pose estimation, replay et historique.",
+    "contribution_points_reward": 12000,
+    "completion": 1,
+    "workspace_mode": "provided_repo"
+  },
+
+  "contribution": {
+    "title": "MyCoach — démo patient",
+    "type": "project",
+    "description": "Parcours patient en six écrans, pose estimation MediaPipe on-device, scoring déterministe par angles articulaires.",
+    "evaluation_status": "done",
+    "reward": 0
+  },
+
+  "validation_challenge": {
+    "title": "Parcours d'usage — MyCoach",
+    "status": "active",
+    "type": "validation",
+    "description": "Parcourir le même scénario d'usage à travers chaque application livrée sur le challenge source, étape par étape, et clore sur un retour global.",
+    "contribution_points_reward": 6000,
+    "cp_per_validation": 200,
+    "completion": 0,
+    "required_validations": null
+  },
+
+  "_scenario_comment": "Le scénario suit le parcours réel de l'application — six écrans plus le profil. Volontairement pas d'étape « créer un compte » : la démo n'a pas de backend, tout est local au navigateur. L'étape 3 décide du reste : MyCoach a besoin de la caméra, et une iframe multi-origine n'y a pas droit tant que la page hôte ne la délègue pas.",
+  "scenario_steps": [
+    {
+      "title": "Ouvrir l'accueil et lire la séance du jour",
+      "instructions": "Note si la séance proposée est compréhensible sans explication : sait-on ce qu'on doit faire, combien de temps ça prend, et où on en est dans la semaine ?"
+    },
+    {
+      "title": "Ouvrir la liste des exercices",
+      "instructions": "Les exercices prescrits doivent se distinguer de la bibliothèque. Vérifie que toucher une ligne lance bien l'exercice directement, sans écran intermédiaire."
+    },
+    {
+      "title": "Lancer un exercice et autoriser la caméra",
+      "instructions": "Si l'application est intégrée dans le cadre de gauche et que la caméra est refusée sans même demander, marque cette étape « Blocked » et ouvre l'application dans un onglet avec le bouton prévu, puis poursuis le parcours là-bas. Une caméra qui ne démarre pas une fois dans un onglet est un vrai résultat de validation, à marquer « Failed »."
+    },
+    {
+      "title": "Faire une série complète",
+      "instructions": "Le squelette doit suivre le mouvement, le décompte de répétitions avancer, et les mesures s'afficher en surimpression. Signale tout décompte qui saute ou reste bloqué."
+    },
+    {
+      "title": "Lire le bilan de fin de séance",
+      "instructions": "Le bilan agrège toutes les séries de l'exercice. Vérifie que l'amplitude par répétition est lisible et que les unités sont présentes — une mesure sans unité n'est pas exploitable."
+    },
+    {
+      "title": "Ouvrir le replay et parcourir la timeline",
+      "instructions": "Fais glisser la timeline, bascule entre squelette 2D et 3D, et vérifie que les marqueurs de répétitions tombent au bon endroit par rapport à la courbe d'angle."
+    },
+    {
+      "title": "Retrouver la séance dans l'historique",
+      "instructions": "La séance que tu viens de faire doit apparaître, groupée par jour, avec ses totaux, et le replay doit être accessible depuis là. Recharge la page avant de vérifier : les données sont locales au navigateur."
+    }
+  ]
+}

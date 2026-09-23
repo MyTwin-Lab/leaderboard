@@ -135,7 +135,7 @@ VALIDATION_ALLOW_PRIVATE_ENDPOINTS=true
 
 This skips the private/loopback block entirely. **Local dev only — never set this in production**; it is the one thing standing between a validator and SSRF. See `packages/config/index.ts` and `packages/services/challenge/ssrf-guard.ts`.
 
-`db_data/seed-validation-mammo.ts` seeds a ready-made validation challenge for local work.
+`npm run db:seed` seeds a ready-made validation challenge for local work: the scenario-mode MyCoach walkthrough, from `db_data/mykine-validation.json`.
 
 ---
 

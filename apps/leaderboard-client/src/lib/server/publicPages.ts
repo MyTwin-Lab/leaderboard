@@ -95,9 +95,13 @@ export async function fetchProjectsWithChallenges(
     .map((project) => {
       const projectChallenges = challenges
         .filter((challenge) => challenge.project_id === project.uuid)
+        // Les archivés sortent pour tout le monde : le listing leur donne sa
+        // pastille « Archived », et un challenge terminé reste une page
+        // publique qu'on doit pouvoir relire. Seuls les brouillons restent
+        // réservés à l'admin et au manager du projet — ils ne sont pas publiés.
         .filter((challenge) =>
           isAdmin ||
-          !['draft', 'archived'].includes(challenge.status) ||
+          challenge.status !== 'draft' ||
           managedProjectIds.includes(challenge.project_id)
         )
         .map((challenge) => ({

@@ -1,0 +1,21 @@
+[
+  {
+    "uuid": "80b0defd-aee5-491b-87c1-31966ee2e49c",
+    "user_id": "dfa700de-8529-41e0-82de-eea151d06a8e",
+    "title": "MyKine - guided physio sessions with on-device pose estimation",
+    "context": "Physiotherapy mostly happens between sessions: the patient goes home with a sheet of prescribed exercises and does them alone. The physio has no way to know what actually happened - whether the exercises were done at all, with how many reps, at what amplitude, with what compensations. They find out weeks later, at the next appointment, from the patient's memory.\n\nThe result is a blind spot on both sides. Patients lose motivation with zero feedback, do movements wrong without knowing it, or quietly drop the program. Physios adjust prescriptions on guesswork instead of data. And the obvious fixes - video calls, wearables, filming yourself - are either impractical, expensive, or a privacy problem nobody wants.\n\nA phone camera is the one sensor every patient already has. On-device pose estimation can turn it into a measurement tool: joint angles, rep counts, movement replay - without a single image ever leaving the device.",
+    "goals": [
+      "A patient mobile flow: today's session from a prescribed program, live camera exercise with rep counting and angle measurement, end-of-session summary",
+      "On-device pose estimation (MediaPipe/BlazePose or equivalent) feeding a deterministic, physio-readable scoring layer - angle thresholds per exercise, no black-box ML in the scoring",
+      "A skeleton replay of each set: the movement as a time series of body points, scrubbable, no video stored",
+      "An exercise library specced in a uniform format (pilot angle, movement direction, thresholds, default dose) that a physio can extend without code changes"
+    ],
+    "why": "Home exercise adherence is the single weakest link in physiotherapy outcomes, and it's a measurement problem before it's a motivation problem. Give the patient immediate, objective feedback and the physio a truthful record, and both sides of the loop improve — with no hardware beyond the phone in everyone's pocket.",
+    "status": "open",
+    "promoted_challenge_id": null,
+    "promoted_at": null,
+    "created_at": "2026-09-14 15:37:51.103354",
+    "updated_at": "2026-09-14 15:37:51.103354",
+    "slug": "mykine-guided-physio-sessions-with-on-device-pose-estimation"
+  }
+]

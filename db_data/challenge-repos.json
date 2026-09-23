@@ -1,0 +1,116 @@
+[
+  {
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "repo_id": "d9104e8c-e39f-4f1b-a414-5338d3756e57",
+    "workspace_provider": null,
+    "workspace_ref": null,
+    "workspace_url": null,
+    "workspace_status": "pending",
+    "workspace_meta": null,
+    "role": "api"
+  },
+  {
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "repo_id": "c6ba7414-bd91-4b09-b532-8ef9d7c68319",
+    "workspace_provider": null,
+    "workspace_ref": null,
+    "workspace_url": null,
+    "workspace_status": "pending",
+    "workspace_meta": null,
+    "role": "model_code"
+  },
+  {
+    "challenge_id": "6c04ccfa-5835-4b56-a716-a1b58e82a948",
+    "repo_id": "9d1ab28c-85ae-4e78-b68e-25ad204a6b5c",
+    "workspace_provider": null,
+    "workspace_ref": null,
+    "workspace_url": null,
+    "workspace_status": "pending",
+    "workspace_meta": null,
+    "role": "dataset"
+  },
+  {
+    "challenge_id": "6c04ccfa-5835-4b56-a716-a1b58e82a948",
+    "repo_id": "354a1a4d-1c32-4ead-acc9-e9f2edbad710",
+    "workspace_provider": null,
+    "workspace_ref": null,
+    "workspace_url": null,
+    "workspace_status": "pending",
+    "workspace_meta": null,
+    "role": "model_code"
+  },
+  {
+    "challenge_id": "6c04ccfa-5835-4b56-a716-a1b58e82a948",
+    "repo_id": "b3483425-ba9e-4222-8edd-4fd2afea32fe",
+    "workspace_provider": null,
+    "workspace_ref": null,
+    "workspace_url": null,
+    "workspace_status": "pending",
+    "workspace_meta": null,
+    "role": "api"
+  },
+  {
+    "challenge_id": "6c04ccfa-5835-4b56-a716-a1b58e82a948",
+    "repo_id": "d64728a8-d596-42c7-9ce5-3b8ad914eb23",
+    "workspace_provider": null,
+    "workspace_ref": null,
+    "workspace_url": null,
+    "workspace_status": "pending",
+    "workspace_meta": null,
+    "role": "model"
+  },
+  {
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "repo_id": "5807527a-5315-4f4c-b362-7c361423dfb6",
+    "workspace_provider": null,
+    "workspace_ref": null,
+    "workspace_url": null,
+    "workspace_status": "pending",
+    "workspace_meta": {
+      "userUrls": {
+        "dfa700de-8529-41e0-82de-eea151d06a8e": "https://www.kaggle.com/models/akralan0/mammography-classification-restnet50"
+      }
+    },
+    "role": "model"
+  },
+  {
+    "challenge_id": "6743d540-3b3f-46ef-9831-f14826c49a52",
+    "repo_id": "e39a30b2-8db4-475b-98b5-8fd67dd6d838",
+    "workspace_provider": null,
+    "workspace_ref": null,
+    "workspace_url": null,
+    "workspace_status": "pending",
+    "workspace_meta": null,
+    "role": null
+  },
+  {
+    "challenge_id": "948473a8-5a61-44cd-b77b-b256e679fea8",
+    "repo_id": "7a937714-99ab-45f4-8c58-05ac582b5e4e",
+    "workspace_provider": null,
+    "workspace_ref": null,
+    "workspace_url": null,
+    "workspace_status": "pending",
+    "workspace_meta": null,
+    "role": null
+  },
+  {
+    "challenge_id": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
+    "repo_id": "052d730b-084f-443d-8dca-6a528a94a592",
+    "workspace_provider": null,
+    "workspace_ref": null,
+    "workspace_url": null,
+    "workspace_status": "pending",
+    "workspace_meta": {
+      "userUrls": {
+        "dfa700de-8529-41e0-82de-eea151d06a8e": "https://www.kaggle.com/datasets/awsaf49/cbis-ddsm-breast-cancer-image-dataset",
+        "42026e1e-100b-4ca8-9c9d-6522c78401d7": "https://www.kaggle.com/datasets/awsaf49/cbis-ddsm-breast-cancer-image-dataset"
+      },
+      "datasetUrls": {
+        "dfa700de-8529-41e0-82de-eea151d06a8e": [
+          "https://www.kaggle.com/datasets/awsaf49/cbis-ddsm-breast-cancer-image-dataset"
+        ]
+      }
+    },
+    "role": "dataset"
+  }
+]

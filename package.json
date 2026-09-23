@@ -17,10 +17,8 @@
     "db:resync-rewards": "tsx scripts/db-resync-rewards.ts",
     "db:preview-slugs": "tsx scripts/db-preview-slugs.ts",
     "db:seed:force": "tsx db_data/seed.ts --force",
-    "db:seed:demo": "tsx db_data/seed-demo.ts",
-    "db:seed:sandbox": "tsx db_data/seed-sandbox.ts",
     "db:setup": "drizzle-kit push && tsx db_data/seed.ts",
-    "db:setup:demo": "drizzle-kit push && tsx db_data/seed.ts && tsx db_data/seed-demo.ts && tsx db_data/seed-sandbox.ts",
+    "db:setup:demo": "drizzle-kit push && tsx db_data/seed.ts --demo",
     "db:studio": "drizzle-kit studio",
     "prod": "bash ./scripts/prod.sh full",
     "prod:full": "bash ./scripts/prod.sh full",
@@ -30,7 +28,9 @@
     "prod:logs": "pm2 logs leaderboard-client",
     "prod:restart": "pm2 restart leaderboard-client --update-env",
     "prod:stop": "pm2 stop leaderboard-client",
-    "prod:delete": "pm2 delete leaderboard-client"
+    "prod:delete": "pm2 delete leaderboard-client",
+    "db:seed:demo": "tsx db_data/seed.ts --demo",
+    "db:seed-data": "node scripts/dump-to-seed-data.mjs"
   },
   "overrides": {
     "postcss": "^8.5.18",

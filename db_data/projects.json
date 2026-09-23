@@ -1,17 +1,37 @@
 [
-    {
-        "uuid": 1,
-        "title": "Leaderboard",
-        "description": "AI agent that tracks each contribution, evaluates the quality of work, and automatically distributes rewards ($CP)"
-    },
-    {
-        "uuid": 2,
-        "title": "Medical Imaging AI",
-        "description": "Multimodal AI for medical imaging analysis"
-    },
-    {
-        "uuid": 3,
-        "title": "Injury Prediction",
-        "description": "Prediction of sports injuries"
-    }
+  {
+    "uuid": "ff752c50-6057-4b1e-b845-24fc73d68e26",
+    "title": "Leaderboard",
+    "description": "AI agent that tracks each contribution, evaluates the quality of work, and automatically distributes rewards ($CP)",
+    "created_at": "2026-03-19 16:07:42.258316",
+    "manager_id": null
+  },
+  {
+    "uuid": "0bb14c79-d445-4e6b-9fcf-797468523392",
+    "title": "Injury Prediction",
+    "description": "Prediction of sports injuries",
+    "created_at": "2026-03-19 16:07:42.265329",
+    "manager_id": null
+  },
+  {
+    "uuid": "7c1a48d8-79b4-4beb-839f-55fbda0eae37",
+    "title": "Medical Imaging AI",
+    "description": "Multimodal AI for medical imaging analysis",
+    "created_at": "2026-03-19 16:07:42.262981",
+    "manager_id": null
+  },
+  {
+    "uuid": "33ea5be3-bfa0-4878-b6a2-cdacfbb55f1c",
+    "title": "MyTwin Lab Community Management",
+    "description": null,
+    "created_at": "2026-08-28 12:03:05.361076",
+    "manager_id": null
+  },
+  {
+    "uuid": "22a4d17a-b3c3-4d4a-a21b-51de620d4633",
+    "title": "MyTwin 3D",
+    "description": null,
+    "created_at": "2026-08-28 12:09:08.110153",
+    "manager_id": null
+  }
 ]

@@ -1,0 +1,93 @@
+[
+  {
+    "uuid": "505ca4f0-ef9e-49fb-b159-90a4a65d0960",
+    "title": "Mammography — Dataset",
+    "type": "kaggle_dataset",
+    "external_repo_id": null,
+    "project_id": "7c1a48d8-79b4-4beb-839f-55fbda0eae37"
+  },
+  {
+    "uuid": "e0db0cc2-14f9-40dd-8feb-f6068a182f10",
+    "title": "Mammography — API",
+    "type": "github",
+    "external_repo_id": null,
+    "project_id": "7c1a48d8-79b4-4beb-839f-55fbda0eae37"
+  },
+  {
+    "uuid": "a04ce061-7500-467a-a6b0-3a351fd2bd48",
+    "title": "Mammography — Model",
+    "type": "kaggle_model",
+    "external_repo_id": null,
+    "project_id": "7c1a48d8-79b4-4beb-839f-55fbda0eae37"
+  },
+  {
+    "uuid": "052d730b-084f-443d-8dca-6a528a94a592",
+    "title": "Mammography — Dataset",
+    "type": "kaggle_dataset",
+    "external_repo_id": null,
+    "project_id": "7c1a48d8-79b4-4beb-839f-55fbda0eae37"
+  },
+  {
+    "uuid": "d9104e8c-e39f-4f1b-a414-5338d3756e57",
+    "title": "Mammography — API",
+    "type": "github",
+    "external_repo_id": null,
+    "project_id": "7c1a48d8-79b4-4beb-839f-55fbda0eae37"
+  },
+  {
+    "uuid": "5807527a-5315-4f4c-b362-7c361423dfb6",
+    "title": "Mammography — Model",
+    "type": "kaggle_model",
+    "external_repo_id": null,
+    "project_id": "7c1a48d8-79b4-4beb-839f-55fbda0eae37"
+  },
+  {
+    "uuid": "c6ba7414-bd91-4b09-b532-8ef9d7c68319",
+    "title": "Mammography — Model Code",
+    "type": "github",
+    "external_repo_id": null,
+    "project_id": "7c1a48d8-79b4-4beb-839f-55fbda0eae37"
+  },
+  {
+    "uuid": "9d1ab28c-85ae-4e78-b68e-25ad204a6b5c",
+    "title": "Mammography Detection — Dataset",
+    "type": "kaggle_dataset",
+    "external_repo_id": null,
+    "project_id": "ff752c50-6057-4b1e-b845-24fc73d68e26"
+  },
+  {
+    "uuid": "354a1a4d-1c32-4ead-acc9-e9f2edbad710",
+    "title": "Mammography Detection — Model Code",
+    "type": "github",
+    "external_repo_id": null,
+    "project_id": "ff752c50-6057-4b1e-b845-24fc73d68e26"
+  },
+  {
+    "uuid": "b3483425-ba9e-4222-8edd-4fd2afea32fe",
+    "title": "Mammography Detection — API",
+    "type": "github",
+    "external_repo_id": null,
+    "project_id": "ff752c50-6057-4b1e-b845-24fc73d68e26"
+  },
+  {
+    "uuid": "d64728a8-d596-42c7-9ce5-3b8ad914eb23",
+    "title": "Mammography Detection — Model",
+    "type": "kaggle_model",
+    "external_repo_id": null,
+    "project_id": "ff752c50-6057-4b1e-b845-24fc73d68e26"
+  },
+  {
+    "uuid": "e39a30b2-8db4-475b-98b5-8fd67dd6d838",
+    "title": "Community Management — Code",
+    "type": "github",
+    "external_repo_id": null,
+    "project_id": "33ea5be3-bfa0-4878-b6a2-cdacfbb55f1c"
+  },
+  {
+    "uuid": "7a937714-99ab-45f4-8c58-05ac582b5e4e",
+    "title": "MyTwin 3D GTM — Code",
+    "type": "github",
+    "external_repo_id": null,
+    "project_id": "22a4d17a-b3c3-4d4a-a21b-51de620d4633"
+  }
+]
