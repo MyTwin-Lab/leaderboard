@@ -9,6 +9,9 @@ import Link from "next/link";
 import { MyTwinLogo } from "./MyTwinLogo";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { vitrineHeading } from "@/components/vitrine/fonts";
+
+import "./navbar.css";
 
 interface NavbarProps {
   session?: {
@@ -150,12 +153,8 @@ export const Navbar = ({ session }: NavbarProps) => {
                     <Link
                       key={link.path}
                       href={link.path}
-                      className={cn(
-                        "group relative pb-0.5 font-medium",
-                        isActive(link.path)
-                          ? "text-[15px]"
-                          : "text-[13px] hover:text-brandCP hover:text-[15px]"
-                      )}
+                      data-on={isActive(link.path) ? "true" : "false"}
+                      className={cn("nav-link text-[13px] font-bold", vitrineHeading.className)}
                       style={{
                         color: invertNav
                           ? isActive(link.path)
@@ -164,16 +163,16 @@ export const Navbar = ({ session }: NavbarProps) => {
                           : isActive(link.path)
                             ? "var(--foreground)"
                             : "color-mix(in srgb, var(--foreground) 60%, transparent)",
-                        transition: "font-size 300ms cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease",
                       }}
                     >
-                      {link.name}
-                      <span
-                        className={cn(
-                          "absolute -bottom-0.5 left-0 h-[2px] w-full origin-left rounded-full bg-brandCP transition-transform duration-200",
-                          isActive(link.path) ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
-                        )}
-                      />
+                      <span className="nav-link-label">
+                        {link.name}
+                        {/* La copie verte que le balayage révèle. Cachée aux
+                            lecteurs d'écran : le mot est déjà là, au-dessus. */}
+                        <span className="nav-link-fill" aria-hidden="true">
+                          {link.name}
+                        </span>
+                      </span>
                     </Link>
                   ))}
                 </div>
@@ -255,6 +254,7 @@ export const Navbar = ({ session }: NavbarProps) => {
                 onClick={() => setMobileMenuOpen(false)}
                 className={cn(
                   "text-3xl font-light tracking-tight transition-all duration-300 hover:text-brandCP",
+                  vitrineHeading.className,
                   isActive(link.path) ? "text-brandCP" : "text-white",
                   mobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
                 )}

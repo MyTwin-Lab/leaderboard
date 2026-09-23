@@ -1,0 +1,72 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Les liens de la navbar.
+
+   Trois choses que les utilitaires ne savent pas faire : un `clip-path` animé,
+   un état survolé qui pilote deux enfants à la fois, et un agrandissement qui
+   ne déplace pas ses voisins. D'où cette feuille plutôt que des classes en
+   ligne.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.nav-link {
+  position: relative;
+  display: inline-block;
+  /* `line-height: 1` rend la hauteur de la boîte prévisible, ce dont dépend le
+     rayon du balayage ci-dessous. */
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* L'agrandissement se fait en `transform` et non en `font-size`.
+   Changer la taille de police reflow la ligne à chaque image — les trois liens
+   se poussaient les uns les autres pendant toute la transition, ce qui est
+   exactement ce qui ne paraissait pas fluide. Une mise à l'échelle est
+   composée par le GPU et ne touche pas la mise en page : les voisins ne
+   bougent plus du tout. */
+.nav-link-label {
+  position: relative;
+  display: inline-block;
+  transform: scale(1);
+  transform-origin: center;
+  transition: transform 0.42s cubic-bezier(0.22, 0.61, 0.21, 1);
+  will-change: transform;
+}
+
+.nav-link:hover .nav-link-label,
+.nav-link:focus-visible .nav-link-label,
+.nav-link[data-on="true"] .nav-link-label {
+  transform: scale(1.14);
+}
+
+/* Le balayage : une seconde copie du texte, à la couleur du thème, révélée de
+   la gauche vers la droite.
+   Le `round` donne au front qui avance un bord arrondi plutôt qu'une coupe
+   nette — c'est la forme que l'ancienne barre soulignée avait déjà. Un rayon
+   de pilule vaut la moitié de la hauteur de la boîte, d'où le padding
+   horizontal de `0.65em` : sans lui, l'arrondi mordrait la première et la
+   dernière lettre une fois le balayage terminé. */
+.nav-link-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -0.65em;
+  padding-inline: 0.65em;
+  color: var(--theme-primary);
+  clip-path: inset(0 100% 0 0 round 999px);
+  transition: clip-path 0.42s cubic-bezier(0.22, 0.61, 0.21, 1);
+  pointer-events: none;
+}
+
+.nav-link:hover .nav-link-fill,
+.nav-link:focus-visible .nav-link-fill,
+.nav-link[data-on="true"] .nav-link-fill {
+  clip-path: inset(0 0 0 0 round 999px);
+}
+
+/* Le balayage est un mouvement décoratif : sous `reduce`, la couleur arrive
+   d'un coup plutôt que de traverser le mot. */
+@media (prefers-reduced-motion: reduce) {
+  .nav-link-label,
+  .nav-link-fill {
+    transition: none;
+  }
+}
