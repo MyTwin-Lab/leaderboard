@@ -185,15 +185,28 @@ const TYPE_OVERRIDES = {
   'mytwin-3d-gtm': 'none',
 };
 
+// La production archive ses challenges terminés ; le seed les présente comme
+// `completed`. Archiver retire d'un listing, ça ne décrit pas l'état du
+// travail — or celui-ci est bel et bien fini, et sa completion le dit. Rien
+// n'empêche d'archiver à nouveau dans l'application.
+//
+// `closed_at` reste nul : la production ne le porte sur aucun d'eux, et il
+// n'existe aucune date de fermeture à reconstituer — la plupart n'ont même pas
+// d'`end_date`. Inventer une date fausserait le digest, qui lit cette colonne.
+const STATUS_OVERRIDES = {
+  archived: 'completed',
+};
+
 const challengeRows = rowsOf(dump, schema, 'challenges', {drop: ['index']});
 for (const c of challengeRows) {
   if (c.slug in TYPE_OVERRIDES) c.type = TYPE_OVERRIDES[c.slug];
+  if (c.status in STATUS_OVERRIDES) c.status = STATUS_OVERRIDES[c.status];
 }
 // Écrit plus bas : `completion` est recalculée une fois le ledger complété.
 
 write('repos.json', rowsOf(dump, schema, 'repos'));
 write('challenge-repos.json', rowsOf(dump, schema, 'challenge_repos'));
-const teamRows = rowsOf(dump, schema, 'challenge_teams');
+let teamRows = rowsOf(dump, schema, 'challenge_teams');
 // Écrit plus bas : complété par les auteurs de contributions qui n'y sont pas.
 const contributionRows = rowsOf(dump, schema, 'contributions');
 const rewardRows = rowsOf(dump, schema, 'reward_entries');
@@ -279,13 +292,39 @@ for (const c of contributionRows) {
   joined++;
 }
 
+// --- Participations retirées ---------------------------------------------
+//
+// Une appartenance que la production porte mais qui ne décrit rien : aucune
+// contribution derrière, et la personne n'a pas travaillé sur ce challenge.
+// Retirée par (slug, compte GitHub) plutôt qu'à la main dans le JSON, pour
+// qu'un refresh depuis un dump plus récent ne la reprenne pas.
+const TEAM_EXCLUSIONS = [
+  ['mytwin-3d-gtm', 'akralan'],
+  ['lab-community-management', 'akralan'],
+];
+
+const userIdByGithub = new Map(
+  rowsOf(dump, schema, 'users')
+    .filter(u => u.github_username)
+    .map(u => [u.github_username, u.uuid])
+);
+const challengeIdBySlug = new Map(challengeRows.map(c => [c.slug, c.uuid]));
+
+const excluded = new Set(
+  TEAM_EXCLUSIONS.map(([slug, handle]) =>
+    `${challengeIdBySlug.get(slug)}|${userIdByGithub.get(handle)}`)
+);
+const beforeExclusion = teamRows.length;
+teamRows = teamRows.filter(t => !excluded.has(`${t.challenge_id}|${t.user_id}`));
+const removed = beforeExclusion - teamRows.length;
+
 write('challenges.json', challengeRows);
 write('challenge-teams.json', teamRows);
 write('contributions.json', contributionRows);
 write('reward-entries.json', rewardRows);
 console.log(
   `       ↳ ${backfilled} écritures de ledger, ${recomputed} completions recalculées, ` +
-    `${joined} participations rattrapées`
+    `${joined} participations rattrapées, ${removed} retirées`
 );
 write('challenge-signals.json', rowsOf(dump, schema, 'challenge_signals'));
 write('onboarding-progress.json', rowsOf(dump, schema, 'onboarding_progress'));
