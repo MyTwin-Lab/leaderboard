@@ -387,43 +387,49 @@ export function SandboxVitrine({
         </section>
       )}
 
-      {/* ── Why this sandbox exists ────────────────────────────────────── */}
-      {whyLead && (
-        <section className="v-cd-why">
-          <div className="v-cd-why-inner" data-reveal="true">
-            <p className="v-cd-eyebrow">Why this sandbox exists</p>
-            <h2 className="v-cd-why-lead">{stripInlineMarkdown(whyLead)}</h2>
-            {whyBodyText && (
-              <div className="v-cd-md v-cd-why-body">
-                <Markdown source={whyBodyText} variant="vitrine" headingOffset={2} userContent />
+      {/* ── « Why this sandbox exists », et l'auteur à sa droite ─────────
+
+          Une seule rangée pour les deux. La maquette pose trois chiffres
+          d'impact dans cette colonne de droite ; ils ne sont pas rendus, et la
+          carte de l'auteur — qui vivait en pleine largeur juste en dessous —
+          vient l'occuper plutôt que de laisser le texte courir seul.
+
+          Elle y est **sticky**, comme les paliers de stars le sont le long de
+          la proposition : qui la porte reste sous les yeux pendant qu'on lit
+          le pourquoi. ── */}
+      {(whyLead || sandbox.author) && (
+        <section className="v-sd-why">
+          <div className="v-sd-why-row" data-reveal="true">
+            {whyLead && (
+              <div className="v-sd-why-text">
+                <p className="v-cd-eyebrow">Why this sandbox exists</p>
+                <h2 className="v-cd-why-lead">{stripInlineMarkdown(whyLead)}</h2>
+                {whyBodyText && (
+                  <div className="v-cd-md v-cd-why-body">
+                    <Markdown source={whyBodyText} variant="vitrine" headingOffset={2} userContent />
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        </section>
-      )}
 
-      {/* ── Who proposed this sandbox ──────────────────────────────────── */}
-      {sandbox.author && (
-        <section className="v-sd-author">
-          <div className="v-sd-author-card" data-reveal="true">
-            <div className="v-sd-author-text">
-              <p className="v-cd-host-label">Who proposed this sandbox</p>
-              <Link href={`/contributors/${sandbox.author.uuid}`} className="v-sd-author-id">
-                <span className="v-sd-author-face">
-                  <VitrineAvatar name={sandbox.author.full_name} avatarUrl={sandbox.author.avatar_url} size="3.25rem" ring={false} />
-                </span>
-                <span className="v-sd-author-names">
-                  <span className="v-sd-author-name">{sandbox.author.full_name}</span>
-                  <span className="v-sd-author-meta">
-                    Contributor{proposedOn ? ` · proposed ${proposedOn}` : ''}
-                  </span>
-                </span>
-              </Link>
-            </div>
-
-            {/* La maquette pose ici la carte « Repository ». Elle n'est pas
-                rendue, et rien ne la remplace : une proposition ne porte plus
-                de dépôt, et ce qui reste de la carte est son auteur. */}
+            {sandbox.author && (
+              <aside className="v-sd-author">
+                <div className="v-sd-author-card">
+                  <p className="v-cd-host-label">Who proposed this sandbox</p>
+                  <Link href={`/contributors/${sandbox.author.uuid}`} className="v-sd-author-id">
+                    <span className="v-sd-author-face">
+                      <VitrineAvatar name={sandbox.author.full_name} avatarUrl={sandbox.author.avatar_url} size="2.75rem" ring={false} />
+                    </span>
+                    <span className="v-sd-author-names">
+                      <span className="v-sd-author-name">{sandbox.author.full_name}</span>
+                      <span className="v-sd-author-meta">
+                        Contributor{proposedOn ? ` · proposed ${proposedOn}` : ''}
+                      </span>
+                    </span>
+                  </Link>
+                </div>
+              </aside>
+            )}
           </div>
         </section>
       )}

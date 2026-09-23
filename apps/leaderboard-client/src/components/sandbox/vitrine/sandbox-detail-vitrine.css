@@ -273,30 +273,48 @@
   color: var(--v-muted);
 }
 
-/* ── « Who proposed this sandbox » ──────────────────────────────────────
-   La carte sombre de la maquette, réduite à sa moitié gauche : à droite, la
-   maquette pose le dépôt de l'auteur, et une proposition n'en porte plus. */
+/* ── « Why this sandbox exists », et l'auteur à sa droite ───────────────
+   Deux colonnes, comme la maquette — sauf que la droite porte la carte de
+   l'auteur au lieu des trois chiffres d'impact, qui ne sont pas rendus. */
+.v-sd-why {
+  padding-top: clamp(3.5rem, 8vw, 7rem);
+}
+
+.v-sd-why-row {
+  display: flex;
+  flex-wrap: wrap;
+  /* `flex-start` et non l'étirement par défaut : un enfant étiré occupe toute
+     la hauteur de la rangée, et un `sticky` n'a alors nulle part où coller. */
+  align-items: flex-start;
+  gap: clamp(1.75rem, 4vw, 3rem);
+}
+
+.v-sd-why-text {
+  display: flex;
+  flex: 1 1 30rem;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── La carte sombre de l'auteur ────────────────────────────────────────
+   Sticky sous la navbar fixe, comme les paliers de stars le long de la
+   proposition : elle suit la lecture du pourquoi. */
 .v-sd-author {
-  padding-top: clamp(3rem, 6vw, 5rem);
+  position: sticky;
+  top: 6rem;
+  flex: 1 1 17rem;
+  min-width: 0;
 }
 
 .v-sd-author-card {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: clamp(1.5rem, 3vw, 2.5rem);
-  border-radius: var(--v-radius);
-  background: var(--v-night);
-  color: var(--v-on-night);
-  padding: clamp(1.5rem, 3vw, 2.25rem);
-}
-
-.v-sd-author-text {
-  display: flex;
-  flex: 1 1 22rem;
-  min-width: 0;
   flex-direction: column;
   gap: 1rem;
+  border-radius: 1.25rem;
+  background: var(--v-night);
+  color: var(--v-on-night);
+  padding: 1.25rem 1.375rem;
 }
 
 .v-sd-author-id {
@@ -327,19 +345,14 @@
 .v-sd-author-name {
   font-family: var(--v-font-h);
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: 1.0625rem;
   letter-spacing: -0.015em;
 }
 
 .v-sd-author-meta {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--v-on-night-muted);
-}
-
-/* Rien à droite : la carte « Repository » de la maquette n'a plus d'objet, et
-   le bloc auteur prend toute la largeur plutôt que de laisser un vide. */
-.v-sd-author-text {
-  flex-basis: auto;
+  text-wrap: pretty;
 }
 
 /* ── « The proposal » ───────────────────────────────────────────────────
@@ -546,22 +559,37 @@
     padding: 0.875rem 1rem;
   }
 
-  .v-sd-author {
-    padding-top: 1.75rem;
+  /* Une colonne : le pourquoi, puis l'auteur en dessous. Sticky n'a plus de
+     sens — le sur quoi coller est aussi haut que ce qui colle. */
+  .v-sd-why {
+    padding-top: 2rem;
   }
 
-  .v-sd-author-card {
+  .v-sd-why-row {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.875rem;
-    border-radius: 1.5rem;
-    padding: 1.25rem;
+    gap: 1.75rem;
   }
 
   /* En colonne, le `flex-basis` de la disposition en deux blocs devient une
-     **hauteur** : la carte faisait 22rem de haut pour deux lignes de texte. */
-  .v-sd-author-text {
+     **hauteur** : la carte faisait 17rem de haut pour deux lignes de texte. */
+  .v-sd-why-text,
+  .v-sd-author {
     flex: 0 0 auto;
+  }
+
+  .v-sd-why-text {
+    gap: 1rem;
+  }
+
+  .v-sd-author {
+    position: static;
+  }
+
+  .v-sd-author-card {
+    gap: 0.875rem;
+    border-radius: 1.5rem;
+    padding: 1.25rem;
   }
 
   .v-sd-author-id {
