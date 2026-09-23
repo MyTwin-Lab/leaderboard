@@ -5,7 +5,11 @@ import { HomePodcast } from "@/components/home/HomePodcast";
 import { HomeCommunity } from "@/components/home/HomeCommunity";
 import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
 import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
+import { vitrineFontVars } from "@/components/vitrine/fonts";
 import { pageMetadata } from "@/lib/seo";
+
+import "@/components/vitrine/vitrine.css";
+import "@/components/home/home-vitrine.css";
 
 // HomeStatsCard ("The Lab, right now") is temporarily hidden from the home
 // page — component kept in place, just not rendered here.
@@ -28,25 +32,31 @@ export default async function HomePage() {
   // which re-fetched the same projects/challenges/contributions/users).
   const overview = await fetchHomeOverview();
 
+  // L'accueil est une page vitrine, comme `/challenges`, `/sandbox` et
+  // `/leaderboard` : mêmes polices, mêmes jetons, même conteneur. Elle pose
+  // donc elle-même sa largeur et sa gouttière — `LabShell` lui laisse la main
+  // sur `/home`, et peint le fond de la maquette sous la navbar et le footer.
   return (
-    <div className="space-y-14 sm:space-y-20">
-      {/* ── Our mission ─────────────────────────────────────────────── */}
-      <HomeHero />
+    <div className={`vitrine v-home ${vitrineFontVars}`}>
+      <div className="v-main">
+        {/* ── Our mission ─────────────────────────────────────────────── */}
+        <HomeHero />
 
-      {/* ── News ─────────────────────────────────────────────────────── */}
-      <HomeLatestNews />
+        {/* ── News ─────────────────────────────────────────────────────── */}
+        <HomeLatestNews />
 
-      {/* ── Podcast (MyTwin Inside) ─────────────────────────────────── */}
-      <HomePodcast />
+        {/* ── Podcast (MyTwin Inside) ─────────────────────────────────── */}
+        <HomePodcast />
 
-      {/* ── Join our Community ──────────────────────────────────────── */}
-      <HomeCommunity />
+        {/* ── Join our Community ──────────────────────────────────────── */}
+        <HomeCommunity />
 
-      {/* ── Top 3 contributors ──────────────────────────────────────── */}
-      <HomeLeaderboardPreview podium={overview.podium} />
+        {/* ── Top 3 contributors ──────────────────────────────────────── */}
+        <HomeLeaderboardPreview podium={overview.podium} />
 
-      {/* ── Challenges (trending) ────────────────────────────────────── */}
-      <HomeChallengesPreview challenges={overview.trendingChallenges} />
+        {/* ── Challenges (trending) ────────────────────────────────────── */}
+        <HomeChallengesPreview challenges={overview.trendingChallenges} />
+      </div>
     </div>
   );
 }

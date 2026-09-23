@@ -1,6 +1,6 @@
 import { ChallengeCard } from "@/components/public/ChallengeCard";
 import type { HomeTrendingChallenge } from "@/lib/types";
-import { HomeSectionLink, HomeSectionTitle } from "./HomeSection";
+import { HomeSectionHead } from "./HomeSection";
 
 import "@/components/vitrine/vitrine.css";
 import "@/components/public/challenges-vitrine.css";
@@ -17,10 +17,10 @@ interface HomeChallengesPreviewProps {
  * jours. Ni `isMember` ni `isAdmin` ne sont passés : cette page est lue sans
  * session, la carte n'a donc ni pastille « joined » ni menu d'administration.
  *
- * L'îlot `.vitrine-embed` donne à la carte les jetons `--v-*` dont son CSS a
- * besoin : ils vivent sur `.vitrine`, que cette page n'est pas. Conséquence
- * assumée — les cartes gardent la palette claire de la vitrine, y compris en
- * thème sombre.
+ * Les jetons `--v-*` dont le CSS de la carte a besoin viennent désormais de la
+ * page elle-même : l'accueil est une page vitrine, comme `/challenges`. La
+ * grille, en revanche, est la sienne (`.v-home-challenges`) — voir le
+ * commentaire qui la définit dans `home-vitrine.css`.
  *
  * `index` reste celui de la grille : c'est lui qui choisit l'illustration de
  * repli d'un challenge sans couverture, et il évite que deux cartes voisines
@@ -28,15 +28,18 @@ interface HomeChallengesPreviewProps {
  */
 export function HomeChallengesPreview({ challenges }: HomeChallengesPreviewProps) {
   return (
-    <section aria-labelledby="trending-challenges-title" className="flex min-w-0 flex-col gap-4">
-      <HomeSectionTitle id="trending-challenges-title">Challenges</HomeSectionTitle>
+    <section aria-labelledby="trending-challenges-title" className="v-home-section">
+      <HomeSectionHead
+        id="trending-challenges-title"
+        title="Challenges"
+        href="/challenges"
+        linkLabel="All challenges"
+      />
 
       {challenges.length === 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/40">
-          No active challenge this week.
-        </div>
+        <div className="v-home-empty">No active challenge this week.</div>
       ) : (
-        <div className="vitrine-embed grid gap-3.5 sm:gap-4 md:grid-cols-2">
+        <div className="v-home-challenges">
           {challenges.map((challenge, index) => (
             <ChallengeCard
               key={challenge.id}
@@ -58,8 +61,6 @@ export function HomeChallengesPreview({ challenges }: HomeChallengesPreviewProps
           ))}
         </div>
       )}
-
-      <HomeSectionLink href="/challenges">All challenges</HomeSectionLink>
     </section>
   );
 }

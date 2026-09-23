@@ -1,24 +1,30 @@
 import { NewsCard } from "@/components/news/NewsCard";
 import { getLatestNews } from "@/content/news";
 import { NEWS_PATH } from "@/lib/paths";
-import { HomeSectionLink, HomeSectionTitle } from "./HomeSection";
+import { HomeNewsCarousel } from "./HomeNewsCarousel";
+import { HomeSectionHead } from "./HomeSection";
 
 const LATEST_COUNT = 3;
 
-/** Un aperçu de MyTwin Lab News : les trois derniers événements du Lab. */
+/**
+ * Un aperçu de MyTwin Lab News : les trois derniers événements du Lab.
+ *
+ * La carte est celle de `/news`, rhabillée en carte vitrine depuis
+ * `home-vitrine.css` : elle garde son balisage, et `/news` son apparence.
+ */
 export function HomeLatestNews() {
   const latest = getLatestNews(LATEST_COUNT);
   if (latest.length === 0) return null;
 
   return (
-    <section aria-labelledby="latest-news-title" className="flex flex-col gap-4">
-      <HomeSectionTitle id="latest-news-title">News</HomeSectionTitle>
-      <div className="grid gap-4 md:grid-cols-3">
+    <section aria-labelledby="latest-news-title" className="v-home-section">
+      <HomeSectionHead id="latest-news-title" title="News" href={NEWS_PATH} linkLabel="All news" />
+
+      <HomeNewsCarousel>
         {latest.map((article) => (
-          <NewsCard key={article.slug} article={article} compact />
+          <NewsCard key={article.slug} article={article} compact className="v-home-news-card" />
         ))}
-      </div>
-      <HomeSectionLink href={NEWS_PATH}>All news</HomeSectionLink>
+      </HomeNewsCarousel>
     </section>
   );
 }

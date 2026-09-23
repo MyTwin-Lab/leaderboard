@@ -1,0 +1,383 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   L'accueil du Lab, passé au système vitrine.
+
+   Aucune couleur, aucune police, aucun rayon n'est inventé ici : tout vient
+   des jetons `--v-*` de `vitrine.css`, comme sur `/challenges`, `/sandbox` et
+   `/leaderboard`. Cette feuille ne fait que deux choses — donner à l'accueil
+   le rythme de sections que les trois listings n'ont pas (ils n'en ont qu'une),
+   et rhabiller les trois composants que l'accueil emprunte au reste de la web
+   app (la carte news, les épisodes, le carrousel de visages), qui sont encore
+   écrits en utilitaires Tailwind.
+
+   Ce rhabillage passe par des sélecteurs préfixés `html[data-mode="light"]
+   .v-home` : `globals.css` réécrit `text-white`, `border-white` et `bg-white/…`
+   en `!important` pour le mode clair, et aplatit au passage toute la hiérarchie
+   des gris (`text-white/45` et `text-white` y reçoivent la même couleur). Il
+   faut donc à la fois `!important` et une spécificité supérieure pour lui
+   reprendre la main — exactement ce que `vitrine.css` fait déjà pour `svg`,
+   `input` et `textarea`.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Le rythme de la page ───────────────────────────────────────────────── */
+
+/* `.v-main` espace déjà les sections ; le filet dit en plus où l'une finit et
+   où la suivante commence. Le hero n'en porte pas : rien ne le précède. */
+.v-home-section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: clamp(14px, 1.6vw, 18px);
+  border-top: 1px solid var(--v-line);
+  padding-top: clamp(26px, 3.2vw, 38px);
+}
+
+/* Le titre de section et son lien « voir tout » sur une même ligne, alignés
+   sur la même base. Le lien était sous le contenu, en bas à droite : au bout
+   du titre, il se lit avec la section qu'il prolonge. */
+.v-home-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px 20px;
+}
+
+.v-home-h {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  font-size: clamp(21px, 2.3vw, 27px);
+  line-height: 1.16;
+  color: var(--v-ink);
+}
+
+/* Même graisse et même taille que les métadonnées de la vitrine, à l'accent
+   de la maquette. La flèche s'écarte au survol : le lien dit qu'il mène
+   ailleurs sans avoir à le souligner. */
+.v-home-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--v-accent);
+  transition: gap 0.3s var(--v-ease), color 0.3s var(--v-ease);
+}
+
+.v-home-more:hover {
+  gap: 10px;
+  color: var(--v-accent-dark);
+}
+
+.v-home-more svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* L'accroche d'une section, quand elle en a une. Même mesure que `.v-lede`. */
+.v-home-lede {
+  max-width: 560px;
+  font-size: clamp(14px, 1.3vw, 16px);
+  line-height: 1.65;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+/* ── Le hero : la mission à gauche, la vidéo à droite ───────────────────── */
+
+/* Empilé tant que la vidéo n'a pas la place d'exister à côté du texte. */
+.v-home-hero {
+  display: grid;
+  gap: clamp(20px, 3vw, 40px);
+  align-items: center;
+  padding-top: clamp(4px, 1vw, 12px);
+}
+
+@media (min-width: 900px) {
+  .v-home-hero {
+    /* La vidéo prend la part la plus large : c'est elle qu'on vient voir. */
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  }
+}
+
+.v-home-hero-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* `.v-title` porte la taille du titre de page et `.v-lede` la mesure de
+   l'accroche : les deux viennent de `vitrine.css`, inchangées. */
+
+/* Pas de filet autour de la vidéo : elle s'ouvre sur du blanc, et un contour
+   la refermait en planche encadrée. Seul le rayon et l'ombre portée la posent
+   sur la page. Le fond nuit ne se voit que le temps du chargement. */
+.v-home-video {
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--v-night);
+  box-shadow: 0 24px 50px -32px rgb(17 22 26 / 0.45);
+}
+
+/* `aspect-ratio` réserve la place (la vidéo est en 1920×1080) : la page ne
+   saute pas pendant le chargement du fichier. */
+.v-home-video video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+/* Le curseur ne devient une main qu'une fois la vidéo finie : avant, le clic
+   ne fait rien, et le promettre serait mentir. */
+.v-home-video video[data-ended="true"] {
+  cursor: pointer;
+}
+
+/* ── News : la carte de `/news`, rhabillée en carte vitrine ─────────────── */
+
+.v-home-news {
+  display: grid;
+  gap: clamp(14px, 1.6vw, 18px);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+/* Les points d'avancement n'existent que sous le carrousel : au-dessus de
+   768px la grille montre les trois news d'un coup, il n'y a rien à suivre. */
+.v-home-dots {
+  display: none;
+}
+
+.v-home .v-home-news-card {
+  border-radius: 20px;
+  box-shadow: none;
+  transition: border-color 0.4s var(--v-ease), transform 0.4s var(--v-ease),
+    box-shadow 0.4s var(--v-ease);
+}
+
+html[data-mode="light"] .v-home .v-home-news-card {
+  border-color: var(--v-line) !important;
+  background-color: var(--v-surface) !important;
+}
+
+html[data-mode="light"] .v-home .v-home-news-card:hover {
+  border-color: rgb(11 122 100 / 0.4) !important;
+  background-color: var(--v-surface) !important;
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -26px rgb(17 22 26 / 0.5);
+}
+
+/* Le titre de la news prend la police des titres de la vitrine. */
+.v-home .v-home-news-card h3 {
+  font-family: var(--v-font-h);
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.28;
+}
+
+html[data-mode="light"] .v-home .v-home-news-card h3 {
+  color: var(--v-ink) !important;
+}
+
+html[data-mode="light"] .v-home .v-home-news-card:hover h3 {
+  color: var(--v-accent) !important;
+}
+
+/* Le mois de l'événement : `globals.css` le rend aussi noir que le titre, il
+   retrouve ici son rang de métadonnée. */
+html[data-mode="light"] .v-home .v-home-news-card [class*="text-white/45"] {
+  color: var(--v-subtle) !important;
+}
+
+/* La pastille de catégorie et le « Read » suivent l'accent de la maquette,
+   comme tous les liens de la vitrine. */
+.v-home .v-home-news-card [class*="text-brandCP"] {
+  color: var(--v-accent);
+}
+
+.v-home .v-home-news-card [class*="bg-brandCP/10"] {
+  background-color: rgb(11 122 100 / 0.09);
+}
+
+/* ── Podcast : les épisodes MyTwin Inside ───────────────────────────────── */
+
+.v-home-podcast-rail {
+  min-width: 0;
+}
+
+.v-home .v-home-podcast-rail h3 {
+  font-family: var(--v-font-h);
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+html[data-mode="light"] .v-home .v-home-podcast-rail h3 {
+  color: var(--v-ink) !important;
+}
+
+/* La vignette garde son fond noir — c'est l'image d'une vidéo — mais reprend
+   le rayon des cartes. Pas de filet autour d'elle non plus : l'image va
+   jusqu'au bord, comme sur la vidéo du hero. */
+.v-home .v-home-podcast-rail [class*="aspect-video"] {
+  border-radius: 20px;
+  box-shadow: 0 18px 40px -30px rgb(17 22 26 / 0.6);
+}
+
+html[data-mode="light"] .v-home .v-home-podcast-rail [class*="border-white"] {
+  border-color: transparent !important;
+}
+
+/* ── Community : le bandeau de visages ──────────────────────────────────── */
+
+.v-home-community {
+  align-items: center;
+  text-align: center;
+}
+
+.v-home-community .v-home-head {
+  justify-content: center;
+}
+
+.v-home-community .v-home-lede {
+  max-width: 34rem;
+}
+
+.v-home-marquee {
+  min-width: 0;
+  align-self: stretch;
+}
+
+html[data-mode="light"] .v-home .v-home-marquee p {
+  color: var(--v-ink) !important;
+}
+
+html[data-mode="light"] .v-home .v-home-marquee [class*="text-white/50"] {
+  color: var(--v-subtle) !important;
+}
+
+/* ── Challenges : la carte du listing, sa grille en propre ──────────────── */
+
+/* `.v-ch-grid` n'est pas réutilisé tel quel, pour deux raisons : sa règle
+   téléphone repose sur un `.v-main` sans gouttière (celui de `/challenges`) et
+   rajouterait ici 16px de padding par-dessus la nôtre, et son `auto-fit`
+   suppose une grille pleine. L'accueil n'en montre que deux au plus
+   (`TRENDING_LIMIT`) : deux colonnes fixes, pour qu'un seul challenge tendance
+   garde la largeur d'une carte au lieu de s'étirer en bannière. */
+.v-home-challenges {
+  display: grid;
+  gap: clamp(16px, 1.8vw, 20px);
+  align-items: stretch;
+}
+
+@media (min-width: 768px) {
+  .v-home-challenges {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── L'état vide des challenges ─────────────────────────────────────────── */
+
+.v-home-empty {
+  border: 1px dashed rgb(17 17 17 / 0.14);
+  border-radius: 20px;
+  background: var(--v-surface);
+  padding: 44px 24px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--v-muted);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Téléphone — même bascule à 768px que `/challenges`.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .v-home .v-main {
+    gap: clamp(22px, 5vw, 28px);
+  }
+
+  .v-home-section {
+    padding-top: 22px;
+  }
+
+  .v-home .v-title {
+    font-size: 32px;
+  }
+
+  .v-home-hero {
+    gap: 18px;
+  }
+
+  .v-home-video {
+    border-radius: 18px;
+  }
+
+  /* Les trois rails débordent la gouttière : ils défilent jusqu'au bord de
+     l'écran, pas jusqu'au bord du texte. */
+  .v-home-news,
+  .v-home-podcast-rail,
+  .v-home-marquee {
+    margin-inline: calc(-1 * var(--v-gutter));
+  }
+
+  /* Les news passent en carrousel, comme les épisodes juste en dessous :
+     trois cartes empilées faisaient à elles seules un écran et demi de
+     défilement avant d'arriver au reste de la page. La carte s'arrête au
+     centre (`scroll-snap`), et la suivante dépasse assez pour dire qu'il y en
+     a une après. */
+  .v-home-news {
+    display: flex;
+    grid-template-columns: none;
+    gap: 12px;
+    overflow-x: auto;
+    padding-inline: var(--v-gutter);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .v-home-news::-webkit-scrollbar {
+    display: none;
+  }
+
+  .v-home-news-card {
+    flex: 0 0 85%;
+    scroll-snap-align: center;
+  }
+
+  /* Un point par news, celui de la carte au centre en couleur primaire et
+     allongé en gélule : la position se lit à la forme autant qu'à la teinte,
+     pas seulement à la couleur. */
+  .v-home-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .v-home-dots button {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    cursor: pointer;
+    border-radius: 999px;
+    background: rgb(17 22 26 / 0.16);
+    transition: width 0.3s var(--v-ease), background-color 0.3s var(--v-ease);
+  }
+
+  .v-home-dots button[data-on="true"] {
+    width: 20px;
+    background: var(--theme-primary);
+  }
+
+  /* Le rail des épisodes reprend la gouttière à son compte, comme celui des
+     news. Il la porte en `px-4 sm:px-6`, mais le réarmement `ul { padding: 0 }`
+     de `vitrine.css` n'est dans aucune couche et l'emporte sur l'utilitaire :
+     sans cette règle, la première vignette colle au bord de l'écran. */
+  .v-home-podcast-rail ul {
+    padding-inline: var(--v-gutter);
+  }
+}

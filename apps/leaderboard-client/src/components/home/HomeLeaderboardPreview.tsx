@@ -1,6 +1,6 @@
 import { LeaderboardList } from "@/components/leaderboard/LeaderboardList";
 import type { HomeLeaderboardEntry, LeaderboardEntry } from "@/lib/types";
-import { HomeSectionLink, HomeSectionTitle } from "./HomeSection";
+import { HomeSectionHead } from "./HomeSection";
 
 interface HomeLeaderboardPreviewProps {
   podium: HomeLeaderboardEntry[];
@@ -15,10 +15,8 @@ interface HomeLeaderboardPreviewProps {
  * noms, d'où la traduction ci-dessous. `contributionsCount` ne sert à aucune
  * des colonnes rendues, il est posé à 0 plutôt que remonté jusqu'ici.
  *
- * L'îlot `.vitrine-embed` donne au composant les jetons `--v-*` dont son CSS a
- * besoin : ils vivent sur `.vitrine`, que cette page n'est pas. Conséquence
- * assumée — la carte garde la palette claire de la vitrine, y compris en
- * thème sombre.
+ * Les jetons `--v-*` dont le CSS du composant a besoin viennent désormais de
+ * la page elle-même : l'accueil est une page vitrine, comme `/leaderboard`.
  */
 function toLeaderboardEntry(entry: HomeLeaderboardEntry): LeaderboardEntry {
   return {
@@ -37,19 +35,20 @@ export function HomeLeaderboardPreview({ podium }: HomeLeaderboardPreviewProps) 
   const [leader, ...rest] = entries;
 
   return (
-    <section aria-labelledby="leaderboard-title" className="flex flex-col gap-4">
-      <HomeSectionTitle id="leaderboard-title">Top 3 contributors</HomeSectionTitle>
+    <section aria-labelledby="leaderboard-title" className="v-home-section">
+      <HomeSectionHead
+        id="leaderboard-title"
+        title="Top 3 contributors"
+        href="/leaderboard"
+        linkLabel="Full ranking"
+      />
 
-      <div className="vitrine-embed">
-        <LeaderboardList
-          leader={leader ?? null}
-          rest={rest}
-          emptyTitle="No contributions yet"
-          emptySubtitle="The ranking fills up as soon as the first contribution lands."
-        />
-      </div>
-
-      <HomeSectionLink href="/leaderboard">Full ranking</HomeSectionLink>
+      <LeaderboardList
+        leader={leader ?? null}
+        rest={rest}
+        emptyTitle="No contributions yet"
+        emptySubtitle="The ranking fills up as soon as the first contribution lands."
+      />
     </section>
   );
 }

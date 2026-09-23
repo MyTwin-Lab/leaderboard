@@ -1,13 +1,20 @@
 import { COMMUNITY_MEMBERS } from "@/content/community";
 import { HomeCommunityCarousel } from "./HomeCommunityCarousel";
-import { HomeSectionTitle } from "./HomeSection";
+import { HomeSectionHead } from "./HomeSection";
 
-/** « Join our Community » : les visages du Lab, en carousel. */
+/**
+ * « Join our Community » : les visages du Lab, en carousel.
+ *
+ * La seule section centrée de la page — le bandeau de visages n'a ni début ni
+ * fin, et un titre calé à gauche au-dessus de lui aurait désigné un bord qui
+ * n'existe pas.
+ */
 export function HomeCommunity() {
   return (
-    <section aria-labelledby="community-title" className="flex flex-col items-center gap-3 text-center">
-      <HomeSectionTitle id="community-title">Join our Community</HomeSectionTitle>
-      <p className="max-w-xl text-sm leading-relaxed text-white/60 sm:text-base">
+    <section aria-labelledby="community-title" className="v-home-section v-home-community">
+      <HomeSectionHead id="community-title" title="Join our Community" />
+
+      <p className="v-home-lede">
         Students, engineers, clinicians, researchers and citizens, building the future of health together.
       </p>
 
@@ -20,9 +27,9 @@ export function HomeCommunity() {
         ))}
       </ul>
 
-      {/* Au téléphone, le carousel dépasse le padding du <main> : les visages
-          défilent jusqu'au bord de l'écran. */}
-      <div className="-mx-4 mt-3 self-stretch sm:-mx-6 md:mx-0">
+      {/* Sur téléphone, le carousel déborde la gouttière de la page : les
+          visages défilent jusqu'au bord de l'écran (`home-vitrine.css`). */}
+      <div className="v-home-marquee">
         <HomeCommunityCarousel members={COMMUNITY_MEMBERS} />
       </div>
     </section>
