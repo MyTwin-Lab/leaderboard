@@ -85,6 +85,10 @@ export function stripInlineMarkdown(text: string): string {
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // Les chevrons d'une citation, retirés ligne à ligne — donc avant que les
+    // retours à la ligne ne disparaissent. Sans ça, une citation de quatre
+    // lignes arrive dans l'accroche recollée avec ses « > » au milieu.
+    .replace(/^[ \t]*>[ \t]?/gm, '')
     // Un paragraphe de plusieurs lignes se lit sur une seule dans un titre.
     .replace(/\s*\n\s*/g, ' ')
     .trim();
