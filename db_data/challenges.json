@@ -230,7 +230,7 @@
     "contribution_points_reward": 12000,
     "completion": 0.07008333333333333,
     "project_id": "7c1a48d8-79b4-4beb-839f-55fbda0eae37",
-    "type": "code",
+    "type": "ml",
     "reward_rules": {
       "version": 1,
       "dataset": {

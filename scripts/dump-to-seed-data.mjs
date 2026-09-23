@@ -183,6 +183,12 @@ write('users.json', rowsOf(dump, schema, 'users', {
 const TYPE_OVERRIDES = {
   'lab-community-management': 'none',
   'mytwin-3d-gtm': 'none',
+  // Marqué `code` en production, mais tout le reste de sa ligne dit `ml` : il
+  // porte des `reward_rules` au schéma ML (dataset / model / apiPackaging /
+  // reuse, métrique `auc`) et son ledger n'utilise que des clés ML —
+  // `model_metric`, `beat_best`, `dataset`. C'est la colonne `type` qui est
+  // fausse, pas le reste.
+  'mammography-classification': 'ml',
 };
 
 // La production archive ses challenges terminés ; le seed les présente comme
