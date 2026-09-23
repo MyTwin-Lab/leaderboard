@@ -150,18 +150,31 @@ html:has(.landing) body {
 
 /* ── Téléphone ────────────────────────────────────────────────────────── */
 
-/* Un logo plus discret, et, debout, le CTA descendu sous le titre, qui reste
-   au centre : `top` le décale sans rien déplacer autour de lui. */
+/* Un logo et un CTA plus discrets (le CTA garde ses 44 px de cible tactile),
+   et, debout, le CTA descendu sous le titre, qui reste au centre : `top` le
+   décale sans rien déplacer autour de lui. */
 @media (max-width: 767px) {
   .l-logo {
     width: 5.25rem;
+  }
+
+  .l-button {
+    gap: 0.5rem;
+    height: 2.75rem;
+    padding-inline: 1.3rem 1.05rem;
+    font-size: 0.875rem;
+  }
+
+  .l-arrow {
+    width: 0.875rem;
+    height: 0.875rem;
   }
 }
 
 @media (max-width: 767px) and (orientation: portrait) {
   .l-button {
     position: relative;
-    top: 5rem;
+    top: 7rem;
   }
 }
 
