@@ -1,54 +1,70 @@
-import { LeaderboardList } from "@/components/leaderboard/LeaderboardList";
-import type { HomeLeaderboardEntry, LeaderboardEntry } from "@/lib/types";
-import { HomeSectionHead } from "./HomeSection";
+import Link from "next/link";
+
+import { VitrineAvatar } from "@/components/vitrine/VitrineAvatar";
+import { formatCP } from "@/lib/formatters";
+import type { HomeLeaderboardEntry } from "@/lib/types";
+import { HomeMore, HomeSectionHead } from "./HomeSection";
 
 interface HomeLeaderboardPreviewProps {
   podium: HomeLeaderboardEntry[];
 }
 
 /**
- * Le top 3 du classement, rendu par le composant de `/leaderboard` lui-même —
- * `LeaderboardList` — pour qu'une ligne se lise ici exactement comme là-bas.
+ * Le top 3 du classement, dans la forme de la maquette.
  *
- * Le podium arrive dans la forme de l'accueil (`HomeLeaderboardEntry`) et non
- * dans celle du classement : les deux décrivent la même personne sous d'autres
- * noms, d'où la traduction ci-dessous. `contributionsCount` ne sert à aucune
- * des colonnes rendues, il est posé à 0 plutôt que remonté jusqu'ici.
- *
- * Les jetons `--v-*` dont le CSS du composant a besoin viennent désormais de
- * la page elle-même : l'accueil est une page vitrine, comme `/leaderboard`.
+ * `LeaderboardList` n'est pas réutilisé ici : la maquette donne à ces trois
+ * lignes une géométrie propre — quatre colonnes fixes, un premier d'un cran
+ * au-dessus, pas de pastille « leader ». Le composant de `/leaderboard` garde
+ * la sienne.
  */
-function toLeaderboardEntry(entry: HomeLeaderboardEntry): LeaderboardEntry {
-  return {
-    rank: entry.rank,
-    userId: entry.userId,
-    displayName: entry.name,
-    bio: entry.bio,
-    avatarUrl: entry.avatarUrl,
-    totalCP: entry.cp,
-    contributionsCount: 0,
-  };
-}
-
 export function HomeLeaderboardPreview({ podium }: HomeLeaderboardPreviewProps) {
-  const entries = podium.map(toLeaderboardEntry);
-  const [leader, ...rest] = entries;
-
   return (
-    <section aria-labelledby="leaderboard-title" className="v-home-section">
+    <section aria-labelledby="top-title" className="v-home-section">
       <HomeSectionHead
-        id="leaderboard-title"
-        title="Top 3 contributors"
+        id="top-title"
+        eyebrow="Top three contributors"
         href="/leaderboard"
         linkLabel="Full ranking"
       />
 
-      <LeaderboardList
-        leader={leader ?? null}
-        rest={rest}
-        emptyTitle="No contributions yet"
-        emptySubtitle="The ranking fills up as soon as the first contribution lands."
-      />
+      {podium.length === 0 ? (
+        <div className="v-home-empty">
+          The ranking fills up as soon as the first contribution lands.
+        </div>
+      ) : (
+        <ol className="v-home-rank">
+          {podium.map((entry, index) => (
+            <li key={entry.userId}>
+              <Link
+                href={`/contributors/${entry.userId}`}
+                className="v-home-rank-row"
+                data-first={index === 0 ? "true" : "false"}
+              >
+                <span className="v-home-rank-num">{entry.rank}</span>
+                <VitrineAvatar
+                  name={entry.name}
+                  avatarUrl={entry.avatarUrl}
+                  size="3rem"
+                  ring={false}
+                  fallback="pastel"
+                />
+                <span className="v-home-rank-text">
+                  <span className="v-home-rank-name">{entry.name}</span>
+                  {entry.bio && <span className="v-home-rank-bio">{entry.bio}</span>}
+                </span>
+                <span className="v-home-rank-cp">
+                  {formatCP(entry.cp)}
+                  <small>CP</small>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <HomeMore href="/leaderboard" place="bottom">
+        Full ranking
+      </HomeMore>
     </section>
   );
 }

@@ -92,7 +92,8 @@
   align-items: stretch;
   overflow: hidden;
   min-height: min(40rem, 78svh);
-  border-radius: var(--v-radius);
+  /* TEST — arrondi très léger sur la photo. */
+  border-radius: 8px;
   background: var(--v-night);
 }
 
@@ -789,7 +790,8 @@
   .v-cd-hero-card {
     min-height: 24rem;
     align-items: stretch;
-    border-radius: 1.5rem;
+    /* TEST — arrondi très léger sur la photo. */
+    border-radius: 8px;
   }
 
   .v-cd-hero-body {

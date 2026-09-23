@@ -86,7 +86,8 @@
 /* La carte de cette page a le grand rayon de la maquette, pas les 20px de
    la page Challenges. */
 .v-sandbox .v-card {
-  border-radius: var(--v-radius);
+  /* TEST — carte à peine arrondie, comme /challenges. */
+  border-radius: 8px;
 }
 
 .v-sandbox .v-card-shot {
@@ -794,7 +795,8 @@
   }
 
   .v-sandbox .v-card {
-    border-radius: 1.125rem;
+    /* TEST — carte à peine arrondie, comme /challenges. */
+    border-radius: 8px;
   }
 
   .v-sandbox .v-card-shot {

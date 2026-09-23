@@ -515,3 +515,18 @@
     display: inline;
   }
 }
+
+/* ── TEST — la carte à peine arrondie ─────────────────
+   Scopé à `.v-challenges` : `.v-card` est partagé avec `/sandbox` et avec
+   l'aperçu de l'accueil, qui gardent leur rayon. C'est la carte entière qui
+   perd ses coins hauts, et non la photo seule — elle est rognée par
+   l'`overflow: hidden` de la carte, donc c'est là que ça se joue. */
+.v-challenges .v-card {
+  border-radius: 8px;
+}
+
+@media (max-width: 767px) {
+  .v-challenges .v-card {
+    border-radius: 8px;
+  }
+}

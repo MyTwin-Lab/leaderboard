@@ -1,5 +1,6 @@
 import { fetchHomeOverview } from "@/lib/server/home";
 import { HomeHero } from "@/components/home/HomeHero";
+import { HomeVision } from "@/components/home/HomeVision";
 import { HomeLatestNews } from "@/components/home/HomeLatestNews";
 import { HomePodcast } from "@/components/home/HomePodcast";
 import { HomeCommunity } from "@/components/home/HomeCommunity";
@@ -10,9 +11,6 @@ import { pageMetadata } from "@/lib/seo";
 
 import "@/components/vitrine/vitrine.css";
 import "@/components/home/home-vitrine.css";
-
-// HomeStatsCard ("The Lab, right now") is temporarily hidden from the home
-// page — component kept in place, just not rendered here.
 
 export const dynamic = "force-dynamic";
 
@@ -32,29 +30,22 @@ export default async function HomePage() {
   // which re-fetched the same projects/challenges/contributions/users).
   const overview = await fetchHomeOverview();
 
-  // L'accueil est une page vitrine, comme `/challenges`, `/sandbox` et
-  // `/leaderboard` : mêmes polices, mêmes jetons, même conteneur. Elle pose
-  // donc elle-même sa largeur et sa gouttière — `LabShell` lui laisse la main
-  // sur `/home`, et peint le fond de la maquette sous la navbar et le footer.
+  // L'ordre est celui de `Home Redesign.dc.html` : la mission, la vision qui
+  // l'explique, puis ce que le Lab produit — news, podcast — avant d'appeler
+  // à rejoindre, et de montrer qui contribue et sur quoi.
+  //
+  // La navbar et le pied de page de la maquette ne sont pas repris : `LabShell`
+  // les pose déjà pour toute l'app, et cette page n'a pas à en porter une
+  // seconde paire.
   return (
     <div className={`vitrine v-home ${vitrineFontVars}`}>
-      <div className="v-main">
-        {/* ── Our mission ─────────────────────────────────────────────── */}
+      <div className="v-home-main">
         <HomeHero />
-
-        {/* ── News ─────────────────────────────────────────────────────── */}
+        <HomeVision />
         <HomeLatestNews />
-
-        {/* ── Podcast (MyTwin Inside) ─────────────────────────────────── */}
         <HomePodcast />
-
-        {/* ── Join our Community ──────────────────────────────────────── */}
         <HomeCommunity />
-
-        {/* ── Top 3 contributors ──────────────────────────────────────── */}
         <HomeLeaderboardPreview podium={overview.podium} />
-
-        {/* ── Challenges (trending) ────────────────────────────────────── */}
         <HomeChallengesPreview challenges={overview.trendingChallenges} />
       </div>
     </div>

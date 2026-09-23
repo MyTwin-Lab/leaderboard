@@ -61,7 +61,7 @@ export function LeaderboardList({
         data-me={entry.userId === currentUserId ? "true" : "false"}
       >
         <span className="v-lb-row-rank">{entry.rank}</span>
-        <VitrineAvatar name={entry.displayName} avatarUrl={entry.avatarUrl} size="2.5rem" />
+        <VitrineAvatar name={entry.displayName} avatarUrl={entry.avatarUrl} size="2.5rem" fallback="pastel" />
         <span className="v-lb-row-text">
           <span className="v-lb-row-line">
             <span className="v-lb-row-name">{entry.displayName}</span>

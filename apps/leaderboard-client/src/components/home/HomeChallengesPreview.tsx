@@ -1,10 +1,11 @@
-import { ChallengeCard } from "@/components/public/ChallengeCard";
+import Link from "next/link";
+
+import { coverShot } from "@/lib/coverImage";
+import { formatCP } from "@/lib/formatters";
+import { challengePath } from "@/lib/paths";
 import type { HomeTrendingChallenge } from "@/lib/types";
 import { HomeCarousel } from "./HomeCarousel";
-import { HomeSectionHead } from "./HomeSection";
-
-import "@/components/vitrine/vitrine.css";
-import "@/components/public/challenges-vitrine.css";
+import { HomeArrow, HomeMore, HomeSectionHead } from "./HomeSection";
 
 /** Le rythme du carrousel sur téléphone : le temps de lire une carte. */
 const CAROUSEL_INTERVAL_MS = 5000;
@@ -14,28 +15,19 @@ interface HomeChallengesPreviewProps {
 }
 
 /**
- * Les challenges qui bougent, rendus par la carte de `/challenges` elle-même.
+ * Les challenges qui bougent, dans la forme de la maquette.
  *
- * `HomeTrendingChallenge` porte déjà tout ce que `ChallengeCard` attend —
- * couverture, statut, pool, avancement, équipe, activité des sept derniers
- * jours. Ni `isMember` ni `isAdmin` ne sont passés : cette page est lue sans
- * session, la carte n'a donc ni pastille « joined » ni menu d'administration.
- *
- * Les jetons `--v-*` dont le CSS de la carte a besoin viennent désormais de la
- * page elle-même : l'accueil est une page vitrine, comme `/challenges`. La
- * grille, en revanche, est la sienne (`.v-home-challenges`) — voir le
- * commentaire qui la définit dans `home-vitrine.css`.
- *
- * `index` reste celui de la grille : c'est lui qui choisit l'illustration de
- * repli d'un challenge sans couverture, et il évite que deux cartes voisines
- * portent la même photo.
+ * `ChallengeCard` n'est pas réutilisée : la maquette pose ici une carte
+ * horizontale — vignette, texte, puis pool et bouton séparés par un filet —
+ * là où le listing empile une photo pleine largeur et son corps. La carte de
+ * `/challenges` garde la sienne.
  */
 export function HomeChallengesPreview({ challenges }: HomeChallengesPreviewProps) {
   return (
-    <section aria-labelledby="trending-challenges-title" className="v-home-section">
+    <section aria-labelledby="ch-title" className="v-home-section">
       <HomeSectionHead
-        id="trending-challenges-title"
-        title="Challenges"
+        id="ch-title"
+        eyebrow="Challenges"
         href="/challenges"
         linkLabel="All challenges"
       />
@@ -48,27 +40,43 @@ export function HomeChallengesPreview({ challenges }: HomeChallengesPreviewProps
           itemNoun="challenge"
           autoAdvanceMs={CAROUSEL_INTERVAL_MS}
         >
-          {challenges.map((challenge, index) => (
-            <ChallengeCard
-              key={challenge.id}
-              index={index}
-              challengeId={challenge.id}
-              challengeSlug={challenge.slug}
-              challengeTitle={challenge.title}
-              challengeType={challenge.type}
-              challengeStatus={challenge.status}
-              projectName={challenge.projectName}
-              description={challenge.description}
-              rewardPool={challenge.rewardPool}
-              completion={challenge.completion}
-              coverImageUrl={challenge.coverImageUrl}
-              teamMembers={challenge.teamMembers}
-              recentContributions={challenge.recentContributions}
-              spark={challenge.spark}
-            />
-          ))}
+          {challenges.map((challenge, index) => {
+            const shot = coverShot(challenge.coverImageUrl, index, "challenge");
+            return (
+              <Link
+                key={challenge.id}
+                href={challengePath(challenge.slug)}
+                className="v-home-challenge"
+              >
+                <div className="v-home-challenge-shot">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- couverture libre ou repli de la banque */}
+                  <img src={shot.src} alt="" style={{ objectPosition: shot.position }} />
+                </div>
+                <div className="v-home-challenge-body">
+                  <span className="v-home-tag">
+                    {challenge.typeLabel} · {challenge.projectName}
+                  </span>
+                  <h3>{challenge.title}</h3>
+                  {challenge.description && <p>{challenge.description}</p>}
+                </div>
+                <div className="v-home-challenge-aside">
+                  <span className="v-home-pool">
+                    <b>{formatCP(challenge.rewardPool)}</b> CP pool
+                  </span>
+                  <span className="v-home-contribute">
+                    Contribute
+                    <HomeArrow />
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </HomeCarousel>
       )}
+
+      <HomeMore href="/challenges" place="bottom">
+        All challenges
+      </HomeMore>
     </section>
   );
 }

@@ -1,357 +1,1202 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   L'accueil du Lab, passé au système vitrine.
+   L'accueil du Lab, d'après `Home Redesign.dc.html`.
 
-   Aucune couleur, aucune police, aucun rayon n'est inventé ici : tout vient
-   des jetons `--v-*` de `vitrine.css`, comme sur `/challenges`, `/sandbox` et
-   `/leaderboard`. Cette feuille ne fait que deux choses — donner à l'accueil
-   le rythme de sections que les trois listings n'ont pas (ils n'en ont qu'une),
-   et rhabiller les trois composants que l'accueil emprunte au reste de la web
-   app (la carte news, les épisodes, le carrousel de visages), qui sont encore
-   écrits en utilitaires Tailwind.
+   Les jetons de la maquette et ceux de `vitrine.css` sont les mêmes valeurs
+   sous deux noms (`--bg` = `--v-bg` = #fbfaf8, `--accent` = `--v-accent` =
+   #0b7a64, mêmes trois polices) : cette feuille lit donc directement les
+   `--v-*`, et n'ajoute que ce que la maquette apporte en propre — une teinte
+   menthe pour l'encart communauté, une gouttière et une largeur plus larges
+   que celles des listings.
 
-   Ce rhabillage passe par des sélecteurs préfixés `html[data-mode="light"]
-   .v-home` : `globals.css` réécrit `text-white`, `border-white` et `bg-white/…`
-   en `!important` pour le mode clair, et aplatit au passage toute la hiérarchie
-   des gris (`text-white/45` et `text-white` y reçoivent la même couleur). Il
-   faut donc à la fois `!important` et une spécificité supérieure pour lui
-   reprendre la main — exactement ce que `vitrine.css` fait déjà pour `svg`,
-   `input` et `textarea`.
+   Tout est scopé sous `.v-home`, dont la racine est `.vitrine` : le réarmement
+   et les jetons viennent de là.
    ───────────────────────────────────────────────────────────────────────── */
 
-/* ── Le rythme de la page ───────────────────────────────────────────────── */
-
-/* `.v-main` espace déjà les sections ; le filet dit en plus où l'une finit et
-   où la suivante commence. Le hero n'en porte pas : rien ne le précède. */
-.v-home-section {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: clamp(14px, 1.6vw, 18px);
-  border-top: 1px solid var(--v-line);
-  padding-top: clamp(26px, 3.2vw, 38px);
+.v-home {
+  /* Les deux mesures que la maquette pose autrement que les listings. */
+  --v-gutter: clamp(1.25rem, 4vw, 4.5rem);
+  --v-max: 78rem;
+  /* Le fond de l'encart « Join our community ». */
+  --h-mint: rgb(11 122 100 / 0.06);
 }
 
-/* Le titre de section et son lien « voir tout » sur une même ligne, alignés
-   sur la même base. Le lien était sous le contenu, en bas à droite : au bout
-   du titre, il se lit avec la section qu'il prolonge. */
+/* La seule animation de la maquette : l'entrée de la mission au chargement.
+   Rien ne bouge ensuite — pas de révélation section par section. */
+@keyframes h-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v-home *,
+  .v-home *::before,
+  .v-home *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── Le conteneur ───────────────────────────────────────────────────────── */
+
+.v-home-main {
+  max-width: var(--v-max);
+  margin-inline: auto;
+  padding-inline: var(--v-gutter);
+}
+
+/* Une section : un filet au-dessus, et le rythme vertical de la maquette. Le
+   premier bloc n'en porte pas, rien ne le précède. */
+.v-home-section {
+  display: grid;
+  gap: 1.25rem;
+  border-top: 1px solid var(--v-line);
+  padding-block: clamp(2.25rem, 4.5vw, 3.75rem);
+}
+
+/* ── L'en-tête d'une section : sur-titre, accroche, lien ────────────────── */
+
 .v-home-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 10px 20px;
+  gap: 0.75rem 1.5rem;
 }
 
-.v-home-h {
+.v-home-head-text {
+  display: grid;
+  gap: 0.4rem;
+}
+
+/* Le sur-titre de la maquette : capitales espacées, à l'accent. C'est lui qui
+   nomme la section — les titres proprement dits sont des accroches. */
+.v-home-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+.v-home-tagline {
   font-family: var(--v-font-h);
-  font-weight: 700;
-  letter-spacing: -0.028em;
-  font-size: clamp(21px, 2.3vw, 27px);
-  line-height: 1.16;
-  color: var(--v-ink);
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--v-muted);
+  text-wrap: pretty;
 }
 
-/* Même graisse et même taille que les métadonnées de la vitrine, à l'accent
-   de la maquette. La flèche s'écarte au survol : le lien dit qu'il mène
-   ailleurs sans avoir à le souligner. */
+/* Le lien de la maquette : souligné en dur, sans flèche qui s'écarte. */
 .v-home-more {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  flex: none;
-  font-size: 13.5px;
-  font-weight: 600;
+  gap: 0.45rem;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid currentColor;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: var(--v-accent);
-  transition: gap 0.3s var(--v-ease), color 0.3s var(--v-ease);
 }
 
 .v-home-more:hover {
-  gap: 10px;
   color: var(--v-accent-dark);
 }
 
 .v-home-more svg {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
+  flex: none;
 }
 
-/* L'accroche d'une section, quand elle en a une. Même mesure que `.v-lede`. */
-.v-home-lede {
-  max-width: 560px;
-  font-size: clamp(14px, 1.3vw, 16px);
+/* ── Mission ────────────────────────────────────────────────────────────── */
+
+.v-home-mission {
+  animation: h-up 0.8s var(--v-ease) both;
+  display: grid;
+  gap: 0.75rem;
+  padding-block: clamp(1.25rem, 2.5vw, 2rem) clamp(1rem, 2vw, 1.5rem);
+}
+
+.v-home-mission h1 {
+  max-width: 42ch;
+  font-family: var(--v-font-h);
+  font-size: clamp(1.375rem, 2.4vw, 2.125rem);
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--v-ink);
+  text-wrap: balance;
+}
+
+.v-home-mission em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--v-accent);
+}
+
+/* ── Vision : le jumeau numérique, et les trois étapes ──────────────────── */
+
+.v-home-vision {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: clamp(1.5rem, 4vw, 4rem);
+  align-items: center;
+  border-top: 1px solid var(--v-line);
+  padding-block: clamp(1rem, 2.5vw, 2rem) clamp(2.5rem, 5vw, 4.5rem);
+}
+
+.v-home-vision-left {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.v-home-vision-title {
+  font-family: var(--v-font-h);
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.v-home-vision-sub {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.125rem, 1.8vw, 1.375rem);
+  line-height: 1.3;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--v-muted);
+}
+
+/* Le masque radial de la maquette : la figure se fond dans la page au lieu de
+   s'arrêter sur un bord franc. `multiply` fait disparaître son fond blanc. */
+.v-home-twin {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  max-width: 32rem;
+  width: 100%;
+  -webkit-mask-image: radial-gradient(ellipse 62% 70% at 50% 42%, #000 58%, transparent 100%);
+  mask-image: radial-gradient(ellipse 62% 70% at 50% 42%, #000 58%, transparent 100%);
+}
+
+.v-home-twin img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+  mix-blend-mode: multiply;
+}
+
+.v-home-vision-right {
+  display: grid;
+  gap: 2rem;
+  min-width: 0;
+  max-width: 26rem;
+}
+
+/* Les trois étapes. Numérotées parce qu'elles le sont : connecter, modéliser,
+   simuler est une suite, pas une liste de qualités. */
+.v-home-steps {
+  display: grid;
+}
+
+.v-home-step {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.v-home-step-mark {
+  display: grid;
+  justify-items: center;
+}
+
+.v-home-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  border: 1px solid rgb(11 122 100 / 0.45);
+  background: var(--v-surface);
+  font-family: var(--v-font-h);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  color: var(--v-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Le trait pointillé qui relie une étape à la suivante. La dernière n'en a
+   pas : il n'y a rien après elle. */
+.v-home-step-link {
+  width: 1px;
+  height: 2.5rem;
+  border-left: 1px dashed rgb(11 122 100 / 0.4);
+}
+
+.v-home-step-body {
+  display: grid;
+  gap: 0.25rem;
+  padding-top: 0.55rem;
+}
+
+.v-home-step-body h3 {
+  font-family: var(--v-font-h);
+  font-size: 1.1875rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.v-home-step-body p {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--v-muted);
+}
+
+/* ── La carte en vedette, partagée par News et Podcast ──────────────────── */
+
+.v-home-feature {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: clamp(1rem, 2.5vw, 2rem);
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  color: inherit;
+  transition: border-color 0.4s var(--v-ease), box-shadow 0.4s var(--v-ease);
+}
+
+.v-home-feature:hover {
+  border-color: rgb(11 122 100 / 0.4);
+  box-shadow: 0 20px 40px -30px rgb(17 22 26 / 0.45);
+  color: inherit;
+}
+
+.v-home-shot {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  background: var(--v-night);
+}
+
+.v-home-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.v-home-feature-body {
+  display: grid;
+  gap: 0.8rem;
+  padding: clamp(0.5rem, 2vw, 1.5rem);
+}
+
+/* La ligne de métadonnées d'une carte : rubrique et date. */
+.v-home-kicker {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+.v-home-feature-body h3 {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.25rem, 2vw, 1.625rem);
+  line-height: 1.22;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.v-home-feature-body p {
+  max-width: 34rem;
+  font-size: 0.9375rem;
   line-height: 1.65;
   color: var(--v-muted);
   text-wrap: pretty;
 }
 
-/* ── Le hero : la mission à gauche, la vidéo à droite ───────────────────── */
-
-/* Empilé tant que la vidéo n'a pas la place d'exister à côté du texte. */
-.v-home-hero {
-  display: grid;
-  gap: clamp(20px, 3vw, 40px);
+/* Le même lien que `.v-home-more`, mais dans une carte : il n'est pas
+   cliquable pour lui-même, c'est la carte entière qui l'est. */
+.v-home-read {
+  display: inline-flex;
   align-items: center;
-  padding-top: clamp(4px, 1vw, 12px);
-}
-
-@media (min-width: 900px) {
-  .v-home-hero {
-    /* La vidéo prend la part la plus large : c'est elle qu'on vient voir. */
-    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
-  }
-}
-
-.v-home-hero-text {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 14px;
-}
-
-/* `.v-title` porte la taille du titre de page et `.v-lede` la mesure de
-   l'accroche : les deux viennent de `vitrine.css`, inchangées. */
-
-/* Pas de filet autour de la vidéo : elle s'ouvre sur du blanc, et un contour
-   la refermait en planche encadrée. Seul le rayon et l'ombre portée la posent
-   sur la page. Le fond nuit ne se voit que le temps du chargement. */
-.v-home-video {
-  overflow: hidden;
-  border-radius: 20px;
-  background: var(--v-night);
-  box-shadow: 0 24px 50px -32px rgb(17 22 26 / 0.45);
-}
-
-/* `aspect-ratio` réserve la place (la vidéo est en 1920×1080) : la page ne
-   saute pas pendant le chargement du fichier. */
-.v-home-video video {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-}
-
-/* Le curseur ne devient une main qu'une fois la vidéo finie : avant, le clic
-   ne fait rien, et le promettre serait mentir. */
-.v-home-video video[data-ended="true"] {
-  cursor: pointer;
-}
-
-/* ── News : la carte de `/news`, rhabillée en carte vitrine ─────────────── */
-
-.v-home-news {
-  display: grid;
-  gap: clamp(14px, 1.6vw, 18px);
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-}
-
-/* Les points d'avancement n'existent que sous le carrousel : au-dessus de
-   768px la grille montre les trois news d'un coup, il n'y a rien à suivre. */
-.v-home-dots {
-  display: none;
-}
-
-.v-home .v-home-news-card {
-  border-radius: 20px;
-  box-shadow: none;
-  transition: border-color 0.4s var(--v-ease), transform 0.4s var(--v-ease),
-    box-shadow 0.4s var(--v-ease);
-}
-
-html[data-mode="light"] .v-home .v-home-news-card {
-  border-color: var(--v-line) !important;
-  background-color: var(--v-surface) !important;
-}
-
-html[data-mode="light"] .v-home .v-home-news-card:hover {
-  border-color: rgb(11 122 100 / 0.4) !important;
-  background-color: var(--v-surface) !important;
-  transform: translateY(-3px);
-  box-shadow: 0 20px 40px -26px rgb(17 22 26 / 0.5);
-}
-
-/* Le titre de la news prend la police des titres de la vitrine. */
-.v-home .v-home-news-card h3 {
-  font-family: var(--v-font-h);
-  font-size: 16.5px;
-  font-weight: 700;
-  letter-spacing: -0.022em;
-  line-height: 1.28;
-}
-
-html[data-mode="light"] .v-home .v-home-news-card h3 {
-  color: var(--v-ink) !important;
-}
-
-html[data-mode="light"] .v-home .v-home-news-card:hover h3 {
-  color: var(--v-accent) !important;
-}
-
-/* Le mois de l'événement : `globals.css` le rend aussi noir que le titre, il
-   retrouve ici son rang de métadonnée. */
-html[data-mode="light"] .v-home .v-home-news-card [class*="text-white/45"] {
-  color: var(--v-subtle) !important;
-}
-
-/* La pastille de catégorie et le « Read » suivent l'accent de la maquette,
-   comme tous les liens de la vitrine. */
-.v-home .v-home-news-card [class*="text-brandCP"] {
+  gap: 0.45rem;
+  justify-self: start;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid currentColor;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: var(--v-accent);
 }
 
-.v-home .v-home-news-card [class*="bg-brandCP/10"] {
-  background-color: rgb(11 122 100 / 0.09);
+.v-home-read svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
 }
 
-/* ── Podcast : les épisodes MyTwin Inside ───────────────────────────────── */
+/* ── News : la une, puis les deux brèves ────────────────────────────────── */
 
-.v-home-podcast-rail {
+/* Une grille de deux colonnes où la une prend les deux : c'est ce qui permet
+   au téléphone de devenir un rail de trois cartes sans changer le balisage. */
+.v-home-news-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.v-home-news-list > .v-home-feature {
+  grid-column: 1 / -1;
+}
+
+.v-home-brief {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 0.625rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  color: inherit;
+  transition: border-color 0.4s var(--v-ease);
+}
+
+.v-home-brief:hover {
+  border-color: rgb(11 122 100 / 0.4);
+  color: inherit;
+}
+
+.v-home-brief-shot {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  background: var(--v-night);
+}
+
+.v-home-brief-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.v-home-brief-body {
+  display: grid;
+  gap: 0.35rem;
   min-width: 0;
+  padding-right: 0.5rem;
 }
 
-.v-home .v-home-podcast-rail h3 {
+.v-home-brief-body .v-home-kicker {
+  letter-spacing: 0.2em;
+}
+
+.v-home-brief-body h3 {
   font-family: var(--v-font-h);
-  font-size: 14.5px;
+  font-size: 1rem;
+  line-height: 1.3;
   font-weight: 600;
   letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 
-html[data-mode="light"] .v-home .v-home-podcast-rail h3 {
-  color: var(--v-ink) !important;
+/* ── Podcast ────────────────────────────────────────────────────────────── */
+
+/* Le bouton de lecture posé au centre de la vignette. Il passe à l'accent au
+   survol de la carte, d'où la variable plutôt qu'une couleur en dur. */
+.v-home-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.75rem;
+  height: 3.75rem;
+  border-radius: 999px;
+  background: var(--h-play, var(--v-ink));
+  color: #ffffff;
+  box-shadow: 0 10px 24px -12px rgb(17 22 26 / 0.6);
+  transition: background 0.3s var(--v-ease);
 }
 
-/* La vignette garde son fond noir — c'est l'image d'une vidéo — mais reprend
-   le rayon des cartes. Pas de filet autour d'elle non plus : l'image va
-   jusqu'au bord, comme sur la vidéo du hero. */
-.v-home .v-home-podcast-rail [class*="aspect-video"] {
-  border-radius: 20px;
-  box-shadow: 0 18px 40px -30px rgb(17 22 26 / 0.6);
+.v-home-feature:hover .v-home-play,
+.v-home-episode:hover .v-home-play {
+  --h-play: var(--v-accent);
 }
 
-html[data-mode="light"] .v-home .v-home-podcast-rail [class*="border-white"] {
-  border-color: transparent !important;
+.v-home-play svg {
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
 }
 
-/* ── Community : le bandeau de visages ──────────────────────────────────── */
+.v-home-feature-title-only {
+  display: flex;
+  align-items: center;
+  padding: clamp(0.5rem, 2vw, 1.5rem);
+}
+
+.v-home-feature-title-only h3 {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.125rem, 1.8vw, 1.375rem);
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.v-home-feature-title-only p {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--v-muted);
+}
+
+.v-home-episodes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+}
+
+.v-home-episode {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 0.875rem;
+  align-items: center;
+  color: inherit;
+  cursor: pointer;
+}
+
+.v-home-episode:hover {
+  color: var(--v-accent);
+}
+
+.v-home-episode-shot {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  background: var(--v-night);
+}
+
+.v-home-episode-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.v-home-episode .v-home-play {
+  width: 1.75rem;
+  height: 1.75rem;
+  box-shadow: none;
+}
+
+.v-home-episode .v-home-play svg {
+  width: 9px;
+  height: 9px;
+}
+
+.v-home-episode-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+/* ── Community : l'encart menthe ────────────────────────────────────────── */
 
 .v-home-community {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  text-align: center;
+  justify-content: space-between;
+  gap: 1.75rem 2.5rem;
+  margin-block: clamp(0.5rem, 2vw, 1.5rem) clamp(2.25rem, 4.5vw, 3.75rem);
+  border-radius: 12px;
+  background: var(--h-mint);
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
 }
 
-.v-home-community .v-home-head {
-  justify-content: center;
-}
-
-.v-home-community .v-home-lede {
-  max-width: 34rem;
-}
-
-.v-home-marquee {
+.v-home-community-text {
+  display: grid;
+  gap: 1.25rem;
   min-width: 0;
-  align-self: stretch;
+  flex: 1 1 30rem;
 }
 
-html[data-mode="light"] .v-home .v-home-marquee p {
-  color: var(--v-ink) !important;
+.v-home-community-lede {
+  max-width: 36rem;
+  font-family: var(--v-font-h);
+  font-size: clamp(1.125rem, 1.8vw, 1.375rem);
+  line-height: 1.4;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--v-ink);
+  text-wrap: pretty;
 }
 
-html[data-mode="light"] .v-home .v-home-marquee [class*="text-white/50"] {
-  color: var(--v-subtle) !important;
+.v-home-faces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.875rem;
 }
 
-/* ── Challenges : la carte du listing, sa grille en propre ──────────────── */
+.v-home-face {
+  position: relative;
+  flex: none;
+}
 
-/* `.v-ch-grid` n'est pas réutilisé tel quel, pour deux raisons : sa règle
-   téléphone repose sur un `.v-main` sans gouttière (celui de `/challenges`) et
-   rajouterait ici 16px de padding par-dessus la nôtre, et son `auto-fit`
-   suppose une grille pleine. L'accueil n'en montre que deux au plus
-   (`TRENDING_LIMIT`) : deux colonnes fixes, pour qu'un seul challenge tendance
-   garde la largeur d'une carte au lieu de s'étirer en bannière. */
+.v-home-face img:first-child {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgb(11 122 100 / 0.3), 0 0 0 4px var(--v-bg);
+}
+
+.v-home-flag {
+  position: absolute;
+  right: -2px;
+  bottom: 0;
+  width: 1.1rem;
+  height: auto;
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+}
+
+/* Le compte de celles et ceux que la rangée ne montre pas. */
+.v-home-face-more {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  border: 1px dashed rgb(11 122 100 / 0.45);
+  font-family: var(--v-font-h);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--v-accent);
+}
+
+.v-home-cta {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.6rem;
+  height: 3.25rem;
+  padding-inline: 1.6rem 1.35rem;
+  border-radius: 999px;
+  background: var(--v-ink);
+  color: var(--v-bg);
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background 0.3s var(--v-ease);
+}
+
+.v-home-cta:hover {
+  background: var(--v-accent);
+  color: var(--v-bg);
+}
+
+.v-home-cta svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* ── Top contributors ───────────────────────────────────────────────────── */
+
+.v-home-rank {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.v-home-rank-row {
+  display: grid;
+  grid-template-columns: 1.5rem 3rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--v-line);
+  background: var(--v-surface);
+  color: inherit;
+  transition: border-color 0.3s var(--v-ease);
+}
+
+.v-home-rank-row:hover {
+  border-color: rgb(11 122 100 / 0.4);
+  color: inherit;
+}
+
+/* Le premier porte un cran de plus : plus d'air, un rang à l'accent, un CP
+   plus gros. C'est le seul écart entre les trois lignes. */
+.v-home-rank-row[data-first="true"] {
+  padding-block: 0.875rem;
+}
+
+.v-home-rank-num {
+  font-family: var(--v-font-h);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--v-subtle);
+}
+
+.v-home-rank-row[data-first="true"] .v-home-rank-num {
+  font-weight: 600;
+  color: var(--v-accent);
+}
+
+.v-home-rank-text {
+  display: grid;
+  min-width: 0;
+}
+
+.v-home-rank-name {
+  font-size: 1rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v-home-rank-row[data-first="true"] .v-home-rank-name {
+  font-weight: 600;
+}
+
+.v-home-rank-bio {
+  font-size: 0.8125rem;
+  color: var(--v-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v-home-rank-cp {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-family: var(--v-font-h);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.v-home-rank-row[data-first="true"] .v-home-rank-cp {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.v-home-rank-cp small {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--v-accent);
+}
+
+/* ── Challenges ─────────────────────────────────────────────────────────── */
+
 .v-home-challenges {
   display: grid;
-  gap: clamp(16px, 1.8vw, 20px);
-  align-items: stretch;
+  gap: 0.875rem;
 }
 
-@media (min-width: 768px) {
-  .v-home-challenges {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.v-home-challenge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  color: inherit;
+  transition: border-color 0.4s var(--v-ease), box-shadow 0.4s var(--v-ease);
 }
 
-/* ── L'état vide des challenges ─────────────────────────────────────────── */
+.v-home-challenge:hover {
+  border-color: rgb(11 122 100 / 0.4);
+  box-shadow: 0 18px 36px -28px rgb(17 22 26 / 0.45);
+  color: inherit;
+}
+
+.v-home-challenge-shot {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  width: clamp(6.5rem, 12vw, 9rem);
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  background: var(--v-night);
+}
+
+.v-home-challenge-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.v-home-challenge-body {
+  display: grid;
+  gap: 0.35rem;
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.v-home-tag {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  height: 1.375rem;
+  padding-inline: 0.6rem;
+  border-radius: 999px;
+  background: rgb(11 122 100 / 0.09);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--v-accent);
+}
+
+.v-home-challenge-body h3 {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.0625rem, 1.6vw, 1.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.v-home-challenge-body p {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--v-muted);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.v-home-challenge-aside {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+  flex: none;
+  padding: 0.25rem 0.75rem 0.25rem 1.5rem;
+  border-left: 1px solid var(--v-line);
+}
+
+.v-home-pool {
+  font-size: 0.9375rem;
+  color: var(--v-muted);
+}
+
+.v-home-pool b {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  color: var(--v-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.v-home-contribute {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.5rem;
+  padding-inline: 1.2rem 1rem;
+  border-radius: 999px;
+  background: var(--v-ink);
+  color: var(--v-bg);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.v-home-contribute svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* ── L'état vide ────────────────────────────────────────────────────────── */
 
 .v-home-empty {
   border: 1px dashed rgb(17 17 17 / 0.14);
-  border-radius: 20px;
+  border-radius: 12px;
   background: var(--v-surface);
-  padding: 44px 24px;
+  padding: 2.75rem 1.5rem;
   text-align: center;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--v-muted);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Téléphone — même bascule à 768px que `/challenges`.
+   Téléphone — la vue du cadre iOS de la maquette. Bascule à 768px, comme les
+   trois listings.
    ───────────────────────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
-  .v-home .v-main {
-    gap: clamp(22px, 5vw, 28px);
+  .v-home {
+    --v-gutter: 1.25rem;
   }
 
-  .v-home-section {
-    padding-top: 22px;
+  .v-home-section,
+  .v-home-vision {
+    padding-block: 1.75rem;
   }
 
-  .v-home .v-title {
-    font-size: 32px;
+  .v-home-mission {
+    gap: 0.875rem;
+    padding-block: 1.75rem 1.5rem;
   }
 
-  .v-home-hero {
-    gap: 18px;
+  .v-home-mission h1 {
+    font-size: 1.23rem;
+    line-height: 1.18;
+    text-wrap: pretty;
   }
 
-  .v-home-video {
-    border-radius: 18px;
+  .v-home-eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.26em;
   }
 
-  /* Les trois rails débordent la gouttière : ils défilent jusqu'au bord de
-     l'écran, pas jusqu'au bord du texte. */
-  .v-home-news,
-  .v-home-challenges,
-  .v-home-podcast-rail,
-  .v-home-marquee {
-    margin-inline: calc(-1 * var(--v-gutter));
+  .v-home-tagline {
+    font-size: 1.0625rem;
+    line-height: 1.35;
   }
 
-  /* Les news passent en carrousel, comme les épisodes juste en dessous :
-     trois cartes empilées faisaient à elles seules un écran et demi de
-     défilement avant d'arriver au reste de la page. La carte s'arrête au
-     centre (`scroll-snap`), et la suivante dépasse assez pour dire qu'il y en
-     a une après. */
-  .v-home-news {
-    display: flex;
-    grid-template-columns: none;
-    gap: 12px;
-    overflow-x: auto;
-    padding-inline: var(--v-gutter);
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+  /* Le lien passe sous le contenu, calé à droite, comme sur la maquette
+     téléphone : l'en-tête n'a plus la largeur pour le tenir sur sa ligne. */
+  .v-home-section > .v-home-more {
+    justify-self: end;
   }
 
-  .v-home-news::-webkit-scrollbar {
+  .v-home-vision {
+    gap: 1.25rem;
+  }
+
+  .v-home-vision-title {
+    font-size: 1.75rem;
+    line-height: 1.05;
+  }
+
+  .v-home-vision-sub {
+    font-size: 1.0625rem;
+  }
+
+  .v-home-vision-left,
+  .v-home-vision-right {
+    gap: 1.25rem;
+    max-width: none;
+  }
+
+  /* Sur téléphone la maquette réduit les étapes à leur titre, et resserre la
+     pastille : trois paragraphes de plus repousseraient les news d'un écran. */
+  .v-home-step {
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 0.875rem;
+  }
+
+  .v-home-step-num {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 0.9375rem;
+  }
+
+  .v-home-step-link {
+    height: 1.25rem;
+  }
+
+  .v-home-step-body {
+    padding-top: 0.6rem;
+  }
+
+  .v-home-step-body h3 {
+    font-size: 1rem;
+    letter-spacing: -0.015em;
+  }
+
+  .v-home-step-body p {
     display: none;
   }
 
-  .v-home-news-card {
-    flex: 0 0 85%;
-    scroll-snap-align: center;
+  /* ── Les trois rails ───────────────────────────────────────────────────
+     News, épisodes et challenges défilent au doigt et débordent la gouttière :
+     les cartes vont jusqu'au bord de l'écran, pas jusqu'au bord du texte. */
+  .v-home-news-list,
+  .v-home-episodes,
+  .v-home-challenges {
+    display: flex;
+    grid-template-columns: none;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-inline: var(--v-gutter);
+    scroll-padding-inline: var(--v-gutter);
+    margin-inline: calc(-1 * var(--v-gutter));
   }
 
-  /* Un point par news, celui de la carte au centre en couleur primaire et
-     allongé en gélule : la position se lit à la forme autant qu'à la teinte,
-     pas seulement à la couleur. */
+  .v-home-news-list::-webkit-scrollbar,
+  .v-home-episodes::-webkit-scrollbar,
+  .v-home-challenges::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Les trois news à égalité : sur un écran de téléphone, une vedette pleine
+     largeur suivie de deux brèves ferait trois écrans de défilement avant le
+     podcast. La maquette les aligne donc toutes les trois dans le rail. */
+  .v-home-news-list > * {
+    flex: 0 0 82%;
+    scroll-snap-align: start;
+  }
+
+  .v-home-episodes > * {
+    flex: 0 0 42%;
+    scroll-snap-align: start;
+  }
+
+  .v-home-challenges > * {
+    flex: 0 0 86%;
+    scroll-snap-align: start;
+  }
+
+  /* En rail, la brève reprend la forme d'une carte : photo en haut, titre
+     dessous — la vignette de 7.5rem à côté du texte ne tient plus. */
+  .v-home-brief {
+    grid-template-columns: none;
+    align-content: start;
+    gap: 0.75rem;
+    padding: 0.5rem 0.5rem 1rem;
+  }
+
+  .v-home-brief-shot {
+    aspect-ratio: 16 / 9;
+  }
+
+  .v-home-brief-body {
+    padding-inline: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .v-home-brief-body h3 {
+    font-size: 1.0625rem;
+    line-height: 1.28;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .v-home-feature {
+    grid-template-columns: none;
+    align-content: start;
+    gap: 0.75rem;
+    padding: 0.5rem 0.5rem 1rem;
+  }
+
+  .v-home-feature-body,
+  .v-home-feature-title-only {
+    gap: 0.4rem;
+    padding: 0 0.5rem;
+  }
+
+  .v-home-feature-body h3 {
+    font-size: 1.0625rem;
+    line-height: 1.28;
+  }
+
+  .v-home-feature-body p {
+    display: none;
+  }
+
+  /* La une perd aussi son appel à lire : dans le rail, la carte entière est
+     le lien, et trois cartes identiques se lisent mieux qu'une hiérarchie. */
+  .v-home-read {
+    display: none;
+  }
+
+  .v-home-feature-title-only h3 {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+
+  .v-home-play {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .v-home-play svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .v-home-episode {
+    grid-template-columns: none;
+    align-content: start;
+    gap: 0.375rem;
+  }
+
+  .v-home-episode-title {
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  /* L'encart communauté se détache des bords sans les toucher. */
+  .v-home-community {
+    margin: 0.5rem 0 1.5rem;
+    padding: 1.5rem 1.25rem;
+  }
+
+  .v-home-community-text {
+    flex: 1 1 auto;
+    gap: 1rem;
+  }
+
+  .v-home-community-lede {
+    font-size: 1.0625rem;
+  }
+
+  .v-home-faces {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 0.625rem;
+    padding: 0.25rem;
+    margin-inline: -0.25rem;
+  }
+
+  .v-home-faces::-webkit-scrollbar {
+    display: none;
+  }
+
+  .v-home-face img:first-child,
+  .v-home-face-more {
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+
+  .v-home-face img:first-child {
+    box-shadow: 0 0 0 1px rgb(11 122 100 / 0.3), 0 0 0 3px var(--v-bg);
+  }
+
+  .v-home-flag {
+    width: 0.95rem;
+    border-radius: 2px;
+  }
+
+  .v-home-cta {
+    justify-content: center;
+    width: 100%;
+    height: 3rem;
+    padding-inline: 0;
+    font-size: 0.9375rem;
+  }
+
+  /* Les lignes du classement, resserrées. */
+  .v-home-rank-row {
+    grid-template-columns: 1rem 2.5rem minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+  }
+
+  .v-home-rank-row[data-first="true"] {
+    padding-block: 0.75rem;
+  }
+
+  .v-home-rank-num,
+  .v-home-rank-name {
+    font-size: 0.9375rem;
+  }
+
+  .v-home-rank-bio {
+    font-size: 0.75rem;
+  }
+
+  .v-home-rank-cp,
+  .v-home-rank-row[data-first="true"] .v-home-rank-cp {
+    font-size: 0.9375rem;
+    gap: 0.25rem;
+  }
+
+  .v-home-rank-cp small {
+    font-size: 0.625rem;
+  }
+
+  /* En rail, la carte challenge s'empile : photo, texte, puis la ligne du
+     pool et du bouton — la colonne de droite ne tient pas sur 86% d'écran. */
+  .v-home-challenge {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.5rem 0.5rem 0.875rem;
+  }
+
+  .v-home-challenge-shot {
+    width: 100%;
+    aspect-ratio: 16 / 8;
+  }
+
+  /* La pastille du type quitte le corps pour la photo, faute de place. */
+  .v-home-challenge-body {
+    gap: 0.25rem;
+    flex: 1 1 auto;
+    padding-inline: 0.375rem;
+  }
+
+  .v-home-challenge-body .v-home-tag {
+    position: absolute;
+    left: 0.5rem;
+    top: 0.5rem;
+    z-index: 1;
+    background: rgb(255 255 255 / 0.92);
+  }
+
+  .v-home-challenge-body h3 {
+    font-size: 1.0625rem;
+  }
+
+  .v-home-challenge-body p {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .v-home-challenge-aside {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 0.375rem 0;
+    border-left: none;
+    border-top: 1px solid var(--v-line);
+  }
+
+  .v-home-pool {
+    font-size: 0.8125rem;
+  }
+
+  .v-home-contribute {
+    height: 2.75rem;
+    padding-inline: 1.1rem 0.95rem;
+    font-size: 0.8125rem;
+  }
+
+  /* Les points d'avancement du rail des challenges (voir `HomeCarousel`). */
   .v-home-dots {
     display: flex;
     justify-content: center;
@@ -373,37 +1218,31 @@ html[data-mode="light"] .v-home .v-home-marquee [class*="text-white/50"] {
     width: 20px;
     background: var(--theme-primary);
   }
+}
 
-  /* Le rail des épisodes reprend la gouttière à son compte, comme celui des
-     news. Il la porte en `px-4 sm:px-6`, mais le réarmement `ul { padding: 0 }`
-     de `vitrine.css` n'est dans aucune couche et l'emporte sur l'utilitaire :
-     sans cette règle, la première vignette colle au bord de l'écran. */
-  .v-home-podcast-rail ul {
-    padding-inline: var(--v-gutter);
+/* Au-dessus du téléphone, les grilles reprennent et les points disparaissent :
+   tout est visible d'un coup, il n'y a rien à suivre. */
+@media (min-width: 768px) {
+  .v-home-dots {
+    display: none;
   }
+}
 
-  /* Les challenges passent en carrousel eux aussi — deux cartes de cette
-     hauteur empilées, c'est un écran entier de défilement. Même dispositif que
-     les news, à ceci près qu'il tourne seul (voir `HomeCarousel`). */
-  .v-home-challenges {
-    display: flex;
-    grid-template-columns: none;
-    gap: 12px;
-    overflow-x: auto;
-    padding-inline: var(--v-gutter);
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
+/* ── Le lien « voir tout », en haut ou en bas selon la largeur ──────────────
+   La maquette le met au bout de l'en-tête sur écran, et sous le contenu, calé
+   à droite, sur téléphone — où l'en-tête n'a plus la largeur pour le tenir.
+   Les deux sont rendus, un seul s'affiche. */
+.v-home-more-bottom {
+  display: none;
+}
 
-  .v-home-challenges::-webkit-scrollbar {
+@media (max-width: 767px) {
+  .v-home-more-top {
     display: none;
   }
 
-  /* Les cartes sont posées par `ChallengeCard`, sans classe à nous : c'est le
-     rail qui les dimensionne. */
-  .v-home-challenges > * {
-    flex: 0 0 85%;
-    scroll-snap-align: center;
+  .v-home-more-bottom {
+    display: inline-flex;
+    justify-self: end;
   }
 }
