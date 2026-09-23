@@ -380,26 +380,28 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
   // les FK et le CHECK sont déclarés dans le CREATE TABLE plutôt qu'en
   // ALTER TABLE ADD CONSTRAINT : Postgres n'a pas d'IF NOT EXISTS sur
   // ADD CONSTRAINT, et ce script rejoue à chaque déploiement.
+  //
+  // La table est décrite ici dans sa forme **d'après** la migration 0025 (« un
+  // sandbox est un projet ») : ni type, ni repo_url, ni model_url, ni
+  // dataset_urls, ni colonnes d'évaluation. Une base déjà créée dans l'ancienne
+  // forme n'est pas touchée par ce CREATE — c'est le bloc de suppressions en
+  // fin de fichier qui l'y amène.
+  //
+  // `slug` et `cover_image_url` n'y figurent pas non plus : ils sont ajoutés
+  // plus bas, avec le backfill qui les rend NOT NULL.
   {
     label: "sandboxes",
     sql: `
       CREATE TABLE IF NOT EXISTS sandboxes (
         uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
-        type varchar(10) NOT NULL,
         title varchar(255) NOT NULL,
         context text,
         goals jsonb NOT NULL DEFAULT '[]'::jsonb,
         why text,
-        repo_url text NOT NULL,
-        model_url text,
-        dataset_urls jsonb NOT NULL DEFAULT '[]'::jsonb,
         status varchar(10) NOT NULL DEFAULT 'open',
         promoted_challenge_id uuid REFERENCES challenges(uuid) ON DELETE SET NULL,
         promoted_at timestamp,
-        evaluation jsonb,
-        evaluation_status varchar(10),
-        evaluated_at timestamp,
         created_at timestamp NOT NULL DEFAULT now(),
         updated_at timestamp NOT NULL DEFAULT now()
       )`,
@@ -829,6 +831,36 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
     label: "challenges.host",
     sql: `ALTER TABLE challenges ADD COLUMN IF NOT EXISTS host text`,
   },
+
+  // --- « Un sandbox est un projet » (drizzle/0025_sandbox_project.sql) ---
+  //
+  // Rejeu des suppressions de 0025, qui n'atteignaient pas la production : ce
+  // script est le seul à toucher au schéma au déploiement, et rien n'y joue les
+  // fichiers de `drizzle/`. Une base créée avant 0025 gardait donc `type` et
+  // `repo_url` en NOT NULL sans défaut — colonnes que le schéma courant ne
+  // déclare plus, donc qu'aucun INSERT ne renseigne. Toute création de
+  // proposition y échouait en 23502, le seed comme l'application.
+  //
+  // Destructif et voulu, comme la suppression de meeting_analyses.
+  // contribution_signals plus haut : ces colonnes ne sont plus lues nulle part,
+  // et les garder empêche d'écrire. Idempotent par IF EXISTS — no-op sur une
+  // base déjà à jour, et sur une base neuve, que le CREATE TABLE ci-dessus
+  // crée déjà dans la bonne forme.
+  //
+  // En dernier dans la liste : les statements s'exécutent dans l'ordre, et ces
+  // ALTER supposent la table créée.
+  ...([
+    "type",
+    "repo_url",
+    "model_url",
+    "dataset_urls",
+    "evaluation",
+    "evaluation_status",
+    "evaluated_at",
+  ].map((column) => ({
+    label: `sandboxes.${column} (suppression — migration 0025)`,
+    sql: `ALTER TABLE sandboxes DROP COLUMN IF EXISTS ${column}`,
+  }))),
 ];
 
 async function main() {
