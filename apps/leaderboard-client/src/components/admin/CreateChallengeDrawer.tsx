@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
   CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck, Cpu, Package,
-  ListTodo, Trash2, FileText, Eye, Rocket, Image as ImageIcon, Building2,
+  ListTodo, Trash2, FileText, Eye, Rocket, Image as ImageIcon, Building2, Bookmark,
 } from 'lucide-react';
 import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
@@ -137,7 +137,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const slugField = useSlugField('challenge', title);
   const [projectId, setProjectId] = useState(projects[0]?.id ?? '');
   const [status, setStatus] = useState('draft');
-  const [type, setType] = useState<'code' | 'ml' | 'validation'>('code');
+  const [type, setType] = useState<'code' | 'ml' | 'validation' | 'none'>('code');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [cp, setCp] = useState(100);
@@ -203,7 +203,12 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       slugField.reset({ title: challenge.title, value: challenge.slug, saved: challenge.slug, excludeId: challenge.uuid });
       setProjectId(challenge.project_id);
       setStatus(challenge.status);
-      setType(challenge.type === 'ml' ? 'ml' : challenge.type === 'validation' ? 'validation' : 'code');
+      setType(
+        challenge.type === 'ml' ? 'ml'
+          : challenge.type === 'validation' ? 'validation'
+            : challenge.type === 'none' ? 'none'
+              : 'code',
+      );
       setStartDate(toDateInput(challenge.start_date));
       setEndDate(toDateInput(challenge.end_date));
       setCp(challenge.contribution_points_reward);
@@ -599,25 +604,29 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
               sandbox is an idea and carries no type, so this is where the shape
               of the work gets decided. */}
           <Field label="Type">
-            <div className="flex gap-2">
+            {/* `flex-wrap` et une base : à quatre options, une seule ligne
+                rognait chaque libellé jusqu'à l'illisible. */}
+            <div className="flex flex-wrap gap-2">
               {([
                 { value: 'code',       label: 'Code',       icon: Code2,        desc: 'Tasks, Kanban, GitHub' },
                 { value: 'ml',         label: 'ML',         icon: BrainCircuit, desc: 'Dataset, Model, API' },
                 { value: 'validation', label: 'Validation', icon: ShieldCheck,  desc: 'Test a submitted API live' },
+                { value: 'none',       label: 'None',       icon: Bookmark,     desc: 'A placeholder — nothing to join' },
               ] as const).map(opt => {
                 const Icon = opt.icon;
                 const active = type === opt.value;
                 if (typeLocked && !active) return null;
-                // Un challenge de validation dérive d'un challenge ML
-                // existant : il ne peut pas naître d'une proposition, et la
-                // route de promotion ne l'accepte pas.
-                if (isPromotion && opt.value === 'validation') return null;
+                // Deux types qu'une promotion ne peut pas produire, et que la
+                // route refuse : un challenge de validation dérive d'un
+                // challenge ML existant, et promouvoir une proposition ouvre
+                // du travail — un repère n'en ouvre aucun.
+                if (isPromotion && (opt.value === 'validation' || opt.value === 'none')) return null;
                 return (
                   <button
                     key={opt.value}
                     onClick={() => !typeLocked && setType(opt.value)}
                     disabled={typeLocked}
-                    className={`flex flex-1 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
+                    className={`flex flex-1 basis-40 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
                       active
                         ? 'border-brandCP/40 bg-brandCP/10 ring-1 ring-brandCP/20'
                         : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'

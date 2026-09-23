@@ -9,9 +9,13 @@
  * Validation challenges are excluded by type: the public page shows either the
  * dataset/model metrics or per-contributor task progress, and a validation
  * challenge has neither.
+ *
+ * Placeholders (`none`) are in: a catalogue entry that nobody can see is a
+ * catalogue entry that does not exist. Their page is the vitrine screen, which
+ * needs neither metrics nor task progress — see `showVitrineScreen`.
  */
 const PUBLIC_STATUSES = new Set(['active', 'completed']);
-const PUBLIC_TYPES = new Set(['code', 'ml']);
+const PUBLIC_TYPES = new Set(['code', 'ml', 'none']);
 
 export function isPubliclyVisible(challenge: {
   status: string | null | undefined;

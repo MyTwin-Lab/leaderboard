@@ -71,6 +71,16 @@ describe("buildRepoDefinitions", () => {
     ]);
   });
 
+  it("ne crée aucun repo pour un challenge `none`", () => {
+    // Un placeholder n'est rejoint par personne : il n'y a pas de travail à
+    // provisionner. Le slug est ignoré, même si l'admin en a saisi un avant de
+    // basculer le type.
+    expect(buildRepoDefinitions({ type: "none", title: TITLE, githubSlug: SLUG })).toEqual([]);
+    expect(
+      buildRepoDefinitions({ type: "none", title: TITLE, workspaceMode: "provided_repo" }),
+    ).toEqual([]);
+  });
+
   it("ne crée aucun repo pour un challenge code en own_repo", () => {
     expect(
       buildRepoDefinitions({ type: "code", title: TITLE, workspaceMode: "own_repo", githubSlug: SLUG }),

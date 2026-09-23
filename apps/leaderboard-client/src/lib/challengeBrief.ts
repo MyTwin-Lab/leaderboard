@@ -61,6 +61,25 @@ export interface GroupInvite {
 export const BRIEF_GATED_TYPES = ['code', 'ml'];
 
 /**
+ * Le type d'un challenge **repère** : il n'ouvre aucun travail.
+ *
+ * « Community Management », « Design system », « Documentation » — des entrées
+ * du catalogue qui disent qu'un sujet existe et à qui parler, sans board, sans
+ * dépôt, sans branche et sans personne à inscrire. Rien ne les rejoint : c'est
+ * ce qui les distingue d'un challenge code qui n'aurait pas encore de
+ * participants.
+ *
+ * Une valeur dans `challenges.type`, pas un `null` : `null` est l'absence de
+ * réponse d'une row écrite avant que le type existe, et le code la rabat sur
+ * `code` un peu partout. `'none'` est une réponse.
+ */
+export const PLACEHOLDER_TYPE = 'none';
+
+export function isPlaceholderChallenge(type: string | null | undefined): boolean {
+  return type === PLACEHOLDER_TYPE;
+}
+
+/**
  * Le brief remplace-t-il les KPI et l'espace de travail ?
  *
  * Le visiteur anonyme le lit comme le contributeur connecté : c'est la page
@@ -79,4 +98,29 @@ export function shouldShowBrief({ isMember, challengeType, brief }: {
   if (isMember) return false;
   if (!brief || !brief.trim()) return false;
   return BRIEF_GATED_TYPES.includes(challengeType ?? '');
+}
+
+/**
+ * L'écran vitrine prend-il toute la page ?
+ *
+ * Deux chemins qui n'ont de commun que leur réponse :
+ *
+ * - Un challenge **repère** l'affiche toujours, et pour tout le monde. C'est sa
+ *   seule page : il n'y a pas d'espace de travail derrière, donc rien ne
+ *   justifierait de la conditionner à un brief ou à une appartenance. Sans
+ *   brief elle se réduit au hero et à sa description, ce qui suffit à dire
+ *   qu'un sujet existe.
+ * - Un challenge `code` ou `ml` l'affiche à qui n'a pas rejoint et a un brief à
+ *   lire, ou à un membre sur téléphone — là où l'espace de travail, qui veut un
+ *   clavier et un IDE, n'a rien à montrer.
+ */
+export function showVitrineScreen({ isMember, isPhone, challengeType, brief }: {
+  isMember: boolean;
+  isPhone: boolean;
+  challengeType: string | null | undefined;
+  brief: string | null | undefined;
+}): boolean {
+  if (isPlaceholderChallenge(challengeType)) return true;
+  if (!BRIEF_GATED_TYPES.includes(challengeType ?? '')) return false;
+  return isMember ? isPhone : shouldShowBrief({ isMember, challengeType, brief });
 }

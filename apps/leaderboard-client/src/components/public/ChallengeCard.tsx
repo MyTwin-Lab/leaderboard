@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { formatCP } from "@/lib/formatters";
 import { challengePath } from "@/lib/paths";
 import { coverShot } from "@/lib/coverImage";
+import { isPlaceholderChallenge } from "@/lib/challengeBrief";
 import { VitrineAvatar } from "@/components/vitrine/VitrineAvatar";
 import { ArrowTinyIcon } from "@/components/vitrine/SearchIcon";
 import type { TeamMember } from "@/lib/types";
@@ -42,6 +43,7 @@ const TYPE_LABEL: Record<string, string> = {
   ml: "ML",
   validation: "Validation",
   code: "Code",
+  none: "None",
 };
 
 /** Les barres d'activité de la maquette : la plus haute en plein, les autres en clair. */
@@ -80,6 +82,7 @@ export function ChallengeCard({
   const router = useRouter();
 
   const normalizedType = (challengeType ?? "code").toLowerCase();
+  const isPlaceholder = isPlaceholderChallenge(normalizedType);
   const done = challengeStatus === "completed";
   const dest = isAdmin ? `/admin/challenges/${challengeId}` : challengePath(challengeSlug);
   const shot = coverShot(coverImageUrl, index, "challenge");
@@ -185,8 +188,10 @@ export function ChallengeCard({
             {moreCount > 0 && <div className="v-ch-team-more">+{moreCount}</div>}
             {teamMembers.length === 0 && <span className="v-ch-team-solo">No one yet</span>}
           </div>
-          <span className="v-card-cta" data-quiet={done ? "true" : "false"}>
-            {done ? "See results" : "Contribute"}
+          {/* « Contribute » serait faux sur un repère : il n'y a rien à
+              rejoindre ni à soumettre. La carte mène à sa page, et le dit. */}
+          <span className="v-card-cta" data-quiet={done || isPlaceholder ? "true" : "false"}>
+            {isPlaceholder ? "Read more" : done ? "See results" : "Contribute"}
             <ArrowTinyIcon />
           </span>
         </div>

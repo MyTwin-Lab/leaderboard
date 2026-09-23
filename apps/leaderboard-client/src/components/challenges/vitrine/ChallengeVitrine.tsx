@@ -80,6 +80,7 @@ const TYPE_LABELS: Record<string, string> = {
   ml: 'ML',
   validation: 'Validation',
   code: 'Code',
+  none: 'None',
 };
 
 const INVITE_BLOCKERS: Record<string, string> = {

@@ -11,13 +11,14 @@ For the full rationale and design history, see the spec:
 
 ### Challenge types
 
-A challenge has a `type`: `code` (the default), `ml`, or `validation`.
+A challenge has a `type`: `code` (the default), `ml`, `validation`, or `none`.
 
 - **`code`** challenges work as described in this document — personal task boards, a per-contributor workspace, and a project-wide evaluation triggered by the contributor.
 - **Groups.** Two or three contributors can join together and share a single workspace — one board, one branch, one evaluation, one contribution — with a collective bonus and a split reward. Everything below describes a solo participation, which is what a group holder's workspace looks like from the inside; see [`challenge-groups.md`](./challenge-groups.md) for what changes.
 
 - **`ml`** challenges are for dataset/model/packaging work. They have **no tasks at all** — contributors submit directly through a dedicated ML workspace flow, scored and rewarded live. See [`ml-rewards.md`](./ml-rewards.md) for that entire flow. Code challenges now follow the same live-reward philosophy (see below), just with a different workspace and evaluation shape.
 - **`validation`** challenges have no tasks and no repos of their own — they link 1:1 to an existing `ml` challenge (`source_challenge_id`) and let contributors manually test its submitted API packagings by dropping a file and seeing the live output. See [`validation-challenges.md`](./validation-challenges.md).
+- **`none`** challenges are **placeholders**: a catalogue entry saying a subject exists, with nobody to enrol. "Community Management", "Design system", "Documentation". No repos, no board, no branch, and **no Join button** — an admin creates one directly, a sandbox promotion never produces one. Their only page is the vitrine screen: the photo hero, the title and description, and the brief if one was written. See below.
 
 ---
 
@@ -27,7 +28,7 @@ A challenge has a `type`: `code` (the default), `ml`, or `validation`.
 draft → active → completed → archived
 ```
 
-A challenge can also be **born from a sandbox**: an admin promotes a contributor proposal, the challenge inherits its type, and the author is auto-joined with their repo as `own_repo` — their work carried over as credited contributions rather than re-submitted. See [`sandbox.md`](./sandbox.md).
+A challenge can also be **born from a sandbox**: an admin promotes a contributor proposal and picks the type it becomes — `code` or `ml`, never `validation` (it derives from an ML challenge) nor `none` (promoting opens work; a placeholder opens none). The author is auto-joined, with their workspace left to declare. See [`sandbox.md`](./sandbox.md).
 
 | Status | Description |
 |--------|-------------|
@@ -38,7 +39,18 @@ A challenge can also be **born from a sandbox**: an admin promotes a contributor
 
 A challenge is closed via `POST /api/challenges/:id/close`, which sets `status: 'completed'`. It no longer computes or distributes anything; it exists purely to stop new joins and evaluations. Closing also terminates any GPU instance the challenge owns (see [`compute-power.md`](./compute-power.md)).
 
-Anonymous visitors only ever see `active` or `completed` challenges of type `code` or `ml` — an allowlist, so a new status or type is private until someone adds it (`lib/public/challengeVisibility.ts`).
+Anonymous visitors only ever see `active` or `completed` challenges of type `code`, `ml` or `none` — an allowlist, so a new status or type is private until someone adds it (`lib/public/challengeVisibility.ts`).
+
+### Placeholders (`none`)
+
+Nothing about a placeholder is a special case bolted on: it falls out of two allowlists that already existed.
+
+- `BRIEF_GATED_TYPES` (`lib/challengeBrief.ts`) lists the types that can be joined. `none` is not in it, so `showJoinInHeader` returns false and no path — header, vitrine hero, vitrine aside — offers a Join. The server side needs no guard it did not already have.
+- `buildRepoDefinitions` returns `[]` for it, like a validation challenge, so creation provisions nothing.
+
+The one thing that *is* explicit: `showVitrineScreen` puts a placeholder on the vitrine screen unconditionally — brief or not, member or not. For the other types that screen is a gate before joining; here it is the only page there is, so gating it behind a brief would leave a placeholder with no page at all.
+
+The create drawer offers the type, and hides everything it drives: no workspace mode, no reward rules, no compute, no API packaging, no template tasks. Pool, dates, project, cover and brief stay — a placeholder is still a challenge row.
 
 ---
 

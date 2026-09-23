@@ -33,7 +33,7 @@ import { fetchJson } from '@/lib/fetchJson';
 import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
 import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
-import { BRIEF_GATED_TYPES, shouldShowBrief, type GroupInvite } from '@/lib/challengeBrief';
+import { isPlaceholderChallenge, showVitrineScreen, type GroupInvite } from '@/lib/challengeBrief';
 import { showJoinInHeader } from '@/lib/joinGate';
 import { useJoinChallenge } from '@/lib/useJoinChallenge';
 import { useIsPhone } from '@/lib/useIsPhone';
@@ -330,7 +330,10 @@ export default function ChallengeDetailClient({
   // sans session, la route `documents` étant publique en lecture.
   // Un membre le relit sur téléphone : c'est tout ce que cet écran-là peut
   // lui montrer, faute d'espace de travail.
-  const briefNeeded = !!challenge && (!isMember || isPhone);
+  // Un challenge repère le demande toujours : sa seule page est l'écran
+  // vitrine, et le brief est ce qui la remplit.
+  const briefNeeded =
+    !!challenge && (!isMember || isPhone || isPlaceholderChallenge(challenge.type));
   const briefQuery = useQuery({
     queryKey: ['challenge-brief', challengeId],
     queryFn: async () => {
@@ -384,15 +387,6 @@ export default function ChallengeDetailClient({
   const bestMetricValue = mlRewards?.bestValue ?? mlRewards?.metric?.points?.[0] ?? null;
   const bestMetricLabel = mlRewards?.metric?.name ? mlRewards.metric.name.toUpperCase() : null;
 
-  // Le brief prend la place des KPI et de l'espace de travail : avant d'avoir
-  // rejoint, un contributeur n'a ni board, ni branche, ni soumission dont ces
-  // blocs pourraient parler.
-  const showBrief = shouldShowBrief({
-    isMember,
-    challengeType: challenge.type,
-    brief: briefQuery.data,
-  });
-
   // `Join` prend la place de `Docs` tant que le visiteur n'a pas rejoint. La
   // condition ignore `isAnonymous` volontairement : la page est publique, et le
   // bouton renvoie alors vers la connexion plutôt que d'ouvrir la modale.
@@ -408,11 +402,15 @@ export default function ChallengeDetailClient({
   // l'espace de travail n'a rien à montrer : la maquette le garde sur cette
   // page et lui dit de passer sur un ordinateur.
   //
-  // `shouldShowBrief` reste la porte du non-membre (il lui faut un brief à
-  // lire) ; le membre sur téléphone n'a pas cette condition — son écran vaut
-  // pour le renvoi qu'il porte, brief ou pas.
-  const showVitrine = BRIEF_GATED_TYPES.includes(challenge.type)
-    && (isMember ? isPhone : showBrief);
+  // Sur un challenge repère, c'est la seule page : il n'y a pas d'espace de
+  // travail derrière. La règle vit dans `showVitrineScreen`, avec ses deux
+  // chemins et ses tests.
+  const showVitrine = showVitrineScreen({
+    isMember,
+    isPhone,
+    challengeType: challenge.type,
+    brief: briefQuery.data,
+  });
 
   const upcomingMeetings = meetings
     .filter(m => ['scheduled', 'in_progress'].includes(m.status))

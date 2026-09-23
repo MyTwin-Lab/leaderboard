@@ -27,6 +27,13 @@ describe('showJoinInHeader', () => {
     expect(showJoinInHeader({ ...OPEN, challengeType: 'validation' })).toBe(false);
   });
 
+  it('hides Join on a placeholder challenge', () => {
+    // Un repère n'ouvre aucun travail : il n'y a ni board à copier, ni branche
+    // à provisionner, donc rien à rejoindre. C'est l'allowlist qui le dit, pas
+    // une exclusion — un type nouveau est fermé tant que personne ne l'ouvre.
+    expect(showJoinInHeader({ ...OPEN, challengeType: 'none' })).toBe(false);
+  });
+
   it('hides Join on a completed or archived challenge', () => {
     expect(showJoinInHeader({ ...OPEN, challengeStatus: 'completed' })).toBe(false);
     expect(showJoinInHeader({ ...OPEN, challengeStatus: 'archived' })).toBe(false);

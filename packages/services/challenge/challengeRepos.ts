@@ -21,7 +21,7 @@ export interface RepoDefinition {
 }
 
 export interface BuildRepoDefinitionsInput {
-  /** 'code' | 'ml' | 'validation'. */
+  /** 'code' | 'ml' | 'validation' | 'none'. */
   type: string;
   /** Titre du challenge — préfixe le nom de chaque repo. */
   title: string;
@@ -43,6 +43,11 @@ export interface BuildRepoDefinitionsInput {
  * Un challenge de validation n'a **aucun** repo propre — il référence les
  * soumissions d'un challenge ML existant. Un challenge code en `own_repo` non
  * plus : chaque contributeur fournit le sien, il n'y a rien à provisionner.
+ *
+ * Un challenge `none` non plus, et pour une raison plus radicale : personne ne
+ * le rejoint, donc personne n'y travaille. C'est un repère posé dans le
+ * catalogue (« Community Management »), pas un chantier — voir
+ * `PLACEHOLDER_TYPE` côté client.
  */
 export function buildRepoDefinitions({
   type,
@@ -62,7 +67,7 @@ export function buildRepoDefinitions({
     ];
   }
 
-  if (type === "validation") return [];
+  if (type === "validation" || type === "none") return [];
 
   if ((workspaceMode ?? "provided_repo") === "own_repo") return [];
 
