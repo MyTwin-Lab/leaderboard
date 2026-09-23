@@ -55,7 +55,14 @@ export function HomeGate() {
       // Le démontage suit le fondu plutôt qu'un délai posé à la main : si la
       // transition est coupée (`prefers-reduced-motion`), l'événement part
       // tout de suite et la prépage disparaît sans attendre.
-      onTransitionEnd={() => {
+      //
+      // Les deux gardes comptent. `transitionend` remonte depuis les enfants —
+      // le bouton en a une au survol — et la sortie anime trois propriétés à la
+      // fois : sans elles, la prépage se démonterait au premier survol venu, ou
+      // au milieu de son propre fondu.
+      onTransitionEnd={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.propertyName !== "opacity") return;
         if (!open) setGone(true);
       }}
     >

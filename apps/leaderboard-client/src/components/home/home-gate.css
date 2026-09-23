@@ -6,6 +6,35 @@
    racine.
    ───────────────────────────────────────────────────────────────────────── */
 
+/* L'arrivée : la photo se dénoue — elle part floue et très légèrement
+   zoomée, et se pose nette à sa taille. Le contenu fait le même geste, en plus
+   discret et un peu après, pour qu'on lise la scène avant le texte. */
+@keyframes v-gate-reveal {
+  from {
+    opacity: 0;
+    transform: scale(1.055);
+    filter: blur(16px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes v-gate-reveal-soft {
+  from {
+    opacity: 0;
+    transform: scale(1.02);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
 .v-gate {
   position: fixed;
   inset: 0;
@@ -21,11 +50,17 @@
     clamp(1.25rem, 3.5vh, 2rem);
   background: var(--v-bg);
   opacity: 1;
-  transition: opacity 0.5s var(--v-ease);
+  /* La sortie prolonge l'entrée à l'envers : la prépage avance d'un rien et se
+     défait, au lieu de s'éteindre à plat — l'accueil qui est déjà dessous se
+     découvre dans le même mouvement. */
+  transition: opacity 0.55s var(--v-ease), transform 0.55s var(--v-ease),
+    filter 0.55s var(--v-ease);
 }
 
 .v-gate[data-open="false"] {
   opacity: 0;
+  transform: scale(1.03);
+  filter: blur(12px);
   pointer-events: none;
 }
 
@@ -36,6 +71,7 @@
   object-fit: cover;
   object-position: 50% 30%;
   z-index: -2;
+  animation: v-gate-reveal 1.2s var(--v-ease) both;
 }
 
 /* Deux dégradés, pas un voile uniforme : le texte du haut et le bouton du bas
@@ -54,6 +90,7 @@
   justify-items: start;
   gap: 1.25rem;
   text-align: left;
+  animation: v-gate-reveal-soft 0.9s var(--v-ease) 0.18s both;
 }
 
 .v-gate-logo {
@@ -100,6 +137,7 @@
   cursor: pointer;
   box-shadow: 0 18px 40px -22px rgb(17 22 26 / 0.7);
   transition: transform 0.3s var(--v-ease), background 0.3s var(--v-ease);
+  animation: v-gate-reveal-soft 0.9s var(--v-ease) 0.3s both;
 }
 
 .v-gate-cta:hover {
@@ -113,16 +151,6 @@
   flex: none;
 }
 
-/* Le fondu de sortie est du mouvement non sollicité : sous `reduce`, la
-   prépage disparaît d'un coup. `HomeGate` démonte sur `transitionend`, que le
-   navigateur émet encore avec une durée nulle. */
-@media (prefers-reduced-motion: reduce) {
-  .v-gate,
-  .v-gate-cta {
-    transition-duration: 0.01ms;
-  }
-}
-
 /* ─────────────────────────────────────────────────────────────────────────
  Écran — le bouton quitte le bas pour se ranger sous le texte.
  ───────────────────────────────────────────────────────────────────────── */
@@ -130,10 +158,20 @@
   /* La photo du PC est en paysage, celle du téléphone en portrait : deux
      fichiers, et pas un recadrage. Elle passe en fond plutôt qu'en <img> pour
      que le balisage du téléphone reste exactement celui qui marche. */
-  .v-gate {
+  /* Le fond passe sur une couche à lui plutôt que sur  : il doit
+     pouvoir se dénouer sans emporter le texte dans son flou. */
+  .v-gate::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
     background-image: url("/home/enter-the-lab-desktop.jpg");
     background-size: cover;
     background-position: 50% 40%;
+    animation: v-gate-reveal 1.2s var(--v-ease) both;
+  }
+
+  .v-gate {
     /* Le texte décollé du bord gauche : la gouttière de la vitrine est
        calculée pour des colonnes de contenu, elle est trop courte pour un
        écran de garde. */
@@ -167,5 +205,30 @@
     align-self: start;
     justify-self: start;
     margin-top: clamp(2.25rem, 5vh, 3.75rem);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ Mouvement réduit — en dernier, pour l'emporter sur les deux blocs au-dessus.
+ L'arrivée et la sortie sont du mouvement que personne n'a demandé : ici la
+ prépage est là, nette, et s'en va d'un coup. `HomeGate` démonte sur
+ `transitionend`, que le navigateur émet encore avec une durée quasi nulle.
+ ───────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .v-gate::before,
+  .v-gate-shot,
+  .v-gate-top,
+  .v-gate-cta {
+    animation: none;
+  }
+
+  .v-gate,
+  .v-gate-cta {
+    transition-duration: 0.01ms;
+  }
+
+  .v-gate[data-open="false"] {
+    transform: none;
+    filter: none;
   }
 }
