@@ -10,25 +10,28 @@ import type { SandboxDetailResponse, SandboxListResponse, SandboxView } from "@/
 import type { SandboxStarTier } from "../../../../../../packages/database-service/domain/entities";
 import { CreateChallengeDrawer } from "@/components/admin/CreateChallengeDrawer";
 import { CreateSandboxModal } from "@/components/sandbox/CreateSandboxModal";
-import { SandboxDetail } from "@/components/sandbox/SandboxDetail";
+import { SandboxVitrine } from "@/components/sandbox/vitrine/SandboxVitrine";
 import type { StarState } from "@/components/sandbox/StarButton";
 
+/**
+ * Le squelette, à la mesure de la maquette : la photo pleine largeur, puis les
+ * deux colonnes de la proposition.
+ *
+ * Aux couleurs du Lab et non à celles de la vitrine : `useVitrineChrome` ne
+ * repeint le fond qu'au montage de `SandboxVitrine`, donc l'attente se passe
+ * encore sur le thème ordinaire.
+ */
 function Skeleton() {
   return (
-    <div className="mx-auto max-w-5xl animate-pulse space-y-6 pt-2">
-      <div className="h-4 w-24 rounded-full bg-white/8" />
-      <div className="space-y-3">
-        <div className="h-3 w-40 rounded-full bg-white/8" />
-        <div className="h-9 w-2/3 rounded-xl bg-white/10" />
-        <div className="h-3 w-full max-w-lg rounded-full bg-white/6" />
-      </div>
+    <div className="animate-pulse space-y-6">
+      <div className="h-[min(38rem,74svh)] rounded-[1.75rem] bg-white/[0.06]" />
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <div className="space-y-2">
+        <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-4 rounded-full bg-white/5" />
           ))}
         </div>
-        <div className="h-56 rounded-2xl bg-white/5" />
+        <div className="h-56 rounded-[1.25rem] bg-white/5" />
       </div>
     </div>
   );
@@ -101,15 +104,6 @@ export default function SandboxDetailClient({
       return { sandbox: connue, tiers: liste.tiers, promotion_bonus_cp: liste.promotion_bonus_cp };
     },
     initialDataUpdatedAt: 0,
-    // L'évaluation formative est fire-and-forget : son statut vit sur le
-    // sandbox. Tant qu'un run est en vol, on relit toutes les 3 s — c'est ce
-    // qui fait passer `FormativeEvaluationPanel` d'« Evaluating… » au score.
-    // Piloté ici, sur la seule requête qui porte le sandbox, plutôt que dans le
-    // panneau : deux `useQuery` sur la même clé se disputeraient les options.
-    refetchInterval: (query) => {
-      const status = query.state.data?.sandbox.evaluation_status;
-      return status === "pending" || status === "running" ? 3000 : false;
-    },
   });
 
   const me = meQuery.data?.user ?? null;
@@ -200,8 +194,8 @@ export default function SandboxDetailClient({
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <SandboxDetail
+    <>
+      <SandboxVitrine
         sandbox={sandbox}
         tiers={sandboxQuery.data?.tiers ?? []}
         promotionBonusCp={sandboxQuery.data?.promotion_bonus_cp ?? 0}
@@ -214,9 +208,9 @@ export default function SandboxDetailClient({
         onStarState={applyStarState}
       />
 
-      {actionError && <p className="mt-4 text-xs text-red-400">{actionError}</p>}
+      {actionError && <p className="mt-4 text-[13px] text-[#b3261e]">{actionError}</p>}
 
-      {/* Monté hors du conteneur animé de `SandboxDetail` : une modale `fixed`
+      {/* Monté hors du conteneur animé de `SandboxVitrine` : une modale `fixed`
           rendue dans un sous-arbre transformé serait confinée à sa boîte. */}
       <CreateSandboxModal
         open={editOpen}
@@ -237,7 +231,8 @@ export default function SandboxDetailClient({
             uuid: sandbox.uuid,
             title: sandbox.title,
             slug: sandbox.slug,
-            type: sandbox.type,
+            // Pas de `type` : une proposition n'en porte pas, c'est l'admin
+            // qui choisit la forme du challenge dans le tiroir.
             context: sandbox.context,
             goals: sandbox.goals,
             why: sandbox.why,
@@ -251,6 +246,6 @@ export default function SandboxDetailClient({
           }}
         />
       )}
-    </div>
+    </>
   );
 }

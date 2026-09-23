@@ -91,8 +91,9 @@ export class SandboxService {
   }
 
   /**
-   * Création. `type` est figé ici et n'apparaît dans aucun chemin d'édition :
-   * il a déterminé les champs saisis et déterminera la grille d'évaluation.
+   * Création. Le brouillon se réduit à ce que la proposition raconte : ni
+   * type, ni dépôt — un sandbox est un projet, pas un challenge en attente.
+   * Le dépôt arrive plus tard, par `update`.
    */
   async create(draft: SandboxDraft): Promise<Sandbox> {
     return this.deps.sandboxRepo.create(draft);
@@ -103,8 +104,8 @@ export class SandboxService {
    *
    * Un sandbox promu a donné naissance à un challenge qui vit sa vie : éditer
    * la proposition après coup réécrirait l'histoire sans rien changer au
-   * challenge. Un archivé est sorti. `SandboxPatch` ne porte pas `type` : son
-   * immuabilité est portée par le typage, pas par un test à l'exécution.
+   * challenge. Un archivé est sorti. `SandboxPatch` ne porte pas `type` : il
+   * n'est plus saisi nulle part, et le typage le dit.
    */
   async update(sandboxId: string, actorId: string, patch: SandboxPatch): Promise<Sandbox> {
     const sandbox = await this.requireSandbox(sandboxId);

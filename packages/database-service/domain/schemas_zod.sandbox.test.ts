@@ -6,70 +6,63 @@ import {
   sandboxSettingsPatchSchema,
 } from "./schemas_zod.js";
 
-const codeBase = {
-  type: "code" as const,
+const base = {
   title: "Prédiction de réadmission",
-  repo_url: "https://github.com/acme/readmission",
-};
-
-const mlBase = {
-  type: "ml" as const,
-  title: "Segmentation pulmonaire",
-  repo_url: "https://github.com/acme/lungs",
 };
 
 describe("sandboxCreateSchema", () => {
-  it("accepte un sandbox code avec le seul repo", () => {
-    const parsed = sandboxCreateSchema.parse(codeBase);
+  it("accepte une proposition réduite à son titre", () => {
+    // Un sandbox est un projet : ce qu'on dépose, c'est une idée. Ni type, ni
+    // dépôt, ni URLs ML — rien de tout ça n'est demandé à la création.
+    const parsed = sandboxCreateSchema.parse(base);
     expect(parsed.goals).toEqual([]);
-    expect(parsed.dataset_urls).toEqual([]);
+    expect(parsed.title).toBe(base.title);
   });
 
-  it("refuse modèle et datasets sur un sandbox code", () => {
-    // Ces champs n'existent que pour le type ml : les accepter ici les rendrait
-    // invisibles dans l'UI tout en polluant le contexte d'évaluation.
-    expect(
-      sandboxCreateSchema.safeParse({ ...codeBase, model_url: "https://kaggle.com/m/x" }).success
-    ).toBe(false);
-    expect(
-      sandboxCreateSchema.safeParse({ ...codeBase, dataset_urls: ["https://kaggle.com/d/x"] }).success
-    ).toBe(false);
-  });
-
-  it("exige au moins un dataset sur un sandbox ml", () => {
-    expect(sandboxCreateSchema.safeParse(mlBase).success).toBe(false);
-    expect(
-      sandboxCreateSchema.safeParse({ ...mlBase, dataset_urls: ["https://kaggle.com/d/lungs"] })
-        .success
-    ).toBe(true);
-  });
-
-  it("laisse le modèle optionnel sur un sandbox ml", () => {
-    // Un sandbox ML peut démarrer avant d'avoir produit un artefact.
+  it("ignore le type, le dépôt et les URLs ML", () => {
+    // Envoyés par un vieux client, ils ne doivent rien écrire — et surtout pas
+    // faire échouer la création. Les colonnes n'existent plus.
     const parsed = sandboxCreateSchema.parse({
-      ...mlBase,
-      dataset_urls: ["https://kaggle.com/d/lungs"],
+      ...base,
+      type: "ml",
+      repo_url: "https://github.com/acme/readmission",
+      model_url: "https://kaggle.com/m/x",
+      dataset_urls: ["https://kaggle.com/d/x"],
     });
-    expect(parsed.model_url).toBeUndefined();
+    expect(parsed).not.toHaveProperty("type");
+    expect(parsed).not.toHaveProperty("repo_url");
+    expect(parsed).not.toHaveProperty("model_url");
+    expect(parsed).not.toHaveProperty("dataset_urls");
   });
 
-  it("refuse une URL qui n'est pas en http(s)", () => {
-    for (const repo_url of ["ftp://example.org/repo", "mailto:a@b.c", "pas une url"]) {
-      expect(sandboxCreateSchema.safeParse({ ...codeBase, repo_url }).success).toBe(false);
-    }
+  it("exige un titre d'au moins trois caractères", () => {
+    expect(sandboxCreateSchema.safeParse({ title: "ok" }).success).toBe(false);
+    expect(sandboxCreateSchema.safeParse({}).success).toBe(false);
   });
 });
 
 describe("sandboxUpdateSchema", () => {
-  it("ignore le type — il est figé à la création", () => {
+  it("ignore le type — il n'est plus saisi nulle part", () => {
     const parsed = sandboxUpdateSchema.parse({ title: "Nouveau titre", type: "ml" });
     expect(parsed).not.toHaveProperty("type");
     expect(parsed.title).toBe("Nouveau titre");
   });
 
+  it("ignore le dépôt et les URLs ML, comme la création", () => {
+    const parsed = sandboxUpdateSchema.parse({
+      repo_url: "https://github.com/acme/x",
+      model_url: "https://kaggle.com/m/x",
+      dataset_urls: ["https://kaggle.com/d/x"],
+    });
+    expect(parsed).not.toHaveProperty("repo_url");
+    expect(parsed).not.toHaveProperty("model_url");
+    expect(parsed).not.toHaveProperty("dataset_urls");
+  });
+
   it("distingue l'absence d'un null : null vide le champ", () => {
-    expect(sandboxUpdateSchema.parse({ model_url: null }).model_url).toBeNull();
-    expect(sandboxUpdateSchema.parse({}).model_url).toBeUndefined();
+    expect(sandboxUpdateSchema.parse({ context: null }).context).toBeNull();
+    expect(sandboxUpdateSchema.parse({ cover_image_url: null }).cover_image_url).toBeNull();
+    expect(sandboxUpdateSchema.parse({}).context).toBeUndefined();
   });
 });
 

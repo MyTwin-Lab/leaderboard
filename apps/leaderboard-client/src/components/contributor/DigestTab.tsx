@@ -189,7 +189,7 @@ function DigestDetail({ id }: { id: string }) {
                   <span className="text-white/35"> - {sb.author.full_name}</span>
                 </>
               }
-              right={`${sb.type} · ${sb.star_count} ★`}
+              right={`${sb.star_count} ★`}
             />
           ))}
         </Section>

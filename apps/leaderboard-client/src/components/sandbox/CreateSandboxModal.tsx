@@ -16,12 +16,7 @@ import "./sandbox-vitrine.css";
 interface CreateSandboxModalProps {
   open: boolean;
   onClose: () => void;
-  /**
-   * En édition, la proposition à modifier. Le `type` est alors verrouillé :
-   * il est figé à la création, parce qu'il a déjà déterminé les champs saisis
-   * et la grille d'évaluation. C'est la même règle côté API — `type` n'est pas
-   * dans `sandboxUpdateSchema`.
-   */
+  /** En édition, la proposition à modifier. Mêmes champs qu'à la création. */
   sandbox?: SandboxView | null;
   onSaved: (sandbox: SandboxView) => void;
   /**
@@ -32,65 +27,34 @@ interface CreateSandboxModalProps {
   origin?: { x: number; y: number; w: number } | null;
 }
 
-type SandboxType = "code" | "ml";
-
 interface FormState {
-  type: SandboxType;
   title: string;
   context: string;
   goals: string;
   why: string;
-  repo: string;
-  dataset: string;
-  model: string;
   cover: string;
 }
 
 const EMPTY: FormState = {
-  type: "code",
   title: "",
   context: "",
   goals: "",
   why: "",
-  repo: "",
-  dataset: "",
-  model: "",
   cover: "",
 };
-
-/** Le même filtre que `httpUrl` côté Zod : un repo ou un dataset se visite. */
-function isHttpUrl(value: string): boolean {
-  return /^https?:\/\/.+/i.test(value.trim());
-}
-
-const CodeIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="16 18 22 12 16 6" />
-    <polyline points="8 6 2 12 8 18" />
-  </svg>
-);
-
-const MlIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 4.5a2.5 2.5 0 0 0-5 0 2.5 2.5 0 0 0-1.5 4.5A2.5 2.5 0 0 0 5 13.5a2.5 2.5 0 0 0 2 4 2.5 2.5 0 0 0 5 .5z" />
-    <path d="M12 4.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 1.5 4.5A2.5 2.5 0 0 1 19 13.5a2.5 2.5 0 0 1-2 4 2.5 2.5 0 0 1-5 .5z" />
-    <line x1="12" y1="4.5" x2="12" y2="18.5" />
-    <circle cx="8.5" cy="9" r="1" />
-    <circle cx="15.5" cy="13.5" r="1" />
-  </svg>
-);
-
-const TYPE_OPTIONS: { key: SandboxType; label: string; hint: string; Icon: () => React.JSX.Element }[] = [
-  { key: "code", label: "Code", hint: "A repository to build on", Icon: CodeIcon },
-  { key: "ml", label: "ML", hint: "Dataset, model, evaluation", Icon: MlIcon },
-];
 
 /**
  * La modale de proposition — création, et édition par l'auteur.
  * D'après `Sandbox Redesign Vitrine.dc.html`, animation d'ouverture comprise.
  *
- * Un seul composant pour les deux modes : les champs sont les mêmes, seuls le
- * titre, le verbe HTTP et le verrouillage du type changent.
+ * **Un sandbox est un projet, pas un challenge en attente.** Le sélecteur de
+ * type (`code` / `ml`) a disparu, et avec lui tout ce qu'il pilotait : le
+ * dépôt, le dataset, le modèle. Ce qui se dépose ici est une idée — titre,
+ * contexte, buts, pourquoi — et rien de plus ; le travail commence après la
+ * promotion, sur le challenge.
+ *
+ * Les deux modes portent donc exactement les mêmes champs : seuls le titre de
+ * la modale, le verbe HTTP et la légende changent.
  */
 export function CreateSandboxModal({ open, onClose, sandbox, onSaved, origin }: CreateSandboxModalProps) {
   const isEdit = !!sandbox;
@@ -128,14 +92,10 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved, origin }: 
     setForm(
       sandbox
         ? {
-            type: (sandbox.type === "ml" ? "ml" : "code") as SandboxType,
             title: sandbox.title,
             context: sandbox.context ?? "",
             goals: formatGoals(sandbox.goals),
             why: sandbox.why ?? "",
-            repo: sandbox.repo_url,
-            dataset: sandbox.dataset_urls[0] ?? "",
-            model: sandbox.model_url ?? "",
             cover: sandbox.cover_image_url ?? "",
           }
         : EMPTY,
@@ -226,16 +186,10 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved, origin }: 
 
   if (!open || !mounted) return null;
 
-  const isMl = form.type === "ml";
   const goals = parseGoals(form.goals);
   const goalsProblem = goalsError(goals);
-  const fieldsMissing =
-    form.title.trim().length < 3 || !isHttpUrl(form.repo) || (isMl && !isHttpUrl(form.dataset));
-  const valid =
-    !fieldsMissing &&
-    (!isMl || !form.model.trim() || isHttpUrl(form.model)) &&
-    !goalsProblem &&
-    slugField.ready;
+  const fieldsMissing = form.title.trim().length < 3;
+  const valid = !fieldsMissing && !goalsProblem && slugField.ready;
 
   const patch = (changes: Partial<FormState>) => setForm((current) => ({ ...current, ...changes }));
 
@@ -252,8 +206,6 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved, origin }: 
 
     const context = form.context.trim();
     const why = form.why.trim();
-    const model = form.model.trim();
-    const dataset = form.dataset.trim();
     const coverUrl = form.cover.trim();
 
     try {
@@ -267,22 +219,15 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved, origin }: 
             context: context || null,
             goals,
             why: why || null,
-            repo_url: form.repo.trim(),
             cover_image_url: coverUrl || null,
-            ...(isMl ? { model_url: model || null, dataset_urls: dataset ? [dataset] : [] } : {}),
           }
         : {
-            type: form.type,
             title: form.title.trim(),
             slug: slugField.submitValue,
             ...(context ? { context } : {}),
             goals,
             ...(why ? { why } : {}),
-            repo_url: form.repo.trim(),
             ...(coverUrl ? { cover_image_url: coverUrl } : {}),
-            // Un sandbox `code` refuse modèle et datasets côté schéma : on ne
-            // les envoie même pas, plutôt que d'envoyer des tableaux vides.
-            ...(isMl ? { dataset_urls: [dataset], ...(model ? { model_url: model } : {}) } : {}),
           };
 
       const res = await fetch(isEdit ? `/api/sandboxes/${sandbox!.uuid}` : "/api/sandboxes", {
@@ -313,12 +258,10 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved, origin }: 
   const hint = !valid
     ? !fieldsMissing && !slugField.ready
       ? "Choose an available address."
-      : isMl
-        ? "A title, a repository and a dataset URL are required."
-        : "A title and a repository URL are required."
+      : "A title is required — three characters at least."
     : isEdit
-      ? "The type stays as it is — it drives the fields and the grid."
-      : "Goes live as open, right away. The type carries over on promotion.";
+      ? "Stars and paid milestones don’t move. The address redirects if you change it."
+      : "Goes live as open, right away — no approval, no repository, no setup.";
 
   return createPortal(
     <div className={`vitrine v-sandbox ${vitrineFontVars}`}>
@@ -328,10 +271,10 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved, origin }: 
         <div ref={cardRef} className="v-modal-card" role="dialog" aria-modal="true">
           <div className="v-modal-head">
             <div className="v-modal-head-text">
-              <h2 className="v-modal-title">{isEdit ? "Edit sandbox" : "New sandbox"}</h2>
+              <h2 className="v-modal-title">{isEdit ? "Edit project" : "New project"}</h2>
               <p className="v-modal-sub">
                 {isEdit
-                  ? "Your proposal, as the community reads it. Stars and paid milestones are untouched."
+                  ? "Your project, as the community reads it. Stars and paid milestones are untouched."
                   : "Health domain only. It goes live immediately — no approval needed."}
               </p>
             </div>
@@ -343,31 +286,9 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved, origin }: 
             </button>
           </div>
 
-          {/* Le type d'abord : c'est lui qui décide des champs qui suivent. */}
-          <div className="v-types">
-            <span className="v-types-label">Sandbox type</span>
-            <div className="v-types-row">
-              {TYPE_OPTIONS.map(({ key, label, hint: typeHint, Icon }) => (
-                <button
-                  key={key}
-                  type="button"
-                  className="v-type"
-                  data-on={form.type === key ? "true" : "false"}
-                  data-locked={isEdit ? "true" : "false"}
-                  disabled={isEdit}
-                  onClick={() => patch({ type: key })}
-                >
-                  <Icon />
-                  <span className="v-type-text">
-                    <span className="v-type-name">{label}</span>
-                    <span className="v-type-hint">{typeHint}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-            {isEdit && <span className="v-type-hint">The type is locked after creation.</span>}
-          </div>
-
+          {/* Aucun sélecteur de type : un sandbox est un projet, et `code` /
+              `ml` était le vocabulaire des challenges. La forme du travail est
+              tranchée à la promotion, par l'admin. */}
           <label className="v-field">
             <span className="v-field-label">Title</span>
             <input
@@ -509,62 +430,6 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved, origin }: 
             </div>
           </div>
 
-          <div className="v-start">
-            <span className="v-start-label">Starting point</span>
-
-            <label className="v-field">
-              <span className="v-field-label">Repository URL</span>
-              <input
-                type="url"
-                value={form.repo}
-                onChange={(event) => patch({ repo: event.target.value })}
-                placeholder="https://github.com/you/your-repo"
-              />
-            </label>
-
-            {isMl && (
-              <>
-                <label className="v-field">
-                  <span className="v-field-label">Dataset URL</span>
-                  <input
-                    type="url"
-                    value={form.dataset}
-                    onChange={(event) => patch({ dataset: event.target.value })}
-                    placeholder="https://…  a public dataset the twin can pull"
-                  />
-                </label>
-                <label className="v-field">
-                  <span className="v-field-label">
-                    Model URL <span className="v-field-hint">— optional</span>
-                  </span>
-                  <input
-                    type="url"
-                    value={form.model}
-                    onChange={(event) => patch({ model: event.target.value })}
-                    placeholder="https://…  baseline weights, if you have any"
-                  />
-                </label>
-              </>
-            )}
-
-            {/*
-              Emplacement d'une fonctionnalité à venir : partir d'un kit de
-              démarrage plutôt que d'un repo vide. Désactivé et sans aucune
-              logique derrière — le montrer ici est délibéré, c'est ce qui dit
-              à l'auteur que le champ « repository » n'est pas la seule porte
-              d'entrée prévue.
-            */}
-            <div className="v-soon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                <line x1="12" y1="22.08" x2="12" y2="12" />
-              </svg>
-              <span className="v-soon-text">Start from a dev kit</span>
-              <span className="v-soon-badge">SOON</span>
-            </div>
-          </div>
-
           {error && <p className="v-field-error">{error}</p>}
 
           <div className="v-modal-actions">
@@ -575,7 +440,7 @@ export function CreateSandboxModal({ open, onClose, sandbox, onSaved, origin }: 
               disabled={!valid || submitting}
               onClick={submit}
             >
-              {submitting ? "Saving…" : isEdit ? "Save changes" : "Create sandbox"}
+              {submitting ? "Saving…" : isEdit ? "Save changes" : "Create project"}
             </button>
             <button type="button" className="v-modal-cancel" onClick={close}>
               Cancel

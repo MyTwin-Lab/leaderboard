@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canCreateSandbox,
   canSeeSandbox,
-  canSeeScore,
+  isAuthorOrAdmin,
   isAdmin,
   isAuthor,
   sandboxViewer,
@@ -48,7 +48,7 @@ describe("starIdentity", () => {
   });
 });
 
-describe("isAuthor / isAdmin / canSeeScore", () => {
+describe("isAuthor / isAdmin / isAuthorOrAdmin", () => {
   it("reconnaît l'auteur et l'admin", () => {
     expect(isAuthor(OPEN, author)).toBe(true);
     expect(isAuthor(OPEN, stranger)).toBe(false);
@@ -58,10 +58,10 @@ describe("isAuthor / isAdmin / canSeeScore", () => {
   });
 
   it("réserve le score à l'auteur et aux admins", () => {
-    expect(canSeeScore(OPEN, author)).toBe(true);
-    expect(canSeeScore(OPEN, admin)).toBe(true);
-    expect(canSeeScore(OPEN, stranger)).toBe(false);
-    expect(canSeeScore(OPEN, anonymous)).toBe(false);
+    expect(isAuthorOrAdmin(OPEN, author)).toBe(true);
+    expect(isAuthorOrAdmin(OPEN, admin)).toBe(true);
+    expect(isAuthorOrAdmin(OPEN, stranger)).toBe(false);
+    expect(isAuthorOrAdmin(OPEN, anonymous)).toBe(false);
   });
 });
 

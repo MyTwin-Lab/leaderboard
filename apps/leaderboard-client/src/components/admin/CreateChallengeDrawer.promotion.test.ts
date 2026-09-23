@@ -19,9 +19,15 @@ const base: PromotionFormState = {
 };
 
 describe('buildPromotionRequestBody', () => {
-  it("n'envoie jamais le type, le mode de workspace ni le repo", () => {
+  it('envoie le type choisi par l’admin — une proposition n’en porte pas', () => {
+    expect(buildPromotionRequestBody(base).type).toBe('code');
+    expect(buildPromotionRequestBody({ ...base, type: 'ml' }).type).toBe('ml');
+  });
+
+  it("n'envoie ni le mode de workspace ni le repo", () => {
+    // Ils découlent du type : un challenge `code` issu d'une promotion est
+    // forcément un `own_repo`, et la route n'accepte pas ces champs.
     const body = buildPromotionRequestBody(base);
-    expect(body).not.toHaveProperty('type');
     expect(body).not.toHaveProperty('workspace_mode');
     expect(body).not.toHaveProperty('github_repo');
   });

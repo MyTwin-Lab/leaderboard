@@ -123,15 +123,11 @@ export async function POST(request: NextRequest) {
   try {
     const created = await sandboxService.create({
       user_id: session.userId,
-      type: parsed.data.type,
       title: parsed.data.title,
       slug: parsed.data.slug,
       context: parsed.data.context ?? null,
       goals: parsed.data.goals,
       why: parsed.data.why ?? null,
-      repo_url: parsed.data.repo_url,
-      model_url: parsed.data.model_url ?? null,
-      dataset_urls: parsed.data.dataset_urls,
       cover_image_url: parsed.data.cover_image_url ?? null,
     });
 

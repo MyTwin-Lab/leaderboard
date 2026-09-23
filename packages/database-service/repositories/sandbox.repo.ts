@@ -1,7 +1,7 @@
 import { db, sandbox_slug_redirects, sandboxes } from "../db/drizzle";
 import { and, desc, eq, gte, isNull, lt, ne } from "drizzle-orm";
 import { toDomainSandbox } from "../db/mappers";
-import type { Sandbox, SandboxEvaluationStatus, SandboxType } from "../domain/entities";
+import type { Sandbox } from "../domain/entities";
 import { SLUG_FALLBACK, SlugTakenError } from "../domain/slug";
 import { availableSlug, claimSlug, isSlugTaken, isSlugUniqueViolation, type SlugOwners } from "./slugs";
 
@@ -11,19 +11,21 @@ const SLUG_CONSTRAINTS = ["idx_sandboxes_slug", "sandbox_slug_redirects_pkey"] a
 /** Ce que l'auteur fournit à la création. `type` n'apparaît nulle part ailleurs : il est figé ici. */
 export interface SandboxDraft {
   user_id: string;
-  type: SandboxType;
   title: string;
   /** Dérivé du titre s'il manque — voir `claimSlug`. */
   slug?: string;
   context?: string | null;
   goals?: string[];
   why?: string | null;
-  repo_url: string;
-  model_url?: string | null;
-  dataset_urls?: string[];
   /** L'image de couverture. */
   cover_image_url?: string | null;
 }
+
+/*
+ * Ce que le brouillon ne porte plus, depuis qu'un sandbox est un projet : ni
+ * `type`, ni dépôt, ni URLs ML. Les colonnes ont été supprimées avec eux — ce
+ * qu'une proposition raconte lui suffit (migration 0025).
+ */
 
 /** Édition par l'auteur. Ni `type`, ni `status`, ni les champs d'évaluation : chacun a son chemin dédié. */
 export interface SandboxPatch {
@@ -33,9 +35,7 @@ export interface SandboxPatch {
   context?: string | null;
   goals?: string[];
   why?: string | null;
-  repo_url?: string;
-  model_url?: string | null;
-  dataset_urls?: string[];
+
   /** L'image de couverture. `null` l'efface. */
   cover_image_url?: string | null;
 }
@@ -155,15 +155,11 @@ export class SandboxRepository {
         .insert(sandboxes)
         .values({
           user_id: draft.user_id,
-          type: draft.type,
           title: draft.title,
           slug,
           context: draft.context ?? null,
           goals: draft.goals ?? [],
           why: draft.why ?? null,
-          repo_url: draft.repo_url,
-          model_url: draft.model_url ?? null,
-          dataset_urls: draft.dataset_urls ?? [],
           cover_image_url: draft.cover_image_url ?? null,
         })
         .returning();
@@ -179,7 +175,7 @@ export class SandboxRepository {
   /**
    * Patch partiel : une clé absente n'est pas écrite, pour qu'un formulaire
    * partiel n'efface pas ce qu'il n'affichait pas. `null` est une valeur, pas
-   * une absence — c'est ainsi qu'on vide `model_url`.
+   * une absence — c'est ainsi qu'on vide `context`, `why` ou la couverture.
    */
   async update(uuid: string, patch: SandboxPatch): Promise<Sandbox | null> {
     const set: Record<string, unknown> = { updated_at: new Date() };
@@ -187,9 +183,6 @@ export class SandboxRepository {
     if (patch.context !== undefined) set.context = patch.context;
     if (patch.goals !== undefined) set.goals = patch.goals;
     if (patch.why !== undefined) set.why = patch.why;
-    if (patch.repo_url !== undefined) set.repo_url = patch.repo_url;
-    if (patch.model_url !== undefined) set.model_url = patch.model_url;
-    if (patch.dataset_urls !== undefined) set.dataset_urls = patch.dataset_urls;
     if (patch.cover_image_url !== undefined) set.cover_image_url = patch.cover_image_url;
 
     let change: { from: string; to: string } | null = null;
@@ -232,55 +225,8 @@ export class SandboxRepository {
     }
   }
 
-  /**
-   * Transition de statut d'évaluation, avec garde optionnelle sur le statut
-   * courant.
-   *
-   * `expectedFrom` ferme la course des deux `POST /evaluation` simultanés :
-   * passer à `running` en exigeant `pending` ne réussit qu'une fois, et le
-   * retour `false` dit à l'appelant qu'un autre run a pris la main. Sans
-   * garde, l'appel écrase inconditionnellement.
-   */
-  async setEvaluationStatus(
-    uuid: string,
-    status: SandboxEvaluationStatus,
-    opts?: { expectedFrom?: SandboxEvaluationStatus | null }
-  ): Promise<boolean> {
-    const filters = [eq(sandboxes.uuid, uuid)];
-    const expectedFrom = opts?.expectedFrom;
-    if (expectedFrom !== undefined) {
-      // `null` attendu = jamais évalué, ce qui est un IS NULL et non une égalité.
-      filters.push(
-        expectedFrom === null
-          ? isNull(sandboxes.evaluation_status)
-          : eq(sandboxes.evaluation_status, expectedFrom)
-      );
-    }
-
-    const updated = await db
-      .update(sandboxes)
-      .set({ evaluation_status: status })
-      .where(and(...filters))
-      .returning({ uuid: sandboxes.uuid });
-    return updated.length > 0;
-  }
-
-  /**
-   * Résultat d'un run terminé. `evaluated_at` n'est posé qu'ici, et pas par
-   * `setEvaluationStatus` : il date le score affiché, pas le lancement.
-   */
-  async storeEvaluation(
-    uuid: string,
-    evaluation: unknown,
-    status: SandboxEvaluationStatus = "done"
-  ): Promise<Sandbox | null> {
-    const [updated] = await db
-      .update(sandboxes)
-      .set({ evaluation, evaluation_status: status, evaluated_at: new Date() })
-      .where(eq(sandboxes.uuid, uuid))
-      .returning();
-    return updated ? toDomainSandbox(updated) : null;
-  }
+  // Ni `setEvaluationStatus` ni `storeEvaluation` : l'évaluation formative a
+  // disparu avec le dépôt obligatoire, et ses trois colonnes avec elle.
 
   /**
    * Sortie définitive d'un sandbox. Sans garde sur le statut courant :

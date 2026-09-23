@@ -72,8 +72,6 @@ export interface PromotableSandbox {
   title: string;
   /** Proposé tel quel comme slug du challenge : les deux espaces de noms sont séparés. */
   slug: string;
-  /** 'code' | 'ml'. Hérité, jamais choisi : le sélecteur de type est verrouillé. */
-  type: string;
   context?: string | null;
   goals: string[];
   why?: string | null;
@@ -93,9 +91,10 @@ interface CreateChallengeDrawerProps {
   challenge?: EditableChallenge;
   /**
    * Présente = mode promotion, **exclusif** de `challenge`. Le tiroir crée un
-   * challenge depuis une proposition : titre, description, type, buts et mode
-   * de workspace sont pré-remplis, le type est verrouillé, et le formulaire
-   * poste vers `/api/sandboxes/:id/promote` au lieu de `/api/challenges`.
+   * challenge depuis une proposition : titre, description, buts et mode de
+   * workspace sont pré-remplis, et le formulaire poste vers
+   * `/api/sandboxes/:id/promote` au lieu de `/api/challenges`. Le type, lui,
+   * se choisit ici : une proposition n'en porte pas.
    */
   promotion?: PromotableSandbox;
 }
@@ -127,7 +126,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   // Le type décide des repos créés, et ils ne le sont qu'une fois : à
   // l'édition parce qu'ils existent déjà, à la promotion parce qu'il est
   // hérité de la proposition (elle a fixé les champs saisis et la grille).
-  const typeLocked = isEdit || isPromotion;
+  // Verrouillé en édition seulement. En promotion, c'est ici que la forme du
+  // travail se décide : une proposition est une idée, elle ne porte pas de
+  // type — `code` / `ml` décide des repos à créer et de la grille.
+  const typeLocked = isEdit;
 
   const [title, setTitle] = useState('');
   // Suit le titre à la création ; en édition et en promotion, part d'un slug
@@ -226,7 +228,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       // Les espaces de noms sont séparés : `/sandbox/mykine` peut devenir
       // `/challenges/mykine`. La vérification dira s'il est déjà pris.
       slugField.reset({ title: promotion.title, value: promotion.slug });
-      setType(promotion.type === 'ml' ? 'ml' : 'code');
+      // `code` n'est qu'un point de départ, la forme la plus courante : le
+      // sélecteur reste ouvert.
+      setType('code');
       // La description markdown est composée par la même fonction que le
       // serveur, pour que ce que l'admin relit soit exactement ce qui serait
       // écrit s'il n'y touchait pas.
@@ -276,7 +280,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     // validation — inaccessible en édition comme en promotion. `ml` et `code`
     // sont tous deux adossables : le type retenu décide du mode (cas de
     // référence vs scénario), qui n'est jamais stocké.
-    if (!open || typeLocked) return;
+    if (!open || typeLocked || isPromotion) return;
     fetch('/api/challenges')
       .then(r => r.ok ? r.json() : [])
       .then((all: any[]) => setSourceChallenges(
@@ -285,7 +289,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           .map(c => ({ id: c.uuid, title: c.title, type: c.type }))
       ))
       .catch(() => {});
-  }, [open, typeLocked]);
+  }, [open, typeLocked, isPromotion]);
 
   // Close on Escape
   useEffect(() => {
@@ -591,9 +595,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
 
           {/* ── Type ── */}
           {/* Locked on edit: the type decides which repos are created, and they
-              only get created once, at creation. Locked on promotion too, for
-              the same reason seen from the other end: it is inherited from the
-              sandbox, which already fixed the fields and the grid. */}
+              only get created once, at creation. On promotion it is open: a
+              sandbox is an idea and carries no type, so this is where the shape
+              of the work gets decided. */}
           <Field label="Type">
             <div className="flex gap-2">
               {([
@@ -604,6 +608,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                 const Icon = opt.icon;
                 const active = type === opt.value;
                 if (typeLocked && !active) return null;
+                // Un challenge de validation dérive d'un challenge ML
+                // existant : il ne peut pas naître d'une proposition, et la
+                // route de promotion ne l'accepte pas.
+                if (isPromotion && opt.value === 'validation') return null;
                 return (
                   <button
                     key={opt.value}

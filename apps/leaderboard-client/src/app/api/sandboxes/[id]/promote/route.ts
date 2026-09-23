@@ -15,11 +15,9 @@ const service = new SandboxPromotionService();
  * Le corps du POST, c'est `createChallengeSchema` **moins ce qui est décidé
  * ailleurs** :
  *
- * - `type` — hérité de la proposition, immuable (le tiroir verrouille le
- *   sélecteur, `buildPromotedChallengeDraft` le garantit côté serveur) ;
- * - `workspace_mode` et `github_repo` — un sandbox `code` devient forcément un
- *   challenge `own_repo` sur le dépôt de son auteur, il n'y a pas de repo
- *   partagé à saisir ;
+ * - `workspace_mode` et `github_repo` — un challenge `code` issu d'une
+ *   promotion est forcément en `own_repo` sur le dépôt de son auteur, il n'y a
+ *   pas de repo partagé à saisir ;
  * - `source_challenge_id`, `cp_per_validation`, `required_validations` — propres
  *   aux challenges de validation, qui dérivent d'un challenge ML existant et ne
  *   peuvent pas naître d'une proposition.
@@ -28,6 +26,13 @@ const service = new SandboxPromotionService();
  * packaging, brief) reste à la main de l'admin.
  */
 const promoteSchema = z.object({
+  /**
+   * La forme du challenge. Lue **seulement** quand la proposition n'a pas de
+   * type — c'est le cas de toutes celles déposées depuis qu'un sandbox est un
+   * projet. Sur une proposition d'avant, `buildPromotedChallengeDraft` impose
+   * le type hérité et ce champ est ignoré, comme le tiroir qui le verrouille.
+   */
+  type: z.enum(["code", "ml"]).optional(),
   title: z.string().min(1).optional(),
   // Absent : le slug de la proposition, s'il est libre côté challenges.
   slug: slugField.optional(),

@@ -13,20 +13,16 @@ import { toDomainChallenge, toDomainSandbox } from "../../database-service/db/ma
 import {
   AppSettingsRepository,
   ChallengeRepository,
-  ContributionRepository,
   SandboxRepository,
 } from "../../database-service/repositories/index.js";
 import { isSlugUniqueViolation } from "../../database-service/repositories/slugs.js";
 import { SlugTakenError } from "../../database-service/domain/slug.js";
-import type { Challenge, ChallengeRepoRole, Sandbox } from "../../database-service/domain/entities.js";
+import type { Challenge, Sandbox } from "../../database-service/domain/entities.js";
 import { buildRepoDefinitions } from "../challenge/challengeRepos.js";
-import { MlRewardsService, type MlSubmissionEvent } from "../challenge/ml-rewards.service.js";
 import { SandboxForbiddenError, SandboxNotFoundError, SandboxNotOpenError } from "./sandbox.service.js";
 import {
-  buildAuthorContributions,
   buildAuthorParticipation,
   buildPromotedChallengeDraft,
-  seedMlWorkspaceMeta,
   type PromotionInput,
 } from "./promotion.js";
 
@@ -47,13 +43,6 @@ export interface SandboxPromotionDeps {
   sandboxRepo: Pick<SandboxRepository, "findById">;
   challengeRepo: Pick<ChallengeRepository, "isSlugTaken" | "availableSlug">;
   appSettingsRepo: { get(): Promise<{ sandbox_promotion_bonus_cp: number }> };
-  contributionRepo: Pick<ContributionRepository, "create">;
-  /**
-   * Le scoring ML, isolé pour les tests. C'est **le** chemin de scoring du
-   * projet : `MlRewardsService.award`, celui qu'emprunte une soumission faite
-   * depuis le challenge. La promotion ne s'en écrit pas un second.
-   */
-  awardMl: (event: MlSubmissionEvent) => Promise<void>;
 }
 
 /**
@@ -67,11 +56,11 @@ export interface SandboxPromotionDeps {
  * cette partie-là parle aux tables Drizzle directement — c'est le prix d'une
  * promotion qui ne peut pas rester à moitié faite.
  *
- * La reprise du travail de l'auteur (contributions + scoring) est **hors**
- * transaction, et volontairement : elle déclenche des appels agent de
- * plusieurs dizaines de secondes, qu'aucune transaction ne doit tenir ouverts.
- * Son échec ne défait pas la promotion, exactement comme les template tasks et
- * le brief du tiroir de création.
+ * Ce que la promotion ne fait plus : reprendre le travail de l'auteur. Elle
+ * recopiait le dépôt, le dataset et le modèle de la proposition en
+ * contributions déjà scorées — trois champs qu'un sandbox ne porte plus depuis
+ * qu'il est un projet. L'auteur est membre dès la promotion, et soumet depuis
+ * le challenge comme tout le monde.
  */
 export class SandboxPromotionService {
   private deps: SandboxPromotionDeps;
@@ -81,8 +70,6 @@ export class SandboxPromotionService {
       sandboxRepo: new SandboxRepository(),
       challengeRepo: new ChallengeRepository(),
       appSettingsRepo: new AppSettingsRepository(),
-      contributionRepo: new ContributionRepository(),
-      awardMl: (event) => new MlRewardsService().award(event),
       ...deps,
     } as SandboxPromotionDeps;
   }
@@ -108,7 +95,7 @@ export class SandboxPromotionService {
 
     const challengeId = randomUUID();
 
-    const { challenge, sandbox, reposByRole } = await db.transaction(async (tx) => {
+    const { challenge, sandbox } = await db.transaction(async (tx) => {
       // 1. La garde, en tête. `WHERE status = 'open'` pose le verrou de ligne :
       //    une seconde promotion concurrente attend ici, puis relit `promoted`
       //    et ne ramène aucune row → exception → rollback. L'index unique
@@ -165,11 +152,10 @@ export class SandboxPromotionService {
         .where(eq(sandboxes.uuid, sandboxId))
         .returning();
 
-      // 3. Repos et liens, avec le workspace de l'auteur déjà rempli. Les
-      //    définitions viennent de `buildRepoDefinitions`, la même fonction que
-      //    la route de création : un challenge promu a les mêmes étapes qu'un
-      //    challenge créé à la main.
-      const metaSeed = seedMlWorkspaceMeta(claimedSandbox, claimedSandbox.user_id);
+      // 3. Repos et liens. Les définitions viennent de `buildRepoDefinitions`,
+      //    la même fonction que la route de création : un challenge promu a les
+      //    mêmes étapes qu'un challenge créé à la main. Leur `workspace_meta`
+      //    part vide — la proposition ne porte ni dépôt ni artefact à recopier.
       const definitions = buildRepoDefinitions({
         type: draft.type,
         title: draft.title,
@@ -177,7 +163,6 @@ export class SandboxPromotionService {
         apiPackagingEnabled: input.api_packaging_enabled,
       });
 
-      const reposByRole = new Map<ChallengeRepoRole, string>();
       for (const definition of definitions) {
         const [repoRow] = await tx
           .insert(repos)
@@ -193,13 +178,11 @@ export class SandboxPromotionService {
           challenge_id: challengeId,
           repo_id: repoRow.uuid,
           role: definition.role ?? null,
-          workspace_meta: definition.role ? metaSeed[definition.role] ?? null : null,
+          workspace_meta: null,
         });
-
-        if (definition.role) reposByRole.set(definition.role, repoRow.uuid);
       }
 
-      // 4. L'auteur est membre de son challenge, son dépôt déjà déclaré.
+      // 4. L'auteur est membre de son challenge, son workspace à déclarer.
       await tx.insert(challenge_teams).values(buildAuthorParticipation(claimedSandbox, challengeId));
 
       // 5. La trace de la promotion. Écrite **même si le bonus est nul** : la
@@ -217,7 +200,6 @@ export class SandboxPromotionService {
       return {
         challenge: toDomainChallenge(challengeRow),
         sandbox: toDomainSandbox(linkedSandbox ?? claimed),
-        reposByRole,
       };
     }).catch(async (error) => {
       // Un slug pris entre la vérification et l'insert : toute la promotion
@@ -227,8 +209,6 @@ export class SandboxPromotionService {
       }
       throw error;
     });
-
-    this.scheduleAuthorWork(sandbox, challenge, reposByRole);
 
     return { challenge, sandbox };
   }
@@ -244,58 +224,5 @@ export class SandboxPromotionService {
       throw new SlugTakenError(requested, await this.deps.challengeRepo.availableSlug(requested));
     }
     return requested;
-  }
-
-  /**
-   * **La reprise du travail de l'auteur**, après le commit.
-   *
-   * Déposer un dataset, un modèle ou du code sur un challenge est une
-   * contribution créditée : l'auteur d'une proposition promue n'a donc rien à
-   * re-soumettre. Les contributions sont créées, puis le scoring normal
-   * (`MlRewardsService.award`) les crédite sur le pool du challenge.
-   *
-   * **Séquentiel, et pas en parallèle.** Chaque award calcule ce qu'il reste au
-   * pool avant d'écrire ses lignes de ledger ; deux awards concurrents liraient
-   * le même reste et pourraient, ensemble, dépasser le pool. Une soumission
-   * depuis le challenge n'en déclenche jamais deux à la fois — la promotion est
-   * le seul endroit où la question se pose.
-   *
-   * Fire-and-forget et non fatal : la promotion est déjà commitée, et un appel
-   * agent dure des dizaines de secondes. Le statut vit sur
-   * `contributions.evaluation_status`, que l'UI du challenge affiche.
-   */
-  private scheduleAuthorWork(
-    sandbox: Sandbox,
-    challenge: Challenge,
-    reposByRole: Map<ChallengeRepoRole, string>,
-  ): void {
-    const drafts = buildAuthorContributions(sandbox, challenge.uuid);
-    if (drafts.length === 0) return;
-
-    void (async () => {
-      for (const draft of drafts) {
-        const repoId = reposByRole.get(draft.role);
-        // Un rôle sans repo ne peut pas être scoré : `award` résout la règle
-        // depuis `challenge_repos`, pas depuis la contribution.
-        if (!repoId) continue;
-
-        await this.deps.contributionRepo.create(draft.contribution);
-
-        // Le rôle `model` n'a pas de grille (métrique Kaggle) : sa contribution
-        // existe — créée par le draft `model_code`, qui partage son type — mais
-        // rien ne la score tant que l'auteur n'a pas publié sa métrique.
-        await this.deps.awardMl({
-          challengeId: challenge.uuid,
-          userId: sandbox.user_id,
-          repoId,
-          url: draft.url,
-        });
-      }
-    })().catch((error) => {
-      console.error(
-        `[SandboxPromotionService] Reprise du travail échouée pour ${sandbox.uuid} → ${challenge.uuid}:`,
-        error,
-      );
-    });
   }
 }

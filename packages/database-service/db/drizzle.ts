@@ -967,11 +967,9 @@ export const digests = pgTable("digests", {
 export const sandboxes = pgTable("sandboxes", {
   uuid: uuid("uuid").primaryKey().defaultRandom(),
   user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
-  // 'code' | 'ml'. Choisi à la création et immuable : il pilote les champs
-  // attendus, la grille d'évaluation, et le type du challenge issu de la
-  // promotion. 'validation' est exclu — un challenge de validation dérive
-  // d'un challenge ML existant, il ne peut pas naître d'une proposition.
-  type: varchar("type", { length: 10 }).notNull(),
+  // Pas de `type` : `code` / `ml` est le vocabulaire des challenges, et un
+  // sandbox est un projet. La forme que prendra le travail est tranchée par
+  // l'admin au moment de la promotion — voir la migration 0025.
   title: varchar("title", { length: 255 }).notNull(),
   // Le segment de l'URL publique : /sandbox/<slug>. Mêmes règles que
   // challenges.slug, dans un espace de noms séparé : un challenge promu peut
@@ -984,11 +982,9 @@ export const sandboxes = pgTable("sandboxes", {
   context: text("context"),
   goals: jsonb("goals").$type<string[]>().notNull().default([]),
   why: text("why"),
-  repo_url: text("repo_url").notNull(),
-  // ML uniquement. Le modèle est optionnel (un sandbox ML peut démarrer sans
-  // artefact), au moins un dataset est requis à la création.
-  model_url: text("model_url"),
-  dataset_urls: jsonb("dataset_urls").$type<string[]>().notNull().default([]),
+  // Ni dépôt, ni dataset, ni modèle : une proposition est une idée, pas un
+  // début de livrable. Le travail commence après la promotion, sur le
+  // challenge — c'est là que les repos sont créés.
   // L'image de couverture de la proposition, posée à la création et
   // modifiable par son auteur — même colonne que `challenges.cover_image_url`,
   // et elle suit la proposition jusqu'au challenge à la promotion.
@@ -1000,15 +996,9 @@ export const sandboxes = pgTable("sandboxes", {
   // la promotion ne doit pas emporter la proposition qui lui a donné naissance.
   promoted_challenge_id: uuid("promoted_challenge_id").references(() => challenges.uuid, { onDelete: "set null" }),
   promoted_at: timestamp("promoted_at"),
-  // Dernier résultat d'évaluation formative, même forme que celle d'une
-  // contribution ({ scores[], globalScore }) pour partager l'affichage.
-  evaluation: jsonb("evaluation"),
-  // 'pending' | 'running' | 'done' | 'failed'. NULL = jamais évalué.
-  evaluation_status: varchar("evaluation_status", { length: 10 }),
-  // Fin du dernier run, succès ou échec. Distinct de updated_at, que toute
-  // édition de l'auteur réécrit : c'est la seule date qui dit « ce score date
-  // d'avant/après le dernier commit » quand l'UI affiche le panneau.
-  evaluated_at: timestamp("evaluated_at"),
+  // Pas de colonnes d'évaluation : elles notaient un repo GitHub sur la grille
+  // `code`, c'est-à-dire un challenge. Un sandbox est un projet, et ce qui le
+  // fait avancer, ce sont ses stars — voir la migration 0025.
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({

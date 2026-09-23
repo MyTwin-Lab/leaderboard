@@ -50,8 +50,8 @@ export function isAuthor(sandbox: { user_id: string }, viewer: SandboxViewer): b
   return viewer.kind === "account" && sandbox.user_id === viewer.userId;
 }
 
-/** Le score d'évaluation : l'auteur et les admins (§1.6). Un manager, non. */
-export function canSeeScore(sandbox: { user_id: string }, viewer: SandboxViewer): boolean {
+/** Ce qui ne regarde que l'auteur et les admins (§1.6). Un manager, non. */
+export function isAuthorOrAdmin(sandbox: { user_id: string }, viewer: SandboxViewer): boolean {
   return isAuthor(sandbox, viewer) || isAdmin(viewer);
 }
 
@@ -64,7 +64,7 @@ export function canSeeSandbox(
   viewer: SandboxViewer,
 ): boolean {
   if (sandbox.status !== "archived") return true;
-  return canSeeScore(sandbox, viewer);
+  return isAuthorOrAdmin(sandbox, viewer);
 }
 
 export function canCreateSandbox(role: string | null | undefined): boolean {

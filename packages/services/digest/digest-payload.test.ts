@@ -40,11 +40,9 @@ function entry(over: Partial<RewardEntry> = {}): RewardEntry {
 
 function sandbox(over: Partial<Sandbox> = {}): Sandbox {
   return {
-    uuid: "sb-1", user_id: ALICE, type: "code", title: "Triage assistant", slug: "triage-assistant",
-    context: null, goals: [], why: null, repo_url: "https://github.com/acme/triage",
-    model_url: null, dataset_urls: [], status: "open",
+    uuid: "sb-1", user_id: ALICE, title: "Triage assistant", slug: "triage-assistant",
+    context: null, goals: [], why: null, cover_image_url: null, status: "open",
     promoted_challenge_id: null, promoted_at: null,
-    evaluation: null, evaluation_status: null, evaluated_at: null,
     created_at: new Date("2026-09-04T00:00:00Z"),
     updated_at: new Date("2026-09-04T00:00:00Z"),
     ...over,
@@ -268,17 +266,17 @@ describe("buildDigestPayload — new_contributors and shape", () => {
 describe("buildDigestPayload — new_sandboxes", () => {
   it("lists the sandboxes opened in the window with their author and star count", () => {
     const payload = buildDigestPayload(source({
-      sandboxes: [sandbox(), sandbox({ uuid: "sb-2", user_id: BOB, type: "ml", title: "Lung dataset" })],
+      sandboxes: [sandbox(), sandbox({ uuid: "sb-2", user_id: BOB, title: "Lung dataset" })],
       starCountsBySandbox: new Map([["sb-1", 7]]),
     }));
     expect(payload.new_sandboxes).toEqual([
       {
-        sandbox_id: "sb-1", title: "Triage assistant", type: "code",
+        sandbox_id: "sb-1", title: "Triage assistant",
         author: { user_id: ALICE, full_name: "Alice Dupont" }, star_count: 7,
       },
       {
         // Aucune star : le compteur est absent de la map, pas à zéro en base.
-        sandbox_id: "sb-2", title: "Lung dataset", type: "ml",
+        sandbox_id: "sb-2", title: "Lung dataset",
         author: { user_id: BOB, full_name: "Bob Martin" }, star_count: 0,
       },
     ]);

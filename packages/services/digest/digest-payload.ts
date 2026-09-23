@@ -122,7 +122,6 @@ export function buildDigestPayload(source: DigestSource): DigestPayload {
   const new_sandboxes = sandboxes.map((sb) => ({
     sandbox_id: sb.uuid,
     title: sb.title,
-    type: sb.type,
     author: { user_id: sb.user_id, full_name: nameOf(usersById, sb.user_id) },
     star_count: starCountsBySandbox.get(sb.uuid) ?? 0,
   }));

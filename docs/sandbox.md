@@ -1,10 +1,12 @@
 # Sandbox
 
-The Sandbox is where anyone can **propose** a unit of work in the health domain, without approval. The community reacts with **stars**, crossing star milestones pays the author in CP, and an admin can **promote** the best proposals into official challenges.
+The Sandbox is where anyone can **propose** a project in the health domain, without approval. The community reacts with **stars**, crossing star milestones pays the author in CP, and an admin can **promote** the best proposals into official challenges.
 
 It turns the leaderboard from a task board — where MyTwin defines the work and contributors execute it — into a two-way platform.
 
-**Requires:** nothing beyond the database for the listing and stars. The formative evaluation needs the same GitHub and OpenAI connections as a code challenge.
+**A sandbox is a project, not a challenge in waiting.** What you deposit is an idea: a title, a context, goals, a why. No type, no repository, no dataset, no model — and no formative evaluation. Those were the vocabulary and the machinery of a challenge; they are created at promotion, on the challenge, not before.
+
+**Requires:** nothing beyond the database.
 
 **Reference documents:** [`input/spec-sandbox.md`](./input/spec-sandbox.md) (functional spec, its section 0 lists the arbitrated trade-offs and wins on contradiction) and [`input/plan-sandbox.md`](./input/plan-sandbox.md) (implementation plan).
 
@@ -22,7 +24,7 @@ A sandbox is **not a challenge** and deliberately shares nothing with one:
 | Lifecycle | draft → active → completed | `open` → `promoted` / `archived` |
 | Community input | contributions | stars only |
 
-A sandbox has a **type** — `code` or `ml`, chosen at creation and immutable. `validation` is excluded: a validation challenge derives from an existing ML challenge, it cannot be born from a proposal. The type drives the expected inputs, and the type of the challenge it becomes if promoted.
+A sandbox has **no type**. `code` / `ml` decides which repos get created and which grid scores them — that is a challenge decision, and it is taken by the admin in the promotion drawer, not by the author at deposit time. (`validation` is excluded there too: a validation challenge derives from an existing ML challenge, it cannot be born from a proposal.)
 
 Collaboration is deliberately blocked before promotion. Other contributors cannot join a sandbox; they star it. Collaboration starts once it becomes a challenge.
 
@@ -36,18 +38,14 @@ Collaboration is deliberately blocked before promotion. Other contributors canno
 |---|---|
 | `uuid` | PK |
 | `user_id` | the author, sole editor |
-| `type` | `code` / `ml`, immutable after creation |
 | `title` | |
 | `slug` | the public URL segment, `/sandbox/<slug>`. Unique among sandboxes, derived from the title at creation, editable by the author; a former slug keeps redirecting (`sandbox_slug_redirects`). See [`seo.md`](./seo.md) |
 | `context`, `goals`, `why` | the three sections of the proposal. `goals` is a `jsonb` string array rather than a markdown list, because each goal is rendered on its own and they are the natural candidates for the challenge's tasks after promotion |
-| `repo_url` | required for both types |
-| `model_url` | `ml` only, optional — a sandbox can start without an artifact |
-| `dataset_urls` | `ml` only, `jsonb` string array, at least one required. An array because an ML challenge already stores `workspace_meta.datasetUrls[userId]` this way, so promotion pre-fills without conversion |
+| `cover_image_url` | the card illustration, set by the author; it follows the proposal to the challenge on promotion |
 | `status` | `open` / `promoted` / `archived`. Created directly as `open` |
 | `promoted_challenge_id` | set at promotion, `ON DELETE SET NULL` — deleting the challenge must not erase the proposal that produced it |
-| `evaluation`, `evaluation_status`, `evaluated_at` | latest formative evaluation, same shape as a contribution's so the display is shared |
 
-The evaluation lives **on the row**, not in `contributions`: it is formative, it pays nothing, and it must touch neither the ledger nor the leaderboard.
+**What the table no longer holds**, dropped by migration `0025_sandbox_project.sql`: `type`, `repo_url`, `model_url`, `dataset_urls`, and the three evaluation columns. A proposal is an idea, not a half-built deliverable; the formative evaluation scored a GitHub repository on the `code` grid, which is to say it read a proposal as a challenge. What carries a project here is its stars.
 
 ### `sandbox_rewards`
 
@@ -195,9 +193,15 @@ The sort control is `TabPills`, the same component as the profile tabs, so its f
 
 **Getting there.** `/challenges` ends with a banner pointing at the Sandbox — the twin of the leaderboard's own, which points at the challenges. One catches whoever is not ranked yet, the other whoever found no challenge that fits.
 
-**Detail** (`/sandbox/:slug`) — the three sections of the proposal, the repo and model links, the star toggle, the milestone panel, and for the author the formative evaluation panel. Editing and archiving live here too.
+**Detail** (`/sandbox/:slug`) — built from `Sandbox Vitrine.dc.html`, in `components/sandbox/vitrine/`. A photo hero carrying the status, the title and the star button; "Why this sandbox exists" from `why`; "Who proposed this sandbox" on the dark card; then the proposal in a reading column with the star milestones sticky beside it. Editing, promoting and archiving sit in a discreet toolbar under the hero — the mock has no such controls, and putting them on the photo would have given them the same weight as the star.
 
-**Creation** — type first, then the fields that type needs. The **Address** field under the title shows the public URL: it follows the title until touched, is checked for availability as it is typed, and in edit mode says that the current address will redirect once changed. The "Start from a dev kit / SOON" row is a deliberate placeholder: no logic behind it, it marks where the dev-kit selector will slot in.
+Three gaps with the mock, all deliberate: the stat row on the photo and the three impact figures beside "Why this sandbox exists" are not rendered (the stars and milestones already live in the right column, and repeating them gave the same number twice), and the "Repository" card in the author section has nothing left to show.
+
+The page reuses `challenge-vitrine.css` rather than restating it: the mock lays out the hero, the "why" section, the reading column and the aside exactly as `Challenge Vitrine.dc.html` does, so the root carries both `v-cd` and `v-sd` and only what is proper to the sandbox is written in `sandbox-detail-vitrine.css`.
+
+**One toggle, two buttons.** The mock puts a star on the photo *and* in the right column. `useStarToggle` is mounted once in the page and both buttons share it — two hooks would each hold their own optimistic counter, and clicking one would leave the other behind.
+
+**Creation** — a title, an address, a context, goals, a why, a cover. That is the whole form: no type selector, no repository, no dataset, no model. The **Address** field under the title shows the public URL: it follows the title until touched, is checked for availability as it is typed, and in edit mode says that the current address will redirect once changed. Creation and editing carry exactly the same fields; only the title, the HTTP verb and the caption differ.
 
 Two things the components must respect:
 
@@ -215,37 +219,27 @@ Two traps `globals.css` sets, both of which caught these components before being
 
 ---
 
-## Formative evaluation
+## No formative evaluation
 
-The author can have their repository scored at any time. The run uses the same pipeline as a code challenge, produces a score out of 10 — and **pays nothing**. It exists to help the author improve, and gives an admin a quality read when considering promotion.
+There used to be one: the author could have their repository scored on the `code` grid, for zero CP, as a mirror of their own work and a quality read for an admin weighing promotion.
 
-**Both types use the `code` grid.** Not the `model` one, despite what the original spec said. An ML challenge already scores code that way: in the ML role table, `model_code` maps to `grid: 'code'`, while the `model` role has **no grid at all** — it is scored on a Kaggle metric. The `model` grid (performance, innovation, reproducibility) never evaluates code, and a sandbox has only code to snapshot.
+It is gone, with the repository and the type it needed. Scoring a GitHub repo on the `code` grid is reading a proposal as a challenge — and a proposal no longer carries a repo to read, nor a type to pick a grid from. `SandboxEvaluationService`, `POST /api/sandboxes/:id/evaluation` and the two panels that displayed it are deleted; the three columns went with migration `0025`.
 
-What separates an ML sandbox is therefore **not the grid but the context** handed to the agent: the dataset URLs and, when present, the model URL are injected into the evaluated subject's description. A sandbox with no model artifact produces no `Model artifact` line and the run proceeds — the repository is what gets snapshotted either way.
-
-The context also carries the author's **goals**. They are what the repository is judged against: without them the agent scores a repo in the abstract, when the whole proposal is the gap between what the author set out to build and what is actually there.
-
-**Shared core.** `packages/services/challenge/repo-evaluation.ts` holds the snapshot → grid → score path, extracted unchanged from `CodeRewardsService`, which now calls it. One consequence worth knowing: a custom grid published in the database under the `code` slug serves challenges and sandboxes alike, since both go through the same `DatabaseGridProvider`.
-
-The two pure helpers (`toScore10`, `parseGithubRepoUrl`) live in `repo-score.ts`, apart from the evaluation module: a client component needs `toScore10` to render a score, and importing the evaluation module would pull `octokit` and `openai` into the browser bundle.
-
-**One run at a time.** The `pending → running` transition is a compare-and-set on the row, so two clicks cannot start two runs. Status flows `pending → running → done | failed`, and the UI polls while it is in flight.
-
-Nothing is ever written to `reward_entries`, `sandbox_rewards` or `contributions` by this path.
+What tells an admin a proposal is worth promoting is its stars.
 
 ---
 
 ## Promotion
 
-An admin turns a convincing proposal into an official challenge. The **type is inherited**, never chosen — a `code` sandbox becomes a code challenge, an `ml` one an ML challenge. Everything else (project, pool, reward rules, dates, compute, brief) is the admin's call, filled in through the usual challenge drawer, pre-filled from the sandbox — the address included: the challenge takes the sandbox's slug when it is free among challenges, so `/sandbox/mykine` becomes `/challenges/mykine`.
+An admin turns a convincing proposal into an official challenge. **The type is chosen here**, in the drawer: a proposal does not carry one, and `code` / `ml` decides which repos get created and which grid scores them. `validation` is not offered — a validation challenge derives from an existing ML challenge. Everything else (project, pool, reward rules, dates, compute, brief) is the admin's call too, filled in through the usual challenge drawer, pre-filled from the sandbox — the address included: the challenge takes the sandbox's slug when it is free among challenges, so `/sandbox/mykine` becomes `/challenges/mykine`.
 
 ### One transaction, guarded on the way in
 
 ```
 UPDATE sandboxes … WHERE uuid = $id AND status = 'open' RETURNING   ← row lock, the concurrency guard
 INSERT challenges
-INSERT repos + challenge_repos   (workspace_meta pre-filled)
-INSERT challenge_teams           (the author, with their repo)
+INSERT repos + challenge_repos   (workspace_meta empty)
+INSERT challenge_teams           (the author, workspace pending)
 UPDATE sandboxes SET promoted_challenge_id = …
 INSERT sandbox_rewards { rule_key: 'promotion' }
 ```
@@ -256,20 +250,11 @@ The challenge id is set in a **later** statement rather than in the first one, b
 
 The promotion row is written **even when the bonus is zero**: it is the trace of the promotion, and the unique index rests on it.
 
-### The author's work is carried over
+### The author joins, with nothing pre-filled
 
-The author does not re-submit what they already provided. On a challenge, handing in a dataset, a model or code **is** a credited contribution, so the promotion creates those contributions and runs the normal scoring, which credits the author out of the new pool.
+The author is a member of their challenge from the moment it is promoted — no join required. Their workspace row is `pending`, exactly like anyone who has just joined an `own_repo` challenge: a proposal carries no repository, so there is nothing to pre-fill.
 
-| Sandbox | What happens |
-|---|---|
-| `ml` | contributions created for the `dataset` and `model_code` roles, then scored through the normal ML path |
-| `ml`, model role | **not** scored — it has no grid, it is scored on a Kaggle metric the sandbox does not hold. Credited when the author publishes one from the challenge |
-| `code` | the repo is attached as `own_repo`; the challenge's own evaluation cycle creates the contribution on the first run |
-
-Two details that matter:
-
-- **The two awards run in sequence, not in parallel.** Each reads what is left of the pool before writing its ledger rows; two concurrent reads would see the same remainder and could together overshoot it. Promotion is the only place that triggers two at once.
-- **The carry-over runs after the commit and is not fatal**, like template tasks and the brief. A failure leaves the promotion done and the contributions pending; nothing replays them automatically.
+**Nothing is carried over any more.** Promotion used to copy the sandbox's repo, dataset and model into already-scored contributions, then run `MlRewardsService.award` on each. Those three fields no longer exist, so the whole path — `buildAuthorContributions`, `seedMlWorkspaceMeta`, `scheduleAuthorWork` and the `contributionRepo` / `awardMl` dependencies — is gone. The author submits from the challenge like everyone else, which also means promotion no longer fires an agent call.
 
 The contribution titles and the artifact flag live in `ML_ROLE_RULE` (`packages/services/challenge/mlRoles.ts`), shared with the workspace route: two paths write these contributions now, and a carried-over one has to be indistinguishable from a submitted one.
 

@@ -11,7 +11,7 @@ import { SandboxService } from "../../../../../../../packages/services/sandbox";
 import { sandboxUpdateSchema } from "../../../../../../../packages/database-service/domain/schemas_zod";
 import { verifyRequestToken } from "@/lib/auth";
 import { readAnonId } from "@/lib/server/anonVisitor";
-import { canSeeScore, canSeeSandbox, sandboxViewer, starIdentity } from "@/lib/server/sandboxAuth";
+import { canSeeSandbox, isAuthorOrAdmin, sandboxViewer, starIdentity } from "@/lib/server/sandboxAuth";
 import { sandboxErrorResponse } from "@/lib/server/sandboxErrors";
 import { toSandboxView } from "@/lib/public/sandbox";
 
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         : Promise.resolve(null),
       // Le ledger n'est chargé que pour qui a le droit de le lire — la vue
       // publique le laisserait tomber, mais autant ne pas payer la requête.
-      canSeeScore(sandbox, viewer) ? rewardRepo.findBySandbox(id) : Promise.resolve(undefined),
+      isAuthorOrAdmin(sandbox, viewer) ? rewardRepo.findBySandbox(id) : Promise.resolve(undefined),
       // Les paliers et le bonus voyagent avec le détail : sans eux la page
       // devrait charger le listing complet pour afficher deux réglages.
       appSettingsRepo.get(),

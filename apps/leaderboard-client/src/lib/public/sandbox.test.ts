@@ -6,21 +6,14 @@ import { toSandboxView, type SandboxViewer } from "./sandbox";
 const SANDBOX = {
   uuid: "s1",
   user_id: "author-1",
-  type: "ml",
   title: "Bruit de fond IRM",
   slug: "bruit-de-fond-irm",
   context: "contexte",
   goals: ["nettoyer", "publier"],
   why: "parce que",
-  repo_url: "https://github.com/org/repo",
-  model_url: "https://hf.co/org/model",
-  dataset_urls: ["https://data.example/one"],
   status: "open",
   promoted_challenge_id: null,
   promoted_at: null,
-  evaluation: { globalScore: 7, scores: [{ criterion: "clarity", score: 2 }] },
-  evaluation_status: "done",
-  evaluated_at: new Date("2026-03-01T10:00:00Z"),
   created_at: new Date("2026-02-01T10:00:00Z"),
   updated_at: new Date("2026-02-02T10:00:00Z"),
 };
@@ -82,27 +75,18 @@ describe("toSandboxView", () => {
     expect(promoted.promoted_challenge_slug).toBe("bruit-de-fond-irm");
   });
 
-  it("ne donne ni score ni email à un visiteur anonyme", () => {
+  it("ne donne ni ledger ni email à un visiteur anonyme", () => {
     const result = view(ANONYMOUS);
 
-    expect(result.evaluation).toBeUndefined();
-    expect(result.evaluation_status).toBeUndefined();
-    expect(result.evaluated_at).toBeUndefined();
     expect(result.rewards).toBeUndefined();
 
     const serialised = JSON.stringify(result);
     expect(serialised).not.toContain("alix@example.com");
     expect(serialised).not.toContain("github_username");
-    expect(serialised).not.toContain("globalScore");
   });
 
-  it("donne le score à l'auteur", () => {
-    const result = view(AUTHOR_VIEWER);
-
-    expect(result.evaluation).toEqual(SANDBOX.evaluation);
-    expect(result.evaluation_status).toBe("done");
-    expect(result.evaluated_at).toBe("2026-03-01T10:00:00.000Z");
-    expect(result.rewards).toEqual([
+  it("donne le ledger à l'auteur", () => {
+    expect(view(AUTHOR_VIEWER).rewards).toEqual([
       {
         uuid: "r1",
         rule_key: "star_tier",
@@ -113,17 +97,16 @@ describe("toSandboxView", () => {
     ]);
   });
 
-  it("donne le score à un admin", () => {
-    expect(view(ADMIN).evaluation).toEqual(SANDBOX.evaluation);
+  it("donne le ledger à un admin", () => {
+    expect(view(ADMIN).rewards).toHaveLength(1);
   });
 
-  it("ne donne pas le score à un manager, qui n'a aucun droit sur un sandbox", () => {
-    expect(view(MANAGER).evaluation).toBeUndefined();
+  it("ne donne pas le ledger à un manager, qui n'a aucun droit sur un sandbox", () => {
     expect(view(MANAGER).rewards).toBeUndefined();
   });
 
-  it("ne donne pas le score à un contributeur connecté quelconque", () => {
-    expect(view(OTHER_ADMINLESS).evaluation).toBeUndefined();
+  it("ne donne pas le ledger à un contributeur connecté quelconque", () => {
+    expect(view(OTHER_ADMINLESS).rewards).toBeUndefined();
   });
 
   it("publie paid_tier_thresholds pour tout le monde", () => {
@@ -139,8 +122,8 @@ describe("toSandboxView", () => {
 
     expect(view(cookieViewer, { myStar: true }).my_star).toBe(true);
     expect(view(cookieViewer, { myStar: false }).my_star).toBe(false);
-    // L'identité anonyme ne fait rien gagner d'autre : toujours pas de score.
-    expect(view(cookieViewer, { myStar: true }).evaluation).toBeUndefined();
+    // L'identité anonyme ne fait rien gagner d'autre : toujours pas de ledger.
+    expect(view(cookieViewer, { myStar: true }).rewards).toBeUndefined();
     // Et l'anon_id ne ressort jamais dans la charge utile.
     expect(JSON.stringify(view(cookieViewer, { myStar: true }))).not.toContain("anon-42");
   });
@@ -153,9 +136,9 @@ describe("toSandboxView", () => {
     });
   });
 
-  it("tolère un sandbox sans auteur chargé et sans listes", () => {
+  it("tolère un sandbox sans auteur chargé et sans buts", () => {
     const result = toSandboxView({
-      sandbox: { ...SANDBOX, goals: null, dataset_urls: null },
+      sandbox: { ...SANDBOX, goals: null },
       viewer: ANONYMOUS,
       author: null,
       starCount: 0,
@@ -165,6 +148,5 @@ describe("toSandboxView", () => {
 
     expect(result.author).toBeNull();
     expect(result.goals).toEqual([]);
-    expect(result.dataset_urls).toEqual([]);
   });
 });

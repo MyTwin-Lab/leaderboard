@@ -590,37 +590,28 @@ export interface AppSettings {
 // --- SANDBOX ---
 // Proposition ouverte déposée par un contributeur. Voir docs/sandbox.md.
 
-/** 'validation' est exclu : un challenge de validation dérive d'un challenge ML existant. */
-export type SandboxType = 'code' | 'ml';
+/*
+ * Pas de `SandboxType` : `code` / `ml` est le vocabulaire des challenges, et
+ * un sandbox est un projet. La forme du travail est choisie par l'admin à la
+ * promotion — voir `PromotionInput.type`.
+ */
 
 export type SandboxStatus = 'open' | 'promoted' | 'archived';
-
-/** Pas de 'skipped_reuse' ici : une évaluation formative n'a rien à réutiliser. */
-export type SandboxEvaluationStatus = 'pending' | 'running' | 'done' | 'failed';
 
 export interface Sandbox {
   uuid: string;
   user_id: string;
-  /** Figé à la création : il a déjà déterminé les champs saisis et la grille. */
-  type: SandboxType;
   title: string;
   /** Segment de l'URL publique (/sandbox/<slug>) — voir domain/slug.ts. */
   slug: string;
   context: string | null;
   goals: string[];
   why: string | null;
-  repo_url: string;
-  /** ML uniquement, et optionnel : un sandbox ML peut démarrer sans artefact. */
-  model_url: string | null;
-  dataset_urls: string[];
   /** L'image de couverture, posée à la création et modifiable par l'auteur. */
   cover_image_url: string | null;
   status: SandboxStatus;
   promoted_challenge_id: string | null;
   promoted_at: Date | null;
-  evaluation?: any; // même forme que contributions.evaluation – à typer plus tard
-  evaluation_status: SandboxEvaluationStatus | null;
-  evaluated_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -740,7 +731,12 @@ export interface DigestPayload {
   new_sandboxes?: Array<{
     sandbox_id: string;
     title: string;
-    type: string;
+    /**
+     * Plus écrit depuis qu'un sandbox est un projet : `code` / `ml` était le
+     * vocabulaire des challenges. Gardé optionnel parce qu'un digest déjà en
+     * base le porte, et qu'un digest généré est immuable.
+     */
+    type?: string;
     author: { user_id: string; full_name: string };
     /** Stars actives au moment de la génération, pas sur la seule fenêtre. */
     star_count: number;

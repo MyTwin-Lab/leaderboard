@@ -23,12 +23,10 @@ import { SandboxService, SandboxPromotionService, hashIp } from "../packages/ser
  * L'état produit est donc exactement celui qu'aurait produit l'usage réel —
  * compteurs, seuils payés et ledger cohérents entre eux.
  *
- * Les deux seules écritures directes, et pourquoi :
- *   - l'évaluation formative, posée par `storeEvaluation()` : la lancer pour de
- *     vrai appellerait GitHub et OpenAI, ce qu'un seed ne doit pas faire ;
- *   - `created_at` / `updated_at`, antidatés après coup : le repository ne les
- *     accepte pas à la création, et sans ça les cinq propositions arriveraient
- *     à la même seconde — le tri « recency » du listing n'aurait rien à montrer.
+ * La seule écriture directe : `created_at` / `updated_at`, antidatés après
+ * coup. Le repository ne les accepte pas à la création, et sans ça les cinq
+ * propositions arriveraient à la même seconde — le tri « recency » du listing
+ * n'aurait rien à montrer.
  *
  * Prérequis : `npm run db:seed`, pour les utilisateurs et les projets.
  *
@@ -44,14 +42,10 @@ const appSettingsRepo = new AppSettingsRepository();
 const projectRepo = new ProjectRepository();
 const sandboxRepo = new SandboxRepository();
 const sandboxService = new SandboxService();
-// `awardMl` neutralisé : le scoring ML déclenche des appels agent de plusieurs
-// dizaines de secondes. Le sandbox promu ci-dessous est de type `code`, pour
-// lequel `buildAuthorContributions` ne rend rien — la doublure n'est donc
-// jamais appelée. Elle est là pour que ce seed ne puisse pas toucher au réseau
-// si quelqu'un promeut un sandbox `ml` en modifiant ce fichier.
-const promotionService = new SandboxPromotionService({
-  awardMl: async () => {},
-});
+// Plus aucune doublure à injecter : la promotion ne reprend plus le travail de
+// l'auteur — une proposition ne porte ni dépôt, ni dataset, ni modèle — donc
+// elle ne déclenche aucun appel agent.
+const promotionService = new SandboxPromotionService();
 
 /** Paliers de démonstration. Inertes par défaut en base — sans eux, starer ne paie rien. */
 const STAR_TIERS = [
@@ -182,12 +176,11 @@ async function main() {
     "Projet d'accueil des challenges issus de propositions du Sandbox."
   );
 
-  // --- 1. Code, très staré : les trois paliers franchis ---
+  // --- 1. Très staré : les trois paliers franchis ---
   const hotAuthor = author("Camille Daverio", 0);
   const hot = await findOrCreateSandbox(
     {
       user_id: hotAuthor,
-      type: "code",
       title: "Open wearable ingestion pipeline for continuous vitals",
       context:
         "Consumer wearables expose heart rate, HRV and SpO2 through a dozen incompatible APIs. Anyone building on top of them re-writes the same normalisation layer, and none of those layers are open.",
@@ -199,7 +192,6 @@ async function main() {
       ],
       why:
         "Continuous vitals are the highest-frequency signal a digital twin can get. Today the cost of collecting them cleanly is what stops most teams before they start modelling anything.",
-      repo_url: "https://github.com/mytwin-labs/wearable-ingest",
     },
     daysAgo(46)
   );
@@ -210,12 +202,11 @@ async function main() {
       : "✓ Sandbox « wearable ingestion » déjà présent"
   );
 
-  // --- 2. ML, avec datasets, modèle et une évaluation formative déjà posée ---
+  // --- 2. Deux paliers franchis, pour que la barre de progression ait un reste ---
   const mlAuthor = author("Patricia Novi", 1);
   const ml = await findOrCreateSandbox(
     {
       user_id: mlAuthor,
-      type: "ml",
       title: "Gait asymmetry detection from a single phone camera",
       context:
         "Clinical gait analysis needs a motion lab. A phone on a tripod and thirty seconds of walking should be enough to flag an asymmetry worth a real consultation — not to diagnose, to triage.",
@@ -227,71 +218,23 @@ async function main() {
       ],
       why:
         "Post-injury rehab is monitored by memory and self-report between appointments. A measurable weekly number is the difference between adjusting a protocol and guessing at it.",
-      repo_url: "https://github.com/mytwin-labs/gait-asymmetry",
-      model_url: "https://www.kaggle.com/models/mytwin/gait-asymmetry-v1",
-      dataset_urls: [
-        "https://www.kaggle.com/datasets/mytwin/phone-gait-recordings",
-        "https://www.kaggle.com/datasets/mytwin/lab-gait-reference",
-      ],
     },
     daysAgo(24)
   );
   if (ml.created) {
     await addStars(ml.uuid, mlAuthor, allUserIds, 12, 6, "demo-anon-gait");
-    // Évaluation écrite directement : la lancer pour de vrai appellerait GitHub
-    // et OpenAI. La forme est celle que rend `repo-evaluation.ts` —
-    // `globalScore` sur 9, que l'UI ramène sur 10 via `toScore10`.
-    await sandboxRepo.storeEvaluation(ml.uuid, {
-      globalScore: 6.8,
-      scores: [
-        {
-          criterion: "Complexité du code",
-          score: 7,
-          weight: 0.2,
-          comment:
-            "Le pipeline de pose est lisible ; l'extraction des foulées concentre trop de branches dans une seule fonction.",
-        },
-        {
-          criterion: "Couverture de tests",
-          score: 5,
-          weight: 0.2,
-          comment:
-            "Les helpers géométriques sont testés, le chemin bout-en-bout ne l'est pas — c'est pourtant lui qui casse quand le format d'entrée bouge.",
-        },
-        {
-          criterion: "Séparation des responsabilités",
-          score: 8,
-          weight: 0.2,
-          comment: "Lecture vidéo, inférence et calcul de l'indice sont bien trois modules distincts.",
-        },
-        {
-          criterion: "Documentation technique",
-          score: 7,
-          weight: 0.2,
-          comment:
-            "Le README couvre l'installation et un exemple ; les conditions de prise de vue attendues ne sont écrites nulle part.",
-        },
-        {
-          criterion: "Reproductibilité",
-          score: 7,
-          weight: 0.2,
-          comment: "Dépendances épinglées et seed fixée ; la version du modèle de pose n'est pas verrouillée.",
-        },
-      ],
-    });
   }
   console.log(
     ml.created
-      ? "✓ Sandbox « gait asymmetry » créé + 18 stars (paliers 5, 15) + évaluation formative"
+      ? "✓ Sandbox « gait asymmetry » créé + 18 stars (paliers 5, 15)"
       : "✓ Sandbox « gait asymmetry » déjà présent"
   );
 
-  // --- 3. Code, tout frais : sous le premier palier ---
+  // --- 3. Tout frais : sous le premier palier ---
   const freshAuthor = author("Samir Touinssi", 2);
   const fresh = await findOrCreateSandbox(
     {
       user_id: freshAuthor,
-      type: "code",
       title: "Consent ledger for health data reuse",
       context:
         "A contributor who hands over a recording has no way to see where it ended up, and no way to withdraw it from a model that has already been trained.",
@@ -302,7 +245,6 @@ async function main() {
       ],
       why:
         "Every other proposal on this board assumes the data is there. This is what makes people willing to hand it over twice.",
-      repo_url: "https://github.com/mytwin-labs/consent-ledger",
     },
     daysAgo(5)
   );
@@ -313,12 +255,11 @@ async function main() {
       : "✓ Sandbox « consent ledger » déjà présent"
   );
 
-  // --- 4. Code, promu : deux paliers payés, puis le bonus de promotion ---
+  // --- 4. Promu : deux paliers payés, puis le bonus de promotion ---
   const promotedAuthor = author("Christyl Hodonou", 3);
   const promoted = await findOrCreateSandbox(
     {
       user_id: promotedAuthor,
-      type: "code",
       title: "Reference API harness for clinical model endpoints",
       context:
         "Every model packaged as an API on this platform is tested by hand, against whatever payload its author had open at the time. There is no shared harness, so nothing is comparable.",
@@ -330,7 +271,6 @@ async function main() {
       ],
       why:
         "Qualified validation costs a medical professional's time. Spending it on an endpoint that returns a 500 on the third case is the most expensive way to find a bug.",
-      repo_url: "https://github.com/mytwin-labs/endpoint-harness",
     },
     daysAgo(72)
   );
@@ -348,6 +288,8 @@ async function main() {
       actor: { userId: promotedAuthor, role: "admin" },
       input: {
         status: "active",
+        // Le type est choisi ici, par l'admin : une proposition n'en porte pas.
+        type: "code",
         start_date: daysAgo(60).toISOString().split("T")[0],
         end_date: daysAgo(-30).toISOString().split("T")[0],
         contribution_points_reward: 1200,
@@ -365,12 +307,11 @@ async function main() {
     console.log("✓ Sandbox « endpoint harness » déjà promu");
   }
 
-  // --- 5. Code, archivé : visible du seul auteur, sous l'onglet « Mine » ---
+  // --- 5. Archivé : visible du seul auteur, sous l'onglet « Mine » ---
   const archivedAuthor = author("Mahdi Lamriben", 4);
   const archived = await findOrCreateSandbox(
     {
       user_id: archivedAuthor,
-      type: "code",
       title: "Browser-side DICOM anonymiser",
       context:
         "Stripping identifiers from a DICOM study before it leaves the hospital network, without installing anything.",
@@ -379,7 +320,6 @@ async function main() {
         "Burned-in text detection on the pixel data itself",
       ],
       why: "Retiré au profit d'un outil existant qui fait déjà la même chose, mieux.",
-      repo_url: "https://github.com/mytwin-labs/dicom-anon-web",
     },
     daysAgo(120)
   );

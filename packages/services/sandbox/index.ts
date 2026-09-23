@@ -30,17 +30,9 @@ export type { HeaderSource } from "./starPolicy.js";
 export { planAnonAttach } from "./starAttach.js";
 export type { AnonAttachPlan } from "./starAttach.js";
 
-// Évaluation formative — grille `code` pour les deux types (§1.3), zéro CP.
-export {
-  SandboxEvaluationService,
-  SANDBOX_EVALUATION_GRID,
-  buildEvaluationContext,
-} from "./sandbox-evaluation.service.js";
-export type {
-  SandboxEvaluationDeps,
-  SandboxEvaluationEvent,
-  CannotEvaluateSandboxReason,
-} from "./sandbox-evaluation.service.js";
+// L'évaluation formative a été retirée avec le type et le dépôt obligatoire :
+// elle notait un repo GitHub sur la grille `code`, c'est-à-dire un challenge.
+// Un sandbox est un projet — ce qui le fait avancer, ce sont ses stars.
 
 // Promotion — le passage d'une proposition à un challenge officiel.
 export { SandboxPromotionService } from "./sandbox-promotion.service.js";
@@ -53,13 +45,9 @@ export {
   buildPromotedChallengeDraft,
   buildPromotedDescription,
   buildAuthorParticipation,
-  buildAuthorContributions,
-  seedMlWorkspaceMeta,
 } from "./promotion.js";
 export type {
   PromotionInput,
   PromotedChallengeDraft,
-  PromotedContributionDraft,
   AuthorParticipation,
-  MlWorkspaceMetaSeed,
 } from "./promotion.js";

@@ -1,0 +1,637 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   La page d'un sandbox — d'après `Sandbox Vitrine.dc.html`.
+
+   Mêmes règles que les autres écrans vitrine : tout est scopé sous
+   `.vitrine .v-sd`, préfixé `v-sd-`, et reprend les jetons de `vitrine.css`
+   (mêmes valeurs que la maquette). Aucun utilitaire Tailwind `text-white` /
+   `bg-white/…` ici : `globals.css` les réécrit en mode clair.
+
+   **Ce fichier ne redéfinit pas le hero, la section « why », la colonne de
+   lecture ni l'aside** : la maquette les pose exactement comme
+   `Challenge Vitrine.dc.html`, et `challenge-vitrine.css` les porte déjà. La
+   racine cumule donc `v-cd` et `v-sd`, et seul ce qui est propre au sandbox —
+   l'étoile, les paliers, l'auteur, les commandes — est écrit ici. Dupliquer
+   les deux fichiers aurait laissé les deux pages diverger au premier
+   ajustement.
+
+   La bascule téléphone se fait à 768px, comme partout ailleurs.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.v-sd {
+  /* La ligne de mesures de la maquette n'est pas rendue (elle répétait les
+     stars, déjà dans la colonne de droite) : le hero peut donc respirer un
+     peu moins haut que celui d'un challenge. */
+  --v-sd-hero-min: min(38rem, 74svh);
+}
+
+.v-sd .v-cd-hero-card {
+  min-height: var(--v-sd-hero-min);
+}
+
+.v-sd-sep {
+  font-size: 0.8125rem;
+  color: rgb(255 255 255 / 0.5);
+}
+
+/* ── L'étoile ───────────────────────────────────────────────────────────
+   Deux boutons, une seule bascule (`useStarToggle` est monté une fois dans le
+   composant) : celui de la photo est le CTA accent de la maquette, celui de la
+   colonne est le bouton sombre. */
+.v-sd-hero-star {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.55rem;
+  height: 3.25rem;
+  padding-inline: 1.6rem;
+  border-radius: 999px;
+  background: var(--v-accent);
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+  white-space: nowrap;
+  transition: transform 0.2s var(--v-ease), box-shadow 0.2s var(--v-ease),
+    background-color 0.2s var(--v-ease);
+}
+
+.v-sd-hero-star:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px -18px rgb(11 122 100 / 0.9);
+}
+
+.v-sd-hero-star[data-on="true"] {
+  background: var(--v-accent-dark);
+}
+
+/* Inerte : l'auteur ne star pas le sien, et une proposition promue ou
+   archivée ne se star plus. Le bouton reste — il porte le compteur, qui est
+   l'information — mais il ne fait plus semblant d'être cliquable. */
+.v-sd-hero-star[data-off="true"],
+.v-sd-hero-star:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  background: rgb(255 255 255 / 0.14);
+  border: 1px solid rgb(255 255 255 / 0.22);
+}
+
+.v-sd-hero-star svg,
+.v-sd-aside-star svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+}
+
+.v-sd-star-count {
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+  padding: 0.05rem 0.55rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.v-sd-hero-error {
+  max-width: 28rem;
+  font-size: 0.8125rem;
+  color: #ffd7d2;
+  text-shadow: 0 1px 2px rgb(8 12 14 / 0.6);
+}
+
+.v-sd-aside-star {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--v-ink);
+  background: var(--v-ink);
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+  transition: background-color 0.2s var(--v-ease), color 0.2s var(--v-ease),
+    border-color 0.2s var(--v-ease);
+}
+
+.v-sd-aside-star:hover {
+  background: var(--v-accent);
+  border-color: var(--v-accent);
+}
+
+.v-sd-aside-star[data-on="true"] {
+  background: rgb(11 122 100 / 0.1);
+  border-color: rgb(11 122 100 / 0.3);
+  color: var(--v-accent);
+}
+
+.v-sd-aside-star[data-off="true"],
+.v-sd-aside-star:disabled {
+  cursor: not-allowed;
+  background: var(--v-tint);
+  border-color: var(--v-line);
+  color: var(--v-subtle);
+}
+
+.v-sd-aside-star .v-sd-star-count {
+  background: rgb(255 255 255 / 0.18);
+}
+
+.v-sd-aside-star[data-on="true"] .v-sd-star-count,
+.v-sd-aside-star[data-off="true"] .v-sd-star-count {
+  background: rgb(17 22 26 / 0.08);
+}
+
+.v-sd-aside-error {
+  font-size: 0.8125rem;
+  color: #b3261e;
+}
+
+/* ── Les commandes de l'auteur et de l'admin ────────────────────────────
+   Hors maquette : elle décrit la page telle qu'un visiteur la lit. Posées sur
+   le fond clair, sous la photo, et volontairement discrètes — ce sont des
+   gestes de gestion, pas l'action de la page. */
+.v-sd-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 1.25rem;
+}
+
+.v-sd-tools-label {
+  margin-right: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+.v-sd-tool {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--v-line);
+  border-radius: 999px;
+  background: var(--v-surface);
+  padding: 0.6rem 1.1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--v-ink);
+  transition: border-color 0.2s var(--v-ease), color 0.2s var(--v-ease),
+    background-color 0.2s var(--v-ease);
+}
+
+.v-sd-tool:hover {
+  border-color: rgb(11 122 100 / 0.4);
+  color: var(--v-accent);
+}
+
+.v-sd-tool[data-primary="true"] {
+  border-color: var(--v-ink);
+  background: var(--v-ink);
+  color: #ffffff;
+}
+
+.v-sd-tool[data-primary="true"]:hover {
+  border-color: var(--v-accent);
+  background: var(--v-accent);
+  color: #ffffff;
+}
+
+.v-sd-tool[data-danger="true"] {
+  border-color: rgb(179 38 30 / 0.25);
+  background: rgb(179 38 30 / 0.05);
+  color: #b3261e;
+}
+
+.v-sd-tool[data-danger="true"]:hover {
+  border-color: rgb(179 38 30 / 0.45);
+  color: #b3261e;
+}
+
+.v-sd-tool:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.v-sd-tool svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: none;
+}
+
+/* ── Le bandeau d'une proposition promue ────────────────────────────────
+   Violet, comme la ligne « Promotion » du ledger dans l'onglet Contributions :
+   c'est le seul état terminal heureux d'une proposition, et le distinguer de
+   l'accent courant évite de le lire comme un simple statut. */
+.v-sd-promoted {
+  padding-top: 1.25rem;
+}
+
+.v-sd-promoted-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid rgb(124 58 237 / 0.22);
+  border-radius: 1.25rem;
+  background: rgb(124 58 237 / 0.07);
+  padding: 1rem 1.25rem;
+}
+
+.v-sd-promoted-card > svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  color: #7c3aed;
+}
+
+.v-sd-promoted-title {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: -0.015em;
+  color: var(--v-ink);
+}
+
+.v-sd-promoted-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #7c3aed;
+}
+
+.v-sd-promoted-link:hover {
+  color: #6d28d9;
+}
+
+.v-sd-promoted-meta {
+  font-size: 0.8125rem;
+  color: var(--v-muted);
+}
+
+/* ── « Who proposed this sandbox » ──────────────────────────────────────
+   La carte sombre de la maquette, réduite à sa moitié gauche : à droite, la
+   maquette pose le dépôt de l'auteur, et une proposition n'en porte plus. */
+.v-sd-author {
+  padding-top: clamp(3rem, 6vw, 5rem);
+}
+
+.v-sd-author-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  border-radius: var(--v-radius);
+  background: var(--v-night);
+  color: var(--v-on-night);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.v-sd-author-text {
+  display: flex;
+  flex: 1 1 22rem;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.v-sd-author-id {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-width: 0;
+  color: inherit;
+  transition: opacity 0.2s var(--v-ease);
+}
+
+.v-sd-author-id:hover {
+  opacity: 0.82;
+  color: inherit;
+}
+
+.v-sd-author-face {
+  display: flex;
+  flex: none;
+}
+
+.v-sd-author-names {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.v-sd-author-name {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: -0.015em;
+}
+
+.v-sd-author-meta {
+  font-size: 0.875rem;
+  color: var(--v-on-night-muted);
+}
+
+/* Rien à droite : la carte « Repository » de la maquette n'a plus d'objet, et
+   le bloc auteur prend toute la largeur plutôt que de laisser un vide. */
+.v-sd-author-text {
+  flex-basis: auto;
+}
+
+/* ── « The proposal » ───────────────────────────────────────────────────
+   La colonne de lecture et l'aside sont ceux de `challenge-vitrine.css` ; seuls
+   les intertitres et la carte des paliers sont écrits ici. */
+.v-sd-proposal {
+  padding-top: clamp(3.5rem, 7vw, 6rem);
+  /* « Read the proposal » est une ancre : la navbar fixe ne doit pas manger le
+     haut de la section en y arrivant. */
+  scroll-margin-top: 6rem;
+}
+
+.v-sd-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.v-sd-block-title {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 1.375rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+}
+
+/* ── Les paliers de stars ───────────────────────────────────────────────── */
+.v-sd-tiers {
+  display: grid;
+  gap: 0.875rem;
+  border: 1px solid var(--v-line);
+  border-radius: 1.25rem;
+  background: var(--v-surface);
+  padding: 1.25rem 1.375rem;
+}
+
+.v-sd-tiers-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.625rem;
+}
+
+.v-sd-tiers-count {
+  font-size: 0.8125rem;
+  color: var(--v-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.v-sd-tiers-empty {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-sd-tier-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.v-sd-tier {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 0.875rem;
+  background: rgb(17 22 26 / 0.025);
+  padding: 0.625rem 0.75rem;
+}
+
+.v-sd-tier[data-paid="true"] {
+  background: rgb(11 122 100 / 0.07);
+}
+
+.v-sd-tier svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: none;
+  color: var(--v-subtle);
+}
+
+.v-sd-tier[data-paid="true"] svg {
+  color: var(--v-accent);
+}
+
+.v-sd-tier-threshold {
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--v-ink);
+}
+
+.v-sd-tier-cp {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--v-subtle);
+}
+
+.v-sd-tier[data-paid="true"] .v-sd-tier-cp {
+  color: var(--v-accent);
+}
+
+.v-sd-tier-state {
+  font-size: 0.75rem;
+  color: var(--v-muted);
+}
+
+.v-sd-tier-progress {
+  display: grid;
+  gap: 0.35rem;
+}
+
+/* ── L'en-tête de la maquette téléphone ─────────────────────────────────── */
+.v-sd-mobile-bar {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Téléphone — la vue du cadre iOS de la maquette.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .v-sd-mobile-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 0.875rem;
+  }
+
+  .v-sd-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--v-muted);
+  }
+
+  .v-sd-back svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .v-sd-mobile-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+    color: var(--v-muted);
+  }
+
+  .v-sd-mobile-stars svg {
+    width: 0.8125rem;
+    height: 0.8125rem;
+    color: var(--v-accent);
+  }
+
+  .v-sd-mobile-stars b {
+    font-family: var(--v-font-h);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--v-ink);
+  }
+
+  .v-sd .v-cd-hero-card {
+    min-height: 24rem;
+  }
+
+  .v-sd-sep {
+    display: none;
+  }
+
+  /* Un seul bouton, pleine largeur : « Read the proposal » n'a pas lieu
+     d'être sur une page qu'on parcourt au pouce. */
+  .v-sd-hero-star {
+    flex: 1;
+    justify-content: center;
+    height: 2.875rem;
+    padding-inline: 1.25rem;
+    font-size: 0.9375rem;
+  }
+
+  .v-sd-hero-star svg,
+  .v-sd-aside-star svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .v-sd-tools {
+    padding-top: 1rem;
+  }
+
+  .v-sd-tools-label {
+    width: 100%;
+    margin-right: 0;
+    font-size: 0.625rem;
+  }
+
+  .v-sd-promoted-card {
+    border-radius: 1rem;
+    padding: 0.875rem 1rem;
+  }
+
+  .v-sd-author {
+    padding-top: 1.75rem;
+  }
+
+  .v-sd-author-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.875rem;
+    border-radius: 1.5rem;
+    padding: 1.25rem;
+  }
+
+  /* En colonne, le `flex-basis` de la disposition en deux blocs devient une
+     **hauteur** : la carte faisait 22rem de haut pour deux lignes de texte. */
+  .v-sd-author-text {
+    flex: 0 0 auto;
+  }
+
+  .v-sd-author-id {
+    gap: 0.75rem;
+  }
+
+  .v-sd-author-face > * {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+  }
+
+  .v-sd-author-name {
+    font-size: 1rem;
+  }
+
+  .v-sd-author-meta {
+    font-size: 0.75rem;
+  }
+
+  .v-sd-proposal {
+    padding-top: 2rem;
+  }
+
+  .v-sd-block {
+    gap: 0.5rem;
+  }
+
+  .v-sd-block-title {
+    font-size: 1.0625rem;
+  }
+
+  .v-sd-tiers {
+    gap: 0.75rem;
+    border-radius: 1rem;
+    padding: 1rem;
+  }
+
+  .v-sd-tiers-count {
+    font-size: 0.75rem;
+  }
+
+  .v-sd-tier-list {
+    gap: 0.375rem;
+  }
+
+  .v-sd-tier {
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.625rem;
+  }
+
+  .v-sd-tier svg {
+    width: 0.8125rem;
+    height: 0.8125rem;
+  }
+
+  .v-sd-tier-threshold {
+    font-size: 0.8125rem;
+  }
+
+  .v-sd-tier-cp {
+    font-size: 0.75rem;
+  }
+
+  .v-sd-tier-state {
+    font-size: 0.6875rem;
+  }
+
+  .v-sd-aside-star {
+    height: 2.875rem;
+    font-size: 0.9375rem;
+  }
+}
