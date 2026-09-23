@@ -181,22 +181,30 @@
 }
 
 /* Le masque radial de la maquette : la figure se fond dans la page au lieu de
-   s'arrêter sur un bord franc. `multiply` fait disparaître son fond blanc. */
+   s'arrêter sur un bord franc. `multiply` fait disparaître son fond blanc.
+
+   Le cadre est carré parce que la source l'est : rien n'est recadré, et le
+   masque suffit à ouvrir les bords. La maquette posait un cadre en paysage
+   pour découper le haut d'une image en portrait — ce problème n'existe plus.
+
+   Le masque est un peu plus généreux que celui de la maquette (78% au lieu de
+   70%, centré plus bas) : sur un carré, son ellipse d'origine effaçait le
+   haut du crâne. */
 .v-home-twin {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1 / 1;
   max-width: 32rem;
   width: 100%;
-  -webkit-mask-image: radial-gradient(ellipse 62% 70% at 50% 42%, #000 58%, transparent 100%);
-  mask-image: radial-gradient(ellipse 62% 70% at 50% 42%, #000 58%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 78% at 50% 46%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 78% at 50% 46%, #000 62%, transparent 100%);
 }
 
 .v-home-twin img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 0;
+  object-position: 50% 50%;
   mix-blend-mode: multiply;
 }
 

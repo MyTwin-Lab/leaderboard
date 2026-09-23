@@ -36,15 +36,16 @@ export function HomeVision() {
           <p className="v-home-vision-sub">Our research vision</p>
         </div>
 
-        {/* Décorative : le titre juste au-dessus dit déjà ce qu'elle montre. */}
+        {/* L'image porte ce que le titre ne dit pas — l'anatomie qui se dissout
+            en points de données — donc elle a un vrai texte alternatif plutôt
+            qu'un `aria-hidden`. */}
         <div className="v-home-twin">
           <Image
-            src="/home/twin/digital-twin-light.webp"
-            alt=""
-            aria-hidden
-            width={835}
-            height={1400}
-            sizes="(min-width: 768px) 32rem, 100vw"
+            src="/home/twin/digital-twin-anatomy.jpg"
+            alt="A human digital twin: anatomy on one side, dissolving into data points on the other"
+            width={1254}
+            height={1254}
+            sizes="(min-width: 768px) 32rem, 45vw"
             priority
           />
         </div>
