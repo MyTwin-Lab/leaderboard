@@ -9,7 +9,13 @@
    déjà ses propres couleurs.
    ───────────────────────────────────────────────────────────────────────── */
 
-.vitrine {
+/* `.vitrine` habille une page entière ; `.vitrine-embed` n'en emprunte que la
+   matière — jetons, typographie, réarmement — pour poser un de ses composants
+   dans une page qui n'est pas une vitrine, l'accueil du Lab par exemple. Les
+   deux partagent tout ce qui suit ; seule la mise en page pleine hauteur, plus
+   bas, reste au premier. */
+.vitrine,
+.vitrine-embed {
   /* ── Jetons de la maquette ───────────────────────────────────────── */
   --v-bg: #fbfaf8;
   --v-surface: #ffffff;
@@ -34,9 +40,6 @@
   --v-font-d: var(--font-vitrine-display), ui-serif, Georgia, serif;
   --v-font-s: var(--font-vitrine-sans), ui-sans-serif, system-ui, sans-serif;
 
-  position: relative;
-  min-height: 100vh;
-  overflow-x: clip;
   color: var(--v-ink);
   font-family: var(--v-font-s);
   font-size: 1rem;
@@ -45,13 +48,24 @@
   text-rendering: optimizeLegibility;
 }
 
+/* Réservé à la page entière : un encart embarqué ne doit ni réclamer toute la
+   hauteur de l'écran, ni créer son propre contexte de rognage horizontal. */
+.vitrine {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
 /* Le fond, lui, est peint par `LabShell` : c'est le calque fixe du chrome qui
    prend la couleur de la maquette, pour que la navbar et le footer reposent
    sur le même fond que le contenu, sans couture au défilement. */
 
 .vitrine *,
 .vitrine *::before,
-.vitrine *::after {
+.vitrine *::after,
+.vitrine-embed *,
+.vitrine-embed *::before,
+.vitrine-embed *::after {
   box-sizing: border-box;
 }
 
@@ -60,30 +74,30 @@
    l'emportait au contraire sur `.v-pill` ou `.v-sb-star` — et les pastilles
    perdaient leur fond et leur padding, l'étoile son contour, le bouton du
    bandeau sa couleur. */
-:where(.vitrine) :where(h1, h2, h3, h4, p, dl, dd, dt, ol, ul, figure) {
+:where(.vitrine, .vitrine-embed) :where(h1, h2, h3, h4, p, dl, dd, dt, ol, ul, figure) {
   margin: 0;
 }
 
-:where(.vitrine) :where(ol, ul) {
+:where(.vitrine, .vitrine-embed) :where(ol, ul) {
   list-style: none;
   padding: 0;
 }
 
-:where(.vitrine) :where(a) {
+:where(.vitrine, .vitrine-embed) :where(a) {
   color: inherit;
   text-decoration: none;
 }
 
-:where(.vitrine) :where(img) {
+:where(.vitrine, .vitrine-embed) :where(img) {
   display: block;
   max-width: 100%;
 }
 
-:where(.vitrine) :where(input, textarea, button) {
+:where(.vitrine, .vitrine-embed) :where(input, textarea, button) {
   font-family: inherit;
 }
 
-:where(.vitrine) :where(button) {
+:where(.vitrine, .vitrine-embed) :where(button) {
   border: none;
   background: none;
   padding: 0;
@@ -93,7 +107,8 @@
   text-align: left;
 }
 
-.vitrine ::selection {
+.vitrine ::selection,
+.vitrine-embed ::selection {
   background: var(--v-ink);
   color: var(--v-bg);
 }
@@ -104,25 +119,33 @@
    déjà chaque couleur : on lui rend la main, avec une sélectivité plus
    forte. */
 html[data-mode="light"] .vitrine svg,
-html[data-mode="dark"] .vitrine svg {
+html[data-mode="dark"] .vitrine svg,
+html[data-mode="light"] .vitrine-embed svg,
+html[data-mode="dark"] .vitrine-embed svg {
   color: inherit;
 }
 
 html[data-mode="light"] .vitrine input,
-html[data-mode="light"] .vitrine textarea {
+html[data-mode="light"] .vitrine textarea,
+html[data-mode="light"] .vitrine-embed input,
+html[data-mode="light"] .vitrine-embed textarea {
   background-color: var(--v-surface) !important;
   color: var(--v-ink) !important;
   border-color: var(--v-line) !important;
 }
 
 html[data-mode="light"] .vitrine input.v-bare,
-html[data-mode="light"] .vitrine textarea.v-bare {
+html[data-mode="light"] .vitrine textarea.v-bare,
+html[data-mode="light"] .vitrine-embed input.v-bare,
+html[data-mode="light"] .vitrine-embed textarea.v-bare {
   background-color: transparent !important;
   border-color: transparent !important;
 }
 
 .vitrine input::placeholder,
-.vitrine textarea::placeholder {
+.vitrine textarea::placeholder,
+.vitrine-embed input::placeholder,
+.vitrine-embed textarea::placeholder {
   color: var(--v-subtle) !important;
   opacity: 1;
 }

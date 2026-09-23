@@ -217,6 +217,8 @@ export type HomeTrendingChallenge = {
   title: string;
   type: string;
   typeLabel: string;
+  /** Pilote la formule « Delivered and evaluated » de la carte. */
+  status: string;
   projectName: string;
   description: string | null;
   rewardPool: number;
@@ -226,6 +228,8 @@ export type HomeTrendingChallenge = {
   activeContributors: number;
   /** 7 daily contribution counts for this challenge, oldest → newest. */
   spark: number[];
+  /** L'image posée à la création ou à l'édition ; sinon, l'illustration de repli. */
+  coverImageUrl: string | null;
 };
 
 export type HomeOverview = {

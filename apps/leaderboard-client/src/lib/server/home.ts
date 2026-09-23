@@ -194,6 +194,7 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
     title: c.title,
     type: c.type ?? "code",
     typeLabel: TYPE_LABELS[c.type ?? "code"] ?? "Code",
+    status: c.status,
     projectName: projectsMap.get(c.project_id)?.title ?? "Unknown project",
     description: c.description || null,
     rewardPool: c.contribution_points_reward ?? 0,
@@ -202,6 +203,7 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
     recentContributions: recentCountByChallenge.get(c.uuid) ?? 0,
     activeContributors: activeContributorsByChallenge.get(c.uuid)?.size ?? 0,
     spark: sparkFromContributions(now, contributionsByChallenge.get(c.uuid) ?? []),
+    coverImageUrl: c.cover_image_url ?? null,
   });
 
   // Both paths below share this: a draft is not published yet, and an archived
