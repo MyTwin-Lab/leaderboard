@@ -23,8 +23,11 @@ describe('showJoinInHeader', () => {
     expect(showJoinInHeader({ ...OPEN, isMember: true })).toBe(false);
   });
 
-  it('hides Join on a validation challenge', () => {
-    expect(showJoinInHeader({ ...OPEN, challengeType: 'validation' })).toBe(false);
+  // Un challenge de validation se rejoint comme les autres : la vitrine, puis
+  // Join, puis le parcours. C'est l'allowlist partagée avec `challengeBrief`
+  // qui le dit — les deux portes ne peuvent pas diverger.
+  it('offers Join on a validation challenge', () => {
+    expect(showJoinInHeader({ ...OPEN, challengeType: 'validation' })).toBe(true);
   });
 
   it('hides Join on a placeholder challenge', () => {

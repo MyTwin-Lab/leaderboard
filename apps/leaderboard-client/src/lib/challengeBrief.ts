@@ -52,13 +52,19 @@ export interface GroupInvite {
 /**
  * Types de challenge dont l'accès passe par le brief.
  *
- * Les challenges de validation en sont exclus : aucune de leurs routes ne
- * vérifie l'appartenance à l'équipe, et rien n'y ajoute un validateur
- * implicitement. Les mettre derrière le brief ne changerait pas seulement
- * l'affichage, ça leur imposerait une adhésion préalable qu'ils n'ont jamais
- * demandée.
+ * Les challenges de validation y sont, comme les autres : on lit d'abord la
+ * vitrine, on rejoint si on veut y participer, et l'espace de travail — ici le
+ * parcours de validation — vient après. Un validateur qui tombe d'un lien sur
+ * un mur de cas de référence sans savoir ce qu'on lui demande n'est pas mieux
+ * servi qu'un contributeur devant un board vide.
+ *
+ * La porte est d'affichage, et seulement ça : aucune route de validation ne
+ * vérifie l'appartenance à l'équipe, et rejoindre n'y provisionne rien — le
+ * `isCode` de `api/challenges/[id]/join` ne crée un workspace que pour un
+ * challenge `code`. Rejoindre pose donc une ligne dans `challenge_teams`, rien
+ * de plus, et l'accès reste possible à qui appelle les routes directement.
  */
-export const BRIEF_GATED_TYPES = ['code', 'ml'];
+export const BRIEF_GATED_TYPES = ['code', 'ml', 'validation'];
 
 /**
  * Le type d'un challenge **repère** : il n'ouvre aucun travail.

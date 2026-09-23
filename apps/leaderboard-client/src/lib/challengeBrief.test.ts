@@ -44,8 +44,8 @@ describe('shouldShowBrief', () => {
     expect(shouldShowBrief({ ...base, brief: '   \n  ' })).toBe(false);
   });
 
-  it('leaves validation challenges untouched', () => {
-    expect(shouldShowBrief({ ...base, challengeType: 'validation' })).toBe(false);
+  it('gates a validation challenge like the others', () => {
+    expect(shouldShowBrief({ ...base, challengeType: 'validation' })).toBe(true);
   });
 
   it('leaves an unknown or missing type untouched', () => {
@@ -96,8 +96,15 @@ describe('showVitrineScreen', () => {
     expect(showVitrineScreen({ ...base, isMember: true, isPhone: true, brief: null })).toBe(true);
   });
 
-  it('leaves validation and unknown types on the normal page', () => {
-    expect(showVitrineScreen({ ...base, challengeType: 'validation' })).toBe(false);
+  // Un validateur lit la vitrine, rejoint, et le parcours vient après — la
+  // même porte que pour un challenge code ou ml.
+  it('shows the vitrine for a validation challenge nobody has joined', () => {
+    expect(showVitrineScreen({ ...base, challengeType: 'validation' })).toBe(true);
+    expect(showVitrineScreen({ ...base, challengeType: 'validation', isMember: true })).toBe(false);
+  });
+
+  it('leaves an unknown or missing type on the normal page', () => {
     expect(showVitrineScreen({ ...base, challengeType: null })).toBe(false);
+    expect(showVitrineScreen({ ...base, challengeType: 'something-else' })).toBe(false);
   });
 });

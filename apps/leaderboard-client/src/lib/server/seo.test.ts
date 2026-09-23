@@ -47,10 +47,12 @@ describe("challengeMetadata", () => {
     );
   });
 
+  // Un challenge de validation a désormais une page publique — sa vitrine —
+  // et donc des métadonnées. L'archivé, lui, reste lisible sans être proposé
+  // aux moteurs : voir `isIndexable`.
   it.each([
     ["a draft", { status: "draft" }],
     ["an archived challenge", { status: "archived" }],
-    ["a validation challenge", { type: "validation" }],
   ])("does not publish the title of %s", (_label, overrides) => {
     expect(challengeMetadata(challenge(overrides) as any)).toEqual({ title: "Challenges", robots: NOINDEX });
   });
@@ -127,8 +129,9 @@ describe("fetchSitemap", () => {
   it("lists only what an anonymous visitor can open, and no contributor profile", async () => {
     vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([
       challenge({ slug: "public-one" }),
+      challenge({ slug: "public-validation", type: "validation" }),
       challenge({ slug: "hidden-draft", status: "draft" }),
-      challenge({ slug: "hidden-validation", type: "validation" }),
+      challenge({ slug: "hidden-archived-challenge", status: "archived" }),
     ] as any);
     vi.spyOn(repositories.sandbox, "findAll").mockResolvedValue([
       sandbox({ slug: "open-one" }),
@@ -138,9 +141,10 @@ describe("fetchSitemap", () => {
     const urls = (await fetchSitemap()).map((entry) => entry.url);
 
     expect(urls).toContain("https://mytwinlab.care/challenges/public-one");
+    expect(urls).toContain("https://mytwinlab.care/challenges/public-validation");
     expect(urls).toContain("https://mytwinlab.care/sandbox/open-one");
-    // Les slugs de fixture portent « hidden » : ni brouillon, ni validation,
-    // ni archivé, ni profil ne doit apparaître.
+    // Les slugs de fixture portent « hidden » : ni brouillon, ni archivé, ni
+    // profil ne doit apparaître. Un archivé se lit, mais ne se référence pas.
     expect(urls.some((url) => /hidden|contributors/.test(url))).toBe(false);
   });
 });

@@ -130,11 +130,14 @@ describe('GET /api/challenges/[id]/overview', () => {
     expect((await get()).status).toBe(404);
   });
 
-  it('hides an archived challenge from an anonymous visitor', async () => {
+  // Archivé se lit : le listing lui donne sa pastille « Archived », et une
+  // page 404 sous une carte affichée serait le pire des deux mondes. Seul le
+  // brouillon reste privé — il n'est pas publié.
+  it('serves an archived challenge to an anonymous visitor', async () => {
     mockVerifyRequestToken.mockResolvedValue(null);
     mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'archived', type: 'code' });
 
-    expect((await get()).status).toBe(404);
+    expect((await get()).status).toBe(200);
   });
 
   it('still serves a draft to a signed-in visitor', async () => {
@@ -144,12 +147,13 @@ describe('GET /api/challenges/[id]/overview', () => {
     expect((await get()).status).toBe(200);
   });
 
-  it('hides a validation challenge from an anonymous visitor', async () => {
-    // No public view applies to this type — neither metrics nor task progress.
+  it('serves a validation challenge to an anonymous visitor', async () => {
+    // Sa page publique est la vitrine, comme pour tout type passant par le
+    // brief : on la lit, on rejoint, et le parcours vient après.
     mockVerifyRequestToken.mockResolvedValue(null);
     mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'validation' });
 
-    expect((await get()).status).toBe(404);
+    expect((await get()).status).toBe(200);
   });
 
   it('still serves a validation challenge to a signed-in visitor', async () => {

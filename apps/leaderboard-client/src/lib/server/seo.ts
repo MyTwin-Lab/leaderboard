@@ -5,7 +5,7 @@ import { NEWS_ARTICLES } from "@/content/news";
 import { repositories } from "@/lib/db";
 import { challengePath, sandboxPath } from "@/lib/paths";
 import type { Challenge, Sandbox } from "../../../../../packages/database-service/domain/entities";
-import { isPubliclyVisible } from "@/lib/public/challengeVisibility";
+import { isIndexable } from "@/lib/public/challengeVisibility";
 import { canSeeSandbox, sandboxViewer } from "@/lib/server/sandboxAuth";
 import {
   SITE_URL,
@@ -55,7 +55,7 @@ async function safely<T>(read: () => Promise<T>): Promise<T | null> {
  * (`lib/server/pageRefs.ts`). Son slug fait le canonical.
  */
 export function challengeMetadata(challenge: Challenge): Metadata {
-  if (!isPubliclyVisible(challenge)) return unindexedMetadata("Challenges");
+  if (!isIndexable(challenge)) return unindexedMetadata("Challenges");
 
   const typeLabel = CHALLENGE_TYPE_LABELS[challenge.type] ?? "Open";
   return pageMetadata({
@@ -83,7 +83,7 @@ export function sandboxMetadata(sandbox: Sandbox): Metadata {
 
 /** `null` quand la page n'est pas publique : rien à décrire aux moteurs. */
 export function challengeJsonLd(challenge: Challenge) {
-  if (!isPubliclyVisible(challenge)) return null;
+  if (!isIndexable(challenge)) return null;
 
   return jsonLdGraph(
     breadcrumbJsonLd([
@@ -137,7 +137,7 @@ export async function fetchSitemap(): Promise<MetadataRoute.Sitemap> {
 
   return buildSitemap({
     baseUrl: SITE_URL,
-    challenges: challenges.filter(isPubliclyVisible),
+    challenges: challenges.filter(isIndexable),
     sandboxes: sandboxes.filter((sandbox) => canSeeSandbox(sandbox, ANONYMOUS)),
     news: NEWS_ARTICLES.map((article) => ({
       slug: article.slug,
