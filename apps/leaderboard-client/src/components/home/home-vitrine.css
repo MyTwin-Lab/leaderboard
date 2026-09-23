@@ -143,6 +143,11 @@
 
 /* ── Vision : le jumeau numérique, et les trois étapes ──────────────────── */
 
+.v-home-vision-head {
+  display: grid;
+  gap: 0.35rem;
+}
+
 .v-home-vision {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
@@ -900,36 +905,68 @@
     font-size: 1.0625rem;
   }
 
+  /* Les deux colonnes de l'écran ne sont plus des colonnes ici : `display:
+     contents` les efface et rend leurs enfants à la grille de la section, ce
+     qui permet de poser le titre en pleine largeur, puis la figure et les
+     étapes côte à côte — un ordre que les deux conteneurs interdisaient. */
   .v-home-vision-left,
   .v-home-vision-right {
-    gap: 1.25rem;
+    display: contents;
+  }
+
+  .v-home-vision {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    column-gap: 0.875rem;
+    row-gap: 1.25rem;
+    align-items: center;
+  }
+
+  .v-home-vision-head {
+    grid-column: 1 / -1;
+  }
+
+  /* La figure tient la moitié gauche et les étapes la droite : empilée, elle
+     mangeait un écran entier avant que la première étape n'apparaisse. */
+  .v-home-twin {
+    grid-column: 1;
     max-width: none;
   }
 
-  /* Sur téléphone la maquette réduit les étapes à leur titre, et resserre la
-     pastille : trois paragraphes de plus repousseraient les news d'un écran. */
+  .v-home-steps {
+    grid-column: 2;
+  }
+
+  .v-home-vision .v-home-more {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  /* Les étapes partagent la largeur avec la figure : la pastille et son titre
+     descendent d'un cran pour tenir sans couper les mots. */
   .v-home-step {
-    grid-template-columns: 2.75rem minmax(0, 1fr);
-    gap: 0.875rem;
+    grid-template-columns: 2.125rem minmax(0, 1fr);
+    gap: 0.625rem;
   }
 
   .v-home-step-num {
-    width: 2.75rem;
-    height: 2.75rem;
-    font-size: 0.9375rem;
+    width: 2.125rem;
+    height: 2.125rem;
+    font-size: 0.75rem;
   }
 
   .v-home-step-link {
-    height: 1.25rem;
+    height: 0.875rem;
   }
 
   .v-home-step-body {
-    padding-top: 0.6rem;
+    padding-top: 0.4rem;
   }
 
   .v-home-step-body h3 {
-    font-size: 1rem;
+    font-size: 0.875rem;
+    line-height: 1.25;
     letter-spacing: -0.015em;
+    text-wrap: balance;
   }
 
   .v-home-step-body p {

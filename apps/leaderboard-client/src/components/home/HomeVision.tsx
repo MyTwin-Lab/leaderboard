@@ -29,7 +29,7 @@ export function HomeVision() {
   return (
     <section className="v-home-vision" aria-labelledby="vision-title">
       <div className="v-home-vision-left">
-        <div style={{ display: "grid", gap: "0.35rem" }}>
+        <div className="v-home-vision-head">
           <h2 id="vision-title" className="v-home-vision-title">
             The human digital twin
           </h2>
