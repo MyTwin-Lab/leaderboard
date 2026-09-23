@@ -70,7 +70,7 @@ export function HomeVision() {
           ))}
         </ol>
 
-        <a href="https://mytwin.care" className="v-home-more" style={{ justifySelf: "start" }}>
+        <a href="https://mytwin.care" className="v-home-more v-home-vision-link">
           Explore the vision
           <HomeArrow corner />
         </a>

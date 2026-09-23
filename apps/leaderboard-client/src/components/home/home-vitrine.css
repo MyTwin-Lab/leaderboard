@@ -180,31 +180,35 @@
   color: var(--v-muted);
 }
 
-/* Le masque radial de la maquette : la figure se fond dans la page au lieu de
-   s'arrêter sur un bord franc. `multiply` fait disparaître son fond blanc.
+/* Le cadre de la figure.
 
-   Le cadre est carré parce que la source l'est : rien n'est recadré, et le
-   masque suffit à ouvrir les bords. La maquette posait un cadre en paysage
-   pour découper le haut d'une image en portrait — ce problème n'existe plus.
-
-   Le masque est un peu plus généreux que celui de la maquette (78% au lieu de
-   70%, centré plus bas) : sur un carré, son ellipse d'origine effaçait le
-   haut du crâne. */
+   Les 40% du bas sont coupés — le cadre est en 5:3 et l'image calée en haut —
+   pour que les 60% restants occupent toute la largeur de la colonne au lieu
+   d'une boîte carrée. La coupe ne laisse pas de trait net : deux masques
+   composés par intersection, l'ellipse qui ouvre les côtés comme dans la
+   maquette, et un dégradé linéaire qui fond le bas sur ses dix derniers
+   pour-cent.
+   `mask-composite: intersect` n'est pas universel ; là où il manque, les deux
+   masques s'additionnent et la figure s'affiche sans fondu — coupée net, mais
+   entière. Une dégradation visible, jamais cassée. */
 .v-home-twin {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 1 / 1;
-  max-width: 32rem;
+  aspect-ratio: 5 / 3;
   width: 100%;
-  -webkit-mask-image: radial-gradient(ellipse 70% 78% at 50% 46%, #000 62%, transparent 100%);
-  mask-image: radial-gradient(ellipse 70% 78% at 50% 46%, #000 62%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 72% 120% at 50% 34%, #000 64%, transparent 100%),
+    linear-gradient(to bottom, #000 78%, transparent 100%);
+  mask-image: radial-gradient(ellipse 72% 120% at 50% 34%, #000 64%, transparent 100%),
+    linear-gradient(to bottom, #000 78%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
 }
 
 .v-home-twin img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 50%;
+  object-position: 50% 0;
   mix-blend-mode: multiply;
 }
 
@@ -213,6 +217,11 @@
   gap: 2rem;
   min-width: 0;
   max-width: 26rem;
+}
+
+/* Le lien est calé à droite, sous les étapes, aux deux largeurs. */
+.v-home-vision-link {
+  justify-self: end;
 }
 
 /* Les trois étapes. Numérotées parce qu'elles le sont : connecter, modéliser,
@@ -936,10 +945,14 @@
   }
 
   /* La figure tient la moitié gauche et les étapes la droite : empilée, elle
-     mangeait un écran entier avant que la première étape n'apparaisse. */
+     mangeait un écran entier avant que la première étape n'apparaisse.
+
+     Elle reste carrée ici, sans la coupe du grand écran. Couper le bas n'agrandit
+     rien dans une colonne dont la largeur est fixée — à échelle égale, le carré
+     montre simplement plus de la figure. Le fondu du bas, lui, reste. */
   .v-home-twin {
     grid-column: 1;
-    max-width: none;
+    aspect-ratio: 1 / 1;
   }
 
   .v-home-steps {
