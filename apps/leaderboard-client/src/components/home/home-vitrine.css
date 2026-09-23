@@ -914,9 +914,11 @@
     display: contents;
   }
 
+  /* La figure à gauche, les étapes à droite. La colonne des étapes est la plus
+     large des deux : leurs titres ont besoin de la place, la figure non. */
   .v-home-vision {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-    column-gap: 0.875rem;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.3fr);
+    column-gap: 0.5rem;
     row-gap: 1.25rem;
     align-items: center;
   }
@@ -938,7 +940,7 @@
 
   .v-home-vision .v-home-more {
     grid-column: 1 / -1;
-    justify-self: start;
+    justify-self: end;
   }
 
   /* Les étapes partagent la largeur avec la figure : la pastille et son titre
@@ -962,8 +964,11 @@
     padding-top: 0.4rem;
   }
 
+  /* Ni gras ni 14px : à côté de la figure, le semi-gras du grand écran
+     empâtait trois titres sur deux lignes chacun. */
   .v-home-step-body h3 {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
     line-height: 1.25;
     letter-spacing: -0.015em;
     text-wrap: balance;
