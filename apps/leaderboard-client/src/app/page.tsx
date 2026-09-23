@@ -6,6 +6,7 @@ import { HomePodcast } from "@/components/home/HomePodcast";
 import { HomeCommunity } from "@/components/home/HomeCommunity";
 import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
 import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
+import { HomeGate } from "@/components/home/HomeGate";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
 import {
@@ -18,6 +19,7 @@ import {
 
 import "@/components/vitrine/vitrine.css";
 import "@/components/home/home-vitrine.css";
+import "@/components/home/home-gate.css";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +54,7 @@ export default async function HomePage() {
   return (
     <>
       <JsonLd data={jsonLdGraph(labOrganizationJsonLd(), websiteJsonLd())} />
+      <HomeGate />
       <div className={`vitrine v-home ${vitrineFontVars}`}>
         <div className="v-home-main">
           <HomeHero />

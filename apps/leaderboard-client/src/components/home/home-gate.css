@@ -1,0 +1,171 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   La prépage de la racine — voir `HomeGate.tsx`.
+
+   Elle couvre tout, navbar comprise : celle-ci est en `z-index: 50`, d'où le
+   100 ici. Les jetons `--v-*` viennent de `.vitrine-embed`, posé sur la même
+   racine.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.v-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  /* Le texte en haut, le bouton en bas, et tout l'espace au milieu pour la
+     photo : une seule ligne élastique entre les deux. */
+  grid-template-rows: auto 1fr auto;
+  /* Peu d'air en haut comme en bas : le bloc de texte se cale près du haut de
+     l'écran, le bouton touche le bas. Toute la place qui reste va à la photo,
+     au milieu. */
+  padding: clamp(1.25rem, 3vh, 2.25rem) var(--v-gutter, clamp(1.25rem, 4vw, 4.5rem))
+    clamp(1.25rem, 3.5vh, 2rem);
+  background: var(--v-bg);
+  opacity: 1;
+  transition: opacity 0.5s var(--v-ease);
+}
+
+.v-gate[data-open="false"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* La photo du téléphone : prise en portrait, elle se recadre pour couvrir et
+   se cale sur le haut du cadre — c'est là que sont le panneau et les
+   visiteurs. */
+.v-gate-shot {
+  object-fit: cover;
+  object-position: 50% 30%;
+  z-index: -2;
+}
+
+/* Deux dégradés, pas un voile uniforme : le texte du haut et le bouton du bas
+   ont chacun besoin de contraste, le milieu de la scène n'a besoin de rien. */
+.v-gate-veil {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgb(251 250 248 / 0.88) 0%, rgb(251 250 248 / 0.35) 34%,
+      rgb(251 250 248 / 0) 55%),
+    linear-gradient(to top, rgb(251 250 248 / 0.7) 0%, rgb(251 250 248 / 0) 28%);
+}
+
+.v-gate-top {
+  display: grid;
+  justify-items: start;
+  gap: 1.25rem;
+  text-align: left;
+}
+
+.v-gate-logo {
+  width: auto;
+  height: clamp(1.625rem, 3.4vw, 2.125rem);
+  color: var(--v-ink);
+}
+
+.v-gate-title {
+  max-width: 20ch;
+  font-family: var(--v-font-h);
+  font-size: clamp(1.75rem, 5.5vw, 3.5rem);
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--v-ink);
+  text-wrap: balance;
+}
+
+.v-gate-lede {
+  max-width: 46ch;
+  font-size: clamp(0.9375rem, 1.6vw, 1.125rem);
+  line-height: 1.6;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+/* Le bouton est posé sur la dernière ligne, centré : c'est la seule action de
+   l'écran, elle n'a pas à être cherchée. */
+.v-gate-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-self: center;
+  align-self: end;
+  gap: 0.6rem;
+  height: 3.5rem;
+  padding-inline: 1.9rem 1.6rem;
+  border-radius: 999px;
+  background: var(--v-ink);
+  color: var(--v-bg);
+  font-family: var(--v-font-h);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 18px 40px -22px rgb(17 22 26 / 0.7);
+  transition: transform 0.3s var(--v-ease), background 0.3s var(--v-ease);
+}
+
+.v-gate-cta:hover {
+  background: var(--v-accent);
+  transform: translateY(-2px);
+}
+
+.v-gate-cta svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* Le fondu de sortie est du mouvement non sollicité : sous `reduce`, la
+   prépage disparaît d'un coup. `HomeGate` démonte sur `transitionend`, que le
+   navigateur émet encore avec une durée nulle. */
+@media (prefers-reduced-motion: reduce) {
+  .v-gate,
+  .v-gate-cta {
+    transition-duration: 0.01ms;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ Écran — le bouton quitte le bas pour se ranger sous le texte.
+ ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) {
+  /* La photo du PC est en paysage, celle du téléphone en portrait : deux
+     fichiers, et pas un recadrage. Elle passe en fond plutôt qu'en <img> pour
+     que le balisage du téléphone reste exactement celui qui marche. */
+  .v-gate {
+    background-image: url("/home/enter-the-lab-desktop.jpg");
+    background-size: cover;
+    background-position: 50% 40%;
+    /* Le texte décollé du bord gauche : la gouttière de la vitrine est
+       calculée pour des colonnes de contenu, elle est trop courte pour un
+       écran de garde. */
+    padding-inline: clamp(3rem, 6vw, 5.5rem);
+  }
+
+  .v-gate-shot {
+    display: none;
+  }
+
+  /* Tout s'écarte : titre et sous-titre d'abord, le logo davantage encore —
+     il nomme la marque, il n'introduit pas la phrase. */
+  .v-gate-top {
+    gap: clamp(1.25rem, 2.6vh, 1.875rem);
+  }
+
+  .v-gate-logo {
+    margin-bottom: clamp(1.5rem, 3.5vh, 2.5rem);
+  }
+
+  /* La mesure du titre se resserre pour qu'il passe sur une ligne de plus :
+     quatre lignes courtes tiennent mieux l'écran de garde que trois longues. */
+  .v-gate-title {
+    max-width: 14ch;
+  }
+
+  /* Le bouton quitte le bas de l'écran. Il reste dans la même ligne élastique
+     mais calé en haut de celle-ci, donc juste sous le sous-titre à l'écart
+     près, et aligné à gauche comme le texte. */
+  .v-gate-cta {
+    align-self: start;
+    justify-self: start;
+    margin-top: clamp(2.25rem, 5vh, 3.75rem);
+  }
+}
