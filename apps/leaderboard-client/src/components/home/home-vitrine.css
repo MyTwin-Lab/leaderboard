@@ -150,17 +150,32 @@
 
 .v-home-vision {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-  gap: clamp(1.5rem, 4vw, 4rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(1.5rem, 4vw, 4rem);
+  row-gap: 1.5rem;
   align-items: center;
   border-top: 1px solid var(--v-line);
   padding-block: clamp(1rem, 2.5vw, 2rem) clamp(2.5rem, 5vw, 4.5rem);
 }
 
+/* Effacée : ses deux enfants rejoignent la grille de la section, ce qui met
+   le titre en pleine largeur et laisse la figure seule dans sa colonne. Les
+   bulles se centrent alors sur la figure, et non sur titre + figure. */
 .v-home-vision-left {
+  display: contents;
+}
+
+.v-home-vision-head {
+  grid-column: 1 / -1;
+}
+
+.v-home-vision-right {
   display: grid;
-  gap: 1.5rem;
+  gap: 2rem;
   min-width: 0;
+  max-width: 26rem;
+  grid-column: 2;
+  grid-row: 2;
 }
 
 .v-home-vision-title {
@@ -182,43 +197,33 @@
 
 /* Le cadre de la figure.
 
-   Les 40% du bas sont coupés — le cadre est en 5:3 et l'image calée en haut —
-   pour que les 60% restants occupent toute la largeur de la colonne au lieu
-   d'une boîte carrée. La coupe ne laisse pas de trait net : deux masques
-   composés par intersection, l'ellipse qui ouvre les côtés comme dans la
-   maquette, et un dégradé linéaire qui fond le bas sur ses dix derniers
-   pour-cent.
-   `mask-composite: intersect` n'est pas universel ; là où il manque, les deux
-   masques s'additionnent et la figure s'affiche sans fondu — coupée net, mais
-   entière. Une dégradation visible, jamais cassée. */
+   Plus aucun recadrage par le CSS : les deux fichiers sont déjà taillés — la
+   version PC entière, la version téléphone rognée sur le buste — donc
+   `contain` les montre en entier quelle que soit la hauteur que la grille
+   leur donne.
+
+   Reste le fondu du bas, qui évite un bord franc là où la figure s'arrête,
+   et `multiply` qui fait disparaître le fond blanc du fichier. */
 .v-home-twin {
   position: relative;
-  overflow: hidden;
-  aspect-ratio: 5 / 3;
+  aspect-ratio: 1 / 1;
   width: 100%;
-  -webkit-mask-image: radial-gradient(ellipse 72% 120% at 50% 34%, #000 64%, transparent 100%),
-    linear-gradient(to bottom, #000 78%, transparent 100%);
-  mask-image: radial-gradient(ellipse 72% 120% at 50% 34%, #000 64%, transparent 100%),
-    linear-gradient(to bottom, #000 78%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
+  -webkit-mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
+}
+
+/* `contents` : c'est l'image qui doit remplir le cadre, pas le <picture>. */
+.v-home-twin picture {
+  display: contents;
 }
 
 .v-home-twin img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: 50% 0;
+  object-fit: contain;
+  object-position: 50% 50%;
   mix-blend-mode: multiply;
 }
-
-.v-home-vision-right {
-  display: grid;
-  gap: 2rem;
-  min-width: 0;
-  max-width: 26rem;
-}
-
 /* Le lien est calé à droite, sous les étapes, aux deux largeurs. */
 .v-home-vision-link {
   justify-self: end;
@@ -947,20 +952,55 @@
   /* La figure tient la moitié gauche et les étapes la droite : empilée, elle
      mangeait un écran entier avant que la première étape n'apparaisse.
 
-     Elle reste carrée ici, sans la coupe du grand écran. Couper le bas n'agrandit
-     rien dans une colonne dont la largeur est fixée — à échelle égale, le carré
-     montre simplement plus de la figure. Le fondu du bas, lui, reste. */
+     Sa hauteur ne vient plus d'un rapport de cadre mais des deux lignes
+     qu'elle couvre : le recadrage suit la place disponible. */
   .v-home-twin {
     grid-column: 1;
-    aspect-ratio: 1 / 1;
+    /* Les deux lignes de droite d'un coup : les trois bulles, et le bouton
+       sous elles. Sans ce `grid-row`, la figure s'arrêtait à la hauteur des
+       bulles et laissait un vide à côté du bouton. */
+    grid-row: 2 / 4;
+    align-self: stretch;
+    /* La hauteur vient des deux lignes, pas d'un rapport : la figure se
+       recadre pour les remplir. */
+    aspect-ratio: auto;
+    height: 100%;
+    /* Elle part du bord de l'écran et non du bord du texte — la gouttière est
+       reprise en marge négative, et rendue à la largeur. */
+    margin-left: calc(-1 * var(--v-gutter));
+    width: calc(100% + var(--v-gutter));
+    overflow: hidden;
+
+    /* Les masques que le grand écran a laissés tomber : là-bas l'image est
+       montrée entière dans un cadre à sa mesure, ici elle remplit une boîte
+       dont la grille fixe les deux dimensions. Il lui faut donc des bords
+       ouverts — l'ellipse sur les côtés, le dégradé en bas. */
+    -webkit-mask-image: radial-gradient(ellipse 72% 120% at 50% 34%, #000 64%, transparent 100%),
+      linear-gradient(to bottom, #000 78%, transparent 100%);
+    mask-image: radial-gradient(ellipse 72% 120% at 50% 34%, #000 64%, transparent 100%),
+      linear-gradient(to bottom, #000 78%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+
+  /* Elle remplit sa boîte et se recadre pour y tenir, calée en haut : c'est le
+     buste qu'on veut voir, pas un cadre à moitié vide. `contain` est le choix
+     du grand écran, où le cadre suit les proportions du fichier. */
+  .v-home-twin img {
+    object-fit: cover;
+    object-position: 50% 0;
   }
 
   .v-home-steps {
     grid-column: 2;
+    grid-row: 2;
   }
 
+  /* Le bouton passe sous les étapes, dans leur colonne : c'est ce qui donne à
+     la figure une deuxième ligne à occuper. */
   .v-home-vision .v-home-more {
-    grid-column: 1 / -1;
+    grid-column: 2;
+    grid-row: 3;
     justify-self: end;
   }
 

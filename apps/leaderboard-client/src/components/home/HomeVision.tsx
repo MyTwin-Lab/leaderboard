@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 import { HomeArrow } from "./HomeSection";
 
 /**
@@ -36,21 +34,33 @@ export function HomeVision() {
           <p className="v-home-vision-sub">Our research vision</p>
         </div>
 
-        {/* L'image porte ce que le titre ne dit pas — l'anatomie qui se dissout
-            en points de données — donc elle a un vrai texte alternatif plutôt
-            qu'un `aria-hidden`. */}
+        {/* Deux fichiers plutôt qu'un seul recadré par le CSS : la version
+            téléphone est déjà rognée sur le buste, la version PC est entière.
+            Un <picture> et non <Image> — Next ne sait pas changer de fichier
+            selon la largeur, et deux <Image> dont un caché en téléchargeraient
+            deux. On renonce donc à l'optimisation pour n'en charger qu'un.
+
+            L'image porte ce que le titre ne dit pas — l'anatomie qui se dissout
+            en points de données — donc un vrai texte alternatif, pas un
+            `aria-hidden`. */}
         <div className="v-home-twin">
-          <Image
-            src="/home/twin/digital-twin-anatomy.jpg"
-            alt="A human digital twin: anatomy on one side, dissolving into data points on the other"
-            width={1254}
-            height={1254}
-            sizes="(min-width: 768px) 32rem, 45vw"
-            priority
-          />
+          <picture>
+            <source
+              media="(min-width: 768px)"
+              srcSet="/home/twin/digital-twin-anatomy-desktop.jpeg"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element -- art direction, voir ci-dessus */}
+            <img
+              src="/home/twin/digital-twin-anatomy.jpg"
+              alt="A human digital twin: anatomy on one side, dissolving into data points on the other"
+              width={891}
+              height={808}
+              fetchPriority="high"
+              decoding="async"
+            />
+          </picture>
         </div>
       </div>
-
       <div className="v-home-vision-right">
         <ol className="v-home-steps">
           {STEPS.map((step, index) => (
