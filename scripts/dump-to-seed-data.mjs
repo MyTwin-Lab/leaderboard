@@ -203,10 +203,28 @@ const STATUS_OVERRIDES = {
   archived: 'completed',
 };
 
+// Les couvertures, par slug. Elles ne viennent pas du dump — la production n'a
+// pas encore la colonne `cover_image_url` — mais du travail de cadrage fait
+// dans l'application, qu'on fige ici pour que le seed le repose.
+//
+// Des URL externes, et non des images déposées : une image déposée vit en
+// `bytea` dans la table `images` et s'adresse en `/api/images/<uuid>`, donc la
+// seeder demanderait d'embarquer ses octets dans le dépôt. Un slug absent
+// d'ici garde `null` et retombe sur la banque d'images de la landing
+// (`lib/coverImage.ts`), ce qui reste un rendu correct.
+const COVER_IMAGES = {
+  'mammography': 'https://www.cdc.gov/breast-cancer/media/images/mammogram-b1200x675.jpg',
+  'mammography-classification': 'https://www.cdc.gov/breast-cancer/media/images/mammogram-b1200x675.jpg',
+  'mammography-segmentation': 'https://www.cdc.gov/breast-cancer/media/images/mammogram-b1200x675.jpg',
+  'poc-injury-prediction-in-tennis':
+    'https://www.docdusport.com/wp-content/uploads/2021/12/Tennis-sante-conseils-et-bonne-pratique-1024x681.jpg',
+};
+
 const challengeRows = rowsOf(dump, schema, 'challenges', {drop: ['index']});
 for (const c of challengeRows) {
   if (c.slug in TYPE_OVERRIDES) c.type = TYPE_OVERRIDES[c.slug];
   if (c.status in STATUS_OVERRIDES) c.status = STATUS_OVERRIDES[c.status];
+  c.cover_image_url = COVER_IMAGES[c.slug] ?? null;
 }
 // Écrit plus bas : `completion` est recalculée une fois le ledger complété.
 

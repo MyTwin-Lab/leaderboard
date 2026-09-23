@@ -1,15 +1,15 @@
 ## Context
 
-Porter le usecase MyTwin 3D jusqu'à son marché : à qui il s'adresse, ce qu'il remplace, et par quel chemin il arrive entre leurs mains.
+Taking the MyTwin 3D use case to its market: who it is for, what it replaces, and the path by which it reaches them.
 
 ## Objective
 
-À préciser — ce qui devait être livré.
+To be written — what had to be shipped.
 
 ## Expected result
 
-À préciser — à quoi on reconnaissait que c'était fait.
+To be written — how we knew it was done.
 
-## À propos de ce brief
+## About this brief
 
-Gabarit. Ce challenge existe en production mais n'a jamais eu de brief, et il ne peut pas être reconstitué après coup sans inventer ce qu'il demandait. Remplacer les sections ci-dessus, ou supprimer ce fichier si le challenge n'en a pas besoin.
+Placeholder. This challenge exists in production but never had a brief, and it cannot be reconstructed after the fact without inventing what it asked for. Replace the sections above, or delete this file if the challenge does not need one.

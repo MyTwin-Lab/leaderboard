@@ -64,7 +64,7 @@
       "Parse and rewrite DICOM tags entirely client-side",
       "Burned-in text detection on the pixel data itself"
     ],
-    "why": "Retiré au profit d'un outil existant qui fait déjà la même chose, mieux.",
+    "why": "Withdrawn in favour of an existing tool that already does the same thing, better.",
     "created_days_ago": 120,
     "stars": {
       "account": 6,

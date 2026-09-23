@@ -19,7 +19,8 @@
     "workspace_mode": "provided_repo",
     "created_at": "2020-01-01 00:00:00",
     "closed_at": null,
-    "slug": "lab-community-management"
+    "slug": "lab-community-management",
+    "cover_image_url": null
   },
   {
     "uuid": "948473a8-5a61-44cd-b77b-b256e679fea8",
@@ -41,7 +42,8 @@
     "workspace_mode": "provided_repo",
     "created_at": "2020-01-01 00:00:00",
     "closed_at": null,
-    "slug": "mytwin-3d-gtm"
+    "slug": "mytwin-3d-gtm",
+    "cover_image_url": null
   },
   {
     "uuid": "8e077522-c016-4d27-8901-f32b35b6c4d9",
@@ -63,7 +65,8 @@
     "workspace_mode": "provided_repo",
     "created_at": "2025-06-18 00:00:00",
     "closed_at": null,
-    "slug": "poc-injury-prediction-in-tennis"
+    "slug": "poc-injury-prediction-in-tennis",
+    "cover_image_url": "https://www.docdusport.com/wp-content/uploads/2021/12/Tennis-sante-conseils-et-bonne-pratique-1024x681.jpg"
   },
   {
     "uuid": "55b1eef3-c881-4b1c-9df9-78b900ae399c",
@@ -85,7 +88,8 @@
     "workspace_mode": "provided_repo",
     "created_at": "2025-09-12 00:00:00",
     "closed_at": null,
-    "slug": "mammography"
+    "slug": "mammography",
+    "cover_image_url": "https://www.cdc.gov/breast-cancer/media/images/mammogram-b1200x675.jpg"
   },
   {
     "uuid": "b3e04604-e03a-4c42-ba49-9c82144e6c91",
@@ -107,7 +111,8 @@
     "workspace_mode": "provided_repo",
     "created_at": "2025-10-10 00:00:00",
     "closed_at": null,
-    "slug": "leaderboard-poc"
+    "slug": "leaderboard-poc",
+    "cover_image_url": null
   },
   {
     "uuid": "ac47eb47-6b1d-4adc-ab00-be7a16bd95ea",
@@ -129,7 +134,8 @@
     "workspace_mode": "provided_repo",
     "created_at": "2025-10-24 00:00:00",
     "closed_at": null,
-    "slug": "evaluator-update-1"
+    "slug": "evaluator-update-1",
+    "cover_image_url": null
   },
   {
     "uuid": "c35d85e4-65f5-4335-b7cd-628d84396804",
@@ -151,7 +157,8 @@
     "workspace_mode": "provided_repo",
     "created_at": "2025-11-09 00:00:00",
     "closed_at": null,
-    "slug": "oauth-integration"
+    "slug": "oauth-integration",
+    "cover_image_url": null
   },
   {
     "uuid": "1463073a-e5ca-486a-bcc1-ea4072361dc2",
@@ -173,7 +180,8 @@
     "workspace_mode": "provided_repo",
     "created_at": "2025-11-10 00:00:00",
     "closed_at": null,
-    "slug": "collaboration-patterns"
+    "slug": "collaboration-patterns",
+    "cover_image_url": null
   },
   {
     "uuid": "460dcebd-73e5-4d67-8b0b-50da5ededca0",
@@ -195,7 +203,8 @@
     "workspace_mode": "provided_repo",
     "created_at": "2025-11-15 00:00:00",
     "closed_at": null,
-    "slug": "unified-ui"
+    "slug": "unified-ui",
+    "cover_image_url": null
   },
   {
     "uuid": "53e1998d-55d7-44c0-8c7e-d5058bc5187c",
@@ -217,7 +226,8 @@
     "workspace_mode": "provided_repo",
     "created_at": "2025-12-01 00:00:00",
     "closed_at": null,
-    "slug": "contributor-experience-update"
+    "slug": "contributor-experience-update",
+    "cover_image_url": null
   },
   {
     "uuid": "8e53bee5-27d0-483d-9adf-091e5df9f2e8",
@@ -261,7 +271,8 @@
     "workspace_mode": "provided_repo",
     "created_at": "2026-08-21 00:00:00",
     "closed_at": null,
-    "slug": "mammography-classification"
+    "slug": "mammography-classification",
+    "cover_image_url": "https://www.cdc.gov/breast-cancer/media/images/mammogram-b1200x675.jpg"
   },
   {
     "uuid": "6c04ccfa-5835-4b56-a716-a1b58e82a948",
@@ -305,6 +316,7 @@
     "workspace_mode": "provided_repo",
     "created_at": "2020-01-01 00:00:00",
     "closed_at": null,
-    "slug": "mammography-segmentation"
+    "slug": "mammography-segmentation",
+    "cover_image_url": "https://www.cdc.gov/breast-cancer/media/images/mammogram-b1200x675.jpg"
   }
 ]

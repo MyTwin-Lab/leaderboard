@@ -388,11 +388,13 @@ async function seedChallenges() {
       required_validations: c.required_validations,
       compute_enabled: c.compute_enabled ?? false,
       workspace_mode: c.workspace_mode ?? "provided_repo",
-      // Couverture et hôte laissés vides : la production ne les porte pas
-      // encore, et une carte sans couverture retombe sur la banque d'images
-      // de la landing (apps/leaderboard-client/src/lib/coverImage.ts).
-      // `logHosts()` posera les hôtes de démonstration si on les demande.
-      cover_image_url: null,
+      // La couverture ne vient pas de la production, qui n'a pas encore la
+      // colonne, mais de `COVER_IMAGES` dans le générateur. Sans elle, la
+      // carte retombe sur la banque d'images de la landing
+      // (apps/leaderboard-client/src/lib/coverImage.ts).
+      cover_image_url: c.cover_image_url ?? null,
+      // L'hôte reste vide : `logHosts()` posera ceux de démonstration si on
+      // les demande, et en production il se saisit dans le tiroir d'admin.
       host: null,
       created_at: ts(c.created_at) ?? new Date(),
       closed_at: ts(c.closed_at),
