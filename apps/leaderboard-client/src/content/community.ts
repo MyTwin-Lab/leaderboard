@@ -1,5 +1,5 @@
 /**
- * Les visages de « Join our Community » sur `/home` : même liste que le
+ * Les visages de « Join our Community » sur la racine : même liste que le
  * carousel de la landing MyTwin Health (`/patients`), rôles de son dictionnaire
  * anglais. Photos : `public/landing/contributors/`, drapeaux :
  * `public/landing/flags/`.

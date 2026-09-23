@@ -5,6 +5,13 @@ const nextConfig: NextConfig = {
   // Config turbopack vide pour permettre l'utilisation de --webpack
   turbopack: {},
 
+  // `/home` était l'accueil du Lab et `/` la landing ; les deux n'en font plus
+  // qu'une, sur la racine. L'ancienne URL était indexée et porte des liens
+  // entrants : elle redirige en permanent plutôt que de répondre 404.
+  async redirects() {
+    return [{ source: "/home", destination: "/", permanent: true }];
+  },
+
   // Ni l'API ni les pages privées n'ont rien à faire dans un index. Un en-tête
   // plutôt qu'un Disallow dans robots.txt, pour que le moteur puisse le lire :
   // voir app/robots.ts. Il couvre aussi les pages client (`/tasks`,

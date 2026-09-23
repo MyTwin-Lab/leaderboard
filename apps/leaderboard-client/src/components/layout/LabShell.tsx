@@ -27,7 +27,7 @@ type LabShellProps = PropsWithChildren<{
  * chrome ordinaire.
  */
 const VITRINE_BACKGROUNDS: Record<string, string> = {
-  "/home": "#fbfaf8",
+  "/": "#fbfaf8",
   "/leaderboard": "#fbfaf8",
   "/challenges": "#fbfaf8",
   "/sandbox": "#fbfaf8",
@@ -36,12 +36,13 @@ const VITRINE_BACKGROUNDS: Record<string, string> = {
 /**
  * Les pages qui sortent entièrement du chrome du Lab.
  *
- * `/` est la landing, qui a sa propre DA. `/signin` est un écran à deux
- * volets, plein cadre : il porte son propre logo, et une navbar posée sur sa
- * photo pleine hauteur n'aurait rien à dire — pas plus qu'un footer sous un
- * écran dont on ne sort que par « Back to home ».
+ * `/signin` seulement : un écran à deux volets, plein cadre, qui porte son
+ * propre logo. Une navbar posée sur sa photo pleine hauteur n'aurait rien à
+ * dire — pas plus qu'un footer sous un écran dont on ne sort que par « Back
+ * to home ». La racine en faisait partie quand elle était la landing ; elle
+ * est maintenant l'accueil du Lab, et porte le chrome comme les autres.
  */
-const BARE_ROUTES = new Set(["/", "/signin"]);
+const BARE_ROUTES = new Set(["/signin"]);
 
 export function LabShell({ navbar, footer, overlays, children }: LabShellProps) {
   const pathname = usePathname();

@@ -114,7 +114,6 @@ describe("buildSitemap", () => {
 
     expect(sitemap.map((entry) => entry.url)).toEqual([
       "https://lab.example.com/",
-      "https://lab.example.com/home",
       "https://lab.example.com/challenges",
       "https://lab.example.com/sandbox",
       "https://lab.example.com/leaderboard",
@@ -126,10 +125,12 @@ describe("buildSitemap", () => {
       "https://lab.example.com/sandbox/sleep-tracker",
       "https://lab.example.com/news/mykine",
     ]);
-    expect(sitemap[8].lastModified).toBe(created);
-    expect(sitemap[9].lastModified).toBe(closed);
-    expect(sitemap[10].lastModified).toBe(updated);
-    expect(sitemap[11].lastModified).toBe("2026-09-16");
+    // Les index suivent la liste ci-dessus : sept pages fixes, puis les
+    // entités dans l'ordre où elles sont passées.
+    expect(sitemap[7].lastModified).toBe(created);
+    expect(sitemap[8].lastModified).toBe(closed);
+    expect(sitemap[9].lastModified).toBe(updated);
+    expect(sitemap[10].lastModified).toBe("2026-09-16");
   });
 });
 

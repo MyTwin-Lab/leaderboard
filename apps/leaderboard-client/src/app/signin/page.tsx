@@ -109,7 +109,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             </p>
           </div>
 
-          <a href="/home" className="v-signin-back">
+          <a href="/" className="v-signin-back">
             Back to home
           </a>
         </div>

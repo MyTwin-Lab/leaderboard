@@ -199,7 +199,6 @@ export function buildSitemap({ baseUrl, challenges, sandboxes, news }: SitemapIn
 
   return [
     { url: url("/"), changeFrequency: "daily", priority: 1 },
-    { url: url("/home"), changeFrequency: "daily", priority: 0.9 },
     { url: url("/challenges"), changeFrequency: "daily", priority: 0.9 },
     { url: url("/sandbox"), changeFrequency: "daily", priority: 0.8 },
     { url: url("/leaderboard"), changeFrequency: "daily", priority: 0.6 },

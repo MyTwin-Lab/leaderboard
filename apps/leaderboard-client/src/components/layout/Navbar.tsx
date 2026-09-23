@@ -79,9 +79,9 @@ export const Navbar = ({ session }: NavbarProps) => {
 
   // Pas de « Home » : c'est le logo, à gauche, qui y mène.
   const navLinks = [
-    { name: "Sandbox", path: "/sandbox" },
     { name: "Leaderboard", path: "/leaderboard" },
     { name: "Challenges", path: "/challenges" },
+    { name: "Sandbox", path: "/sandbox" },
   ];
 
   const isActive = (path: string) => pathname === path || (path !== "/" && pathname.startsWith(path));
@@ -133,7 +133,7 @@ export const Navbar = ({ session }: NavbarProps) => {
               }}
             >
               {/* Logo */}
-              <Link href="/home" className="z-50 flex items-center">
+              <Link href="/" className="z-50 flex items-center">
                 <MyTwinLogo
                   className="h-6.5 w-auto sm:h-9"
                   style={{
