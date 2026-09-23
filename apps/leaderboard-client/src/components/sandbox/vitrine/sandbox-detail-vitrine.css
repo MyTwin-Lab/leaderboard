@@ -297,6 +297,11 @@
   gap: 1.25rem;
 }
 
+/* Rien à surcharger pour le « pourquoi » : sa typographie et sa largeur vivent
+   dans `challenge-vitrine.css`, qui habille les deux vitrines. L'accroche y
+   est sans plafond, donc elle occupe ici la colonne que lui laisse la carte de
+   l'auteur, et là-bas la pleine largeur de la page. */
+
 /* ── La carte sombre de l'auteur ────────────────────────────────────────
    Sticky sous la navbar fixe, comme les paliers de stars le long de la
    proposition : elle suit la lecture du pourquoi. */

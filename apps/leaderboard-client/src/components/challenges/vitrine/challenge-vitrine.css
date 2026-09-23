@@ -311,13 +311,24 @@
   background: var(--v-accent);
 }
 
+/* L'accroche du « pourquoi » est écrite dans la sans du corps, et non dans la
+   serif d'affichage : c'est une phrase qu'on lit, pas un titre qu'on regarde,
+   et elle reprend ainsi la voix de la description du hero (`.v-cd-hero-lede`,
+   qui hérite la sans de `.vitrine`).
+   `letter-spacing` et `line-height` suivent : `-0.015em` était un crénage
+   pensé pour la serif, `1.08` un interlignage de gros titre — ni l'un ni
+   l'autre ne tient sur une sans à cette taille.
+   Aucun plafond de largeur : le « pourquoi » prend la pleine largeur de la
+   page, bornée par le conteneur de la vitrine (`--v-max`) et sa gouttière.
+   L'ancien `24ch` était par ailleurs indexé sur la police, donc la baisse de
+   taille aurait de toute façon rétréci le bloc avec elle. */
 .v-cd-why-lead {
-  max-width: 24ch;
-  font-family: var(--v-font-d);
+  max-width: none;
+  font-family: var(--v-font-s);
   font-weight: 400;
-  font-size: clamp(2rem, 3.8vw, 3.25rem);
-  line-height: 1.08;
-  letter-spacing: -0.015em;
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  line-height: 1.3;
+  letter-spacing: normal;
   text-wrap: balance;
   color: var(--v-ink);
 }
@@ -325,7 +336,7 @@
 /* Spécificité 0,2,0 : `.v-cd-md`, défini plus bas, poserait sinon son propre
    `gap` par ordre de cascade. */
 .v-cd-md.v-cd-why-body {
-  max-width: 36rem;
+  max-width: none;
   gap: 1rem;
 }
 
@@ -913,7 +924,7 @@
 
   .v-cd-why-lead {
     max-width: none;
-    font-size: 1.875rem;
+    font-size: 1.25rem;
   }
 
   .v-cd-why-body {
