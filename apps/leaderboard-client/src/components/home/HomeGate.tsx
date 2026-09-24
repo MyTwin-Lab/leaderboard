@@ -26,22 +26,34 @@ export function HomeGate() {
   // temps du fondu, et ne se démonte qu'après.
   const [gone, setGone] = useState(false);
 
+  // On entre toujours par le haut de l'accueil. Un défilement a pu passer
+  // malgré tout — avant l'hydratation, ou restauré par le navigateur au
+  // rechargement — et la prépage se lèverait sur une page déjà descendue.
+  const close = () => {
+    window.scrollTo(0, 0);
+    setOpen(false);
+  };
+
   useEffect(() => {
     if (!open) return;
 
-    // Rien ne défile derrière une page qui couvre l'écran.
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Rien ne défile derrière une page qui couvre l'écran. Le verrou se pose
+    // sur `<html>`, pas sur `<body>` : `html` porte déjà `overflow-x: clip`
+    // (globals.css), donc le `overflow` de `body` n'est plus reporté sur la
+    // fenêtre — c'est `html` qui défile, et c'est lui qu'il faut bloquer.
+    const root = document.documentElement;
+    const previous = root.style.overflow;
+    root.style.overflow = "hidden";
 
     // Échap ferme aussi : une page qui couvre tout doit avoir une sortie au
     // clavier, et pas seulement un bouton à viser.
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
 
     return () => {
-      document.body.style.overflow = previous;
+      root.style.overflow = previous;
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
@@ -93,7 +105,7 @@ export function HomeGate() {
         </p>
       </div>
 
-      <button type="button" className="v-gate-cta" onClick={() => setOpen(false)}>
+      <button type="button" className="v-gate-cta" onClick={close}>
         Enter the lab
         <HomeArrow />
       </button>
