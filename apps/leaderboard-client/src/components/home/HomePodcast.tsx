@@ -1,6 +1,5 @@
-import { PODCAST_PLAYLIST_URL } from "@/components/podcast/episodes";
 import { HomePodcastRail } from "./HomePodcastRail";
-import { HomeMore, HomeSectionHead } from "./HomeSection";
+import { HomeSectionHead } from "./HomeSection";
 
 /**
  * Les épisodes de MyTwin Inside, le programme de la chaîne YouTube MyTwin. Le
@@ -14,15 +13,9 @@ export function HomePodcast() {
         id="podcast-title"
         eyebrow="Podcast · MyTwin Inside"
         tagline="Conversations with the people advancing health."
-        href={PODCAST_PLAYLIST_URL}
-        linkLabel="All episodes"
       />
 
       <HomePodcastRail />
-
-      <HomeMore href={PODCAST_PLAYLIST_URL} place="bottom">
-        All episodes
-      </HomeMore>
     </section>
   );
 }
