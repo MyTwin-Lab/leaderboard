@@ -99,8 +99,8 @@ const CHANGES = [
     title: "Risk profiles",
     text: "Track cardiovascular, metabolic and other health risk trajectories.",
     src: "/vision/changes/risk.jpg",
-    width: 360,
-    height: 224,
+    width: 457,
+    height: 283,
     paths: (
       <>
         <path d="M12 20s-8-4.5-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 15.5 12 20 12 20z" />
@@ -112,8 +112,8 @@ const CHANGES = [
     title: "Biological age",
     text: "Monitor how your biological age and key indicators may evolve over time.",
     src: "/vision/changes/bioage.jpg",
-    width: 364,
-    height: 224,
+    width: 440,
+    height: 287,
     paths: (
       <>
         <rect x="4" y="13" width="3.5" height="6" rx="0.5" />
@@ -126,16 +126,16 @@ const CHANGES = [
     title: "Biomarkers",
     text: "Visualize changes across biological and physiological signals.",
     src: "/vision/changes/biomarkers.jpg",
-    width: 360,
-    height: 224,
+    width: 446,
+    height: 267,
     paths: <path d="M12 3.5s-6 6.5-6 10.5a6 6 0 0 0 12 0c0-4-6-10.5-6-10.5z" />,
   },
   {
     title: "Organs & anatomy",
     text: "Detect and visualize anatomical changes through longitudinal 3D models.",
     src: "/vision/changes/organs.jpg",
-    width: 360,
-    height: 224,
+    width: 424,
+    height: 345,
     paths: (
       <>
         <path d="M12 3l4 2.3v4.6L12 12 8 9.9V5.3z" />
@@ -148,16 +148,16 @@ const CHANGES = [
     title: "Disease risk",
     text: "Estimate how the risk of specific conditions may evolve.",
     src: "/vision/changes/disease.jpg",
-    width: 360,
-    height: 224,
+    width: 441,
+    height: 344,
     paths: <path d="M12 3l7 3v5.5c0 4.5-3 7.8-7 9.5-4-1.7-7-5-7-9.5V6z" />,
   },
   {
     title: "Possible scenarios",
     text: "Explore how different interventions or behaviors could influence future trajectories.",
     src: "/vision/changes/scenarios.jpg",
-    width: 360,
-    height: 224,
+    width: 438,
+    height: 303,
     paths: (
       <>
         <circle cx="6" cy="18" r="2" />
