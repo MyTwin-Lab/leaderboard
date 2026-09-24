@@ -1316,6 +1316,8 @@
   /* En rail, la carte challenge s'empile : photo, texte, puis la ligne du
      pool et du bouton — la colonne de droite ne tient pas sur 86% d'écran. */
   .v-home-challenge {
+    /* Ancre la pastille du type, posée en absolu sur la photo. */
+    position: relative;
     flex-direction: column;
     align-items: stretch;
     gap: 0.75rem;
@@ -1336,8 +1338,9 @@
 
   .v-home-challenge-body .v-home-tag {
     position: absolute;
-    left: 0.5rem;
-    top: 0.5rem;
+    /* Le padding de la carte (0.5rem) plus un retrait dans la photo. */
+    left: 1rem;
+    top: 1rem;
     z-index: 1;
     background: rgb(255 255 255 / 0.92);
   }
