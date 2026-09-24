@@ -651,15 +651,57 @@
   text-wrap: pretty;
 }
 
+/* La bande de visages : elle défile en boucle et s'efface sur les bords. */
+.v-home-faces-viewport {
+  position: relative;
+  overflow: hidden;
+  padding-block: 0.25rem;
+  --v-faces-fade: 5rem;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--v-faces-fade),
+    #000 calc(100% - var(--v-faces-fade)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--v-faces-fade),
+    #000 calc(100% - var(--v-faces-fade)),
+    transparent
+  );
+}
+
 .v-home-faces {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.875rem;
+  flex-wrap: nowrap;
+  width: max-content;
+  animation: v-home-faces-scroll 100s linear infinite;
+  will-change: transform;
+}
+
+/* La translation vaut exactement une copie de la liste : la boucle est invisible. */
+@keyframes v-home-faces-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v-home-faces {
+    animation: none;
+  }
 }
 
 .v-home-face {
   position: relative;
   flex: none;
+  /* Une marge plutôt qu'un gap, pour que la demi-largeur tombe juste. */
+  margin-right: 0.875rem;
 }
 
 .v-home-face img:first-child {
@@ -678,22 +720,6 @@
   height: auto;
   border-radius: 3px;
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
-}
-
-/* Le compte de celles et ceux que la rangée ne montre pas. */
-.v-home-face-more {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 4rem;
-  height: 4rem;
-  border-radius: 999px;
-  border: 1px dashed rgb(11 122 100 / 0.45);
-  font-family: var(--v-font-h);
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--v-accent);
 }
 
 .v-home-cta {
@@ -1247,21 +1273,15 @@
     font-size: 1.0625rem;
   }
 
-  .v-home-faces {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    gap: 0.625rem;
-    padding: 0.25rem;
-    margin-inline: -0.25rem;
+  .v-home-faces-viewport {
+    --v-faces-fade: 2.5rem;
   }
 
-  .v-home-faces::-webkit-scrollbar {
-    display: none;
+  .v-home-face {
+    margin-right: 0.625rem;
   }
 
-  .v-home-face img:first-child,
-  .v-home-face-more {
+  .v-home-face img:first-child {
     width: 3.25rem;
     height: 3.25rem;
   }
