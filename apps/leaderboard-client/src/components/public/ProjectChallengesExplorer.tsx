@@ -64,7 +64,7 @@ export function ProjectChallengesExplorer({
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [managerDrawerOpen, setManagerDrawerOpen] = useState(false);
   const [popup, setPopup] = useState<{ x: number; y: number; challengeId: string; challengeSlug: string } | null>(null);
