@@ -227,7 +227,11 @@ export function SandboxVitrine({
       ? progress.hint
       : `All milestones reached · ${formatCP(paidCP)} CP paid`;
 
-  const hasProposal = !!ideaSource || sandbox.goals.length > 0 || isOpen;
+  // Sans `|| isOpen` : le bloc qui rendait toute proposition ouverte lisible —
+  // « What promotion would change » — n'existe plus. Une proposition sans idée
+  // ni but n'a donc plus rien à lire, et le lien du hero n'a plus lieu de
+  // descendre vers un article vide.
+  const hasProposal = !!ideaSource || sandbox.goals.length > 0;
 
   /**
    * « Read the proposal » descend, il ne saute pas — même geste que sur la page
@@ -463,21 +467,6 @@ export function SandboxVitrine({
                     </li>
                   ))}
                 </ul>
-              </div>
-            )}
-
-            {isOpen && (
-              <div className="v-sd-block">
-                <h2 className="v-sd-block-title">What promotion would change</h2>
-                <p className="v-md-p">
-                  Promoted, this becomes an official challenge: a reward pool, a board copied for
-                  every participant, and contributors working on it alongside the author — who is
-                  auto-joined
-                  {promotionBonusCp > 0
-                    ? ` and paid a ${formatCP(promotionBonusCp)} CP promotion bonus`
-                    : ''}
-                  . Until then it stays here, and stars are what carry it.
-                </p>
               </div>
             )}
           </article>
