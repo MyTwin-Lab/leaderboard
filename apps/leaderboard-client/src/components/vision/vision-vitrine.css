@@ -245,7 +245,7 @@ html[data-mode="dark"] .v-vision .v-vi-arrow {
 
 .v-vi-scale {
   display: grid;
-  grid-template-columns: minmax(0.75rem, 0.4fr) clamp(4.5rem, 7vw, 6rem) minmax(5.5rem, auto);
+  grid-template-columns: minmax(0.75rem, 0.4fr) clamp(8rem, 13vw, 11rem) minmax(5.5rem, auto);
   align-items: center;
   gap: clamp(0.625rem, 1.2vw, 1rem);
 }
@@ -257,10 +257,12 @@ html[data-mode="dark"] .v-vision .v-vi-arrow {
   border-top: 1px dashed var(--vi-ring);
 }
 
+/* Au format des images du film (16:9), cadrées entières : en rond, le
+   recadrage carré ne laissait voir qu'un morceau de chaque sujet. */
 .v-vi-scale-shot {
   overflow: hidden;
-  aspect-ratio: 1;
-  border-radius: 999px;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.75rem;
   border: 1px solid var(--vi-ring);
   background: var(--v-surface);
   box-shadow: 0 0 0 4px var(--v-bg), 0 0 0 5px var(--vi-halo);
@@ -270,7 +272,6 @@ html[data-mode="dark"] .v-vision .v-vi-arrow {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scale(1.3);
 }
 
 .v-vi-scale-text {
@@ -668,32 +669,39 @@ html[data-mode="dark"] .v-vision .v-vi-arrow {
     line-height: 1.3;
   }
 
+  /* La colonne des échelles a la largeur de ses vignettes, la figure prend le
+     reste. */
   .v-vi-scales {
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 6.5rem;
     gap: 0.75rem;
   }
 
   /* Plus haute et sortie par la gauche : sur 390px la figure ne tient qu'en
-     débordant, et c'est ce que fait la maquette. */
+     débordant, et c'est ce que fait la maquette. Sa hauteur suit celle de la
+     liste des échelles, à côté. */
   .v-vi-figure {
-    aspect-ratio: 1024 / 1700;
+    aspect-ratio: 1024 / 1440;
     margin-left: calc(-1 * var(--v-gutter) - 0.75rem);
   }
 
+  /* Cadrée sur la droite de l'image : le jumeau glisse vers la gauche et son
+     bras sort de l'écran, sous le fondu du masque, plutôt que de laisser un
+     vide à droite comme le ferait un `translate` de la figure. */
   .v-vi-figure img {
-    object-position: 40% 0;
+    object-position: 70% 0;
   }
 
   .v-vi-scale-list {
-    gap: 1.125rem;
+    gap: 0.75rem;
   }
 
   /* Ni trait, ni légende : la colonne n'a la largeur que de la vignette et du
      nom. Les deux sont rendus puis masqués — c'est le seul endroit où les deux
-     mises en page ne portent pas le même contenu. */
+     mises en page ne portent pas le même contenu. Une vignette en 16:9 ne
+     tient pas à côté du nom dans cette colonne : le nom passe dessous. */
   .v-vi-scale {
-    grid-template-columns: 3.75rem minmax(0, 1fr);
-    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
   }
 
   .v-vi-scale-link,
@@ -702,6 +710,7 @@ html[data-mode="dark"] .v-vision .v-vi-arrow {
   }
 
   .v-vi-scale-shot {
+    border-radius: 0.5rem;
     box-shadow: none;
   }
 

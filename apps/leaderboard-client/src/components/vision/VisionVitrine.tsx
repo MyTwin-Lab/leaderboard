@@ -171,10 +171,10 @@ const CHANGES = [
 ];
 
 const SCALES = [
-  { label: "Organs", note: "Heart, lungs, systems", src: "/vision/scales/sc-organs.png" },
-  { label: "Tissues", note: "Structure and function", src: "/vision/scales/sc-tissues.png" },
-  { label: "Cells", note: "Behaviour and signals", src: "/vision/scales/sc-cells.png" },
-  { label: "Molecules", note: "Genes and proteins", src: "/vision/scales/sc-molecules.png" },
+  { label: "Organs", note: "Heart, lungs, systems", src: "/vision/scales/sc-organs.jpg" },
+  { label: "Tissues", note: "Structure and function", src: "/vision/scales/sc-tissues.jpg" },
+  { label: "Cells", note: "Behaviour and signals", src: "/vision/scales/sc-cells.jpg" },
+  { label: "Molecules", note: "Genes and proteins", src: "/vision/scales/sc-molecules.jpg" },
 ];
 
 function StepHead({ num, title, sub }: { num: string; title: string; sub: string }) {
@@ -292,7 +292,7 @@ export function VisionVitrine() {
                   <span aria-hidden="true" className="v-vi-scale-link" />
                   <span className="v-vi-scale-shot">
                     {/* eslint-disable-next-line @next/next/no-img-element -- voir plus haut */}
-                    <img src={scale.src} alt="" width={396} height={396} decoding="async" />
+                    <img src={scale.src} alt="" width={512} height={288} decoding="async" />
                   </span>
                   <span className="v-vi-scale-text">
                     <span className="v-vi-scale-name">{scale.label}</span>
