@@ -1,0 +1,677 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   La page vision, d'après `Vision Redesign Vitrine.dc.html`.
+
+   Tout est scopé sous `.v-vision`, dont la racine est `.vitrine` : le
+   réarmement et les jetons viennent de là. La maquette pose ses couleurs en
+   dur (#fbfaf8, #0b7a64) ; cette feuille ne les reprend pas et lit les `--v-*`
+   du repo à la place, pour que la page suive l'accent et le fond des autres
+   pages vitrine plutôt que ceux de la maquette.
+
+   La maquette décrit **deux** mises en page — un cadre PC et un cadre
+   téléphone de 390px, rendus côte à côte par le commutateur de l'outil. Les
+   deux sont reprises, mais par un seul balisage : chaque écart de l'une à
+   l'autre est une règle sous `@media (max-width: 767px)`, plus bas, et les
+   deux seuls écarts de structure — le retour à la ligne du titre, le trait et
+   la légende des échelles — sont rendus puis masqués.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.v-vision {
+  /* Les deux mesures que la maquette pose autrement que les listings. La
+     maquette monte à 78rem avec une gouttière de 4.5rem ; sur un écran large
+     la page y paraissait surdimensionnée — tout est ramené d'un cran, et les
+     tailles de texte ci-dessous avec. */
+  --v-gutter: clamp(1.25rem, 3vw, 3rem);
+  --v-max: 68rem;
+
+  /* Les trois teintes que la maquette tire de son accent. Dérivées du jeton
+     plutôt que recopiées en dur : elles suivent `--v-accent` si la palette
+     bouge, là où la maquette les fige à `rgb(11 122 100 / …)`. */
+  --vi-mint: color-mix(in srgb, var(--v-accent) 6%, transparent);
+  --vi-ring: color-mix(in srgb, var(--v-accent) 45%, transparent);
+  --vi-halo: color-mix(in srgb, var(--v-accent) 12%, transparent);
+}
+
+/* La seule animation de la maquette : l'entrée de l'intro au chargement.
+   Rien ne bouge ensuite — pas de révélation section par section. */
+@keyframes v-vi-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.v-vi-main {
+  width: 100%;
+  max-width: var(--v-max);
+  margin-inline: auto;
+  padding-inline: var(--v-gutter);
+}
+
+/* ── L'intro ────────────────────────────────────────────────────────────── */
+
+.v-vi-intro {
+  display: grid;
+  gap: 1rem;
+  padding-block: 0 clamp(1.5rem, 3vw, 2.5rem);
+  animation: v-vi-up 0.8s var(--v-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v-vi-intro {
+    animation: none;
+  }
+}
+
+.v-vi-back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--v-muted);
+  transition: color 0.3s var(--v-ease);
+}
+
+.v-vi-back:hover {
+  color: var(--v-accent);
+}
+
+.v-vi-back svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.v-vi-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+.v-vi-title {
+  font-family: var(--v-font-h);
+  font-size: clamp(2rem, 3.6vw, 3rem);
+  line-height: 1.06;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.v-vi-lede {
+  max-width: 40rem;
+  font-family: var(--v-font-h);
+  font-size: clamp(1.0625rem, 1.4vw, 1.1875rem);
+  line-height: 1.45;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+/* ── Le gabarit des trois étapes numérotées ─────────────────────────────── */
+
+.v-vi-step {
+  display: grid;
+  gap: 1.25rem;
+  border-top: 1px solid var(--v-line);
+  padding-block: clamp(1.75rem, 3.2vw, 2.75rem);
+}
+
+.v-vi-step-head {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.v-vi-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  border: 1px solid var(--vi-ring);
+  background: var(--v-surface);
+  font-family: var(--v-font-h);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--v-accent);
+}
+
+.v-vi-step-text {
+  display: grid;
+  gap: 0.25rem;
+  padding-top: 0.35rem;
+}
+
+.v-vi-step-title {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.v-vi-step-sub {
+  font-size: 0.9375rem;
+  color: var(--v-muted);
+}
+
+/* ── 01 · Les cinq sources ──────────────────────────────────────────────── */
+
+.v-vi-sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.75rem;
+}
+
+.v-vi-source {
+  display: grid;
+  justify-items: center;
+  gap: 0.625rem;
+  padding: 1.25rem 0.875rem 1rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+}
+
+.v-vi-source svg {
+  width: 38px;
+  height: 38px;
+  color: var(--v-accent);
+}
+
+/* `vitrine.css` neutralise la couleur de tout `svg` sous `.vitrine`, en
+   `html[data-mode="…"] .vitrine svg` — une forme qui l'emporte sur la simple
+   classe ci-dessus, et qui renvoyait donc les icônes et les flèches au noir
+   du texte. On reprend son gabarit avec une classe de plus pour leur rendre
+   l'accent, plutôt que de poser un `!important` que la suite aurait à son
+   tour à contourner. */
+html[data-mode="light"] .v-vision .v-vi-source svg,
+html[data-mode="dark"] .v-vision .v-vi-source svg,
+html[data-mode="light"] .v-vision .v-vi-arrow,
+html[data-mode="dark"] .v-vision .v-vi-arrow {
+  color: var(--v-accent);
+}
+
+.v-vi-source-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* ── 02 · La figure et les quatre échelles ──────────────────────────────── */
+
+.v-vi-scales {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: clamp(1rem, 2.4vw, 2.25rem);
+  align-items: center;
+}
+
+/* Le masque fond la figure dans la page au lieu de la couper net, et le
+   `multiply` fait disparaître le blanc du fichier : la silhouette repose sur
+   le fond de la page sans halo. */
+.v-vi-figure {
+  overflow: hidden;
+  aspect-ratio: 1024 / 1100;
+  -webkit-mask-image: radial-gradient(ellipse 62% 70% at 50% 42%, #000 58%, transparent 100%);
+  mask-image: radial-gradient(ellipse 62% 70% at 50% 42%, #000 58%, transparent 100%);
+}
+
+.v-vi-figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+  mix-blend-mode: multiply;
+}
+
+.v-vi-scale-list {
+  display: grid;
+  gap: clamp(0.625rem, 1.5vw, 1.125rem);
+}
+
+.v-vi-scale {
+  display: grid;
+  grid-template-columns: minmax(0.75rem, 0.4fr) clamp(4.5rem, 7vw, 6rem) minmax(5.5rem, auto);
+  align-items: center;
+  gap: clamp(0.625rem, 1.2vw, 1rem);
+}
+
+/* Le pointillé relie l'échelle à la figure : il dit que l'une est un
+   agrandissement de l'autre. */
+.v-vi-scale-link {
+  height: 0;
+  border-top: 1px dashed var(--vi-ring);
+}
+
+.v-vi-scale-shot {
+  overflow: hidden;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  border: 1px solid var(--vi-ring);
+  background: var(--v-surface);
+  box-shadow: 0 0 0 4px var(--v-bg), 0 0 0 5px var(--vi-halo);
+}
+
+.v-vi-scale-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.3);
+}
+
+.v-vi-scale-text {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.v-vi-scale-name {
+  font-family: var(--v-font-h);
+  font-size: clamp(0.8125rem, 1vw, 0.9375rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.v-vi-scale-note {
+  font-size: 0.75rem;
+  color: var(--v-subtle);
+}
+
+/* ── 03 · Passé, présent, futurs possibles ──────────────────────────────── */
+
+.v-vi-time {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1.25fr);
+  gap: clamp(0.5rem, 1.6vw, 1.125rem);
+  align-items: center;
+  padding: clamp(0.875rem, 2vw, 1.5rem);
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+}
+
+.v-vi-moment {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+}
+
+.v-vi-moment-shot {
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  -webkit-mask-image: radial-gradient(ellipse 60% 62% at 50% 38%, #000 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse 60% 62% at 50% 38%, #000 55%, transparent 100%);
+}
+
+.v-vi-moment-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+  mix-blend-mode: multiply;
+}
+
+/* Le passé est décoloré et effacé : il a eu lieu, il ne se rejoue pas. */
+.v-vi-moment-shot[data-when="past"] img {
+  filter: grayscale(0.7);
+  opacity: 0.55;
+}
+
+/* Les futurs sont trois silhouettes décalées, de la plus pâle à la plus
+   nette : plusieurs trajectoires, dont une seule est encore lisible. */
+.v-vi-futures {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1.25;
+  -webkit-mask-image: radial-gradient(ellipse 60% 62% at 50% 38%, #000 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse 60% 62% at 50% 38%, #000 55%, transparent 100%);
+}
+
+.v-vi-futures img {
+  position: absolute;
+  top: 0;
+  width: 80%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+  mix-blend-mode: multiply;
+}
+
+.v-vi-futures img[data-depth="far"] {
+  left: 36%;
+  opacity: 0.14;
+}
+
+.v-vi-futures img[data-depth="mid"] {
+  left: 18%;
+  opacity: 0.3;
+}
+
+.v-vi-futures img[data-depth="near"] {
+  left: 0;
+}
+
+.v-vi-moment-label {
+  font-family: var(--v-font-h);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.v-vi-moment-label[data-when="past"] {
+  color: var(--v-muted);
+}
+
+.v-vi-moment-label[data-when="futures"] {
+  color: var(--v-accent);
+}
+
+.v-vi-arrow {
+  width: 22px;
+  height: 22px;
+  color: var(--v-accent);
+  flex: none;
+}
+
+/* ── Le bandeau d'appel ─────────────────────────────────────────────────── */
+
+.v-vi-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem 2.5rem;
+  margin-block: clamp(0.5rem, 1.6vw, 1.125rem) clamp(1.75rem, 3.2vw, 2.75rem);
+  border-radius: 12px;
+  background: var(--vi-mint);
+  padding: clamp(1.25rem, 2.8vw, 2rem);
+}
+
+.v-vi-cta-text {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1 1 24rem;
+}
+
+.v-vi-cta-title {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.v-vi-cta-sub {
+  max-width: 34rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-vi-cta-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.6rem;
+  height: 3rem;
+  padding-inline: 1.4rem 1.15rem;
+  border-radius: 999px;
+  background: var(--v-ink);
+  color: var(--v-bg);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: background-color 0.3s var(--v-ease);
+}
+
+.v-vi-cta-link:hover {
+  background: var(--v-accent);
+  color: var(--v-bg);
+}
+
+.v-vi-cta-link svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Le cadre téléphone de la maquette.
+
+   Tout ce qui suit est la seconde mise en page, celle des 390px : mesures
+   resserrées, sources qui défilent au lieu de se ranger en grille, figure qui
+   déborde par la gauche, échelles réduites à leur vignette et à leur nom.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  /* Le titre tient sur une seule coulée : la maquette téléphone n'y met pas
+     de retour à la ligne, elle laisse le texte se replier tout seul. */
+  .v-vi-title br {
+    display: none;
+  }
+
+  .v-vi-intro {
+    gap: 0.75rem;
+    padding-block: 0.5rem 1.75rem;
+  }
+
+  /* Une cible tactile pleine hauteur, là où le PC se contente de la ligne. */
+  .v-vi-back {
+    min-height: 2.75rem;
+    white-space: nowrap;
+    gap: 0.45rem;
+    font-size: 0.8125rem;
+  }
+
+  .v-vi-back svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .v-vi-eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.26em;
+  }
+
+  .v-vi-title {
+    font-size: 2rem;
+    line-height: 1.05;
+  }
+
+  .v-vi-lede {
+    font-size: 1.0625rem;
+  }
+
+  .v-vi-step {
+    gap: 1rem;
+    padding-block: 1.75rem;
+  }
+
+  .v-vi-step-head {
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 0.875rem;
+  }
+
+  .v-vi-num {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 0.9375rem;
+  }
+
+  .v-vi-step-text {
+    gap: 0.15rem;
+    padding-top: 0.2rem;
+  }
+
+  .v-vi-step-title {
+    font-size: 1.25rem;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+  }
+
+  .v-vi-step-sub {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  /* Les cinq sources ne se rangent plus : elles défilent. Le `margin-inline`
+     négatif rend au ruban les gouttières de la page, pour que la première
+     carte parte du bord de l'écran et que la dernière s'y perde. */
+  .v-vi-sources {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-inline: var(--v-gutter);
+    margin-inline: calc(-1 * var(--v-gutter));
+  }
+
+  .v-vi-sources::-webkit-scrollbar {
+    display: none;
+  }
+
+  .v-vi-source {
+    flex: 0 0 5.75rem;
+    align-content: start;
+    gap: 0.5rem;
+    padding: 0.875rem 0.5rem;
+  }
+
+  .v-vi-source svg {
+    width: 32px;
+    height: 32px;
+    stroke-width: 1.6;
+  }
+
+  .v-vi-source-name {
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+
+  .v-vi-scales {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  /* Plus haute et sortie par la gauche : sur 390px la figure ne tient qu'en
+     débordant, et c'est ce que fait la maquette. */
+  .v-vi-figure {
+    aspect-ratio: 1024 / 1700;
+    margin-left: calc(-1 * var(--v-gutter) - 0.75rem);
+  }
+
+  .v-vi-figure img {
+    object-position: 40% 0;
+  }
+
+  .v-vi-scale-list {
+    gap: 1.125rem;
+  }
+
+  /* Ni trait, ni légende : la colonne n'a la largeur que de la vignette et du
+     nom. Les deux sont rendus puis masqués — c'est le seul endroit où les deux
+     mises en page ne portent pas le même contenu. */
+  .v-vi-scale {
+    grid-template-columns: 3.75rem minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .v-vi-scale-link,
+  .v-vi-scale-note {
+    display: none;
+  }
+
+  .v-vi-scale-shot {
+    box-shadow: none;
+  }
+
+  .v-vi-scale-name {
+    font-size: 0.8125rem;
+  }
+
+  .v-vi-time {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1.2fr);
+    gap: 0.25rem;
+    padding: 0.75rem 0.5rem;
+  }
+
+  .v-vi-moment {
+    gap: 0.375rem;
+  }
+
+  .v-vi-moment-shot {
+    border-radius: 0;
+  }
+
+  .v-vi-futures {
+    aspect-ratio: 1.2;
+  }
+
+  .v-vi-futures img {
+    width: 82%;
+  }
+
+  /* La légende quitte la police des titres : à cette taille, le texte courant
+     se lit mieux. */
+  .v-vi-moment-label {
+    font-family: inherit;
+    font-size: 0.75rem;
+  }
+
+  .v-vi-moment-label[data-when="futures"] {
+    white-space: nowrap;
+  }
+
+  .v-vi-arrow {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.3;
+  }
+
+  /* Le bandeau s'empile et son bouton prend toute la largeur. */
+  .v-vi-cta {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0.5rem 0.75rem 1.5rem;
+    padding: 1.5rem 1.25rem;
+  }
+
+  .v-vi-cta-title {
+    font-size: 1.375rem;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+  }
+
+  .v-vi-cta-sub {
+    font-size: 0.875rem;
+  }
+
+  .v-vi-cta-link {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 3rem;
+    margin-top: 0.25rem;
+    padding-inline: 1rem;
+    font-size: 0.9375rem;
+  }
+
+  .v-vi-cta-link svg {
+    width: 14px;
+    height: 14px;
+  }
+}

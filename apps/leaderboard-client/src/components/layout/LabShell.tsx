@@ -18,10 +18,10 @@ type LabShellProps = PropsWithChildren<{
 // partout ailleurs, l'arbre rendu est exactement celui d'avant.
 /**
  * Les pages refaites d'après les maquettes Claude Design — les trois listings,
- * et l'accueil depuis. Elles posent elles-mêmes leur largeur, leur gouttière
- * et leur fond : le conteneur du Lab les contraindrait à d'autres valeurs que
- * celles de la maquette. Seule la réserve laissée à la navbar fixe reste ici,
- * identique partout.
+ * l'accueil depuis, et la vision. Elles posent elles-mêmes leur largeur, leur
+ * gouttière et leur fond : le conteneur du Lab les contraindrait à d'autres
+ * valeurs que celles de la maquette. Seule la réserve laissée à la navbar fixe
+ * reste ici, identique partout.
  *
  * Égalité stricte : `/challenges/<slug>` et `/sandbox/<slug>` gardent le
  * chrome ordinaire.
@@ -31,6 +31,7 @@ const VITRINE_BACKGROUNDS: Record<string, string> = {
   "/leaderboard": "#fcfcfc",
   "/challenges": "#fcfcfc",
   "/sandbox": "#fcfcfc",
+  "/vision": "#fcfcfc",
 };
 
 /**

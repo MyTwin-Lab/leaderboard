@@ -80,7 +80,7 @@ export function HomeVision() {
           ))}
         </ol>
 
-        <a href="https://mytwin.care" className="v-home-more v-home-vision-link">
+        <a href="/vision" className="v-home-more v-home-vision-link">
           Explore the vision
           <HomeArrow corner />
         </a>

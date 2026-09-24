@@ -203,6 +203,7 @@ export function buildSitemap({ baseUrl, challenges, sandboxes, news }: SitemapIn
     { url: url("/sandbox"), changeFrequency: "daily", priority: 0.8 },
     { url: url("/leaderboard"), changeFrequency: "daily", priority: 0.6 },
     { url: url(NEWS_PATH), changeFrequency: "weekly", priority: 0.8 },
+    { url: url("/vision"), changeFrequency: "monthly", priority: 0.5 },
     { url: url("/terms-of-use"), changeFrequency: "yearly", priority: 0.2 },
     { url: url("/privacy-policy"), changeFrequency: "yearly", priority: 0.2 },
     ...challenges.map((challenge) => ({
