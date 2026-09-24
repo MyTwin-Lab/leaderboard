@@ -70,6 +70,27 @@
   pointer-events: none;
 }
 
+/* Le cadre de la photo du téléphone : la prépage entière.
+
+   Sur Safari iOS, la boîte `inset: 0` d'un élément fixe peut s'arrêter avant
+   le bas réel de l'écran, et la photo avec elle, laissant une bande claire
+   sous la scène. Là seulement, le cadre prend au moins la hauteur du grand
+   viewport : il déborde sous la barre du navigateur et ne fait rien défiler,
+   la prépage étant fixe. `-webkit-touch-callout` ne répond que sur iOS. */
+.v-gate-frame {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .v-gate-frame {
+    bottom: auto;
+    height: 100%;
+    min-height: 100lvh;
+  }
+}
+
 /* La photo du téléphone : prise en portrait, elle se recadre pour couvrir et
    se cale sur le haut du cadre — c'est là que sont le panneau et les
    visiteurs. */
@@ -108,7 +129,8 @@
 .v-gate-title {
   max-width: 20ch;
   font-family: var(--v-font-h);
-  font-size: clamp(1.75rem, 5.5vw, 3.5rem);
+  /* Le plancher ne joue que sur téléphone : dès 768px, 5.5vw le dépasse. */
+  font-size: clamp(1.5rem, 5.5vw, 3.5rem);
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -184,7 +206,7 @@
     padding-inline: clamp(3rem, 6vw, 5.5rem);
   }
 
-  .v-gate-shot {
+  .v-gate-frame {
     display: none;
   }
 

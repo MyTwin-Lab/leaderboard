@@ -127,16 +127,22 @@ export function HomeGate() {
       {/* La photo du téléphone, en portrait. Celle du PC est un fond CSS posé
           par `home-gate.css` : deux fichiers de formats opposés, et changer de
           fichier selon la largeur n'est pas quelque chose que <Image> sait
-          faire. */}
-      <Image
-        src="/home/enter-the-lab.jpg"
-        alt=""
-        aria-hidden
-        fill
-        sizes="100vw"
-        priority
-        className="v-gate-shot"
-      />
+          faire.
+
+          Elle est posée dans un cadre plutôt que directement : `fill` fixe sa
+          boîte en style inline, et c'est le cadre qui la prolonge sous le bas
+          de l'écran sur iOS — voir `home-gate.css`. */}
+      <div aria-hidden="true" className="v-gate-frame">
+        <Image
+          src="/home/enter-the-lab.jpg"
+          alt=""
+          aria-hidden
+          fill
+          sizes="100vw"
+          priority
+          className="v-gate-shot"
+        />
+      </div>
       {/* Le haut de la photo est très clair, le bas chargé : un voile léger
           garantit le contraste du texte sans assombrir la scène. */}
       <div aria-hidden="true" className="v-gate-veil" />
@@ -147,7 +153,7 @@ export function HomeGate() {
           Building the world&rsquo;s most advanced human digital twin
         </h1>
         <p className="v-gate-lede">
-          Connecting predictive, preventive, personalized and proactive health
+          Predictive, Preventive, Personalized and Proactive health
         </p>
       </div>
 
