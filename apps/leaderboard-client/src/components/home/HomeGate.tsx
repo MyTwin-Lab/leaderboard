@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import Image from "next/image";
 
 import { MyTwinLogo } from "@/components/layout/MyTwinLogo";
@@ -22,8 +22,25 @@ import { HomeArrow } from "./HomeSection";
  *
  * Le logo de la navbar la rouvre quand on est déjà sur `/` : un lien vers la
  * page courante ne remonte rien, donc il le signale par `HOME_GATE_OPEN_EVENT`.
+ *
+ * Une seule exception à cette ouverture systématique : `/#lab`, par où revient
+ * le « Back to the Lab » de la page vision. Ce lien ramène à l'accueil tel
+ * qu'on l'a quitté — derrière la prépage — et non à la porte qu'on a déjà
+ * poussée. Le logo, lui, continue de la rouvrir ensuite.
  */
 export const HOME_GATE_OPEN_EVENT = "home-gate:open";
+
+/** Le fragment qui demande à sauter la prépage. */
+const SKIP_HASH = "#lab";
+
+/**
+ * Le saut doit être décidé **avant** le premier affichage, sinon la prépage
+ * apparaît le temps d'une image avant de disparaître. `useLayoutEffect` s'en
+ * charge sur le client ; au rendu serveur il n'existe pas, et React le dit
+ * bruyamment, donc on retombe sur `useEffect` — qui n'y sert de toute façon à
+ * rien puisqu'aucun effet ne s'exécute là-bas.
+ */
+const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export function HomeGate() {
   const [open, setOpen] = useState(true);
@@ -50,8 +67,21 @@ export function HomeGate() {
     return () => window.removeEventListener(HOME_GATE_OPEN_EVENT, reopen);
   }, []);
 
+  // On arrive par `/#lab` : la prépage ne s'affiche pas du tout. Elle n'est pas
+  // fermée en fondu, elle est sautée — il n'y a rien à faire disparaître.
+  useBeforePaint(() => {
+    if (window.location.hash !== SKIP_HASH) return;
+    // Le fragment a joué son rôle : on le retire pour que la barre d'adresse
+    // affiche la racine, et qu'un rechargement — ou le logo de la navbar —
+    // rouvre la prépage normalement.
+    window.history.replaceState(null, "", window.location.pathname);
+    window.scrollTo(0, 0);
+    setOpen(false);
+    setGone(true);
+  }, []);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open || gone) return;
 
     // Rien ne défile derrière une page qui couvre l'écran. Le verrou se pose
     // sur `<html>`, pas sur `<body>` : `html` porte déjà `overflow-x: clip`
@@ -72,7 +102,7 @@ export function HomeGate() {
       root.style.overflow = previous;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, gone]);
 
   if (gone) return null;
 
@@ -117,7 +147,7 @@ export function HomeGate() {
           Building the world&rsquo;s most advanced human digital twin
         </h1>
         <p className="v-gate-lede">
-          Connecting science, data and people to advance human health
+          Connecting predictive, preventive, personalized and proactive health
         </p>
       </div>
 

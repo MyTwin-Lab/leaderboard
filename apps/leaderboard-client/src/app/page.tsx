@@ -46,9 +46,12 @@ export default async function HomePage() {
   const overview = await fetchHomeOverview();
 
   // L'ordre est celui de `Home Redesign.dc.html` : la mission, la vision qui
-  // l'explique, puis ce que le Lab produit — news, podcast — et le renvoi vers
-  // mytwin.care pour créer son jumeau, avant d'appeler à rejoindre, et de
-  // montrer qui contribue et sur quoi.
+  // l'explique, puis ce que le Lab produit — news, podcast — avant d'appeler à
+  // rejoindre, et de montrer qui contribue et sur quoi.
+  //
+  // « Create your twin » fait exception et ferme la page. La maquette le posait
+  // au milieu ; c'est le seul encart qui sort du Lab, et il se lit mieux une
+  // fois le Lab montré — on part vers mytwin.care après avoir vu, pas avant.
   //
   // La navbar et le pied de page de la maquette ne sont pas repris : `LabShell`
   // les pose déjà pour toute l'app, et cette page n'a pas à en porter une
@@ -63,10 +66,10 @@ export default async function HomePage() {
           <HomeVision />
           <HomeLatestNews />
           <HomePodcast />
-          <HomeCreateTwin />
           <HomeCommunity />
           <HomeLeaderboardPreview podium={overview.podium} />
           <HomeChallengesPreview challenges={overview.trendingChallenges} />
+          <HomeCreateTwin />
         </div>
       </div>
     </>

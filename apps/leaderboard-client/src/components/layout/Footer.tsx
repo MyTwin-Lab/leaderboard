@@ -77,11 +77,7 @@ export function Footer() {
               <MyTwinLogo className="h-8 w-auto" />
             </Link>
             <p className="text-sm leading-relaxed text-white/50">
-              The open innovation lab of{" "}
-              <a href={MYTWIN.home} className="font-medium text-white/80 underline-offset-4 hover:text-brandCP hover:underline">
-                MyTwin
-              </a>
-              , where health challenges become working applications.
+              Building the world&rsquo;s most advanced human digital twin.
             </p>
           </div>
 
