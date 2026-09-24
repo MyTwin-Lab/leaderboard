@@ -14,7 +14,7 @@ Modelled on the blog of mytwin.care (`src/features/blog/` in mytwin-health-landi
 | `src/content/news/index.ts` | the registry: `NEWS_ARTICLES`, `getNewsBySlug`, `getLatestNews`, `getRelatedNews` |
 | `src/content/news/types.ts` | `NewsArticle` and its parts, `NEWS_CATEGORY_LABELS` |
 | `src/content/news/<slug>/` | one folder per news: `index.tsx` (the content) and its own visual blocks |
-| `src/components/news/` | the template: `NewsArticleHeader`, `NewsArticleBody` (table of contents, *At a glance*, sections, FAQ, CTA, sources), `NewsCard` and its `NewsIllustrationFrame`, and the writing primitives `NewsProse`, `NewsLink`, `NewsCallout`, `NewsFigure` |
+| `src/components/news/` | the template: `NewsArticleHeader`, `NewsArticleBody` (table of contents, *At a glance*, sections, FAQ, CTA, sources), `NewsCard` and its `NewsIllustrationFrame`, and the writing primitives `NewsProse`, `NewsLink`, `NewsCallout`, `NewsFigure`, `NewsPhotoRow`, `NewsVideoEmbed` |
 | `public/news/` | the overview images (WebP), one per illustrated news |
 | `src/components/podcast/` | MyTwin Inside episodes: `PodcastVideos` (home grid / mobile carousel) and `PodcastEpisodeEmbed` (one episode inside a news) |
 | `src/components/home/HomeLatestNews.tsx` | "News" on the home page, the three latest news as `compact` cards |
@@ -37,6 +37,8 @@ The sitemap, the index, the home section, the OG image and the JSON-LD follow fr
 - **Sections are data**: their `id` and `title` feed both the `<h2>` and the table of contents. From `MIN_SECTIONS_FOR_TOC` (3) sections, a sticky table of contents appears on desktop (scroll-spy, `lib/useScrollSpy.ts`) and a folded `<details>` one on mobile; below that, the column is centered and there is no table of contents.
 - **FAQ and sources are optional**: no `faq`, no FAQ section and no FAQ entry in the table of contents. FAQ answers are plain strings and rendered in native `<details>`, so they stay in the DOM.
 - **`NewsLink`** chooses the behaviour: `next/link` for Lab pages, same tab for mytwin.care, new tab with `rel="noopener"` for everything else (editorial links, no `nofollow`).
+- **Photos in the body go through `NewsPhotoRow`**: one or several images on one line at the same height, each column as wide as its image's format, the row capped at 28rem high (portrait images narrow it rather than filling the screen). The WebP lives in `public/news/`. Unlike a card, a photo there carries a real `alt`: it is content.
+- **A video goes through `NewsVideoEmbed`** (a talk, a conference): the article's `video` field, placed in the text by the article itself. The Lab serves the clip (`public/news/`, MP4 H.264 720p with `faststart`) instead of embedding YouTube: the reader stays on the page. Before the click, only the poster loads, through `next/image`; the `<video>` is mounted on click, so the article's load doesn't pay for the video. A non-English `language` is said under the player.
 - **Cards show `eventMonth`**, the article header shows it next to the publication date: several news can be published the same day about events far apart.
 
 ## Overviews: title and illustration
@@ -60,6 +62,7 @@ A news has two faces. The article page carries `title`, the entity-first H1 writ
 
 - `<title>` = `seoTitle | MyTwin Lab` (layout template). `og:type` = `article` with published and modified times, author and tags (`articleMetadata`).
 - `NewsArticle` JSON-LD: `author` is Rubens Valcy with `worksFor` pointing at mytwin.care's `@id`; `publisher` is the Lab organization's `@id`; `mentions` declares the partners and products with their URL; `citation` declares the sources; `image` is the article's generated OG image.
+- `video`, when the article has one, adds a `VideoObject` to the `NewsArticle` (`contentUrl` and poster served by the Lab, `duration`, `uploadDate`).
 - The sitemap entry's `lastModified` is `updatedAt ?? publishedAt`.
 
 ## Gotchas
@@ -69,6 +72,7 @@ A news has two faces. The article page carries `title`, the entity-first H1 writ
 - **The OG image imports the registry**, hence every article module and its illustration components. Keep them free of side effects and server-only imports.
 - **Text-only cards next to illustrated ones** stretch to the row's height and show an empty band above "Read the news", on `/news` and under "Keep reading". On `/home` the band is taller: a `compact` card has no excerpt to fill it.
 - **No "story so far" timeline yet.** The playbook's continuity rule (§3) is applied in the content for now: links between chapters and an update callout on the previous one. Build a timeline in the template when a project has two chapters.
+- **Encoding a clip for a news**: `ffmpeg -i in.mp4 -vf scale=-2:720 -c:v libx264 -preset slow -crf 28 -c:a aac -b:a 96k -movflags +faststart public/news/<name>.mp4`. Without `+faststart`, the browser must fetch the whole file before playing.
 - **The podcast data is duplicated from mytwin.care** (`components/podcast/episodes.ts`): a new episode there must be added here, thumbnail included (bundled, not hot-linked from YouTube).
 - **YouTube loads only on click** (`youtube-nocookie.com`), which is what the privacy policy (§ 9) states. Don't autoplay or preload an embed.
 

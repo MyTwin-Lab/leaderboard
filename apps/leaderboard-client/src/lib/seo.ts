@@ -318,6 +318,7 @@ export function authorJsonLd(): JsonLdNode {
  * Une news. `mentions` déclare les entités qu'elle nomme (partenaires,
  * technologies) avec leur site : le lien MyTwin → partenaire, écrit pour les
  * moteurs. `citation` déclare les sources affichées en pied d'article.
+ * `video` déclare la vidéo dont la news rend compte, servie par le Lab.
  */
 export function newsArticleJsonLd({
   path,
@@ -330,6 +331,7 @@ export function newsArticleJsonLd({
   section,
   sources,
   mentions,
+  video,
 }: {
   path: string;
   headline: string;
@@ -341,6 +343,15 @@ export function newsArticleJsonLd({
   section: string;
   sources: { label: string; url: string }[];
   mentions: { type: string; name: string; url?: string }[];
+  video?: {
+    src: string;
+    poster: string;
+    title: string;
+    description: string;
+    duration: string;
+    uploadDate: string;
+    language: string;
+  };
 }): JsonLdNode {
   const url = `${SITE_URL}${path}`;
   return {
@@ -365,6 +376,20 @@ export function newsArticleJsonLd({
       ...(mentionUrl ? { url: mentionUrl } : {}),
     })),
     citation: sources.map((source) => ({ "@type": "CreativeWork", name: source.label, url: source.url })),
+    ...(video
+      ? {
+          video: {
+            "@type": "VideoObject",
+            name: video.title,
+            description: video.description,
+            thumbnailUrl: `${SITE_URL}${video.poster}`,
+            contentUrl: `${SITE_URL}${video.src}`,
+            duration: video.duration,
+            uploadDate: video.uploadDate,
+            inLanguage: video.language,
+          },
+        }
+      : {}),
   };
 }
 

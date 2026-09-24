@@ -87,6 +87,7 @@ The template renders the frame (`news.md`); the article provides these fields.
 | `sources` | Every external claim. Partner and official pages count as sources for what they state about themselves. |
 | `mentions` | Every organisation, person or product the news is about, with its official URL. |
 | `keywords` | 4–8, the entity pairs and the project's own terms. |
+| `video` | Optional. The clip the news reports on, served by the Lab (not a YouTube embed: the reader stays on the page). Its poster is a frame of the clip. |
 | `illustration` | Optional. A photo or a drawn visual for the overviews. Same rule as the visual blocks below: it illustrates, it adds nothing. |
 
 **Length.** Say what there is to say, nothing more: a partnership in pilot may take 400 words, a challenge with a vision 1,000. Never stretch a news to look like a blog article, never cut one that has a real story.
@@ -117,7 +118,10 @@ Links are part of the content, not decoration. Each one has to help the reader.
 | The previous or next chapter | continuity (§3) | in the lead |
 | mytwin.care — the landing or blog article owning the topic | when the reader needs to understand, or to see the product | once, descriptive anchor |
 | The partner's official site | always for a partnership | first mention; editorial link, no `nofollow` |
+| A company that isn't a partner (a studio, a supplier, a venue) | at most once | first mention only; its own claims are attributed in the text (*"the studio says…"*), not linked again |
 | Scientific and institutional sources | every external claim | inline + listed in *Sources*; prefer WHO, EU Commission, national agencies, peer-reviewed papers (PubMed Central, DOI) |
+
+**Outbound links are spent, not scattered.** Every link to another site takes the reader off the Lab. It earns its place when it serves MyTwin's entity (a partner integrated into MyTwin, who links back) or backs a health claim a reader must be able to verify. A company's description of itself, for a company that isn't a partner, needs neither.
 
 Anchors say where they lead (*"the MASAI randomised trial"*), never *"here"*. `NewsLink` picks the right behaviour (same tab for the Lab and mytwin.care, new tab for the rest).
 
@@ -147,3 +151,6 @@ Anchors say where they lead (*"the MASAI randomised trial"*), never *"here"*. `N
 | 2026-09-16 | healthguard | Sébastien Saliques is presented as a hospital pharmacist, as he presents himself. HealthGuard is an alpha: no compliance is implied. |
 | 2026-09-21 | all | Each news gets an `overviewTitle` for its cards, shorter than the H1, which keeps the entity pair for search. Illustrations are optional and chosen per news; five news have none. |
 | 2026-09-21 | mytwin-accessibility | Category `research`: a first accessibility pass on the app, written from the team's account. The voice-driven mode is presented as an idea, nothing built. No accessibility challenge exists yet, so the CTA leads to the Sandbox; it should point to the challenge once it opens. External figures (WHO, WebAIM) are sourced; no claim about the app's current level of accessibility. |
+| 2026-09-24 | scan-engine-full-body-3d-avatar | Category `research`, not `partnership`: Scan Engine did the capture as a studio, it hasn't joined MyTwin. Hence a single outbound link, on its first mention, and no *Sources*: the studio's figures (192 cameras, a fraction of a second) are attributed to it in the text. Title and text stay close to the team's own wording; the title names *the MyTwin digital twin*, branded, which doesn't compete with mytwin.care's generic query, and the text links to its *patient digital twin* article and to `/vision`. Event month February 2026, from the photo's date. First news with photos in the body (`NewsPhotoRow`). |
+| 2026-09-24 | pet-scan-3d-anatomical-model | Category `research`, event month February 2025 (the date of the segmentation). The person whose exam was used is **not named**: a PET scan is health data, and the team's text doesn't say whose it is. The screenshot of 3D Slicer is cropped and the line naming the exam's internal codes hidden. Title kept close to the team's wording, including *the patient's digital twin*: the main query is *PET scan → 3D model*, and the text links to mytwin.care's *patient digital twin* and *AI in medical imaging* articles. The three papers of the team's text are listed in *Sources* only, as they gave them. Cross-linked with the Scan Engine news: anatomy inside, envelope outside. |
+| 2026-09-24 | ynov-ai-health-french-response | Category `community`: a talk at an event, 5 February 2026 in Bordeaux. The body is named as Ynov registers it, the *Scientific Council* (Conseil Scientifique), not *committee*. The video is the 15-minute extract of Ynov's recording showing the talk, served by the Lab rather than embedded from YouTube, so readers stay on the page; its poster is a frame of the clip. Rubens's family story is told as he wrote it, without naming the hospital. Ynov is not a partner: its event page is in *Sources*, no link in the text. The list of technologies links to the Lab's own news (mammography, PET scan, Virtuosis). |

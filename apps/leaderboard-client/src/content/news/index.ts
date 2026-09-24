@@ -4,10 +4,13 @@ import { iVirtualCameraVitalSigns } from "./i-virtual-camera-vital-signs";
 import { mammographyAiChallenges } from "./mammography-ai-challenges";
 import { mykine } from "./mykine";
 import { mytwinAccessibility } from "./mytwin-accessibility";
+import { petScan3dAnatomicalModel } from "./pet-scan-3d-anatomical-model";
 import { racketSportsInjuryRisk } from "./racket-sports-injury-risk";
+import { scanEngineFullBody3dAvatar } from "./scan-engine-full-body-3d-avatar";
 import { skiniveAiSkinChecks } from "./skinive-ai-skin-checks";
 import type { NewsArticle } from "./types";
 import { virtuosisAiVoiceAnalysis } from "./virtuosis-ai-voice-analysis";
+import { ynovAiHealthFrenchResponse } from "./ynov-ai-health-french-response";
 
 /**
  * Le registre des news. Ajouter une news = un dossier `<slug>/` + une ligne ici.
@@ -20,6 +23,9 @@ const ARTICLES: readonly NewsArticle[] = [
   mykine,
   mytwinAccessibility,
   mammographyAiChallenges,
+  ynovAiHealthFrenchResponse,
+  scanEngineFullBody3dAvatar,
+  petScan3dAnatomicalModel,
   healthguardPatientControlledRecords,
   ensweetCardiacRehabilitation,
   racketSportsInjuryRisk,

@@ -81,6 +81,27 @@ export type NewsIllustration =
       Visual: ComponentType;
     };
 
+/**
+ * Une vidéo dont la news rend compte (une intervention, une conférence),
+ * servie par le site : l'article la place dans son texte avec
+ * `NewsVideoEmbed`, et la page la déclare en `video` dans le JSON-LD.
+ */
+export type NewsVideo = {
+  /** Dans `public/news/` : MP4 H.264 en `faststart`, la lecture démarre sans attendre le fichier entier. */
+  src: string;
+  /** Une image de la vidéo, dans `public/news/` : seule chargée avant le clic. */
+  poster: string;
+  title: string;
+  /** Ce qu'on y voit, pour le JSON-LD. */
+  description: string;
+  /** Durée ISO 8601 (`PT15M29S`), pour le JSON-LD. */
+  duration: string;
+  /** Mise en ligne sur le Lab (`AAAA-MM-JJ`) : la date de publication de la news. */
+  uploadDate: string;
+  /** Code BCP 47 de la langue parlée (`fr`), dite sous la vidéo si ce n'est pas l'anglais. */
+  language: string;
+};
+
 export type NewsArticle = {
   /** Anglais, court, sans date : l'URL survit aux mises à jour de l'article. */
   slug: string;
@@ -118,6 +139,8 @@ export type NewsArticle = {
   /** Seulement s'il y a de vraies questions : une news ne se rembourre pas. */
   faq?: NewsFaqItem[];
   cta: NewsCta;
+  /** La vidéo dont la news rend compte, s'il y en a une. */
+  video?: NewsVideo;
   sources: NewsSource[];
   mentions: NewsMention[];
 };

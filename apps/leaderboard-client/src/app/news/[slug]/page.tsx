@@ -61,6 +61,7 @@ export default async function NewsArticlePage({ params }: NewsPageProps) {
       section: NEWS_CATEGORY_LABELS[article.category],
       sources: article.sources,
       mentions: article.mentions,
+      video: article.video,
     }),
     breadcrumbJsonLd([
       { name: "MyTwin Lab", path: "/" },
