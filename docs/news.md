@@ -11,13 +11,13 @@ Modelled on the blog of mytwin.care (`src/features/blog/` in mytwin-health-landi
 | `src/app/news/page.tsx` | the index: latest news featured, then a grid. `CollectionPage` + `BreadcrumbList` JSON-LD |
 | `src/app/news/[slug]/page.tsx` | an article. `generateStaticParams` + `dynamicParams = false`: an unknown slug is a 404. `NewsArticle` + `BreadcrumbList` JSON-LD |
 | `src/app/news/[slug]/opengraph-image.tsx` | the share preview of each news, generated at build: category, event month, title |
-| `src/content/news/index.ts` | the registry: `NEWS_ARTICLES`, `getNewsBySlug`, `getLatestNews`, `getRelatedNews` |
+| `src/content/news/index.ts` | the registry: `NEWS_ARTICLES`, `getNewsBySlug`, `HOME_NEWS`, `getRelatedNews` |
 | `src/content/news/types.ts` | `NewsArticle` and its parts, `NEWS_CATEGORY_LABELS` |
 | `src/content/news/<slug>/` | one folder per news: `index.tsx` (the content) and its own visual blocks |
 | `src/components/news/` | the template: `NewsArticleHeader`, `NewsArticleBody` (table of contents, *At a glance*, sections, FAQ, CTA, sources), `NewsCard` and its `NewsIllustrationFrame`, and the writing primitives `NewsProse`, `NewsLink`, `NewsCallout`, `NewsFigure`, `NewsPhotoRow`, `NewsVideoEmbed` |
 | `public/news/` | the overview images (WebP), one per illustrated news |
 | `src/components/podcast/` | MyTwin Inside episodes: `PodcastVideos` (home grid / mobile carousel) and `PodcastEpisodeEmbed` (one episode inside a news) |
-| `src/components/home/HomeLatestNews.tsx` | "News" on the home page, the three latest news as `compact` cards |
+| `src/components/home/HomeLatestNews.tsx` | "News" on the home page: a fixed selection (`HOME_NEWS`, in its order), not the latest — a feature then two briefs |
 | `lib/paths.ts` | `NEWS_PATH`, `newsPath(slug)` |
 | `lib/seo.ts` | `articleMetadata`, `newsArticleJsonLd`, `collectionPageJsonLd`, `EDITORIAL_AUTHOR`, `authorJsonLd`; `buildSitemap` lists `/news` and every news |
 
@@ -47,12 +47,12 @@ A news has two faces. The article page carries `title`, the entity-first H1 writ
 
 | `illustration.kind` | What | Where it lives |
 |---|---|---|
-| `image` | a photo, cropped to the landscape frame (`position` sets `object-position`) | `public/news/`, or an image the site already serves |
-| `visual` | a component drawn in HTML/SVG, on the frame's light panel or on its own (MyKine's is dark) | in the article's folder, next to its visual blocks (`access-illustration.tsx`, `home-session-illustration.tsx`, `mammogram-illustration.tsx`, `pose-illustration.tsx`, `risk-window-illustration.tsx`, `scan-illustration.tsx`) |
+| `image` | a photo, cropped to the landscape frame (`position` sets `object-position`), or shown whole with `fit: "contain"`: slightly inset, with a faint border, centred on a black ground (the mammogram, whose own background is black; `ratio` gives the image's width / height so the border hugs it) | `public/news/`, or an image the site already serves |
+| `visual` | a component drawn in HTML/SVG, on the frame's light panel or on its own (MyKine's is dark) | in the article's folder, next to its visual blocks (`access-illustration.tsx`, `home-session-illustration.tsx`, `pose-illustration.tsx`, `risk-window-illustration.tsx`, `scan-illustration.tsx`) |
 
 - **`NewsIllustrationFrame` fixes the format, the illustration fills it.** On a card the frame is 16:10 above the text; on the featured card of `/news` it takes the right half.
-- **A visual is drawn in `em`.** The frame is a size container and sets its font size in `cqw`, so the whole drawing follows the width of the card. Colours are fixed (the panel stays light in both modes), never `currentColor` or `text-white`, which the light mode rewrites. An animation lives inside the component (a `<style>` with classes prefixed per article: `nes-`, `nhg-`, `niv-`, `nmg-`, `nrs-`) and stops under `prefers-reduced-motion`; SMIL ignores that query, so MyKine's pauses its SVG from a client effect.
-- **An SVG that fills the frame is framed in 16:10**, the card's format (`viewBox` 352 × 220 around the drawing, `slice`): a 4:3 drawing would lose its top and bottom.
+- **A visual is drawn in `em`.** The frame is a size container and sets its font size in `cqw`, so the whole drawing follows the width of the card. Colours are fixed (the panel stays light in both modes), never `currentColor` or `text-white`, which the light mode rewrites. An animation lives inside the component (a `<style>` with classes prefixed per article: `nes-`, `nhg-`, `niv-`, `nrs-`) and stops under `prefers-reduced-motion`; SMIL ignores that query, so MyKine's pauses its SVG from a client effect.
+- **An SVG that fills the frame is framed in 16:10**, the card's format (`viewBox` 352 × 220 around the drawing, `slice`): a 4:3 drawing would lose its top and bottom. A drawing that must never be cut (MyKine's figure, head to floor) uses `meet` instead, on a panel that fills the sides: the home frames are wider than 16:10.
 - **Always decorative in a card** (`aria-hidden`, empty `alt`): the title next to it already says what it shows. The `alt` of an image is there for the day it is shown on its own.
 - **No illustration, no frame**: the card stays text only.
 - **`compact` on `/home`**: the card keeps the illustration, the category, the month and the title, drops the excerpt, and its call shrinks to "Read". `/news` and "Keep reading" keep the full card.

@@ -1,17 +1,15 @@
 import Link from "next/link";
 
 import { NewsIllustrationFrame } from "@/components/news/NewsIllustrationFrame";
-import { getLatestNews } from "@/content/news";
+import { HOME_NEWS } from "@/content/news";
 import { formatEventMonth } from "@/content/news/format";
 import { NEWS_CATEGORY_LABELS } from "@/content/news/types";
 import { NEWS_PATH, newsPath } from "@/lib/paths";
 import { HomeArrow, HomeMore, HomeSectionHead } from "./HomeSection";
 
-/** La une, puis deux brèves : la maquette hiérarchise, elle n'aligne pas. */
-const LATEST_COUNT = 3;
-
 /**
- * Un aperçu de MyTwin Lab News.
+ * Un aperçu de MyTwin Lab News : la sélection fixe `HOME_NEWS`, la une puis
+ * deux brèves — la maquette hiérarchise, elle n'aligne pas.
  *
  * La carte de `/news` n'est pas réutilisée : la maquette donne à la première
  * news une forme qu'elle n'a nulle part ailleurs — photo et texte côte à côte,
@@ -26,7 +24,7 @@ const LATEST_COUNT = 3;
  * bascule de `display`.
  */
 export function HomeLatestNews() {
-  const [lead, ...rest] = getLatestNews(LATEST_COUNT);
+  const [lead, ...rest] = HOME_NEWS;
   if (!lead) return null;
 
   return (

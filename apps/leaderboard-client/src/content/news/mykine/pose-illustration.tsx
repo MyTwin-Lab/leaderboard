@@ -76,11 +76,12 @@ export function PoseIllustration() {
       className="relative size-full"
       style={{ background: `radial-gradient(70% 60% at 50% 40%, rgb(255 255 255 / 0.07), transparent 70%), ${PANEL}` }}
     >
-      {/* Cadré en 16:10, le format des cartes : de la tête au sol. */}
+      {/* De la tête au sol, en entier quel que soit le format du cadre
+          (`meet`) : le panneau comble les côtés. */}
       <svg
         ref={svgRef}
-        viewBox="-16 18 352 220"
-        preserveAspectRatio="xMidYMid slice"
+        viewBox="-16 16 352 222"
+        preserveAspectRatio="xMidYMid meet"
         fill="none"
         className="absolute inset-0 size-full"
       >

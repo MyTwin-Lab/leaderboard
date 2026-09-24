@@ -2,7 +2,6 @@ import { NewsCallout } from "@/components/news/NewsCallout";
 import { NewsLink } from "@/components/news/NewsLink";
 import { challengePath } from "@/lib/paths";
 import type { NewsArticle } from "../types";
-import { MammogramIllustration } from "./mammogram-illustration";
 import { RoadToPatients } from "./road-to-patients";
 import { ThatAndWhere } from "./that-and-where";
 
@@ -39,7 +38,12 @@ export const mammographyAiChallenges: NewsArticle = {
   readingMinutes: 7,
   title: "Two open challenges toward an AI second opinion on mammograms",
   overviewTitle: "Open-source AI for a second look at mammograms",
-  illustration: { kind: "visual", Visual: MammogramIllustration },
+  illustration: {
+    kind: "image",
+    src: "/news/mammography-analysis.webp",
+    alt: "A mammogram with a lesion outlined by a detection model.",
+    fit: "contain",
+  },
   seoTitle: "Mammography AI: two open challenges",
   description:
     "MyTwin Lab opens two mammography AI challenges, classification and segmentation, on open models and public data: a first step toward an AI second opinion.",

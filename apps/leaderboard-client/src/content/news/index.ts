@@ -42,9 +42,11 @@ export function getNewsBySlug(slug: string): NewsArticle | undefined {
   return NEWS_ARTICLES.find((article) => article.slug === slug);
 }
 
-export function getLatestNews(count: number): NewsArticle[] {
-  return NEWS_ARTICLES.slice(0, count);
-}
+/**
+ * Les trois news de la home, dans cet ordre : une sélection fixe, pas les plus
+ * récentes. La première est la une, les deux suivantes des brèves.
+ */
+export const HOME_NEWS: readonly NewsArticle[] = [mykine, ynovAiHealthFrenchResponse, mammographyAiChallenges];
 
 /**
  * Même catégorie d'abord : un lecteur venu pour un partenaire a plus de chances

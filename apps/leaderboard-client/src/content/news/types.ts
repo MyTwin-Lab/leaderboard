@@ -74,6 +74,14 @@ export type NewsIllustration =
       alt: string;
       /** `object-position` : le cadre des aperçus est paysage, l'image est recadrée. */
       position?: string;
+      /**
+       * `contain` : l'image paraît en entier, un peu en retrait et cernée d'un
+       * filet, au centre d'un fond noir qui complète le cadre (une
+       * radiographie, dont le fond est déjà noir).
+       */
+      fit?: "cover" | "contain";
+      /** Largeur / hauteur de l'image, pour `fit: "contain"` : le filet épouse l'image. 1 par défaut. */
+      ratio?: number;
     }
   | {
       kind: "visual";

@@ -4,8 +4,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * Le cadre de l'illustration d'une news dans un aperçu. Le cadre fixe le
- * format, l'illustration le remplit : une image est recadrée, un visuel se
- * centre sur un panneau clair, quel que soit le thème du Lab.
+ * format, l'illustration le remplit : une image est recadrée (ou montrée en
+ * entier sur fond noir, avec `fit: "contain"`), un visuel se centre sur un
+ * panneau clair, quel que soit le thème du Lab.
  *
  * Toujours décoratif : le titre de l'aperçu dit déjà ce que montre l'image.
  */
@@ -20,6 +21,20 @@ export function NewsIllustrationFrame({
   className?: string;
 }) {
   if (illustration.kind === "image") {
+    if (illustration.fit === "contain") {
+      // L'image entière, en retrait sur le fond noir, cernée d'un filet discret.
+      return (
+        <div aria-hidden className={cn("relative flex items-center justify-center overflow-hidden bg-black", className)}>
+          <div
+            className="relative h-[84%] max-w-[90%] overflow-hidden rounded-[3px] border border-[rgb(255_255_255/0.16)] transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+            style={{ aspectRatio: illustration.ratio ?? 1 }}
+          >
+            <Image src={illustration.src} alt="" fill sizes={sizes} className="object-cover" />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div aria-hidden className={cn("relative overflow-hidden", className)}>
         <Image
