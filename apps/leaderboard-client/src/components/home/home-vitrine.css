@@ -551,6 +551,74 @@
   text-wrap: pretty;
 }
 
+/* ── Create your twin : l'illustration à gauche, le lien à droite ───────── */
+
+.v-home-twin-card {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--v-line);
+  background: var(--v-surface);
+  color: inherit;
+  transition: border-color 0.4s var(--v-ease), box-shadow 0.4s var(--v-ease);
+}
+
+.v-home-twin-card:hover {
+  border-color: rgb(11 122 100 / 0.4);
+  box-shadow: 0 10px 30px -18px rgb(11 122 100 / 0.35);
+  color: inherit;
+}
+
+.v-home-twin-card-img {
+  flex: 0 1 60%;
+  min-width: 0;
+  height: auto;
+  /* Le fond de l'image est un peu plus bleu que la carte : on efface son bord
+     droit plutôt que de laisser une arête. */
+  mask-image: linear-gradient(to right, #000 85%, transparent);
+}
+
+.v-home-twin-card-link {
+  /* Centré dans la place que l'illustration laisse. */
+  margin-inline: auto;
+  font-family: var(--v-font-h);
+  font-size: clamp(1.125rem, 2vw, 1.625rem);
+  letter-spacing: -0.015em;
+}
+
+.v-home-twin-card-link svg {
+  width: 20px;
+  height: 20px;
+}
+
+.v-home-twin-card:hover .v-home-twin-card-link {
+  color: var(--v-accent-dark);
+}
+
+/* Sur téléphone, l'illustration passe au-dessus et le lien dessous. */
+@media (max-width: 767px) {
+  .v-home-twin-card {
+    flex-direction: column;
+    gap: 1.25rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .v-home-twin-card-img {
+    width: 100%;
+    mask-image: linear-gradient(to bottom, #000 80%, transparent);
+  }
+
+  .v-home-twin-card-link {
+    font-size: 1rem;
+  }
+
+  .v-home-twin-card-link svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
 /* ── Community : l'encart menthe ────────────────────────────────────────── */
 
 .v-home-community {

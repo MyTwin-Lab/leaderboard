@@ -8,7 +8,7 @@ The site has two jobs in search: rank its own pages (the `/` landing, the Lab ho
 
 | Path | Indexed | Notes |
 |---|---|---|
-| `/` | ✅ | the Lab home (mission, vision, news, podcast, community, top 3 contributors, challenges), behind a full-screen gate: brand-first title, `Organization` + `WebSite` JSON-LD |
+| `/` | ✅ | the Lab home (mission, vision, news, podcast, create your twin → mytwin.care, community, top 3 contributors, challenges), behind a full-screen gate: brand-first title, `Organization` + `WebSite` JSON-LD |
 | `/home` | — | where the home lived until it took the root; permanent redirect to `/` |
 | `/news`, `/news/<slug>` | ✅ | `CollectionPage` on the index, `NewsArticle` + `BreadcrumbList` on each news, a generated OG image per news; unknown slug → `404` ([`news.md`](./news.md)) |
 | `/about` | ❌ `noindex, follow` | the former Lab landing, parked: out of the navigation and the sitemap, still open at its URL |
