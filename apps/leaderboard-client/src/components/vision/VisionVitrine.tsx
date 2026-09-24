@@ -86,6 +86,90 @@ const SOURCES = [
   },
 ];
 
+/**
+ * Les six dimensions de « What can change over time? ».
+ *
+ * La maquette pose les pastilles en SVG encodés dans une `data:` URI, avec
+ * leur trait figé à `#3FA1AA`. Ils sont rendus en SVG inline à la place —
+ * même dessin, même grille de 24, mais le trait suit `--v-accent` comme les
+ * cinq sources plus haut, et l'app ne paie pas six requêtes de plus.
+ */
+const CHANGES = [
+  {
+    title: "Risk profiles",
+    text: "Track cardiovascular, metabolic and other health risk trajectories.",
+    src: "/vision/changes/risk.jpg",
+    width: 360,
+    height: 224,
+    paths: (
+      <>
+        <path d="M12 20s-8-4.5-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 15.5 12 20 12 20z" />
+        <path d="M6 12h3l1.5-2.5 2 4.5 1.5-2H18" />
+      </>
+    ),
+  },
+  {
+    title: "Biological age",
+    text: "Monitor how your biological age and key indicators may evolve over time.",
+    src: "/vision/changes/bioage.jpg",
+    width: 364,
+    height: 224,
+    paths: (
+      <>
+        <rect x="4" y="13" width="3.5" height="6" rx="0.5" />
+        <rect x="10.25" y="9" width="3.5" height="10" rx="0.5" />
+        <rect x="16.5" y="5" width="3.5" height="14" rx="0.5" />
+      </>
+    ),
+  },
+  {
+    title: "Biomarkers",
+    text: "Visualize changes across biological and physiological signals.",
+    src: "/vision/changes/biomarkers.jpg",
+    width: 360,
+    height: 224,
+    paths: <path d="M12 3.5s-6 6.5-6 10.5a6 6 0 0 0 12 0c0-4-6-10.5-6-10.5z" />,
+  },
+  {
+    title: "Organs & anatomy",
+    text: "Detect and visualize anatomical changes through longitudinal 3D models.",
+    src: "/vision/changes/organs.jpg",
+    width: 360,
+    height: 224,
+    paths: (
+      <>
+        <path d="M12 3l4 2.3v4.6L12 12 8 9.9V5.3z" />
+        <path d="M8 9.9l4 2.1v4.6l-4 2.3-4-2.3v-4.6z" />
+        <path d="M16 9.9l4 2.1v4.6l-4 2.3-4-2.3" />
+      </>
+    ),
+  },
+  {
+    title: "Disease risk",
+    text: "Estimate how the risk of specific conditions may evolve.",
+    src: "/vision/changes/disease.jpg",
+    width: 360,
+    height: 224,
+    paths: <path d="M12 3l7 3v5.5c0 4.5-3 7.8-7 9.5-4-1.7-7-5-7-9.5V6z" />,
+  },
+  {
+    title: "Possible scenarios",
+    text: "Explore how different interventions or behaviors could influence future trajectories.",
+    src: "/vision/changes/scenarios.jpg",
+    width: 360,
+    height: 224,
+    paths: (
+      <>
+        <circle cx="6" cy="18" r="2" />
+        <circle cx="18" cy="6" r="2" />
+        <circle cx="18" cy="18" r="2" />
+        <circle cx="12" cy="12" r="1.6" />
+        <path d="M7.4 16.6l3.5-3.5M13.1 10.9l3.5-3.5M13.1 13.1l3.5 3.5M6 6l4.8 4.8" />
+      </>
+    ),
+  },
+];
+
 const SCALES = [
   { label: "Organs", note: "Heart, lungs, systems", src: "/vision/scales/sc-organs.png" },
   { label: "Tissues", note: "Structure and function", src: "/vision/scales/sc-tissues.png" },
@@ -125,7 +209,9 @@ export function VisionVitrine() {
       <div className="v-vi-main">
         {/* ── L'intro ───────────────────────────────────────────────────── */}
         <section className="v-vi-intro" aria-labelledby="vision-title">
-          <Link href="/" className="v-vi-back">
+          {/* `#lab` renvoie à l'accueil *derrière* la prépage, là où « Enter
+              the lab » mène : on revient d'où l'on vient, pas à la porte. */}
+          <Link href="/#lab" className="v-vi-back">
             <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path
                 d="M13 8H3m0 0 4-4M3 8l4 4"
@@ -146,8 +232,8 @@ export function VisionVitrine() {
             One evolving digital twin.
           </h1>
           <p className="v-vi-lede">
-            Our ambition: connect health data and scientific models to represent each person over
-            time.
+            Our ambition: turn health data and scientific models into predictive, preventive,
+            personalized and proactive health for each person.
           </p>
         </section>
 
@@ -263,6 +349,56 @@ export function VisionVitrine() {
               </figcaption>
             </figure>
           </div>
+        </section>
+
+        {/* ── Les six dimensions ────────────────────────────────────────── */}
+        <section className="v-vi-changes" aria-labelledby="vision-changes">
+          <div className="v-vi-changes-head">
+            <h2 id="vision-changes" className="v-vi-changes-title">
+              What can change over time?
+            </h2>
+            <p className="v-vi-changes-sub">
+              The digital twin enables a deeper understanding of how your health may evolve, across
+              multiple dimensions.
+            </p>
+          </div>
+          <ul className="v-vi-change-list">
+            {CHANGES.map((change) => (
+              <li key={change.title} className="v-vi-change">
+                {/* Sur PC la pastille et la vignette se partagent une grille de
+                    deux colonnes ; sur téléphone la vignette prend toute la
+                    carte et la pastille se pose dessus, en haut à gauche. */}
+                <div className="v-vi-change-media">
+                  <span className="v-vi-change-icon">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      {change.paths}
+                    </svg>
+                  </span>
+                  <div className="v-vi-change-shot">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- voir plus haut */}
+                    <img
+                      src={change.src}
+                      alt=""
+                      width={change.width}
+                      height={change.height}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                </div>
+                <h3 className="v-vi-change-title">{change.title}</h3>
+                <p className="v-vi-change-text">{change.text}</p>
+              </li>
+            ))}
+          </ul>
         </section>
 
         {/* ── Le bandeau d'appel ────────────────────────────────────────── */}
