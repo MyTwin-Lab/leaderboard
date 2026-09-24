@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 
 /** Le fond des maquettes vitrine, le même que celui posé par `LabShell`. */
-export const VITRINE_BACKGROUND = '#fbfaf8';
+export const VITRINE_BACKGROUND = '#fcfcfc';
 
 /**
  * Peint le chrome du Lab à la couleur de la maquette, le temps où l'écran

@@ -27,10 +27,10 @@ type LabShellProps = PropsWithChildren<{
  * chrome ordinaire.
  */
 const VITRINE_BACKGROUNDS: Record<string, string> = {
-  "/": "#fbfaf8",
-  "/leaderboard": "#fbfaf8",
-  "/challenges": "#fbfaf8",
-  "/sandbox": "#fbfaf8",
+  "/": "#fcfcfc",
+  "/leaderboard": "#fcfcfc",
+  "/challenges": "#fcfcfc",
+  "/sandbox": "#fcfcfc",
 };
 
 /**

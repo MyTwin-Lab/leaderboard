@@ -2,8 +2,8 @@
    L'accueil du Lab, d'après `Home Redesign.dc.html`.
 
    Les jetons de la maquette et ceux de `vitrine.css` sont les mêmes valeurs
-   sous deux noms (`--bg` = `--v-bg` = #fbfaf8, `--accent` = `--v-accent` =
-   #0b7a64, mêmes trois polices) : cette feuille lit donc directement les
+   sous deux noms (`--bg` = `--v-bg` = #fcfcfc, `--accent` = `--v-accent` =
+   #3FA1AA, mêmes trois polices) : cette feuille lit donc directement les
    `--v-*`, et n'ajoute que ce que la maquette apporte en propre — une teinte
    menthe pour l'encart communauté, une gouttière et une largeur plus larges
    que celles des listings.
@@ -135,10 +135,14 @@
   text-wrap: balance;
 }
 
+/* « human digital twin » reste un `<em>` — l'emphase est dans le sens de la
+   phrase — mais ne se distingue plus à l'œil : ni italique, ni accent, ni
+   graisse. Il faut donc aussi neutraliser l'italique que le navigateur pose
+   d'office, et hériter de la graisse et de la couleur du titre. */
 .v-home-mission em {
   font-style: normal;
-  font-weight: 600;
-  color: var(--v-accent);
+  font-weight: inherit;
+  color: inherit;
 }
 
 /* ── Vision : le jumeau numérique, et les trois étapes ──────────────────── */
