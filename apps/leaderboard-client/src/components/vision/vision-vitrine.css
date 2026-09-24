@@ -278,8 +278,8 @@ html[data-mode="dark"] .v-vision .v-vi-arrow {
 
 .v-vi-scale-name {
   font-family: var(--v-font-h);
-  font-size: clamp(0.8125rem, 1vw, 0.9375rem);
-  font-weight: 400;
+  font-size: clamp(0.9375rem, 1.2vw, 1.125rem);
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 
@@ -601,6 +601,7 @@ html[data-mode="dark"] .v-vision .v-vi-arrow {
 
   .v-vi-scale-name {
     font-size: 0.8125rem;
+    font-weight: 400;
   }
 
   .v-vi-time {
