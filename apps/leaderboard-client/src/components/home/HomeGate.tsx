@@ -19,7 +19,12 @@ import { HomeArrow } from "./HomeSection";
  * Elle s'ouvre à chaque arrivée sur `/`, sans mémoire. Un `sessionStorage` la
  * ferait disparaître au retour dans la même session ; c'est une décision de
  * produit, pas de code, donc elle attend d'être demandée.
+ *
+ * Le logo de la navbar la rouvre quand on est déjà sur `/` : un lien vers la
+ * page courante ne remonte rien, donc il le signale par `HOME_GATE_OPEN_EVENT`.
  */
+export const HOME_GATE_OPEN_EVENT = "home-gate:open";
+
 export function HomeGate() {
   const [open, setOpen] = useState(true);
   // La sortie est animée, donc la prépage survit à son propre `open: false` le
@@ -33,6 +38,17 @@ export function HomeGate() {
     window.scrollTo(0, 0);
     setOpen(false);
   };
+
+  // Rouvrir remonte la prépage si elle était déjà partie — ses animations
+  // d'arrivée rejouent — ou la ramène en plein fondu de sortie.
+  useEffect(() => {
+    const reopen = () => {
+      setGone(false);
+      setOpen(true);
+    };
+    window.addEventListener(HOME_GATE_OPEN_EVENT, reopen);
+    return () => window.removeEventListener(HOME_GATE_OPEN_EVENT, reopen);
+  }, []);
 
   useEffect(() => {
     if (!open) return;

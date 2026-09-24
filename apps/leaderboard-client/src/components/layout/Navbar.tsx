@@ -10,6 +10,7 @@ import { MyTwinLogo } from "./MyTwinLogo";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { vitrineHeading } from "@/components/vitrine/fonts";
+import { HOME_GATE_OPEN_EVENT } from "@/components/home/HomeGate";
 
 import "./navbar.css";
 
@@ -136,7 +137,18 @@ export const Navbar = ({ session }: NavbarProps) => {
               }}
             >
               {/* Logo */}
-              <Link href="/" className="z-50 flex items-center">
+              {/* Déjà sur l'accueil, le lien ne mènerait nulle part : il rouvre
+                  la prépage à la place. */}
+              <Link
+                href="/"
+                className="z-50 flex items-center"
+                onClick={(event) => {
+                  if (!isHomePage) return;
+                  event.preventDefault();
+                  setMobileMenuOpen(false);
+                  window.dispatchEvent(new Event(HOME_GATE_OPEN_EVENT));
+                }}
+              >
                 <MyTwinLogo
                   className="h-6.5 w-auto sm:h-9"
                   style={{
