@@ -106,10 +106,21 @@
   animation: v-signin-rise 0.7s var(--v-ease) 0.12s both;
 }
 
+/* Le logo ramène à l'accueil : c'est le lien, désormais, qui tient la marge. */
+.v-signin-home {
+  margin-bottom: clamp(2rem, 8cqw, 5rem);
+  border-radius: 0.25rem;
+}
+
+.v-signin-home:focus-visible {
+  outline: 2px solid rgb(11 122 100 / 0.5);
+  outline-offset: 4px;
+}
+
 .v-signin-logo {
+  display: block;
   width: auto;
   height: clamp(1.625rem, 4.2cqw, 2.75rem);
-  margin-bottom: clamp(2rem, 8cqw, 5rem);
   color: var(--v-ink);
 }
 
@@ -126,14 +137,15 @@
 }
 
 /* Sa mesure s'arrête avant le bord droit : au-delà commence la courbe du
-   bâtiment, hors de la zone blanche. Quand elle ne tient plus sur une ligne,
-   elle passe sur deux, équilibrées. */
+   bâtiment, hors de la zone blanche. Le retour à la ligne reste naturel — la
+   première ligne se remplit, le reste passe dessous — `pretty` évitant
+   seulement un mot seul en fin de phrase. */
 .v-signin-lede {
-  max-width: max(60cqw, 17.5rem);
+  max-width: max(75cqw, 17.5rem);
   font-size: clamp(0.9375rem, 2cqw, 1.3125rem);
   line-height: 1.55;
   color: var(--v-muted);
-  text-wrap: balance;
+  text-wrap: pretty;
 }
 
 /* ── Le volet formulaire ────────────────────────────────────────────────── */

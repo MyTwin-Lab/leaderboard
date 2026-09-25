@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { resolveSignInVariant } from "@/lib/signin";
 import { safeInternalPath } from "@/lib/url";
@@ -64,22 +65,25 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     <div className={`vitrine v-signin ${vitrineFontVars}`}>
       {/* Le volet gauche est la page de garde, dans sa version téléphone :
           la même photo en portrait, le même voile clair, et le même bloc en
-          haut à gauche — logo, promesse, accroche. Décoratif de bout en bout :
-          le titre de la page est à droite, au-dessus du formulaire.
+          haut à gauche — logo, promesse, accroche. Décoratif, sauf le logo qui
+          ramène à l'accueil comme partout ailleurs : le titre de la page est à
+          droite, au-dessus du formulaire.
 
           Sur téléphone la feuille le sort entièrement — empilé au-dessus du
           formulaire, il repoussait le bouton sous la ligne de flottaison. */}
-      <section className="v-signin-visual" aria-hidden="true">
+      <section className="v-signin-visual">
         {/* eslint-disable-next-line @next/next/no-img-element -- image de fond plein cadre, pas de mise en page à réserver */}
         <img src="/home/enter-the-lab.jpg" alt="" className="v-signin-photo" />
         <div className="v-signin-veil" />
 
         <div className="v-signin-top">
-          <MyTwinLogo className="v-signin-logo" />
-          <p className="v-signin-claim">
+          <Link href="/" aria-label="MyTwin Lab home" className="v-signin-home">
+            <MyTwinLogo className="v-signin-logo" />
+          </Link>
+          <p className="v-signin-claim" aria-hidden="true">
             Building the world&rsquo;s most advanced human digital twin
           </p>
-          <p className="v-signin-lede">
+          <p className="v-signin-lede" aria-hidden="true">
             Predictive, Preventive, Personalized and Proactive health
           </p>
         </div>
