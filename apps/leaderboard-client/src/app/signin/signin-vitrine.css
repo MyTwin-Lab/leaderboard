@@ -1,9 +1,9 @@
 /* ─────────────────────────────────────────────────────────────────────────
    Sign in — d'après `Sign In Vitrine.dc.html`.
 
-   Un écran à deux volets : la photo à gauche (avec le logo et la promesse du
-   Lab), le formulaire à droite. Sous ~22rem de large pour un volet, ils
-   s'empilent — c'est `flex-wrap` qui le fait, sans media query.
+   Un écran à deux volets : à gauche la page de garde dans sa version
+   téléphone — la photo en portrait, le logo, la promesse et l'accroche — à
+   droite le formulaire. Sous 768px le volet gauche sort (plus bas).
 
    La page sort du chrome du Lab (voir `components/layout/LabShell.tsx`) : elle
    porte son propre logo, et une navbar au-dessus d'une photo pleine hauteur
@@ -45,67 +45,82 @@
   }
 }
 
-/* ── Le volet photo ─────────────────────────────────────────────────────── */
+/* ── Le volet gauche : la page de garde, version téléphone ───────────────
+   Sa largeur suit celle de la photo moins son dernier cinquième : 720 × 1024
+   des 1280 d'origine, donc 70.3vh. Le bas de la scène tombe, et le volet y
+   gagne la largeur qu'il rendait. Plafonné à la moitié de l'écran, pour que le
+   formulaire garde sa mesure sur une fenêtre large et basse.
+
+   `container-type` fait du volet le référentiel des `cqw` plus bas : la
+   typographie de la page de garde est écrite en `vw` d'un téléphone, elle se
+   lit ici en pourcentage du volet — mêmes proportions, autre boîte. Son propre
+   padding reste en `vh`, une longueur de conteneur ne pouvant pas se mesurer
+   à elle-même. */
 .v-signin-visual {
+  container-type: inline-size;
   position: relative;
-  display: flex;
-  flex: 1 1 32rem;
-  min-width: min(100%, 22rem);
-  min-height: min(100vh, 26rem);
-  align-items: center;
-  justify-content: center;
+  flex: 0 0 auto;
+  width: min(70.3vh, 50%);
   overflow: hidden;
-  background: var(--v-night);
+  padding: clamp(1.5rem, 3.2vh, 2.75rem);
+  background: var(--v-bg);
 }
 
+/* Calée en haut : le volet est taillé pour les quatre premiers cinquièmes de
+   la photo, et c'est donc le dernier qui sort — le panneau et les visiteurs
+   restent en vue. */
 .v-signin-photo {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 52% 45%;
+  object-position: 50% 0%;
   animation: v-signin-in 2.4s var(--v-ease) both;
 }
 
-.v-signin-scrim {
+/* Deux dégradés clairs, ceux de la page de garde : le haut de la photo porte
+   le texte, le bas n'a besoin de rien. */
+.v-signin-veil {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgb(8 12 14 / 0.42) 0%,
-    rgb(8 12 14 / 0.3) 50%,
-    rgb(8 12 14 / 0.55) 100%
-  );
+  background: linear-gradient(to bottom, rgb(252 252 252 / 0.88) 0%, rgb(252 252 252 / 0.35) 34%,
+      rgb(252 252 252 / 0) 55%),
+    linear-gradient(to top, rgb(252 252 252 / 0.7) 0%, rgb(252 252 252 / 0) 28%);
+}
+
+.v-signin-top {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 1.25rem;
+  text-align: left;
+  animation: v-signin-rise 0.7s var(--v-ease) 0.12s both;
 }
 
 .v-signin-logo {
-  position: absolute;
-  left: clamp(1.5rem, 3vw, 2.5rem);
-  top: clamp(1.5rem, 3vw, 2.5rem);
-  width: clamp(5rem, 7vw, 6.5rem);
-  height: auto;
-}
-
-.v-signin-claim-wrap {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: clamp(2rem, 4vw, 3.5rem);
+  width: auto;
+  height: clamp(1.625rem, 3.4cqw, 2.125rem);
+  color: var(--v-ink);
 }
 
 .v-signin-claim {
-  font-family: var(--v-font-h);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  text-wrap: balance;
   max-width: 20ch;
-  text-align: center;
-  color: #ffffff;
-  font-size: clamp(1.75rem, 3.2vw, 3rem);
-  line-height: 1.06;
-  text-shadow: 0 1px 3px rgb(8 12 14 / 0.45);
+  font-family: var(--v-font-h);
+  font-size: clamp(1.5rem, 5.5cqw, 3.5rem);
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--v-ink);
+  text-wrap: balance;
+}
+
+.v-signin-lede {
+  max-width: 46ch;
+  font-size: clamp(0.9375rem, 1.6cqw, 1.125rem);
+  line-height: 1.6;
+  color: var(--v-muted);
+  text-wrap: pretty;
 }
 
 /* ── Le volet formulaire ────────────────────────────────────────────────── */
@@ -221,10 +236,22 @@
   color: var(--v-ink);
 }
 
+/* ── Téléphone ──────────────────────────────────────────────────────────
+   Le volet photo sort : empilé au-dessus du formulaire, il prenait un écran
+   entier avant le bouton. Il n'est que décoratif — le logo et la promesse
+   qu'il porte se lisent sur la page d'accueil — et le formulaire se centre
+   alors sur toute la hauteur. */
+@media (max-width: 767px) {
+  .v-signin-visual {
+    display: none;
+  }
+}
+
 /* Les deux entrées ne portent aucune information : qui les refuse voit la
    page posée, sans mouvement. */
 @media (prefers-reduced-motion: reduce) {
   .v-signin-photo,
+  .v-signin-top,
   .v-signin-card {
     animation: none;
   }

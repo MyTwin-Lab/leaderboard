@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { resolveSignInVariant } from "@/lib/signin";
 import { safeInternalPath } from "@/lib/url";
+import { MyTwinLogo } from "@/components/layout/MyTwinLogo";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
 
 import "@/components/vitrine/vitrine.css";
@@ -61,24 +62,26 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
   return (
     <div className={`vitrine v-signin ${vitrineFontVars}`}>
-      {/* Le volet photo ne porte aucune information : il est décoratif, et la
-          promesse qu'il affiche est reprise par la page d'accueil. */}
+      {/* Le volet gauche est la page de garde, dans sa version téléphone :
+          la même photo en portrait, le même voile clair, et le même bloc en
+          haut à gauche — logo, promesse, accroche. Décoratif de bout en bout :
+          le titre de la page est à droite, au-dessus du formulaire.
+
+          Sur téléphone la feuille le sort entièrement — empilé au-dessus du
+          formulaire, il repoussait le bouton sous la ligne de flottaison. */}
       <section className="v-signin-visual" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element -- image de fond plein cadre, pas de mise en page à réserver */}
-        <img src="/landing/hero/digital-twin-hologram.webp" alt="" className="v-signin-photo" />
-        <div className="v-signin-scrim" />
+        <img src="/home/enter-the-lab.jpg" alt="" className="v-signin-photo" />
+        <div className="v-signin-veil" />
 
-        {/* eslint-disable-next-line @next/next/no-img-element -- logo sur fond sombre, taille fixée en clamp() */}
-        <img
-          src="/landing/logo/mytwin-lab-logo-dark.png"
-          alt="MyTwin Lab"
-          className="v-signin-logo"
-        />
-
-        <div className="v-signin-claim-wrap">
-          <h2 className="v-signin-claim">
-            We are building the world&rsquo;s most advanced human digital twin
-          </h2>
+        <div className="v-signin-top">
+          <MyTwinLogo className="v-signin-logo" />
+          <p className="v-signin-claim">
+            Building the world&rsquo;s most advanced human digital twin
+          </p>
+          <p className="v-signin-lede">
+            Predictive, Preventive, Personalized and Proactive health
+          </p>
         </div>
       </section>
 
