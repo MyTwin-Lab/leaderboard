@@ -45,3 +45,9 @@ scalingo
 PRESENTATION.md
 # Superpowers SDD scratch (ledger, briefs, review packages)
 .superpowers/
+
+# Banc d'essai de l'API modèle : 91 Mo, dont un .pt. Le poids d'un checkpoint
+# ne se retire plus d'un historique git une fois qu'il y est, et GitHub refuse
+# au-delà de 100 Mo. Si ce service doit être versionné un jour, ce sera sans le
+# checkpoint, ou derrière Git LFS.
+test-model-api/
