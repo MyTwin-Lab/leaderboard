@@ -19,9 +19,9 @@ const SOURCES = {
 const TALK: NewsVideo = {
   src: "/news/ynov-talk.mp4",
   poster: "/news/ynov-talk-video.webp",
-  title: "AI and health: what “French response”? Rubens Valcy at Ynov Campus’s Scientific Council",
+  title: "Connecting health innovations around the patient: Rubens Valcy at Ynov Campus’s Scientific Council",
   description:
-    "Rubens Valcy, founder of MyTwin and MyTwin Lab, on AI applied to health and the “French response”, at Ynov Campus’s Scientific Council in Bordeaux.",
+    "Rubens Valcy, founder of MyTwin and MyTwin Lab, on AI applied to health and the patient digital twin, at Ynov Campus’s Scientific Council in Bordeaux.",
   duration: "PT15M29S",
   uploadDate: "2026-09-24",
   language: "fr",
@@ -33,8 +33,8 @@ export const ynovAiHealthFrenchResponse: NewsArticle = {
   eventMonth: "2026-02",
   category: "community",
   readingMinutes: 6,
-  title: "AI and health: what “French response”? MyTwin Lab at Ynov Campus’s Scientific Council",
-  overviewTitle: "AI and health: what “French response”?",
+  title: "Connecting health innovations around the patient: MyTwin Lab at Ynov Campus’s Scientific Council",
+  overviewTitle: "Connecting health innovations around the patient",
   illustration: {
     kind: "image",
     src: "/news/ynov-talk.webp",
@@ -43,14 +43,14 @@ export const ynovAiHealthFrenchResponse: NewsArticle = {
   },
   seoTitle: "AI and health: MyTwin Lab at Ynov Campus",
   description:
-    "At Ynov Campus’s Scientific Council, Rubens Valcy presented the vision behind MyTwin and MyTwin Lab, and asked what France’s response to AI in health can be.",
+    "At Ynov Campus’s Scientific Council, Rubens Valcy presented the vision behind MyTwin and MyTwin Lab: connecting health innovations around the patient, up to a digital twin able to simulate.",
   excerpt:
-    "Faced with the accelerating transformation of AI in health, what can the French response be? At Ynov Campus’s Scientific Council, Rubens Valcy presented the vision behind MyTwin and MyTwin Lab.",
+    "So many health innovations exist, yet so few reach the patients who could benefit from them. At Ynov Campus’s Scientific Council, Rubens Valcy presented the vision behind MyTwin and MyTwin Lab.",
   keywords: [
     "MyTwin Lab",
     "Ynov Campus",
     "AI in health",
-    "French response AI",
+    "health innovation",
     "Rubens Valcy",
     "patient digital twin",
   ],
@@ -68,8 +68,9 @@ export const ynovAiHealthFrenchResponse: NewsArticle = {
     <>
       <p>
         During a talk organised as part of Ynov Campus’s Scientific Council, Rubens Valcy, founder of MyTwin and MyTwin
-        Lab, presented the vision behind the project around one central question: faced with the accelerating
-        transformation of artificial intelligence in health, what can the French response be?
+        Lab, presented the vision behind the project around one central question: how can the innovations already
+        transforming health, artificial intelligence first among them, truly reach the patients who could benefit from
+        them?
       </p>
       <p>
         A talk about AI, health, prevention, and how innovation can become truly accessible to patients.
@@ -184,24 +185,18 @@ export const ynovAiHealthFrenchResponse: NewsArticle = {
       ),
     },
     {
-      id: "french-response",
-      title: "What “French response” to the global acceleration of AI in health?",
+      id: "collective-venture",
+      title: "A collective venture, around the same patient",
       content: (
         <>
-          <p>This vision also raises a strategic question.</p>
           <p>
             Artificial intelligence and health technologies are advancing on a global scale. Data, scientific research, AI
             models and technological innovation naturally cross borders.
           </p>
           <p>Building a digital twin of the human body can therefore only be a collective, international venture.</p>
           <p>
-            Even so, France and Europe have major strengths: researchers, doctors, engineers, healthcare institutions,
-            startups, infrastructure and scientific expertise.
-          </p>
-          <p>
-            The point of the “French response” is therefore not to build alone, but to know how to connect international
-            innovations while developing, in France, the infrastructure, projects and ecosystems able to take part in the
-            next great transformations of medicine.
+            The point is therefore not to build alone, but to know how to connect innovations, wherever they come from,
+            and to bring researchers, doctors, engineers, healthcare institutions and startups together around them.
           </p>
           <p>
             That is precisely the ambition of MyTwin Lab: creating an open space where technologies, science, data and
