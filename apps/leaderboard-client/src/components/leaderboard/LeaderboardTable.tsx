@@ -7,8 +7,8 @@ import { LeaderboardList } from "@/components/leaderboard/LeaderboardList";
  * Le classement : une seule carte, la ligne du leader en tête sur fond vert,
  * puis les suivantes séparées d'un filet.
  *
- * Toutes les lignes ont la même hauteur, leader compris : c'est son fond, son
- * rang en vert et sa pastille « LEADER » qui le distinguent, pas sa taille.
+ * Toutes les lignes ont la même hauteur, leader compris : c'est son fond et
+ * son rang en vert qui le distinguent, pas sa taille.
  *
  * Ce composant-ci ne fait que brancher le contexte sur `LeaderboardList`, qui
  * porte le rendu. La séparation existe pour l'accueil du Lab, qui affiche le

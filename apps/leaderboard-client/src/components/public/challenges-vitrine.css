@@ -65,6 +65,32 @@
   color: var(--v-subtle);
 }
 
+/* ── Recherche, pastilles et compteur, masqués ──────────────────────────
+   Cachés, pas retirés : le champ, les pastilles, leur état et tout le
+   filtrage restent en place. Retirer ce bloc les fait revenir tels quels.
+
+   La pastille du projet retenu vit dans `.v-pills` et disparaît avec elles :
+   sans la recherche, aucun projet ne peut plus être choisi — la grille des
+   projets ne s'affiche que sur une saisie. */
+.v-ch-filters .v-search,
+.v-ch-pills-row .v-pills,
+.v-ch-pills-row .v-ch-result {
+  display: none;
+}
+
+/* Ne reste que « New challenge », pour un admin ou un manager. Sans ce
+   bouton, les deux rangées sont vides et la section n'a plus rien à poser
+   que son filet — le séparateur entre l'en-tête et la grille. */
+.v-ch-filters-row:not(:has(.v-ch-new)),
+.v-ch-pills-row {
+  display: none;
+}
+
+.v-ch-filters:not(:has(.v-ch-new)) {
+  gap: 0;
+  padding-top: 0;
+}
+
 /* Le bouton d'un admin ou d'un manager : hors maquette publique, habillé
    comme le bouton du bandeau de bas de page. */
 .v-ch-new {

@@ -39,11 +39,11 @@ interface ChallengeCardProps {
   onCardClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
+// Pas d'entrée pour `none` : un repère ne porte pas de pastille de type.
 const TYPE_LABEL: Record<string, string> = {
   ml: "ML",
   validation: "Validation",
   code: "Code",
-  none: "None",
 };
 
 /** Les barres d'activité de la maquette : la plus haute en plein, les autres en clair. */
@@ -126,7 +126,12 @@ export function ChallengeCard({
 
         <div className="v-card-top">
           <div className="v-card-top-left">
-            <span className="v-card-tag">{TYPE_LABEL[normalizedType] ?? "Code"}</span>
+            {/* Un repère (`none`) n'a pas de type : c'est justement ce qui le
+                définit. Une pastille pour le dire n'apprend rien et occupe la
+                photo. */}
+            {!isPlaceholder && (
+              <span className="v-card-tag">{TYPE_LABEL[normalizedType] ?? "Code"}</span>
+            )}
             {isMember && <span className="v-card-tag">✓ Joined</span>}
             <span className="v-ch-project-name-on-shot">{projectName}</span>
           </div>

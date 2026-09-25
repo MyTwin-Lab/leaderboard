@@ -215,6 +215,33 @@ html[data-mode="light"] .vitrine-embed textarea.v-bare {
   gap: 10px;
 }
 
+/* ── Le retour au Lab ───────────────────────────────────────────────────
+   En tête de `.v-head-text`, au-dessus du surtitre. Le lien lui-même est
+   dans `components/vitrine/BackToLab.tsx` : c'est là qu'est dit pourquoi il
+   pointe sur `/#lab` et non sur `/`. */
+.v-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--v-muted);
+  transition: color 0.3s var(--v-ease);
+}
+
+.v-back:hover {
+  color: var(--v-accent);
+}
+
+.v-back svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
 .v-eyebrow {
   display: inline-flex;
   align-items: center;
@@ -416,11 +443,8 @@ html[data-mode="light"] .vitrine-embed textarea.v-bare {
   color: #ffffff;
 }
 
-.v-strip-sub {
-  font-size: 13px;
-  line-height: 1.5;
-  color: rgb(255 255 255 / 0.6);
-}
+/* Le bandeau n'a plus de sous-titre : une question et un bouton, la même
+   paire sur les trois listings (`components/vitrine/CreateSandboxStrip.tsx`). */
 
 .v-strip-cta {
   display: inline-flex;

@@ -22,6 +22,21 @@
   gap: 10px;
 }
 
+/* ── La recherche, masquée ──────────────────────────────────────────────
+   Cachée, pas retirée : le champ, son état et la recherche de projets
+   restent en place. Retirer ce bloc la fait revenir telle quelle. */
+.v-lb-filters-row {
+  display: none;
+}
+
+/* Un projet peut encore être retenu par l'URL (`?projectId=`) : sa pastille
+   reste montrée, et relâchable. Quand il n'y en a pas, la section se réduit à
+   son filet — le séparateur entre l'en-tête et le classement. */
+.v-lb-filters:not(:has(.v-chip, .v-projects)) {
+  gap: 0;
+  padding-top: 0;
+}
+
 
 /* ── La liste ───────────────────────────────────────────────────────────── */
 .v-lb-section {
@@ -51,8 +66,8 @@
 }
 
 /* ── Les lignes ─────────────────────────────────────────────────────────
-   Le leader a exactement les mêmes mesures que les autres : seuls son fond,
-   son rang en vert et sa pastille « LEADER » le distinguent. */
+   Le leader a exactement les mêmes mesures que les autres : seuls son fond et
+   son rang en vert le distinguent. */
 .v-lb-row[data-leader="true"] {
   background: rgb(11 122 100 / 0.05);
 }
@@ -62,15 +77,6 @@
 }
 
 .v-lb-row[data-leader="true"] .v-lb-row-rank {
-  color: var(--v-accent);
-}
-
-.v-lb-kicker {
-  flex-shrink: 0;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--v-accent);
 }
 
@@ -247,11 +253,5 @@
 
   .v-leaderboard .v-head-text {
     flex: 0 0 auto;
-  }
-
-  /* La pastille « LEADER » sort : sur 390px, elle rognait le nom qu'elle
-     désigne. Le fond vert et le rang en vert le disent déjà. */
-  .v-lb-kicker {
-    display: none;
   }
 }

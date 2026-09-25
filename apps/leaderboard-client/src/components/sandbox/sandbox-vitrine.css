@@ -48,32 +48,25 @@
   margin-left: auto;
 }
 
-/* Le bouton de création, hors maquette du listing : c'est le même que celui
-   du bandeau de bas de page, en plus compact. */
-.v-sb-new {
-  display: inline-flex;
-  flex-shrink: 0;
-  cursor: pointer;
-  align-items: center;
-  gap: 0.4rem;
-  border-radius: 999px;
-  background: var(--v-ink);
-  padding: 0.7rem 1.1rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: #f5f4f0;
-  transition: transform 0.3s var(--v-ease), box-shadow 0.3s var(--v-ease);
+/* ── Recherche, pastilles et compteur, masqués ──────────────────────────
+   Cachés, pas retirés : les champs, les pastilles, leur état et tout le
+   filtrage restent en place. Retirer ce bloc les fait revenir tels quels.
+
+   Le bouton noir de création, lui, a bel et bien quitté le balisage : le
+   bandeau de bas de page le porte seul. La section ne garde donc que son
+   filet — le séparateur entre l'en-tête et la grille. */
+.v-sb-filters-row,
+.v-sandbox .v-pills,
+.v-sb-count {
+  display: none;
 }
 
-.v-sb-new:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 26px -18px rgb(17 22 26 / 0.9);
+/* Deux classes, pour l'emporter sur la règle téléphone plus bas. */
+.v-sandbox .v-sb-filters {
+  gap: 0;
+  padding-top: 0;
 }
 
-.v-sb-new svg {
-  width: 0.875rem;
-  height: 0.875rem;
-}
 
 /* ── La grille ──────────────────────────────────────────────────────────── */
 .v-sb-grid {
@@ -904,10 +897,6 @@
 
   .v-sandbox .v-strip-title {
     font-size: 0.9375rem;
-  }
-
-  .v-sandbox .v-strip-sub {
-    font-size: 0.75rem;
   }
 
   .v-sandbox .v-strip-cta {

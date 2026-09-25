@@ -2,6 +2,7 @@
 
 import { formatCP } from "@/lib/formatters";
 import { useLeaderboardContext } from "@/components/leaderboard/LeaderboardProvider";
+import { BackToLab } from "@/components/vitrine/BackToLab";
 
 /**
  * L'en-tête de la maquette : la pastille « Live ranking » qui bat, le titre,
@@ -23,10 +24,7 @@ export function LeaderboardHero() {
   return (
     <section className="v-head">
       <div className="v-head-text">
-        <p className="v-eyebrow">
-          <span className="v-eyebrow-dot" />
-          Live ranking
-        </p>
+        <BackToLab />
         <h1 className="v-title">Leaderboard</h1>
         <p className="v-lede">
           Every contribution is detected, evaluated and rewarded, no invisible work.

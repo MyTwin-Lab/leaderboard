@@ -61,11 +61,10 @@ export function LeaderboardList({
         data-me={entry.userId === currentUserId ? "true" : "false"}
       >
         <span className="v-lb-row-rank">{entry.rank}</span>
-        <VitrineAvatar name={entry.displayName} avatarUrl={entry.avatarUrl} size="2.5rem" fallback="pastel" />
+        <VitrineAvatar name={entry.displayName} avatarUrl={entry.avatarUrl} size="2.5rem" />
         <span className="v-lb-row-text">
           <span className="v-lb-row-line">
             <span className="v-lb-row-name">{entry.displayName}</span>
-            {isLeader && <span className="v-lb-kicker">Leader</span>}
             {entry.userId === currentUserId && <span className="v-lb-you">YOU</span>}
           </span>
           {entry.bio && <span className="v-lb-row-bio">{entry.bio}</span>}
@@ -81,6 +80,12 @@ export function LeaderboardList({
 
   return (
     <section className="v-lb-section">
+      {/* Le surtitre de l'en-tête est descendu ici, sous le filet : il
+          annonce le classement, pas la page. */}
+      <p className="v-eyebrow">
+        <span className="v-eyebrow-dot" />
+        Live ranking
+      </p>
       <ol className="v-lb-list">
         {leader && row(leader, true)}
         {rest.map((entry) => row(entry, false))}

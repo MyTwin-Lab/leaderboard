@@ -4,6 +4,12 @@ import { _layout } from "blobatar";
  * La photo ronde des maquettes : `object-fit: cover`, un liseré de la couleur
  * de la surface, et de quoi tenir la place quand la personne n'a pas de photo.
  *
+ * Le même rond partout où une vitrine nomme quelqu'un — le classement,
+ * l'accueil, les cartes de `/challenges` et de `/sandbox`, la page d'un
+ * challenge et celle d'une sandbox : initiales sombres sur une pastille tirée
+ * du nom. Il n'y a plus de second repli : deux ronds verts identiques ne
+ * distinguaient pas deux voisins d'une liste.
+ *
  * Volontairement distinct d'`InitialsAvatar`, qui porte les rayons et les
  * couleurs du thème du Lab : ici, ce sont ceux de la maquette.
  */
@@ -14,14 +20,6 @@ interface VitrineAvatarProps {
   size: string;
   /** Le liseré de la maquette, absent sur les avatars posés sur une photo. */
   ring?: boolean;
-  /**
-   * Ce qui remplace la photo quand il n'y en a pas.
-   *
-   * `initials` est le repli d'origine — un rond vert d'accent, le même pour
-   * tout le monde. `pastel` garde les initiales mais tire la couleur du rond
-   * du nom, ce qui distingue deux voisins dans une liste.
-   */
-  fallback?: "initials" | "pastel";
 }
 
 function initials(name: string) {
@@ -68,13 +66,7 @@ function pastelFromName(name: string) {
   return { background: mix(head, "#ffffff", PASTEL_WHITENING), color: eye };
 }
 
-export function VitrineAvatar({
-  name,
-  avatarUrl,
-  size,
-  ring = true,
-  fallback = "initials",
-}: VitrineAvatarProps) {
+export function VitrineAvatar({ name, avatarUrl, size, ring = true }: VitrineAvatarProps) {
   const base: React.CSSProperties = {
     width: size,
     height: size,
@@ -90,10 +82,7 @@ export function VitrineAvatar({
     );
   }
 
-  const tint =
-    fallback === "pastel"
-      ? pastelFromName(name)
-      : { background: "rgb(11 122 100 / 0.12)", color: "var(--v-accent)" };
+  const tint = pastelFromName(name);
 
   return (
     <span

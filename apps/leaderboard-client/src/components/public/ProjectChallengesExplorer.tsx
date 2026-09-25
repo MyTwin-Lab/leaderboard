@@ -12,6 +12,7 @@ import { CreateChallengeDrawer } from "@/components/admin/CreateChallengeDrawer"
 import { ManagerRolePopup } from "@/components/challenges/ManagerRolePopup";
 import { challengeManagePath } from "@/lib/paths";
 import { formatCP } from "@/lib/formatters";
+import { CreateSandboxStrip } from "@/components/vitrine/CreateSandboxStrip";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
 import { ArrowTinyIcon } from "@/components/vitrine/SearchIcon";
 
@@ -308,17 +309,7 @@ export function ProjectChallengesExplorer({
           </div>
         )}
 
-        <div className="v-strip v-ch-strip">
-          <div className="v-strip-text">
-            <span className="v-strip-title">Nothing here fits your skills?</span>
-            <span className="v-strip-sub">
-              Propose a challenge — projects are opened by contributors, not by a committee.
-            </span>
-          </div>
-          <Link href="/sandbox" className="v-strip-cta">
-            Propose a challenge
-          </Link>
-        </div>
+        <CreateSandboxStrip className="v-ch-strip" />
       </div>
     </div>
 

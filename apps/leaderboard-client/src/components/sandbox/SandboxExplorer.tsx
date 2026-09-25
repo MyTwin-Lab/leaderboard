@@ -3,7 +3,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Plus } from "lucide-react";
 
 import { fetchJson } from "@/lib/fetchJson";
 import type { SandboxView } from "@/lib/public/sandbox";
@@ -22,6 +21,8 @@ import type { StarState } from "./StarButton";
 
 import "@/components/vitrine/vitrine.css";
 import "./sandbox-vitrine.css";
+import { BackToLab } from "@/components/vitrine/BackToLab";
+import { CREATE_SANDBOX_LABEL, CreateSandboxStrip } from "@/components/vitrine/CreateSandboxStrip";
 
 interface SandboxListResponse {
   sandboxes: SandboxView[];
@@ -174,10 +175,7 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
         {/* ── En-tête ─────────────────────────────────────────────── */}
         <section className="v-head">
           <div className="v-head-text">
-            <p className="v-eyebrow">
-              <span className="v-eyebrow-dot" />
-              Open proposals
-            </p>
+            <BackToLab />
             <h1 className="v-title">Sandbox</h1>
             <p className="v-lede">Anyone can propose a health project here — no committee.</p>
           </div>
@@ -207,12 +205,6 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
               />
             </div>
 
-            {canCreate && (
-              <button type="button" className="v-sb-new" onClick={openCreate}>
-                <Plus />
-                New sandbox
-              </button>
-            )}
           </div>
 
           <div className="v-sb-filters-row">
@@ -271,25 +263,21 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
           </div>
         )}
 
-        {/* ── Le bandeau de bas de page ───────────────────────────── */}
-        <section className="v-strip">
-          <div className="v-strip-text">
-            <span className="v-strip-title">Got a project of your own?</span>
-            <span className="v-strip-sub">
-              Open a sandbox with your repository — you stay its only author, and the stars it
-              collects pay you as it grows.
-            </span>
-          </div>
-          {canCreate ? (
-            <button type="button" className="v-strip-cta" onClick={openCreate}>
-              New sandbox
-            </button>
-          ) : (
-            <Link href="/signin?from=/sandbox" className="v-strip-cta">
-              Sign in to propose
-            </Link>
-          )}
-        </section>
+        {/* ── Le bandeau de bas de page : le seul chemin vers la création
+            d'une sandbox depuis que le bouton noir des filtres est parti. ── */}
+        <CreateSandboxStrip
+          action={
+            canCreate ? (
+              <button type="button" className="v-strip-cta" onClick={openCreate}>
+                {CREATE_SANDBOX_LABEL}
+              </button>
+            ) : (
+              <Link href="/signin?from=/sandbox" className="v-strip-cta">
+                {CREATE_SANDBOX_LABEL}
+              </Link>
+            )
+          }
+        />
 
       </div>
 

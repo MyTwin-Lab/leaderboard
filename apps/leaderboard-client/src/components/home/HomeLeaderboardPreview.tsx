@@ -46,7 +46,6 @@ export function HomeLeaderboardPreview({ podium }: HomeLeaderboardPreviewProps) 
                   avatarUrl={entry.avatarUrl}
                   size="3rem"
                   ring={false}
-                  fallback="pastel"
                 />
                 <span className="v-home-rank-text">
                   <span className="v-home-rank-name">{entry.name}</span>
