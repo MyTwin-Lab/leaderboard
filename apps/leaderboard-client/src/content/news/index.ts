@@ -46,7 +46,7 @@ export function getNewsBySlug(slug: string): NewsArticle | undefined {
  * Les trois news de la home, dans cet ordre : une sélection fixe, pas les plus
  * récentes. La première est la une, les deux suivantes des brèves.
  */
-export const HOME_NEWS: readonly NewsArticle[] = [mykine, ynovAiHealthFrenchResponse, mammographyAiChallenges];
+export const HOME_NEWS: readonly NewsArticle[] = [ynovAiHealthFrenchResponse, mammographyAiChallenges, mykine];
 
 /**
  * Même catégorie d'abord : un lecteur venu pour un partenaire a plus de chances
