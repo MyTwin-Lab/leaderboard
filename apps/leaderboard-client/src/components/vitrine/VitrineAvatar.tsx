@@ -71,6 +71,14 @@ export function VitrineAvatar({ name, avatarUrl, size, ring = true }: VitrineAva
     width: size,
     height: size,
     flexShrink: 0,
+    // Deux règles posent `max-width: 100%` sur les images — le preflight de
+    // Tailwind et celui de la vitrine — et `max-width` écrase `width`, même
+    // en style inline : ce sont deux propriétés, pas deux déclarations en
+    // concurrence. Le pourcentage se résout sur le bloc conteneur, donc un
+    // rond seul dans une pile d'avatars plus étroite que lui (les marges
+    // négatives de `.v-ch-team`) se faisait raboter les côtés et rendait une
+    // ellipse. Ici le diamètre est explicite : rien n'a à le contraindre.
+    maxWidth: "none",
     borderRadius: "999px",
     boxShadow: ring ? "0 0 0 2px var(--v-surface)" : undefined,
   };

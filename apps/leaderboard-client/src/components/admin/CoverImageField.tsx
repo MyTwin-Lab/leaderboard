@@ -72,8 +72,15 @@ export function CoverImageField({ value, onChange }: CoverImageFieldProps) {
       />
 
       <div className="flex items-center gap-2">
+        {/* `text`, pas `url` : une image déposée vaut `/api/images/<uuid>`, un
+            chemin relatif que la validation native d'un champ `url` refuse —
+            elle veut une adresse absolue. Le champ accepte les deux formes,
+            et c'est `coverImageUrlSchema` qui trie côté serveur. Invisible
+            tant que le champ vivait dans le tiroir, qui n'a pas de `<form>` :
+            rien ne déclenchait la contrainte. */}
         <input
-          type="url"
+          type="text"
+          inputMode="url"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="…or paste an image URL"
