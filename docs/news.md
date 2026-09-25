@@ -8,10 +8,10 @@ Modelled on the blog of mytwin.care (`src/features/blog/` in mytwin-health-landi
 
 | Path | What |
 |---|---|
-| `src/app/news/page.tsx` | the index, at the vitrine style: latest news featured, then a grid. `CollectionPage` + `BreadcrumbList` JSON-LD |
+| `src/app/news/page.tsx` | the index, at the vitrine style: a fixed featured news (`FEATURED_NEWS`), then the others in a grid. `CollectionPage` + `BreadcrumbList` JSON-LD |
 | `src/app/news/[slug]/page.tsx` | an article. `generateStaticParams` + `dynamicParams = false`: an unknown slug is a 404. `NewsArticle` + `BreadcrumbList` JSON-LD |
 | `src/app/news/[slug]/opengraph-image.tsx` | the share preview of each news, generated at build: category, event month, title |
-| `src/content/news/index.ts` | the registry: `NEWS_ARTICLES`, `getNewsBySlug`, `HOME_NEWS`, `getRelatedNews` |
+| `src/content/news/index.ts` | the registry: `NEWS_ARTICLES`, `getNewsBySlug`, `FEATURED_NEWS`, `HOME_NEWS`, `getRelatedNews` |
 | `src/content/news/types.ts` | `NewsArticle` and its parts, `NEWS_CATEGORY_LABELS` |
 | `src/content/news/<slug>/` | one folder per news: `index.tsx` (the content) and its own visual blocks |
 | `src/components/news/` | the template: `NewsArticleHeader`, `NewsHero`, `NewsArticleBody` (table of contents, sections, FAQ, CTA, sources), `NewsRelated` (*Keep reading*), `NewsCard` and its `NewsIllustrationFrame`, the icons of the mock-up (`NewsIcons`), and the writing primitives `NewsProse`, `NewsLink`, `NewsCallout`, `NewsFigure`, `NewsPhotoRow`, `NewsVideoEmbed` |

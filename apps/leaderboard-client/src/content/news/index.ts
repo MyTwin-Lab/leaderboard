@@ -43,6 +43,12 @@ export function getNewsBySlug(slug: string): NewsArticle | undefined {
 }
 
 /**
+ * La news à l'affiche de `/news`, en tête de l'index : un choix éditorial, pas
+ * la plus récente. Les autres suivent dans l'ordre de `NEWS_ARTICLES`.
+ */
+export const FEATURED_NEWS: NewsArticle = ynovAiHealthFrenchResponse;
+
+/**
  * Les trois news de la home, dans cet ordre : une sélection fixe, pas les plus
  * récentes. La première est la une, les deux suivantes des brèves.
  */

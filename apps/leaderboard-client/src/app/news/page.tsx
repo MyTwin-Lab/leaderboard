@@ -2,7 +2,7 @@ import { NewsCard } from "@/components/news/NewsCard";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { BackToLab } from "@/components/vitrine/BackToLab";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
-import { NEWS_ARTICLES } from "@/content/news";
+import { FEATURED_NEWS, NEWS_ARTICLES } from "@/content/news";
 import { NEWS_PATH, newsPath } from "@/lib/paths";
 import { breadcrumbJsonLd, collectionPageJsonLd, jsonLdGraph, pageMetadata } from "@/lib/seo";
 
@@ -26,7 +26,7 @@ export const metadata = pageMetadata({ absoluteTitle: TITLE, description: DESCRI
  * (`news-index-vitrine.css`). Le wording, lui, ne bouge pas.
  */
 export default function NewsIndexPage() {
-  const [latest, ...rest] = NEWS_ARTICLES;
+  const rest = NEWS_ARTICLES.filter((article) => article.slug !== FEATURED_NEWS.slug);
 
   const jsonLd = jsonLdGraph(
     collectionPageJsonLd({
@@ -59,16 +59,12 @@ export default function NewsIndexPage() {
           </div>
         </header>
 
-        {latest ? (
-          <div className="v-news-grid">
-            <NewsCard article={latest} titleAs="h2" featured />
-            {rest.map((article) => (
-              <NewsCard key={article.slug} article={article} titleAs="h2" />
-            ))}
-          </div>
-        ) : (
-          <p className="v-news-empty">The first news is on its way.</p>
-        )}
+        <div className="v-news-grid">
+          <NewsCard article={FEATURED_NEWS} titleAs="h2" featured />
+          {rest.map((article) => (
+            <NewsCard key={article.slug} article={article} titleAs="h2" />
+          ))}
+        </div>
       </div>
     </div>
   );

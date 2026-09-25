@@ -196,14 +196,3 @@
   height: 14px;
   flex: none;
 }
-
-/* ── L'état vide ────────────────────────────────────────────────────── */
-
-.v-news-empty {
-  border: 1px dashed var(--v-line);
-  border-radius: 12px;
-  padding: 3.5rem 1.5rem;
-  text-align: center;
-  font-size: 0.9375rem;
-  color: var(--v-muted);
-}
