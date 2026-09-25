@@ -60,16 +60,16 @@ export function NewsIllustrationFrame({
 
   const { Visual } = illustration;
   // Le visuel est dessiné en `em` : la police du cadre suit sa largeur (`cqw`),
-  // et tout le dessin avec elle.
+  // et tout le dessin avec elle. Le panneau clair est peint sur le calque
+  // intérieur : le fond sombre que les aperçus donnent au cadre pour leurs
+  // photos (`.v-news-shot`, `.v-nd-card-shot`), hors couche Tailwind, ne peut
+  // pas le recouvrir.
   return (
     <div
       aria-hidden
-      className={cn(
-        "@container relative flex items-center justify-center overflow-hidden bg-[radial-gradient(60%_55%_at_70%_30%,rgb(11_122_100/0.08),transparent_70%),linear-gradient(180deg,#f1f0eb,#e9e7e0)] text-[#11161a]",
-        className,
-      )}
+      className={cn("@container relative flex items-center justify-center overflow-hidden", className)}
     >
-      <div className="flex size-full items-center justify-center text-[length:clamp(9px,3.6cqw,16px)]">
+      <div className="flex size-full items-center justify-center bg-[radial-gradient(60%_55%_at_70%_30%,rgb(11_122_100/0.08),transparent_70%),linear-gradient(180deg,#f1f0eb,#e9e7e0)] text-[#11161a] text-[length:clamp(9px,3.6cqw,16px)]">
         <Visual />
       </div>
     </div>
