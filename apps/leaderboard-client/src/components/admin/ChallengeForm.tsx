@@ -3,10 +3,14 @@
 import { useState, useEffect } from 'react';
 import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/components/ui/FormField';
 import { ChallengeTasksEditor } from './ChallengeTasksEditor';
-import { Code2, BrainCircuit, ShieldCheck, Cpu, Package } from 'lucide-react';
+import { Code2, BrainCircuit, ShieldCheck, Cpu, Package, Eye, Pencil, Plus, Loader2 } from 'lucide-react';
 import { Toggle } from '@/components/ui/Toggle';
 import { SlugField } from '@/components/ui/SlugField';
+import { Markdown } from '@/components/ui/Markdown';
+import { CoverImageField } from './CoverImageField';
 import { useSlugField } from '@/lib/useSlugField';
+import { BRIEF_TEMPLATE, findBrief } from '@/lib/challengeBrief';
+import { flushBrief } from './briefFlush';
 import { MlRewardRulesEditor } from './MlRewardRulesEditor';
 import { ValidationTargetsEditor } from './ValidationTargetsEditor';
 import { ValidationRewardsPanel } from './ValidationRewardsPanel';
@@ -49,6 +53,53 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
   const [computeEnabled, setComputeEnabled] = useState((challenge as any)?.compute_enabled ?? false);
   const [apiPackagingEnabled, setApiPackagingEnabled] = useState(true);
 
+  // Couverture — l'image de la carte du listing et de l'en-tête publique.
+  // Vide = effacée : `null` est une valeur, l'absence n'en est pas une, et
+  // l'API laisse en place un champ absent.
+  const [coverImageUrl, setCoverImageUrl] = useState(challenge?.cover_image_url ?? '');
+
+  // Avancement — stocké en ratio 0–1, saisi en pourcentage : c'est ce que
+  // lisent les cartes publiques, et personne ne raisonne en 0,42.
+  const [completionPct, setCompletionPct] = useState(
+    String(Math.round((challenge?.completion ?? 0) * 100))
+  );
+
+  // Brief — le document `brief.md` du challenge, affiché à un contributeur
+  // connecté qui n'a pas encore rejoint. Il vit dans les documents, pas dans
+  // la ligne : en édition il faut aller le chercher. `existingBriefId` sert au
+  // cas « brief vidé » — sans lui, impossible de supprimer le document, et la
+  // page continuerait d'afficher l'ancien texte.
+  const [brief, setBrief] = useState('');
+  const [existingBriefId, setExistingBriefId] = useState<string | null>(null);
+  const [briefLoading, setBriefLoading] = useState(false);
+  const [briefPreview, setBriefPreview] = useState(false);
+  const [briefError, setBriefError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const id = challenge?.uuid;
+    if (!id) {
+      setBrief('');
+      setExistingBriefId(null);
+      return;
+    }
+    let cancelled = false;
+    setBriefLoading(true);
+    fetch(`/api/challenges/${id}/documents`)
+      .then(r => (r.ok ? r.json() : []))
+      .then((docs: { uuid: string; filename: string; content: string }[]) => {
+        if (cancelled) return;
+        const found = findBrief(Array.isArray(docs) ? docs : []);
+        setBrief(found?.content ?? '');
+        setExistingBriefId(found?.uuid ?? null);
+      })
+      // Silencieux : le reste du formulaire reste utilisable, le brief
+      // s'affiche simplement vide.
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setBriefLoading(false); });
+    return () => { cancelled = true; };
+  }, [challenge?.uuid]);
+
   const [sourceChallengeId, setSourceChallengeId] = useState((challenge as any)?.source_challenge_id ?? '');
   const [cpPerValidation, setCpPerValidation] = useState((challenge as any)?.cp_per_validation ?? 5);
   const [requiredValidations, setRequiredValidations] = useState((challenge as any)?.required_validations ?? 3);
@@ -83,10 +134,40 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     ? challenge?.required_validations == null
     : sourceChallenge?.type === 'code';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  /** Le ratio 0–1 attendu par l'API, depuis le pourcentage saisi. */
+  const completionValue = Math.min(1, Math.max(0, (parseFloat(completionPct) || 0) / 100));
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Le champ affiche déjà pourquoi : pris, invalide, ou vérification en cours.
     if (!slugField.ready) return;
+
+    // Le brief a sa propre route — c'est un document, pas une colonne — et ne
+    // se sauvegarde qu'en édition : en création le challenge n'a pas encore
+    // d'uuid à qui l'attacher. On le flushe avant d'envoyer le reste : en
+    // échec, rien n'est soumis et le texte saisi reste à l'écran.
+    setBriefError('');
+    if (challenge?.uuid && (brief.trim() || existingBriefId)) {
+      setSaving(true);
+      const { ok } = await flushBrief(challenge.uuid, brief, existingBriefId);
+      if (!ok) {
+        setSaving(false);
+        setBriefError('The brief could not be saved - nothing else was submitted, your text is still here.');
+        return;
+      }
+      // Le document vient d'être créé ou supprimé : sans relire son id, un
+      // second envoi dans la même session ne saurait plus quoi supprimer.
+      if (!brief.trim()) {
+        setExistingBriefId(null);
+      } else if (!existingBriefId) {
+        const docs = await fetch(`/api/challenges/${challenge.uuid}/documents`)
+          .then(r => (r.ok ? r.json() : []))
+          .catch(() => []);
+        setExistingBriefId(findBrief(Array.isArray(docs) ? docs : [])?.uuid ?? null);
+      }
+      setSaving(false);
+    }
+
     // Reward rules only apply to ML challenges. For other types we omit the
     // key entirely (PUT treats an absent field as "unchanged") instead of
     // sending null, which would wipe out a code challenge's real rules.
@@ -96,6 +177,10 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       ...formData,
       // En édition, seulement s'il a changé : l'ancien devient une redirection.
       ...(!challenge?.uuid || slugField.changed ? { slug: slugField.submitValue } : {}),
+      // Édition seulement : à la création il n'y a rien de fait, la colonne
+      // part à 0 et le POST n'a pas à s'en occuper.
+      ...(challenge?.uuid ? { completion: completionValue } : {}),
+      cover_image_url: coverImageUrl.trim() || null,
       ...(formData.type === 'ml' ? { reward_rules: rewardRules } : {}),
       compute_enabled: formData.type === 'ml' ? computeEnabled : false,
       ...(formData.type === 'validation' && !challenge?.uuid
@@ -317,6 +402,10 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
             placeholder="What is this challenge about?"
           />
         </FormField>
+
+        <FormField label="Cover image" hint="Carried by the listing card and the public challenge header. Emptying it removes the image.">
+          <CoverImageField value={coverImageUrl} onChange={setCoverImageUrl} />
+        </FormField>
       </FormSection>
 
       {/* Section: Planning */}
@@ -341,6 +430,39 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
           </FormField>
         </div>
 
+        {/* Avancement — édition seulement : un challenge naît à 0. */}
+        {challenge?.uuid && (
+          <FormField
+            label="Completion"
+            hint={
+              formData.type === 'ml'
+                ? 'Shown on the public cards. Rewritten automatically each time ML rewards are distributed.'
+                : 'Shown on the public cards. Nothing computes it for this type - it is what you set here.'
+            }
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex w-32 shrink-0 items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={completionPct}
+                  onChange={e => setCompletionPct(e.target.value)}
+                  className={inputClass}
+                />
+                <span className="text-sm text-white/40">%</span>
+              </div>
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+                <div
+                  className="h-full rounded-full bg-brandCP/60 transition-[width] duration-500"
+                  style={{ width: `${Math.round(completionValue * 100)}%` }}
+                />
+              </div>
+            </div>
+          </FormField>
+        )}
+
         <FormField label="Roadmap">
           <textarea
             rows={4}
@@ -351,6 +473,70 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
           />
         </FormField>
       </FormSection>
+
+      {/* Section: Brief — le document `brief.md`, édition seulement (en
+          création le challenge n'a pas encore d'uuid à qui l'attacher) */}
+      {challenge?.uuid && (
+        <FormSection title="Brief">
+          <p className="text-xs text-white/25">
+            Context, objectives and expected result, in Markdown. Shown before the workspace to
+            contributors who have not joined yet, and kept in the challenge documents as
+            <code className="mx-1 rounded bg-white/10 px-1 py-0.5 font-mono text-[11px]">brief.md</code>
+            afterwards. Emptying it deletes the document.
+          </p>
+
+          {briefLoading ? (
+            <p className="flex items-center gap-2 text-xs text-white/30">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Loading the brief…
+            </p>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBriefPreview(v => !v)}
+                  disabled={!brief.trim()}
+                  className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] text-white/45 transition-colors hover:border-white/20 disabled:opacity-40"
+                >
+                  {briefPreview ? <Pencil className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                  {briefPreview ? 'Write' : 'Preview'}
+                </button>
+                {!brief.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => setBrief(BRIEF_TEMPLATE)}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] text-white/45 transition-colors hover:border-brandCP/30 hover:text-brandCP/70"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Start from the template
+                  </button>
+                )}
+              </div>
+
+              {briefPreview ? (
+                <div className="max-h-96 overflow-y-auto rounded-xl border border-white/[0.07] bg-white/[0.02] px-5 py-4">
+                  <Markdown source={brief} variant="prose" />
+                </div>
+              ) : (
+                <textarea
+                  value={brief}
+                  onChange={e => setBrief(e.target.value)}
+                  placeholder={'## Context\n\n…'}
+                  rows={14}
+                  className="w-full resize-y rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 font-mono text-xs leading-relaxed text-white placeholder:text-white/20 transition-colors focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
+                />
+              )}
+
+              {briefError && (
+                <p className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-400">
+                  {briefError}
+                </p>
+              )}
+            </>
+          )}
+        </FormSection>
+      )}
 
       {/* Section: Validation targets — edit only */}
       {challenge?.uuid && formData.type === 'validation' && (
@@ -372,6 +558,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       <FormFooter
         onCancel={onCancel}
         submitLabel={challenge ? 'Update Challenge' : 'Create Challenge'}
+        loading={saving}
       />
     </form>
   );

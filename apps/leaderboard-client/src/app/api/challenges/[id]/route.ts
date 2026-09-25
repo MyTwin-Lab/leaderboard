@@ -20,6 +20,11 @@ const updateChallengeSchema = z.object({
   description: z.string().optional(),
   roadmap: z.string().optional(),
   contribution_points_reward: z.number().int().nonnegative().optional(),
+  // Un ratio 0–1, comme la colonne. L'admin le saisit en pourcentage, le
+  // formulaire divise. Pour un challenge ML, MlRewardsService.award() l'écrit
+  // tout seul à chaque distribution — le saisir à la main sert surtout aux
+  // autres types, où rien ne le calcule.
+  completion: z.number().min(0).max(1).optional(),
   project_id: z.string().uuid().optional(),
   // Validated below via parseMlRewardRules ?? parseCodeRewardRules (not a zod
   // union over package schemas — the app and packages resolve different zod
