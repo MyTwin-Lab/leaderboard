@@ -58,6 +58,10 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
   // l'API laisse en place un champ absent.
   const [coverImageUrl, setCoverImageUrl] = useState(challenge?.cover_image_url ?? '');
 
+  // L'hôte — qui porte le challenge, en une phrase, rendue telle quelle sur la
+  // page publique. Même règle que la couverture : vide, la carte disparaît.
+  const [host, setHost] = useState(challenge?.host ?? '');
+
   // Avancement — stocké en ratio 0–1, saisi en pourcentage : c'est ce que
   // lisent les cartes publiques, et personne ne raisonne en 0,42.
   const [completionPct, setCompletionPct] = useState(
@@ -181,6 +185,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
       // part à 0 et le POST n'a pas à s'en occuper.
       ...(challenge?.uuid ? { completion: completionValue } : {}),
       cover_image_url: coverImageUrl.trim() || null,
+      host: host.trim() || null,
       ...(formData.type === 'ml' ? { reward_rules: rewardRules } : {}),
       compute_enabled: formData.type === 'ml' ? computeEnabled : false,
       ...(formData.type === 'validation' && !challenge?.uuid
@@ -405,6 +410,20 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
 
         <FormField label="Cover image" hint="Carried by the listing card and the public challenge header. Emptying it removes the image.">
           <CoverImageField value={coverImageUrl} onChange={setCoverImageUrl} />
+        </FormField>
+
+        <FormField
+          label="Host"
+          hint="Who runs this challenge - the clinical partner, the Lab team. Rendered as is on the public page; emptying it removes the card."
+        >
+          <input
+            type="text"
+            value={host}
+            onChange={e => setHost(e.target.value)}
+            maxLength={500}
+            className={inputClass}
+            placeholder="CHU de Montpellier, service de médecine physique et de réadaptation"
+          />
         </FormField>
       </FormSection>
 
