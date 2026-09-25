@@ -19,7 +19,7 @@ export function HomeCreateTwin() {
           Create your twin
         </span>
         <h2 className="v-home-tagline">
-          Create a twin for yourself, your patients, or your employees.
+          Create a digital twin for yourself, your patients, or your employees.
         </h2>
       </div>
 
