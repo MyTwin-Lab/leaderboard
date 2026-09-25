@@ -89,7 +89,7 @@
     linear-gradient(to top, rgb(252 252 252 / 0.7) 0%, rgb(252 252 252 / 0) 28%);
 }
 
-/* Tout le bloc se mesure en `cqw`, comme la photo qui se cale sur la largeur
+/* Le texte se mesure en `cqw`, comme la photo qui se cale sur la largeur
    du volet : le texte garde sa place dans la scène d'un écran à l'autre, et le
    bout du bâtiment, en haut à droite, reste dégagé. Les bornes des `clamp`
    tiennent les extrêmes — lisible sur un volet étroit, pas démesuré sur un
@@ -117,10 +117,12 @@
   outline-offset: 4px;
 }
 
+/* La taille de la navbar (`h-9` dès `sm`, voir `Navbar.tsx`) : le volet
+   n'apparaît qu'au-dessus de 768px, c'est donc toujours celle-là. */
 .v-signin-logo {
   display: block;
   width: auto;
-  height: clamp(1.625rem, 4.2cqw, 2.75rem);
+  height: 2.25rem;
   color: var(--v-ink);
 }
 
