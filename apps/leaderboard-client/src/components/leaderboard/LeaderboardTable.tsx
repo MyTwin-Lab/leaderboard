@@ -4,11 +4,11 @@ import { useLeaderboardContext } from "@/components/leaderboard/LeaderboardProvi
 import { LeaderboardList } from "@/components/leaderboard/LeaderboardList";
 
 /**
- * Le classement : une seule carte, la ligne du leader en tête sur fond vert,
- * puis les suivantes séparées d'un filet.
+ * Le classement : une seule carte, la ligne du leader en tête, puis les
+ * suivantes séparées d'un filet.
  *
- * Toutes les lignes ont la même hauteur, leader compris : c'est son fond et
- * son rang en vert qui le distinguent, pas sa taille.
+ * Toutes les lignes ont la même hauteur et le même fond, leader compris :
+ * seul son rang en vert le distingue.
  *
  * Ce composant-ci ne fait que brancher le contexte sur `LeaderboardList`, qui
  * porte le rendu. La séparation existe pour l'accueil du Lab, qui affiche le

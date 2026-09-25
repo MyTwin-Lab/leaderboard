@@ -25,7 +25,7 @@ import "./leaderboard-vitrine.css";
  * pour lui donner les jetons `--v-*`.
  */
 export interface LeaderboardListProps {
-  /** La ligne mise en avant, sur fond vert. `null` masque la distinction. */
+  /** La ligne mise en avant, rang en vert. `null` masque la distinction. */
   leader: LeaderboardEntry | null;
   /** Les rangs suivants. */
   rest: LeaderboardEntry[];
@@ -58,7 +58,6 @@ export function LeaderboardList({
         href={`/contributors/${entry.userId}`}
         className="v-lb-row"
         data-leader={isLeader ? "true" : "false"}
-        data-me={entry.userId === currentUserId ? "true" : "false"}
       >
         <span className="v-lb-row-rank">{entry.rank}</span>
         <VitrineAvatar name={entry.displayName} avatarUrl={entry.avatarUrl} size="2.5rem" />

@@ -66,16 +66,8 @@
 }
 
 /* ── Les lignes ─────────────────────────────────────────────────────────
-   Le leader a exactement les mêmes mesures que les autres : seuls son fond et
-   son rang en vert le distinguent. */
-.v-lb-row[data-leader="true"] {
-  background: rgb(11 122 100 / 0.05);
-}
-
-.v-lb-row[data-leader="true"]:hover {
-  background: rgb(11 122 100 / 0.09);
-}
-
+   Toutes les lignes partagent le même fond : le leader ne se distingue que
+   par son rang en vert, la ligne du visiteur que par sa pastille « YOU ». */
 .v-lb-row[data-leader="true"] .v-lb-row-rank {
   color: var(--v-accent);
 }
@@ -89,10 +81,6 @@
   background: transparent;
   color: inherit;
   transition: background 0.16s var(--v-ease);
-}
-
-.v-lb-row[data-me="true"] {
-  background: rgb(11 122 100 / 0.04);
 }
 
 .v-lb-row:hover {
