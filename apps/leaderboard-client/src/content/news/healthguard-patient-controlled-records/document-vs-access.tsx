@@ -12,21 +12,15 @@ const ACCESS = [
 
 function Column({ label, title, lines, highlighted }: { label: string; title: string; lines: string[]; highlighted?: boolean }) {
   return (
-    <div
-      className={
-        highlighted
-          ? "flex flex-col gap-3 rounded-2xl border border-brandCP/40 bg-brandCP/[0.07] p-5"
-          : "flex flex-col gap-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-5"
-      }
-    >
-      <p className={`text-[11px] font-bold uppercase tracking-[0.18em] ${highlighted ? "text-brandCP" : "text-white/45"}`}>{label}</p>
-      <p className="text-base font-semibold text-white">{title}</p>
-      <ul className="flex flex-col gap-2 text-sm leading-relaxed text-white/60">
+    <div className="v-nd-tile" data-on={highlighted} data-dashed={!highlighted}>
+      <span className="v-nd-tile-label">{label}</span>
+      <span className="v-nd-tile-title" data-lead="true">
+        {title}
+      </span>
+      <ul className="v-nd-tile-list">
         {lines.map((line) => (
-          <li key={line} className="flex gap-2">
-            <span aria-hidden className={highlighted ? "text-brandCP" : "text-white/35"}>
-              {highlighted ? "✓" : "·"}
-            </span>
+          <li key={line}>
+            <span aria-hidden>{highlighted ? "✓" : "·"}</span>
             {line}
           </li>
         ))}
@@ -38,7 +32,7 @@ function Column({ label, title, lines, highlighted }: { label: string; title: st
 export function DocumentVsAccess() {
   return (
     <NewsFigure caption="HealthGuard’s principle, as its founder describes it.">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="v-nd-tiles" data-wide="true">
         <Column label="Today" title="Sharing a document" lines={COPY} />
         <Column label="HealthGuard" title="Sharing access to a document" lines={ACCESS} highlighted />
       </div>

@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
  *
  * Un bloc illustre l'article, il n'y ajoute rien : il reprend des phrases du
  * texte, jamais une valeur ou un résultat qui n'y figure pas.
+ *
+ * La légende est alignée à gauche, sous le bloc, comme la maquette : centrée,
+ * elle se lisait comme un titre plutôt que comme une note.
  */
 export function NewsFigure({
   children,
@@ -18,11 +21,9 @@ export function NewsFigure({
   className?: string;
 }) {
   return (
-    <figure className={cn("my-10 sm:my-12", className)}>
+    <figure className={cn("v-nd-figure", className)}>
       {children}
-      {caption && (
-        <figcaption className="mt-4 text-pretty text-center text-sm leading-relaxed text-white/45">{caption}</figcaption>
-      )}
+      {caption && <figcaption className="v-nd-caption">{caption}</figcaption>}
     </figure>
   );
 }

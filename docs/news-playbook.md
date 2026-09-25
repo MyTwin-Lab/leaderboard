@@ -79,7 +79,7 @@ The template renders the frame (`news.md`); the article provides these fields.
 | `eventMonth` | `YYYY-MM`, when the event happened. Orders the news. |
 | `publishedAt` | The day the article goes live. **Never backdated**, even for an event from 2025. |
 | `updatedAt` | Only when the substance changes (a new chapter, a correction). |
-| `facts` | *At a glance*: 3–6 lines. Always **When**, **Stage**, and **Who** (partner, contributor, team); then what matters (data, platform, links). |
+| `facts` | 3–6 lines — always **When**, **Stage**, and **Who** (partner, contributor, team), then what matters (data, platform, links). **Not displayed today**: the *At a glance* panel was taken off the article page, and nothing else reads the field yet. Still written, so it can come back without rewriting twelve news. |
 | `intro` | The lead: who, what, when, stage, why it matters, in 2–4 short paragraphs. A reader who stops here knows the news. |
 | `sections` | As many as the story needs (often 2–4). H2s that say something (*"What the prototype measured"*), not labels (*"Details"*). From 3 sections, the template adds a table of contents. |
 | `faq` | Optional. Only questions a reader actually asks (*"Can I use it today?"*, *"Can I contribute?"*). Never to pad. |
@@ -92,7 +92,9 @@ The template renders the frame (`news.md`); the article provides these fields.
 
 **Length.** Say what there is to say, nothing more: a partnership in pilot may take 400 words, a challenge with a vision 1,000. Never stretch a news to look like a blog article, never cut one that has a real story.
 
-**Visual blocks.** Welcome when they show something better than text: a pipeline, a stage timeline, what a model measures. A block **illustrates, it adds nothing**: every label comes from the text, no invented figure, no fake result, no mock dashboard with numbers. Wrap it in `NewsFigure`. The MyTwin Inside episode about a partner is embedded with `PodcastEpisodeEmbed`.
+**Visual blocks.** Welcome when they show something better than text: a pipeline, a stage timeline, what a model measures. A block **illustrates, it adds nothing**: every label comes from the text, no invented figure, no fake result, no mock dashboard with numbers. Wrap it in `NewsFigure`, and build it from the page's own vocabulary (`v-nd-panel`, `v-nd-tile`, see [`news.md`](./news.md)) rather than a look of its own. The MyTwin Inside episode about a partner is embedded with `PodcastEpisodeEmbed`.
+
+**`NewsCallout` is the takeaway.** The template titles it *Key takeaway*: keep one per section at most, and write the one sentence a reader should leave with.
 
 ## 6. Wording — health is YMYL
 

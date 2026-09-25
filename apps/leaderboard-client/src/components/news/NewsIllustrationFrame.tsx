@@ -8,38 +8,47 @@ import { cn } from "@/lib/utils";
  * entier sur fond noir, avec `fit: "contain"`), un visuel se centre sur un
  * panneau clair, quel que soit le thème du Lab.
  *
- * Toujours décoratif : le titre de l'aperçu dit déjà ce que montre l'image.
+ * Décoratif par défaut : dans un aperçu, le titre dit déjà ce que montre
+ * l'image. En tête d'article elle est du contenu, et `alt` la décrit.
  */
 export function NewsIllustrationFrame({
   illustration,
   sizes,
+  alt,
   className,
 }: {
   illustration: NewsIllustration;
   /** `sizes` de l'image : la largeur du cadre dans la grille qui l'accueille. */
   sizes: string;
+  /** Le texte de remplacement, quand l'image porte le contenu et non l'aperçu. */
+  alt?: string;
   className?: string;
 }) {
+  const decorative = alt === undefined;
+
   if (illustration.kind === "image") {
     if (illustration.fit === "contain") {
       // L'image entière, en retrait sur le fond noir, cernée d'un filet discret.
       return (
-        <div aria-hidden className={cn("relative flex items-center justify-center overflow-hidden bg-black", className)}>
+        <div
+          aria-hidden={decorative || undefined}
+          className={cn("relative flex items-center justify-center overflow-hidden bg-black", className)}
+        >
           <div
             className="relative h-[84%] max-w-[90%] overflow-hidden rounded-[3px] border border-[rgb(255_255_255/0.16)] transition-transform duration-700 ease-out group-hover:scale-[1.03]"
             style={{ aspectRatio: illustration.ratio ?? 1 }}
           >
-            <Image src={illustration.src} alt="" fill sizes={sizes} className="object-cover" />
+            <Image src={illustration.src} alt={alt ?? ""} fill sizes={sizes} className="object-cover" />
           </div>
         </div>
       );
     }
 
     return (
-      <div aria-hidden className={cn("relative overflow-hidden", className)}>
+      <div aria-hidden={decorative || undefined} className={cn("relative overflow-hidden", className)}>
         <Image
           src={illustration.src}
-          alt=""
+          alt={alt ?? ""}
           fill
           sizes={sizes}
           className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"

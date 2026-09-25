@@ -1,11 +1,9 @@
 import Link from "next/link";
 import { MYTWIN } from "@/lib/seo";
 
-const CLASSES =
-  "font-medium text-brandCP underline decoration-brandCP/30 underline-offset-4 transition-colors hover:decoration-brandCP";
-
 /**
- * Un lien dans le texte d'une news.
+ * Un lien dans le texte d'une news. Filet sous le mot plutôt que soulignement
+ * plein, à l'accent dilué, qui se ravive au survol — la maquette.
  *
  * - Page du Lab → `next/link`.
  * - mytwin.care → même onglet : c'est une suite de lecture, pas une vérification.
@@ -17,7 +15,7 @@ const CLASSES =
 export function NewsLink({ href, children }: { href: string; children: React.ReactNode }) {
   if (href.startsWith("/")) {
     return (
-      <Link href={href} className={CLASSES}>
+      <Link href={href} className="v-nd-link">
         {children}
       </Link>
     );
@@ -25,14 +23,14 @@ export function NewsLink({ href, children }: { href: string; children: React.Rea
 
   if (href.startsWith(MYTWIN.url)) {
     return (
-      <a href={href} className={CLASSES}>
+      <a href={href} className="v-nd-link">
         {children}
       </a>
     );
   }
 
   return (
-    <a href={href} target="_blank" rel="noopener" className={CLASSES}>
+    <a href={href} target="_blank" rel="noopener" className="v-nd-link">
       {children}
     </a>
   );

@@ -1,8 +1,13 @@
 import { NewsCard } from "@/components/news/NewsCard";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { BackToLab } from "@/components/vitrine/BackToLab";
+import { vitrineFontVars } from "@/components/vitrine/fonts";
 import { NEWS_ARTICLES } from "@/content/news";
 import { NEWS_PATH, newsPath } from "@/lib/paths";
 import { breadcrumbJsonLd, collectionPageJsonLd, jsonLdGraph, pageMetadata } from "@/lib/seo";
+
+import "@/components/vitrine/vitrine.css";
+import "@/components/news/news-index-vitrine.css";
 
 const TITLE = "MyTwin Lab News | Partnerships, Challenges and Projects";
 const DESCRIPTION =
@@ -12,6 +17,14 @@ const DESCRIPTION =
 // « MyTwin Lab news ».
 export const metadata = pageMetadata({ absoluteTitle: TITLE, description: DESCRIPTION, path: NEWS_PATH });
 
+/**
+ * L'index des news, au style vitrine — même fond, mêmes polices et même
+ * grammaire d'en-tête que les trois listings et que la page d'un article.
+ *
+ * La maquette Claude Design ne couvre que l'article ; la page reprend donc
+ * `.v-main` et `.v-head` des listings, et la matière des cartes de l'article
+ * (`news-index-vitrine.css`). Le wording, lui, ne bouge pas.
+ */
 export default function NewsIndexPage() {
   const [latest, ...rest] = NEWS_ARTICLES;
 
@@ -29,30 +42,34 @@ export default function NewsIndexPage() {
   );
 
   return (
-    <div className="flex flex-col gap-10 sm:gap-14">
-      <JsonLd data={jsonLd} />
+    <div className={`vitrine v-news ${vitrineFontVars}`}>
+      <div className="v-main">
+        <JsonLd data={jsonLd} />
 
-      <header className="animate-fade-up flex max-w-3xl flex-col gap-5 pt-4 sm:pt-8">
-        <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/45">MyTwin Lab News</span>
-        <h1 className="text-balance text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl">
-          What’s happening in the <span className="text-brandCP">Lab</span>
-        </h1>
-        <p className="text-base leading-relaxed text-white/60 sm:text-lg">
-          Partner technologies joining MyTwin, challenges opening, Sandbox projects taking shape and research
-          milestones, step by step, as they happen.
-        </p>
-      </header>
+        <header className="v-head">
+          <div className="v-head-text">
+            <BackToLab />
+            <h1 className="v-title">
+              What’s happening in the <span className="v-news-accent">Lab</span>
+            </h1>
+            <p className="v-lede">
+              Partner technologies joining MyTwin, challenges opening, Sandbox projects taking shape and research
+              milestones, step by step, as they happen.
+            </p>
+          </div>
+        </header>
 
-      {latest ? (
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          <NewsCard article={latest} titleAs="h2" featured className="md:col-span-2 lg:col-span-3" />
-          {rest.map((article) => (
-            <NewsCard key={article.slug} article={article} titleAs="h2" />
-          ))}
-        </div>
-      ) : (
-        <p className="text-white/60">The first news is on its way.</p>
-      )}
+        {latest ? (
+          <div className="v-news-grid">
+            <NewsCard article={latest} titleAs="h2" featured />
+            {rest.map((article) => (
+              <NewsCard key={article.slug} article={article} titleAs="h2" />
+            ))}
+          </div>
+        ) : (
+          <p className="v-news-empty">The first news is on its way.</p>
+        )}
+      </div>
     </div>
   );
 }

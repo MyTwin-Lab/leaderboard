@@ -1,0 +1,209 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   L'index `/news`, au style vitrine.
+
+   La maquette Claude Design ne couvre que la page d'un article
+   (`News Detail Redesign Vitrine.dc.html`) : cette page reprend la grammaire
+   des trois listings — `.v-main`, l'en-tête `.v-head`, le retour au Lab — et
+   la matière des cartes de l'article : filet `--v-line`, rayon de 12px,
+   surface blanche, surtitre à l'accent.
+
+   Tout est scopé sous `.vitrine .v-news`, préfixé `v-news-`, sur les jetons
+   `--v-*` de `vitrine.css`. Aucun utilitaire Tailwind `text-white` /
+   `bg-white/…` ici : `globals.css` les réécrit en mode clair.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.v-news {
+  --news-ring: color-mix(in srgb, var(--v-accent) 45%, transparent);
+  --news-night: #11161a;
+}
+
+@keyframes v-news-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v-news *,
+  .v-news *::before,
+  .v-news *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── L'en-tête ──────────────────────────────────────────────────────── */
+
+.v-news .v-head {
+  animation: v-news-up 0.8s var(--v-ease) both;
+}
+
+/* L'accroche d'un index de lecture est plus longue que celle d'un listing. */
+.v-news .v-lede {
+  max-width: 44rem;
+}
+
+.v-news-accent {
+  color: var(--v-accent);
+}
+
+/* ── La grille ──────────────────────────────────────────────────────── */
+
+.v-news-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: clamp(0.875rem, 1.6vw, 1.25rem);
+  align-items: stretch;
+  animation: v-news-up 0.8s var(--v-ease) 0.08s both;
+}
+
+/* ── La carte ───────────────────────────────────────────────────────── */
+
+.v-news-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  color: inherit;
+  transition: border-color 0.4s var(--v-ease), transform 0.4s var(--v-ease),
+    box-shadow 0.4s var(--v-ease);
+}
+
+.v-news-card:hover {
+  border-color: var(--news-ring);
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -28px rgb(17 22 26 / 0.45);
+  color: inherit;
+}
+
+/* La une tient toute la grille. Au-dessus de 768px la photo passe à droite,
+   comme sur la carte vedette de l'accueil : le texte se lit d'abord. */
+.v-news-card[data-featured="true"] {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 768px) {
+  .v-news-card[data-featured="true"] {
+    flex-direction: row-reverse;
+    align-items: stretch;
+  }
+
+  .v-news-card[data-featured="true"] .v-news-shot {
+    flex: 1 1 50%;
+    min-height: 20rem;
+    aspect-ratio: auto;
+  }
+
+  .v-news-card[data-featured="true"] .v-news-body {
+    flex: 1 1 50%;
+    justify-content: center;
+    padding: clamp(1.5rem, 3vw, 2.5rem);
+  }
+}
+
+.v-news-shot {
+  flex: none;
+  aspect-ratio: 16 / 10;
+  background: var(--news-night);
+}
+
+.v-news-body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: clamp(1rem, 1.8vw, 1.25rem);
+}
+
+.v-news-kicker {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+.v-news-title {
+  font-family: var(--v-font-h);
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  color: var(--v-ink);
+  transition: color 0.3s var(--v-ease);
+}
+
+.v-news-card:hover .v-news-title {
+  color: var(--v-accent);
+}
+
+.v-news-card[data-featured="true"] .v-news-title {
+  font-size: clamp(1.35rem, 2.4vw, 1.875rem);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+/* Pas de `flex: 1` ici : étiré au-delà de ses lignes, un paragraphe tronqué
+   laisse voir la moitié de la ligne suivante. C'est le lien qui prend la
+   place restante. */
+.v-news-excerpt {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--v-muted);
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.v-news-card[data-featured="true"] .v-news-excerpt {
+  font-size: 0.9375rem;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
+.v-news-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: auto;
+  padding-top: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--v-accent);
+  transition: gap 0.3s var(--v-ease);
+}
+
+.v-news-card:hover .v-news-read {
+  gap: 0.7rem;
+}
+
+.v-news-read svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* ── L'état vide ────────────────────────────────────────────────────── */
+
+.v-news-empty {
+  border: 1px dashed var(--v-line);
+  border-radius: 12px;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+  font-size: 0.9375rem;
+  color: var(--v-muted);
+}

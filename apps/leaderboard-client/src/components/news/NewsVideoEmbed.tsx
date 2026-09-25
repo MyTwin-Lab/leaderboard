@@ -22,7 +22,7 @@ export function NewsVideoEmbed({ video, caption }: { video: NewsVideo; caption?:
 
   return (
     <NewsFigure caption={fullCaption || undefined}>
-      <div className="group relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-black">
+      <div className="v-nd-video">
         {playing ? (
           <video
             src={video.src}
@@ -32,25 +32,24 @@ export function NewsVideoEmbed({ video, caption }: { video: NewsVideo; caption?:
             autoPlay
             playsInline
             preload="auto"
-            className="absolute inset-0 h-full w-full"
           />
         ) : (
           <button
             type="button"
             onClick={() => setPlaying(true)}
             aria-label={`Play video — ${video.title}`}
-            className="absolute inset-0 h-full w-full cursor-pointer"
+            className="v-nd-video-btn"
           >
             <Image
               src={video.poster}
               alt=""
               fill
-              sizes="(max-width: 768px) 100vw, 48rem"
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, 44rem"
+              className="object-cover"
               draggable={false}
             />
-            <span className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-            <span className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-brandCP shadow-lg transition-transform duration-300 group-hover:scale-110">
+            <span className="v-nd-video-scrim" />
+            <span className="v-nd-video-play">
               <Play className="h-6 w-6 translate-x-0.5 fill-current" />
             </span>
           </button>

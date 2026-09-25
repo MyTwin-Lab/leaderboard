@@ -35,22 +35,30 @@ const STEPS = [
   { title: "Session summary", text: "Plus a skeleton replay of each set." },
 ];
 
-// Le squelette s'estompe par l'opacité et non par `text-white/35` : en mode
-// clair, globals.css force toute teinte `text-white*` à la couleur pleine.
+// Les couleurs sont écrites ici, et non prises à une classe : le squelette est
+// un dessin, pas du texte, et il doit tenir sur la surface claire de la page.
+const BONE = "#11161a";
+const ACCENT = "#3FA1AA";
+
 function Skeleton() {
   const [kx, ky] = JOINTS.knee;
   return (
-    <svg viewBox="0 0 200 260" role="img" aria-label="A body skeleton at the bottom of a squat, with the knee angle highlighted" className="h-56 w-auto sm:h-64">
-      <g className="text-white opacity-40" stroke="currentColor" strokeWidth="5" strokeLinecap="round">
+    <svg
+      viewBox="0 0 200 260"
+      role="img"
+      aria-label="A body skeleton at the bottom of a squat, with the knee angle highlighted"
+      className="h-56 w-auto sm:h-64"
+    >
+      <g stroke={BONE} strokeOpacity="0.22" strokeWidth="5" strokeLinecap="round">
         {BONES.map(([from, to]) => (
           <line key={`${from}-${to}`} x1={JOINTS[from][0]} y1={JOINTS[from][1]} x2={JOINTS[to][0]} y2={JOINTS[to][1]} />
         ))}
       </g>
-      <circle cx={JOINTS.head[0]} cy={JOINTS.head[1]} r="16" className="text-white opacity-40" fill="none" stroke="currentColor" strokeWidth="5" />
+      <circle cx={JOINTS.head[0]} cy={JOINTS.head[1]} r="16" fill="none" stroke={BONE} strokeOpacity="0.22" strokeWidth="5" />
       {/* L'angle mesuré au genou, entre la cuisse et la jambe : c'est ce que le
           score compare au seuil de l'exercice. */}
-      <path d={`M ${kx - 25} ${ky - 6} A 26 26 0 0 0 ${kx - 7} ${ky + 25}`} className="text-brandCP" fill="none" stroke="currentColor" strokeWidth="3" />
-      <g className="text-brandCP" fill="currentColor">
+      <path d={`M ${kx - 25} ${ky - 6} A 26 26 0 0 0 ${kx - 7} ${ky + 25}`} fill="none" stroke={ACCENT} strokeWidth="3" />
+      <g fill={ACCENT}>
         {Object.entries(JOINTS)
           .filter(([name]) => name !== "head")
           .map(([name, [x, y]]) => (
@@ -64,24 +72,24 @@ function Skeleton() {
 export function OnDevicePipeline() {
   return (
     <NewsFigure caption="Everything happens on the phone: the video is used to find the body landmarks, and never leaves the device.">
-      <div className="flex flex-col items-center gap-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:flex-row sm:items-center sm:gap-10 sm:p-8">
+      <div className="v-nd-panel" data-split="true">
         <Skeleton />
-        <div className="flex w-full flex-col gap-3">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brandCP">On the phone</p>
-          <ol className="flex flex-col gap-2.5">
+        <div className="v-nd-tile" data-bare="true">
+          <span className="v-nd-tile-label" data-accent="true">
+            On the phone
+          </span>
+          <ol className="v-nd-steps">
             {STEPS.map((step, index) => (
-              <li key={step.title} className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brandCP/15 text-xs font-bold text-brandCP">
-                  {index + 1}
-                </span>
-                <span className="text-sm leading-relaxed text-white/65">
-                  <span className="font-semibold text-white">{step.title}</span> · {step.text}
+              <li key={step.title}>
+                <span className="v-nd-step-num">{index + 1}</span>
+                <span>
+                  <b>{step.title}</b> · {step.text}
                 </span>
               </li>
             ))}
           </ol>
-          <p className="mt-1 rounded-xl border border-dashed border-white/15 px-4 py-2.5 text-sm text-white/60">
-            <span className="font-semibold text-white">Leaves the phone:</span> no image, no video.
+          <p className="v-nd-note">
+            <b>Leaves the phone:</b> no image, no video.
           </p>
         </div>
       </div>

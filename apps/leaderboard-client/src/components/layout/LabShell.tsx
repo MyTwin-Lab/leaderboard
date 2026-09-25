@@ -32,7 +32,18 @@ const VITRINE_BACKGROUNDS: Record<string, string> = {
   "/challenges": "#fcfcfc",
   "/sandbox": "#fcfcfc",
   "/vision": "#fcfcfc",
+  "/news": "#fcfcfc",
 };
+
+/**
+ * Les vitrines dont l'URL porte un segment variable : une news à son slug.
+ * `/news` lui-même est dans la table au-dessus — l'index et les articles sont
+ * tous deux au style vitrine.
+ */
+const VITRINE_PREFIXES = ["/news/"];
+
+/** La couleur de fond des maquettes vitrine, la même partout. */
+const VITRINE_BACKGROUND = "#fcfcfc";
 
 /**
  * Les pages qui sortent entièrement du chrome du Lab.
@@ -52,7 +63,9 @@ export function LabShell({ navbar, footer, overlays, children }: LabShellProps) 
     return <>{children}</>;
   }
 
-  const vitrineBackground = VITRINE_BACKGROUNDS[pathname];
+  const vitrineBackground =
+    VITRINE_BACKGROUNDS[pathname] ??
+    (VITRINE_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ? VITRINE_BACKGROUND : undefined);
   const vitrine = vitrineBackground !== undefined;
 
   return (

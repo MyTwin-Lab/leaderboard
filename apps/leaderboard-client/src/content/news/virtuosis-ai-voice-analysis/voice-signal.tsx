@@ -10,26 +10,31 @@ const ANALYSED = ["Pitch, and how it varies", "Pace and pauses", "Voice quality"
 export function VoiceSignal() {
   return (
     <NewsFigure caption="About thirty seconds of speech: the analysis looks at how you speak, not at what you say.">
-      <div className="flex flex-col gap-5 rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
+      <div className="v-nd-panel">
         <div aria-hidden className="flex h-24 items-center justify-center gap-1.5">
           {BARS.map((height, index) => (
-            <span key={index} className="w-1.5 rounded-full bg-brandCP" style={{ height: `${height}%`, opacity: 0.45 + height / 180 }} />
+            <span
+              key={index}
+              className="w-1.5 rounded-full bg-[#3FA1AA]"
+              style={{ height: `${height}%`, opacity: 0.45 + height / 180 }}
+            />
           ))}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-brandCP/40 bg-brandCP/[0.07] p-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brandCP">How you speak · analysed</p>
-            <ul className="mt-3 flex flex-col gap-1.5 text-sm text-white/65">
+        <div className="v-nd-tiles" data-wide="true">
+          <div className="v-nd-tile" data-on="true">
+            <span className="v-nd-tile-label">How you speak · analysed</span>
+            <ul className="v-nd-tile-list">
               {ANALYSED.map((item) => (
-                <li key={item}>✓ {item}</li>
+                <li key={item}>
+                  <span aria-hidden>✓</span>
+                  {item}
+                </li>
               ))}
             </ul>
           </div>
-          <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] p-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">What you say · not analysed</p>
-            <p className="mt-3 text-sm leading-relaxed text-white/60">
-              The meaning of your words plays no part in the result.
-            </p>
+          <div className="v-nd-tile" data-dashed="true">
+            <span className="v-nd-tile-label">What you say · not analysed</span>
+            <span className="v-nd-tile-text">The meaning of your words plays no part in the result.</span>
           </div>
         </div>
       </div>

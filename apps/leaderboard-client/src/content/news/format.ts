@@ -12,3 +12,8 @@ export function formatNewsDate(iso: string): string {
 export function formatEventMonth(month: string): string {
   return MONTH.format(new Date(`${month}-01`));
 }
+
+/** `0` → « 01 ». Le numéro à deux chiffres du sommaire, des sections et des sources. */
+export function formatIndex(index: number): string {
+  return String(index + 1).padStart(2, "0");
+}

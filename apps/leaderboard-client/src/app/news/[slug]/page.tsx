@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NewsArticleBody } from "@/components/news/NewsArticleBody";
-import { NewsArticleHeader } from "@/components/news/NewsArticleHeader";
-import { NewsCard } from "@/components/news/NewsCard";
+import { NewsRelated } from "@/components/news/NewsRelated";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { vitrineFontVars } from "@/components/vitrine/fonts";
 import { NEWS_ARTICLES, getNewsBySlug, getRelatedNews } from "@/content/news";
 import { NEWS_CATEGORY_LABELS } from "@/content/news/types";
 import { NEWS_PATH, newsPath } from "@/lib/paths";
@@ -71,36 +70,12 @@ export default async function NewsArticlePage({ params }: NewsPageProps) {
   );
 
   return (
-    <div className="flex flex-col gap-16 pt-4 sm:gap-20 sm:pt-8">
+    <div className={`vitrine v-nd ${vitrineFontVars}`}>
       <JsonLd data={jsonLd} />
 
-      <div>
-        <NewsArticleBody
-          article={article}
-          backLink={
-            <Link
-              href={NEWS_PATH}
-              className="inline-flex items-center gap-1.5 text-sm text-white/55 transition-colors hover:text-brandCP"
-            >
-              <span aria-hidden>←</span> All news
-            </Link>
-          }
-          header={<NewsArticleHeader article={article} />}
-        />
-      </div>
+      <NewsArticleBody article={article} />
 
-      {related.length > 0 && (
-        <section aria-labelledby="related-title" className="flex flex-col gap-5 border-t border-white/10 pt-10">
-          <h2 id="related-title" className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-            Keep reading
-          </h2>
-          <div className="grid gap-5 md:grid-cols-2">
-            {related.map((other) => (
-              <NewsCard key={other.slug} article={other} />
-            ))}
-          </div>
-        </section>
-      )}
+      <NewsRelated articles={related} />
     </div>
   );
 }

@@ -1,8 +1,13 @@
+import { formatIndex } from "@/content/news/format";
 import type { NewsArticle } from "@/content/news/types";
-import { cn } from "@/lib/utils";
+
+import "@/components/vitrine/vitrine.css";
+import "./news-detail-vitrine.css";
+
+import { NewsArticleHeader } from "./NewsArticleHeader";
 import { NewsCta } from "./NewsCta";
 import { NewsFaq } from "./NewsFaq";
-import { NewsKeyFacts } from "./NewsKeyFacts";
+import { NewsHero } from "./NewsHero";
 import { NewsProse } from "./NewsProse";
 import { NewsSources } from "./NewsSources";
 import { NewsToc, type TocItem } from "./NewsToc";
@@ -17,23 +22,23 @@ const SOURCES_ID = "sources";
 const MIN_SECTIONS_FOR_TOC = 3;
 
 /**
- * Le corps d'une news : en-tête, « At a glance », chapeau, sections, FAQ
- * éventuelle, appel à l'action, sources.
+ * Le corps d'une news, d'après `News Detail Redesign Vitrine.dc.html` :
+ * en-tête, image de tête, puis les deux colonnes — sommaire collant à gauche,
+ * article à droite — et enfin le chapeau, les sections numérotées, la FAQ,
+ * l'appel à l'action et les sources.
  *
- * Le bloc titre vit dans la colonne du texte et non au-dessus : c'est ce qui
- * fait démarrer le sommaire collant en haut de l'en-tête. Sans sommaire, la
- * colonne se centre.
+ * L'encart « At a glance » de la maquette n'est plus posé : l'article démarre
+ * sur son chapeau. Le champ `facts` reste dans le contenu, sans affichage.
+ *
+ * L'en-tête et l'image tiennent toute la largeur, au-dessus des colonnes :
+ * c'est la maquette, et c'est ce qui laisse le titre respirer avant que le
+ * texte ne se resserre sur sa mesure de lecture. Sans sommaire, la colonne
+ * de lecture se centre.
+ *
+ * La maquette porte aussi sa navbar et son pied de page : `LabShell` les pose
+ * déjà pour toute l'app, ils ne sont pas repris ici.
  */
-export function NewsArticleBody({
-  article,
-  backLink,
-  header,
-}: {
-  article: NewsArticle;
-  /** Au-dessus des deux colonnes, aligné sur le texte de l'article. */
-  backLink: React.ReactNode;
-  header: React.ReactNode;
-}) {
+export function NewsArticleBody({ article }: { article: NewsArticle }) {
   const hasToc = article.sections.length >= MIN_SECTIONS_FOR_TOC;
   const hasFaq = Boolean(article.faq?.length);
 
@@ -45,37 +50,34 @@ export function NewsArticleBody({
 
   return (
     <>
-      {/* `lg:ml-68` = la colonne du sommaire (`w-56`) + la gouttière (`gap-12`). */}
-      <div className={cn("mb-8", hasToc ? "lg:ml-68" : "mx-auto max-w-3xl")}>{backLink}</div>
+      <NewsArticleHeader article={article} />
 
-      <div className={cn("flex gap-12", !hasToc && "justify-center")}>
+      {article.illustration && <NewsHero illustration={article.illustration} />}
+
+      <div className="v-nd-body" data-toc={hasToc ? "1" : "0"}>
         {hasToc && (
-          <aside className="hidden w-56 shrink-0 lg:block">
-            <div className="sticky top-28">
-              <NewsToc items={tocItems} />
-            </div>
+          <aside className="v-nd-aside">
+            <NewsToc items={tocItems} />
           </aside>
         )}
 
-        <article className="min-w-0 max-w-3xl flex-1">
-          {header}
-
-          <NewsKeyFacts facts={article.facts} />
-
+        <article className="v-nd-article">
           {hasToc && (
-            // Sous `lg`, pas de colonne pour un sommaire collant : il se replie
-            // en tête d'article, sans JS.
-            <details className="group mt-8 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4 lg:hidden">
-              <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
+            // Sous 900px, pas de marge où coller un sommaire : il se replie en
+            // tête d'article, en `<details>` natif et sans JS. Sous 768px la
+            // feuille le sort tout à fait.
+            <details className="v-nd-contents">
+              <summary className="v-nd-contents-summary">
                 Contents
-                <span aria-hidden className="text-brandCP transition-transform duration-200 group-open:rotate-45">
+                <span aria-hidden className="v-nd-plus">
                   +
                 </span>
               </summary>
-              <ol className="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm text-white/60">
-                {tocItems.map((item) => (
+              <ol className="v-nd-contents-list">
+                {tocItems.map((item, index) => (
                   <li key={item.id}>
-                    <a href={`#${item.id}`} className="transition-colors hover:text-brandCP">
+                    <a href={`#${item.id}`}>
+                      <span>{formatIndex(index)}</span>
                       {item.title}
                     </a>
                   </li>
@@ -84,17 +86,19 @@ export function NewsArticleBody({
             </details>
           )}
 
-          <NewsProse className="mt-10">{article.intro}</NewsProse>
+          <NewsProse className="v-nd-intro">{article.intro}</NewsProse>
 
-          {article.sections.map((section) => (
-            <section key={section.id} aria-labelledby={section.id} className="mt-12 sm:mt-14">
-              <h2
-                id={section.id}
-                className="scroll-mt-24 text-balance text-2xl font-bold tracking-tight text-white sm:text-[1.75rem]"
-              >
-                {section.title}
-              </h2>
-              <NewsProse className="mt-5">{section.content}</NewsProse>
+          {article.sections.map((section, index) => (
+            <section key={section.id} aria-labelledby={section.id} className="v-nd-section">
+              <div className="v-nd-section-head">
+                <span aria-hidden className="v-nd-section-num">
+                  {formatIndex(index)}
+                </span>
+                <h2 id={section.id} className="v-nd-section-title">
+                  {section.title}
+                </h2>
+              </div>
+              <NewsProse>{section.content}</NewsProse>
             </section>
           ))}
 

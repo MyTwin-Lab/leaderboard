@@ -1,54 +1,55 @@
 import Link from "next/link";
 
-import { ArrowIcon } from "@/components/home/ArrowIcon";
 import type { NewsCta as NewsCtaData } from "@/content/news/types";
+import { NewsArrowRightIcon } from "./NewsIcons";
 
 /**
- * Le bouton plein, aux couleurs `foreground` / `background` du thème — ces
- * deux tokens s'échangent avec le mode, là où un `bg-white` opaque resterait
- * blanc en mode clair. Les pages de mytwin.care passent par un `<a>` :
- * `next/link` ne sert que ce site.
- *
- * Il vivait dans les primitives de la page « About », supprimée depuis : le
- * seul appelant restant est cette bannière.
+ * Le surtitre de la bannière — « Open challenge » dans la maquette — dit où
+ * mène le bouton, et se lit donc sur sa destination : une news de partenariat
+ * qui renvoie vers MyTwin n'a pas à s'annoncer « Partnership ». Rien n'est
+ * ajouté au contenu des news : c'est une étiquette du gabarit, comme
+ * « At a glance » ou « Key takeaway ».
  */
-function PrimaryCta({ href, children }: { href: string; children: React.ReactNode }) {
-  const className =
-    "inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition-all duration-200 hover:-translate-y-0.5 hover:gap-2.5";
-
-  const inner = (
-    <>
-      {children}
-      <ArrowIcon />
-    </>
-  );
-
-  return href.startsWith("http") ? (
-    <a href={href} className={className}>
-      {inner}
-    </a>
-  ) : (
-    <Link href={href} className={className}>
-      {inner}
-    </Link>
-  );
+function ctaEyebrow(href: string): string {
+  if (href.startsWith("/challenges")) return "Open challenge";
+  if (href.startsWith("/sandbox")) return "Sandbox";
+  if (href.startsWith("/vision")) return "Research vision";
+  return "MyTwin";
 }
 
 /**
  * Un seul appel à l'action, en fin d'article, et c'est l'action que la news
  * rend possible : rejoindre le challenge, soutenir le projet, découvrir MyTwin.
  * Au milieu du texte, il ferait d'une news une page de vente.
+ *
+ * Les pages de mytwin.care passent par un `<a>` : `next/link` ne sert que ce
+ * site.
  */
 export function NewsCta({ cta }: { cta: NewsCtaData }) {
+  const external = cta.href.startsWith("http");
+  const button = (
+    <>
+      {cta.label}
+      <NewsArrowRightIcon />
+    </>
+  );
+
   return (
-    <aside className="relative mt-14 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] px-6 py-8 sm:mt-16 sm:px-10 sm:py-10">
-      <span aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-brandCP/15 blur-3xl" />
-      <div className="relative flex flex-col items-start gap-6">
-        <p className="max-w-xl text-balance text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl">
-          {cta.text}
-        </p>
-        <PrimaryCta href={cta.href}>{cta.label}</PrimaryCta>
+    <aside className="v-nd-cta">
+      <div className="v-nd-cta-text">
+        <span className="v-nd-cta-label">{ctaEyebrow(cta.href)}</span>
+        <p className="v-nd-cta-title">{cta.text}</p>
       </div>
+
+      {external ? (
+        <a href={cta.href} className="v-nd-cta-btn">
+          {button}
+        </a>
+      ) : (
+        <Link href={cta.href} className="v-nd-cta-btn">
+          {button}
+        </Link>
+      )}
     </aside>
   );
 }

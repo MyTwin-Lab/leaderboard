@@ -20,9 +20,6 @@ const MAX_ROW_HEIGHT = "28rem";
  * de son image, quels que soient les formats mêlés (paysage, portrait).
  * Une ligne ne dépasse pas `MAX_ROW_HEIGHT` : des images en portrait
  * resserrent la ligne, centrée, plutôt que de s'étirer sur tout l'écran.
- *
- * Les pastilles sont en couleurs fixes, claires sur l'image dans les deux
- * thèmes : `text-white` serait réécrit en mode clair.
  */
 export function NewsPhotoRow({ photos, caption }: { photos: NewsPhoto[]; caption?: string }) {
   const ratios = photos.map((photo) => photo.width / photo.height);
@@ -40,18 +37,15 @@ export function NewsPhotoRow({ photos, caption }: { photos: NewsPhoto[]; caption
         {photos.map((photo, index) => {
           const share = ratios[index] / total;
           return (
-            <div key={photo.src} className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
+            <div key={photo.src} className="v-nd-photo">
               <Image
                 src={photo.src}
                 alt={photo.alt}
                 width={photo.width}
                 height={photo.height}
                 sizes={`(min-width: 768px) ${Math.ceil(48 * share)}rem, ${Math.ceil(100 * share)}vw`}
-                className="h-full w-full object-cover"
               />
-              <span className="absolute left-2 top-2 rounded-full bg-[#f1f0eb]/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#0b7a64] backdrop-blur-sm sm:left-3 sm:top-3 sm:text-[11px]">
-                {photo.label}
-              </span>
+              <span className="v-nd-photo-label">{photo.label}</span>
             </div>
           );
         })}

@@ -1,0 +1,1628 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   La page d'une news — d'après `News Detail Redesign Vitrine.dc.html`.
+
+   Mêmes règles que les autres écrans repris des maquettes : tout est scopé
+   sous `.vitrine .v-nd`, préfixé `v-nd-`, et reprend les jetons de
+   `vitrine.css`. Aucun utilitaire Tailwind `text-white` / `bg-white/…` ici :
+   `globals.css` les réécrit en mode clair, et la maquette pose déjà ses
+   couleurs.
+
+   La maquette porte sa propre navbar et son propre pied de page : ni l'une ni
+   l'autre n'est reprise, `LabShell` pose déjà le chrome pour toute l'app. Le
+   commutateur PC/téléphone non plus — la page réelle bascule sur la largeur du
+   navigateur.
+
+   Deux bascules, celles de la maquette :
+   - 900px, son `matchMedia("(min-width: 900px)")` : au-dessus le sommaire
+     colle à gauche, en dessous il se replie en tête d'article ;
+   - 768px : en dessous, la mise en page téléphone de la maquette (typographie
+     resserrée, image en 4/3, rail des news, sources repliées).
+   ───────────────────────────────────────────────────────────────────────── */
+
+.v-nd {
+  /* Les jetons que la maquette ajoute à ceux de `vitrine.css`. */
+  --nd-night: #11161a;
+  --nd-mint: color-mix(in srgb, var(--v-accent) 6%, transparent);
+  --nd-ring: color-mix(in srgb, var(--v-accent) 45%, transparent);
+  --nd-halo: color-mix(in srgb, var(--v-accent) 12%, transparent);
+  --nd-gutter: clamp(1.25rem, 3vw, 3rem);
+  --nd-max: 68rem;
+  /* La colonne de lecture, et celle du sommaire collant. */
+  --nd-read: 44rem;
+  --nd-toc: 13.5rem;
+  /* Sous la navbar fixe : la même valeur pour le sommaire collant et pour
+     l'ancre d'un titre. */
+  --nd-offset: 6.5rem;
+
+  width: 100%;
+  max-width: var(--nd-max);
+  margin-inline: auto;
+  padding-inline: var(--nd-gutter);
+  /* `.vitrine` réserve une hauteur d'écran pour que son fond couvre la
+     fenêtre ; ici le fond est peint par le chrome, et cette réserve ne ferait
+     qu'ajouter du vide sous la page. */
+  min-height: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+@keyframes v-nd-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v-nd *,
+  .v-nd *::before,
+  .v-nd *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── L'en-tête : retour, surtitre, titre, chapeau, signature ─────────── */
+
+.v-nd-head {
+  display: grid;
+  gap: 1rem;
+  padding-block: clamp(1.5rem, 3vw, 2.5rem) clamp(1.5rem, 3vw, 2.25rem);
+  animation: v-nd-up 0.8s var(--v-ease) both;
+}
+
+.v-nd-back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.375rem;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--v-muted);
+  transition: color 0.3s var(--v-ease);
+}
+
+.v-nd-back:hover {
+  color: var(--v-accent);
+}
+
+.v-nd-back svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.v-nd-kicker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+.v-nd-title {
+  max-width: 52rem;
+  font-family: var(--v-font-h);
+  font-size: clamp(2rem, 3.6vw, 3rem);
+  line-height: 1.06;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+  color: var(--v-ink);
+}
+
+.v-nd-lede {
+  max-width: 44rem;
+  font-family: var(--v-font-h);
+  font-size: clamp(1.0625rem, 1.4vw, 1.1875rem);
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-nd-byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  margin-top: 0.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--v-line);
+}
+
+.v-nd-author {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Le halo double : un anneau de fond, puis l'accent dilué — la pastille se
+   détache sans filet épais. */
+.v-nd-avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--nd-ring);
+  background: var(--v-surface);
+  box-shadow: 0 0 0 3px var(--v-bg), 0 0 0 4px var(--nd-halo);
+  font-family: var(--v-font-h);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--v-accent);
+}
+
+.v-nd-author-text {
+  display: grid;
+  min-width: 0;
+}
+
+.v-nd-author-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--v-ink);
+}
+
+.v-nd-author-role {
+  font-size: 0.8125rem;
+  color: var(--v-subtle);
+}
+
+.v-nd-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--v-subtle);
+}
+
+.v-nd-dates time {
+  color: var(--v-muted);
+}
+
+.v-nd-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.v-nd-read svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* ── L'image de tête : l'illustration de la news, en retrait sur la nuit ── */
+
+.v-nd-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  aspect-ratio: 21 / 8;
+  border-radius: 12px;
+  background: var(--nd-night);
+  animation: v-nd-up 0.8s var(--v-ease) 0.08s both;
+}
+
+/* Le cadre de l'illustration (`NewsIllustrationFrame`) remplit la bande. */
+.v-nd-hero-frame {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Les deux colonnes : sommaire collant, article ──────────────────── */
+
+.v-nd-body {
+  display: grid;
+  grid-template-columns: var(--nd-toc) minmax(0, 1fr);
+  gap: clamp(2rem, 4vw, 4rem);
+  align-items: start;
+  padding-block: clamp(2rem, 4vw, 3.25rem) clamp(1.75rem, 3.2vw, 2.75rem);
+}
+
+/* Sans sommaire, la colonne de lecture se centre. */
+.v-nd-body[data-toc="0"] {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+}
+
+.v-nd-aside {
+  position: sticky;
+  top: var(--nd-offset);
+}
+
+.v-nd-article {
+  min-width: 0;
+  max-width: var(--nd-read);
+}
+
+/* ── Le sommaire ────────────────────────────────────────────────────── */
+
+.v-nd-toc-nav {
+  display: grid;
+  gap: 1rem;
+}
+
+.v-nd-toc-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+.v-nd-toc-list {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.v-nd-toc-link {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.5rem 0.625rem;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--v-muted);
+  transition: background-color 0.25s var(--v-ease), color 0.25s var(--v-ease);
+}
+
+.v-nd-toc-link:hover {
+  color: var(--v-ink);
+}
+
+.v-nd-toc-link[data-on="true"] {
+  background: var(--nd-mint);
+  color: var(--v-ink);
+}
+
+.v-nd-toc-num {
+  font-family: var(--v-font-h);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--v-subtle);
+}
+
+.v-nd-toc-link[data-on="true"] .v-nd-toc-num {
+  color: var(--v-accent);
+}
+
+.v-nd-toc-link[data-on="true"] .v-nd-toc-title {
+  font-weight: 600;
+}
+
+/* ── Le sommaire replié, sous 900px ─────────────────────────────────── */
+
+.v-nd-contents {
+  display: none;
+  margin-top: 0;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  padding: 0.875rem 1.125rem;
+}
+
+.v-nd-contents-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  list-style: none;
+  cursor: pointer;
+  min-height: 2rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--v-ink);
+}
+
+.v-nd-contents-summary::-webkit-details-marker {
+  display: none;
+}
+
+.v-nd-plus {
+  color: var(--v-accent);
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: transform 0.2s var(--v-ease);
+}
+
+details[open] > summary .v-nd-plus {
+  transform: rotate(45deg);
+}
+
+.v-nd-contents-list {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.v-nd-contents-list a {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+  color: var(--v-muted);
+}
+
+.v-nd-contents-list a span {
+  font-family: var(--v-font-h);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--v-accent);
+}
+
+/* ── Le texte courant ───────────────────────────────────────────────── */
+
+.v-nd-prose {
+  display: grid;
+  gap: 1.25rem;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+/* Le chapeau : la même mesure, un cran au-dessus, à l'encre pleine. Les
+   paragraphes qui suivent le premier retombent en gris, comme la maquette.
+   Il ouvre l'article — plus rien ne le précède depuis que l'encart
+   « At a glance » est retiré — d'où l'absence de marge haute. */
+.v-nd-intro {
+  margin-top: 0;
+  font-size: 1.0625rem;
+  color: var(--v-ink);
+}
+
+.v-nd-intro > p ~ p {
+  color: var(--v-muted);
+}
+
+.v-nd-prose > h3 {
+  font-family: var(--v-font-h);
+  font-size: 1.125rem;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+}
+
+.v-nd-prose em {
+  font-style: italic;
+  color: var(--v-ink);
+}
+
+.v-nd-prose strong {
+  font-weight: 600;
+  color: var(--v-ink);
+}
+
+/* La puce est dessinée par un pseudo-élément **positionné**, et le `<li>`
+   reste un bloc : le contenu des news s'écrit en `<ul><li>` nus, où le texte
+   et ses liens se suivent en ligne. En faire une grille mettait chaque nœud
+   inline — le lien, puis chaque bout de phrase — dans sa propre cellule, un
+   fragment par ligne. */
+.v-nd-prose > ul,
+.v-nd-prose > ol {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.v-nd-prose > ul > li,
+.v-nd-prose > ol > li {
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.v-nd-prose > ul > li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.7rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--v-accent);
+}
+
+.v-nd-prose > ol {
+  counter-reset: v-nd-ol;
+}
+
+.v-nd-prose > ol > li {
+  padding-left: 1.75rem;
+  counter-increment: v-nd-ol;
+}
+
+.v-nd-prose > ol > li::before {
+  content: counter(v-nd-ol, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--v-font-h);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.75;
+  color: var(--v-accent);
+}
+
+/* ── Les liens du texte ─────────────────────────────────────────────── */
+
+.v-nd-link {
+  font-weight: 500;
+  color: var(--v-accent);
+  border-bottom: 1px solid var(--nd-ring);
+  transition: border-color 0.25s var(--v-ease);
+}
+
+.v-nd-link:hover {
+  color: var(--v-accent);
+  border-bottom-color: var(--v-accent);
+}
+
+/* ── Les sections numérotées ────────────────────────────────────────── */
+
+.v-nd-section {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: clamp(2.25rem, 4vw, 3rem);
+  padding-top: clamp(1.75rem, 3.2vw, 2.25rem);
+  border-top: 1px solid var(--v-line);
+}
+
+.v-nd-section-head {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+}
+
+.v-nd-section-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  border: 1px solid var(--nd-ring);
+  background: var(--v-surface);
+  font-family: var(--v-font-h);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--v-accent);
+}
+
+.v-nd-section-title {
+  scroll-margin-top: var(--nd-offset);
+  font-family: var(--v-font-h);
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+  color: var(--v-ink);
+}
+
+/* ── L'encadré « Key takeaway » ─────────────────────────────────────── */
+
+.v-nd-callout {
+  display: grid;
+  gap: 0.5rem;
+  margin-block: 0.5rem;
+  padding: clamp(1.25rem, 2.6vw, 1.75rem);
+  border-radius: 12px;
+  background: var(--nd-mint);
+}
+
+.v-nd-callout-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+.v-nd-callout-text {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.125rem, 1.6vw, 1.3125rem);
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+  text-wrap: pretty;
+}
+
+.v-nd-callout-text > p + p {
+  margin-top: 0.5rem;
+}
+
+/* ── Les figures ────────────────────────────────────────────────────── */
+
+.v-nd-figure {
+  display: grid;
+  gap: 0.875rem;
+  margin-block: 0.75rem;
+}
+
+.v-nd-caption {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--v-subtle);
+  text-wrap: pretty;
+}
+
+/* ── Le vocabulaire des blocs dessinés au fil des news ───────────────────
+   Chaque article a ses propres schémas ; ils sont tous bâtis avec les deux
+   formes que la maquette dessine dans cette page — la tuile (une étape, un
+   volet d'une comparaison) et le panneau (un schéma d'un seul tenant). Même
+   filet, même surface, même rayon partout : la page garde une grammaire, les
+   articles gardent leur dessin. */
+
+.v-nd-panel {
+  display: grid;
+  gap: 1.25rem;
+  padding: clamp(1.125rem, 2.2vw, 1.5rem);
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+}
+
+.v-nd-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  gap: 0.625rem;
+}
+
+/* Deux volets à comparer, ou deux cartes à vignette : plus larges que les
+   étapes d'un parcours. */
+.v-nd-tiles[data-wide="true"] {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0.75rem;
+}
+
+.v-nd-tile {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+}
+
+/* L'étape en cours, le volet retenu : l'accent dilué, comme « Today » dans la
+   maquette. Les étapes à venir restent en pointillés. */
+.v-nd-tile[data-on="true"] {
+  border-color: var(--nd-ring);
+  background: var(--nd-mint);
+}
+
+.v-nd-tile[data-dashed="true"] {
+  border-style: dashed;
+}
+
+/* Une tuile sans cadre : dans un panneau, les colonnes se suivent sans que
+   chacune redessine un filet à l'intérieur du premier. */
+.v-nd-tile[data-bare="true"] {
+  border: 0;
+  background: none;
+  padding: 0;
+}
+
+/* Une tuile à vignette : le dessin à gauche, le texte à droite. */
+.v-nd-tile[data-media="true"] {
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  align-content: stretch;
+  padding: 0.75rem;
+}
+
+.v-nd-tile[data-media="true"] svg {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.v-nd-tile-body {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.v-nd-tile-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+.v-nd-tile-label[data-accent="true"],
+.v-nd-tile[data-on="true"] .v-nd-tile-label {
+  color: var(--v-accent);
+}
+
+/* La pastille qui bat devant « Today ». */
+.v-nd-tile-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--v-accent);
+  box-shadow: 0 0 0 3px var(--nd-halo);
+}
+
+.v-nd-tile-title {
+  font-family: var(--v-font-h);
+  font-size: 0.9375rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--v-ink);
+}
+
+.v-nd-tile-title[data-lead="true"] {
+  font-size: 1.0625rem;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.v-nd-tile-text {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--v-muted);
+}
+
+.v-nd-tile-list {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--v-muted);
+}
+
+.v-nd-tile-list li {
+  display: grid;
+  grid-template-columns: 0.875rem minmax(0, 1fr);
+  gap: 0.4rem;
+}
+
+.v-nd-tile-list li span {
+  color: var(--v-subtle);
+}
+
+.v-nd-tile[data-on="true"] .v-nd-tile-list li span {
+  color: var(--v-accent);
+}
+
+/* Un panneau à deux volets : un dessin d'un côté, le texte de l'autre. */
+.v-nd-panel[data-split="true"] {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  align-items: center;
+}
+
+@media (max-width: 599px) {
+  .v-nd-panel[data-split="true"] {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+}
+
+/* Une liste d'étapes numérotées. */
+.v-nd-steps {
+  display: grid;
+  gap: 0.625rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--v-muted);
+}
+
+.v-nd-steps > li {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.v-nd-steps b,
+.v-nd-note b {
+  font-weight: 600;
+  color: var(--v-ink);
+}
+
+/* Une note en pointillés, sous une liste. */
+.v-nd-note {
+  border: 1px dashed var(--v-line);
+  border-radius: 10px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--v-muted);
+}
+
+/* Les rangs d'un écran : un par élément lu. */
+.v-nd-rows {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.v-nd-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--v-line);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  color: var(--v-muted);
+}
+
+.v-nd-row[data-on="true"] {
+  border-color: var(--nd-ring);
+  background: var(--nd-mint);
+  color: var(--v-accent);
+  font-weight: 600;
+}
+
+.v-nd-row[data-dim="true"] {
+  opacity: 0.45;
+}
+
+.v-nd-row-role {
+  width: 3.5rem;
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--v-subtle);
+}
+
+/* Le numéro d'une étape, dans un panneau. */
+.v-nd-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--nd-halo);
+  font-family: var(--v-font-h);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--v-accent);
+}
+
+.v-nd-step-num[data-small="true"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0.625rem;
+}
+
+/* ── Les photos d'une news, côte à côte ─────────────────────────────── */
+
+.v-nd-photo {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+}
+
+.v-nd-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.v-nd-photo-label {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  border-radius: 999px;
+  background: rgb(252 252 252 / 0.92);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+/* ── La vidéo d'une news ────────────────────────────────────────────── */
+
+.v-nd-video {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  background: var(--nd-night);
+}
+
+.v-nd-video video,
+.v-nd-video-btn {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.v-nd-video-btn {
+  cursor: pointer;
+}
+
+.v-nd-video-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgb(17 22 26 / 0.55), rgb(17 22 26 / 0.1) 60%, transparent);
+}
+
+.v-nd-video-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: var(--v-accent);
+  color: #ffffff;
+  box-shadow: 0 14px 34px -18px rgb(17 22 26 / 0.8);
+  transition: transform 0.3s var(--v-ease);
+}
+
+.v-nd-video-btn:hover .v-nd-video-play {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* ── La FAQ ─────────────────────────────────────────────────────────── */
+
+.v-nd-faq {
+  display: grid;
+  gap: 1rem;
+  margin-top: clamp(2.25rem, 4vw, 3rem);
+  padding-top: clamp(1.75rem, 3.2vw, 2.25rem);
+  border-top: 1px solid var(--v-line);
+}
+
+.v-nd-faq-title {
+  scroll-margin-top: var(--nd-offset);
+  font-family: var(--v-font-h);
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--v-ink);
+}
+
+.v-nd-faq-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.v-nd-faq-item {
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+}
+
+.v-nd-faq-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  list-style: none;
+  cursor: pointer;
+  padding: 1rem 1.125rem;
+}
+
+.v-nd-faq-summary::-webkit-details-marker {
+  display: none;
+}
+
+.v-nd-faq-q {
+  font-family: var(--v-font-h);
+  font-size: 1rem;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--v-ink);
+}
+
+.v-nd-badge {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--nd-ring);
+  color: var(--v-accent);
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 0.2s var(--v-ease);
+}
+
+details[open] > summary .v-nd-badge {
+  transform: rotate(45deg);
+}
+
+.v-nd-faq-a {
+  padding: 0 1.125rem 1.125rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+/* ── L'appel à l'action ─────────────────────────────────────────────── */
+
+.v-nd-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem 2rem;
+  margin-top: clamp(2.25rem, 4vw, 3rem);
+  border-radius: 12px;
+  background: var(--nd-mint);
+  padding: clamp(1.25rem, 2.8vw, 2rem);
+}
+
+.v-nd-cta-text {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 1 1 18rem;
+}
+
+.v-nd-cta-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+.v-nd-cta-title {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.25rem, 1.8vw, 1.5rem);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+  color: var(--v-ink);
+}
+
+.v-nd-cta-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.6rem;
+  height: 3rem;
+  padding-inline: 1.4rem 1.15rem;
+  border-radius: 999px;
+  background: var(--v-ink);
+  color: var(--v-bg);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: background-color 0.3s var(--v-ease);
+}
+
+.v-nd-cta-btn:hover {
+  background: var(--v-accent);
+  color: var(--v-bg);
+}
+
+.v-nd-cta-btn svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* ── Les sources ────────────────────────────────────────────────────── */
+
+.v-nd-sources {
+  display: grid;
+  gap: 1rem;
+  margin-top: clamp(2.25rem, 4vw, 3rem);
+  padding-top: clamp(1.75rem, 3.2vw, 2.25rem);
+  border-top: 1px solid var(--v-line);
+}
+
+.v-nd-sources-title {
+  scroll-margin-top: var(--nd-offset);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+/* Sous 768px, la maquette coiffe la liste d'un « Sources · n » repliable. Le
+   `<details>` est déplié à l'ouverture de la page, ici et là : l'ouvrir par
+   défaut est la seule liberté prise sur la maquette, et elle garde les sources
+   visibles sans JS — sur un sujet de santé, pouvoir vérifier une affirmation
+   fait partie du contenu. Sur écran, le résumé s'efface et le `<h2>` reprend
+   la main. */
+.v-nd-sources-summary {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 3.25rem;
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+.v-nd-sources-summary::-webkit-details-marker {
+  display: none;
+}
+
+.v-nd-sources-list {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.v-nd-source {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--v-muted);
+}
+
+.v-nd-source-num {
+  font-family: var(--v-font-h);
+  font-weight: 600;
+  color: var(--v-subtle);
+}
+
+.v-nd-source a {
+  color: var(--v-muted);
+  transition: color 0.25s var(--v-ease);
+}
+
+.v-nd-source a:hover {
+  color: var(--v-accent);
+}
+
+.v-nd-disclaimer {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--v-subtle);
+  text-wrap: pretty;
+}
+
+/* ── « Keep reading » ───────────────────────────────────────────────── */
+
+.v-nd-related {
+  display: grid;
+  gap: 1.25rem;
+  border-top: 1px solid var(--v-line);
+  padding-block: clamp(1.75rem, 3.2vw, 2.75rem);
+}
+
+.v-nd-related-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+}
+
+.v-nd-related-titles {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.v-nd-related-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+.v-nd-related-title {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--v-muted);
+}
+
+.v-nd-related-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid currentColor;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--v-accent);
+}
+
+.v-nd-related-all:hover {
+  color: var(--v-accent);
+}
+
+.v-nd-related-all svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.v-nd-related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+}
+
+.v-nd-card {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 0.625rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  color: inherit;
+  transition: border-color 0.3s var(--v-ease);
+}
+
+.v-nd-card:hover {
+  border-color: var(--nd-ring);
+  color: inherit;
+}
+
+/* Sans illustration, le texte prend toute la carte plutôt que de laisser une
+   colonne vide à sa gauche. */
+.v-nd-card[data-shot="0"] {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 1rem;
+}
+
+.v-nd-card-shot {
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  background: var(--nd-night);
+}
+
+.v-nd-card-body {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding-right: 0.5rem;
+}
+
+.v-nd-card-kicker {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+.v-nd-card-title {
+  font-family: var(--v-font-h);
+  font-size: 1rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  color: var(--v-ink);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Sous 900px : le sommaire quitte la marge et se replie en tête d'article.
+   ───────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 899px) {
+  .v-nd-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v-nd-aside {
+    display: none;
+  }
+
+  .v-nd-contents {
+    display: block;
+  }
+
+  /* Ici le sommaire replié ouvre la colonne : le chapeau s'en écarte. */
+  .v-nd-intro {
+    margin-top: clamp(1.75rem, 3vw, 2.25rem);
+  }
+
+  .v-nd-article {
+    max-width: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Sous 768px : la mise en page téléphone de la maquette.
+   ───────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .v-nd {
+    --nd-gutter: 1.25rem;
+    --nd-offset: 5rem;
+    font-size: 0.9375rem;
+  }
+
+  .v-nd-head {
+    gap: 0.75rem;
+    padding-block: 1.25rem;
+  }
+
+  .v-nd-back {
+    gap: 0.45rem;
+    margin-bottom: 0;
+    min-height: 2.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .v-nd-back svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .v-nd-kicker {
+    font-size: 0.6875rem;
+    letter-spacing: 0.26em;
+  }
+
+  .v-nd-title {
+    font-size: 1.875rem;
+    line-height: 1.08;
+  }
+
+  .v-nd-lede {
+    font-size: 1.0625rem;
+    line-height: 1.45;
+  }
+
+  .v-nd-byline {
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    gap: 0.5rem 1rem;
+  }
+
+  .v-nd-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .v-nd-author-name {
+    font-size: 0.875rem;
+  }
+
+  .v-nd-author-role,
+  .v-nd-dates {
+    font-size: 0.75rem;
+  }
+
+  /* L'image déborde la gouttière de l'article : la maquette ne lui laisse
+     que 0.75rem de chaque côté. */
+  .v-nd-hero {
+    aspect-ratio: 4 / 3;
+    margin-inline: calc(0.75rem - var(--nd-gutter));
+  }
+
+  .v-nd-body {
+    padding-block: 1.5rem 0;
+    gap: 0;
+  }
+
+  /* Sur téléphone, le sommaire sort : l'article se fait défiler, et le
+     replier en tête ne faisait qu'éloigner le texte. Il reste entre 768 et
+     900px, où la marge est trop étroite pour la colonne collante mais où la
+     page se lit encore d'un regard. */
+  .v-nd-contents {
+    display: none;
+  }
+
+  .v-nd-prose {
+    gap: 1rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+  }
+
+  .v-nd-prose > ul,
+  .v-nd-prose > ol {
+    gap: 0.625rem;
+  }
+
+  .v-nd-prose > ul > li {
+    padding-left: 1.375rem;
+  }
+
+  .v-nd-prose > ul > li::before {
+    top: 0.65rem;
+  }
+
+  .v-nd-intro {
+    margin-top: 0;
+    font-size: 0.9375rem;
+  }
+
+  .v-nd-section {
+    gap: 1rem;
+    margin-top: 1.75rem;
+    padding-top: 1.75rem;
+  }
+
+  .v-nd-section-head {
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 0.875rem;
+  }
+
+  .v-nd-section-num {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 0.9375rem;
+  }
+
+  .v-nd-section-title {
+    font-size: 1.25rem;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+  }
+
+  /* L'encadré mord sur la gouttière, comme la maquette. */
+  .v-nd-callout {
+    gap: 0.4rem;
+    margin-block: 0.25rem;
+    margin-inline: -0.5rem;
+    padding: 1.125rem 1.125rem 1.25rem;
+  }
+
+  .v-nd-callout-label {
+    font-size: 0.625rem;
+    letter-spacing: 0.26em;
+  }
+
+  .v-nd-callout-text {
+    font-size: 1.0625rem;
+    letter-spacing: -0.015em;
+  }
+
+  .v-nd-figure {
+    gap: 0.625rem;
+    margin-block: 0.25rem;
+  }
+
+  .v-nd-caption {
+    font-size: 0.75rem;
+  }
+
+  .v-nd-faq {
+    gap: 0.875rem;
+    margin-top: 1.75rem;
+    padding-top: 1.75rem;
+  }
+
+  .v-nd-faq-title {
+    font-size: 1.25rem;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+  }
+
+  .v-nd-faq-summary {
+    gap: 0.75rem;
+    min-height: 3.25rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .v-nd-faq-q {
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+  }
+
+  .v-nd-faq-a {
+    padding: 0 1rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.65;
+  }
+
+  .v-nd-cta {
+    gap: 0.75rem;
+    margin-top: 1.75rem;
+    margin-inline: calc(0.75rem - var(--nd-gutter));
+    padding: 1.5rem 1.25rem;
+  }
+
+  .v-nd-cta-text {
+    gap: 0.75rem;
+    flex: 1 1 100%;
+  }
+
+  .v-nd-cta-label {
+    font-size: 0.625rem;
+    letter-spacing: 0.26em;
+  }
+
+  .v-nd-cta-title {
+    font-size: 1.25rem;
+    line-height: 1.25;
+    letter-spacing: -0.03em;
+  }
+
+  .v-nd-cta-btn {
+    justify-content: center;
+    width: 100%;
+    margin-top: 0.25rem;
+    padding-inline: 1rem;
+    gap: 0.5rem;
+  }
+
+  .v-nd-cta-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .v-nd-sources {
+    gap: 0;
+    margin-top: 1.75rem;
+    padding-top: 1.75rem;
+    border-top: 0;
+  }
+
+  .v-nd-sources-title {
+    display: none;
+  }
+
+  .v-nd-sources-fold {
+    border-top: 1px solid var(--v-line);
+    border-bottom: 1px solid var(--v-line);
+  }
+
+  .v-nd-sources-summary {
+    display: flex;
+  }
+
+  .v-nd-sources-summary .v-nd-plus {
+    font-size: 1rem;
+    letter-spacing: 0;
+  }
+
+  .v-nd-sources-list {
+    padding-bottom: 1rem;
+  }
+
+  .v-nd-source {
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+  }
+
+  .v-nd-disclaimer {
+    margin-top: 1rem;
+    font-size: 0.6875rem;
+    line-height: 1.55;
+  }
+
+  /* Les news à lire ensuite passent en rail : deux cartes empilées feraient
+     deux écrans de défilement. */
+  .v-nd-related {
+    gap: 1rem;
+    margin-top: 1.75rem;
+    padding-block: 1.75rem;
+  }
+
+  .v-nd-related-eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.26em;
+  }
+
+  .v-nd-related-title {
+    font-size: 1.0625rem;
+    letter-spacing: -0.015em;
+  }
+
+  .v-nd-related-grid {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding-inline: var(--nd-gutter);
+    scroll-padding-inline: var(--nd-gutter);
+    margin-inline: calc(-1 * var(--nd-gutter));
+  }
+
+  .v-nd-related-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .v-nd-card {
+    flex: 0 0 82%;
+    scroll-snap-align: start;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.5rem 0.5rem 1rem;
+  }
+
+  .v-nd-card-shot {
+    aspect-ratio: 16 / 9;
+  }
+
+  .v-nd-card-body {
+    gap: 0.3rem;
+    padding-inline: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .v-nd-card-kicker {
+    font-size: 0.625rem;
+  }
+
+  .v-nd-card-title {
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+  }
+
+  /* Le lien passe sous le rail, aligné à droite. `display: contents` remet
+     le titre et le lien au niveau de la grille de la section : leur ordre
+     s'y règle, sans dupliquer le balisage pour le téléphone. */
+  .v-nd-related-head {
+    display: contents;
+  }
+
+  .v-nd-related-titles {
+    order: 1;
+  }
+
+  .v-nd-related-grid {
+    order: 2;
+  }
+
+  .v-nd-related-all {
+    order: 3;
+    justify-self: end;
+    min-height: 2.75rem;
+    padding-bottom: 0;
+    border-bottom: 0;
+    font-size: 0.8125rem;
+  }
+
+  .v-nd-related-all svg {
+    width: 13px;
+    height: 13px;
+  }
+}

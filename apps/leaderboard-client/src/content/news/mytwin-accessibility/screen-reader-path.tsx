@@ -16,42 +16,36 @@ const TARGET = SCREEN.findIndex((item) => item.target);
 export function ScreenReaderPath() {
   return (
     <NewsFigure caption="The same screen, taken in at a glance, and read aloud one element at a time.">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">At a glance</p>
-          <p className="text-base font-semibold text-white">Straight to what you came for</p>
-          <ul className="flex flex-col gap-2 text-sm">
+      <div className="v-nd-tiles" data-wide="true">
+        <div className="v-nd-tile" data-dashed="true">
+          <span className="v-nd-tile-label">At a glance</span>
+          <span className="v-nd-tile-title" data-lead="true">
+            Straight to what you came for
+          </span>
+          <ul className="v-nd-rows">
             {SCREEN.map((item) => (
-              <li
-                key={item.label}
-                className={
-                  item.target
-                    ? "rounded-lg border border-brandCP/40 bg-brandCP/[0.07] px-3 py-2 font-semibold text-brandCP"
-                    : "rounded-lg border border-white/10 px-3 py-2 text-white/45"
-                }
-              >
+              <li key={item.label} className="v-nd-row" data-on={item.target}>
                 {item.label}
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brandCP">With a screen reader</p>
-          <p className="text-base font-semibold text-white">One element after another</p>
-          <ol className="flex flex-col gap-2 text-sm">
+        <div className="v-nd-tile">
+          <span className="v-nd-tile-label" data-accent="true">
+            With a screen reader
+          </span>
+          <span className="v-nd-tile-title" data-lead="true">
+            One element after another
+          </span>
+          <ol className="v-nd-rows">
             {SCREEN.map((item, index) => (
-              <li
-                key={item.label}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 ${
-                  item.target ? "border border-brandCP/40 bg-brandCP/[0.07]" : "border border-white/10"
-                } ${index > TARGET ? "opacity-40" : ""}`}
-              >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brandCP/15 text-[11px] font-bold text-brandCP">
+              <li key={item.label} className="v-nd-row" data-on={item.target} data-dim={index > TARGET}>
+                <span className="v-nd-step-num" data-small="true">
                   {index + 1}
                 </span>
-                <span className="w-14 shrink-0 text-xs text-white/45">{item.role}</span>
-                <span className={item.target ? "font-semibold text-brandCP" : "text-white/70"}>{item.label}</span>
+                <span className="v-nd-row-role">{item.role}</span>
+                {item.label}
               </li>
             ))}
           </ol>
