@@ -23,7 +23,7 @@
     "@opentelemetry/sdk-trace-node": "^2.9.0",
     "@opentelemetry/semantic-conventions": "^1.39.0",
     "@tailwindcss/postcss": "^4",
-    "@tanstack/react-query": "^5.101.4",
+    "@tanstack/react-query": "^5.101.4",
     "blobatar": "^2.7.0",
     "clsx": "latest",
     "lucide-react": "latest",
