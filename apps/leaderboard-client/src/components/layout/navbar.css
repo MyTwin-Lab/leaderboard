@@ -27,7 +27,7 @@
   display: inline-block;
   transform: scale(1);
   transform-origin: center;
-  transition: transform 0.42s cubic-bezier(0.22, 0.61, 0.21, 1);
+  transition: transform 0.52s cubic-bezier(0.22, 0.61, 0.21, 1);
   will-change: transform;
 }
 
@@ -42,17 +42,24 @@
    Le `round` donne au front qui avance un bord arrondi plutôt qu'une coupe
    nette — c'est la forme que l'ancienne barre soulignée avait déjà. Un rayon
    de pilule vaut la moitié de la hauteur de la boîte, d'où le padding
-   horizontal de `0.65em` : sans lui, l'arrondi mordrait la première et la
-   dernière lettre une fois le balayage terminé. */
+   horizontal : sans lui, l'arrondi mordrait la première et la dernière lettre
+   une fois le balayage terminé.
+
+   La boîte déborde de `0.2em` en haut et en bas. Avec `line-height: 1` elle
+   s'arrêtait à la cadratine, et la jambe du « g » de Challenges tombait hors
+   du rognage : la lettre restait à moitié grise, le balayage passé. Le padding
+   vertical remet le texte à sa place — c'est la boîte qui grandit, pas lui —
+   et le padding horizontal suit la moitié de la nouvelle hauteur (1.4em / 2,
+   arrondi au-dessus). */
 .nav-link-fill {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -0.65em;
-  padding-inline: 0.65em;
+  top: -0.2em;
+  bottom: -0.2em;
+  left: -0.8em;
+  padding: 0.2em 0.8em;
   color: var(--theme-primary);
   clip-path: inset(0 100% 0 0 round 999px);
-  transition: clip-path 0.42s cubic-bezier(0.22, 0.61, 0.21, 1);
+  transition: clip-path 0.52s cubic-bezier(0.22, 0.61, 0.21, 1);
   pointer-events: none;
 }
 
