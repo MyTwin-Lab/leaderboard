@@ -22,7 +22,7 @@ export function HomeCommunity() {
             Join our community
           </span>
           <p className="v-home-community-lede">
-            Students, engineers, clinicians, researchers and citizens, building the future of
+            Engineers, doctors, researchers, students, patients, building the future of
             health together.
           </p>
         </div>
