@@ -3,7 +3,8 @@
 
    Un écran à deux volets : à gauche la page de garde dans sa version
    téléphone — la photo en portrait, le logo, la promesse et l'accroche — à
-   droite le formulaire. Sous 768px le volet gauche sort (plus bas).
+   droite le formulaire. Sur téléphone et tablette en portrait, le volet gauche
+   sort (plus bas).
 
    La page sort du chrome du Lab (voir `components/layout/LabShell.tsx`) : elle
    porte son propre logo, et une navbar au-dessus d'une photo pleine hauteur
@@ -13,7 +14,6 @@
 .v-signin {
   position: relative;
   display: flex;
-  flex-wrap: wrap;
   min-height: 100vh;
   overflow-x: clip;
   background: var(--v-bg);
@@ -89,25 +89,35 @@
     linear-gradient(to top, rgb(252 252 252 / 0.7) 0%, rgb(252 252 252 / 0) 28%);
 }
 
+/* Tout le bloc se mesure en `cqw`, comme la photo qui se cale sur la largeur
+   du volet : le texte garde sa place dans la scène d'un écran à l'autre, et le
+   bout du bâtiment, en haut à droite, reste dégagé. Les bornes des `clamp`
+   tiennent les extrêmes — lisible sur un volet étroit, pas démesuré sur un
+   grand écran.
+
+   Pas de `gap` uniforme : le logo est une signature, il se tient à distance
+   de la promesse ; l'accroche, elle, la prolonge. */
 .v-signin-top {
   position: relative;
   display: grid;
   justify-items: start;
-  gap: 1.25rem;
+  padding-top: 1.5cqw;
   text-align: left;
   animation: v-signin-rise 0.7s var(--v-ease) 0.12s both;
 }
 
 .v-signin-logo {
   width: auto;
-  height: clamp(1.625rem, 3.4cqw, 2.125rem);
+  height: clamp(1.625rem, 4.2cqw, 2.75rem);
+  margin-bottom: clamp(2rem, 8cqw, 5rem);
   color: var(--v-ink);
 }
 
 .v-signin-claim {
   max-width: 20ch;
+  margin-bottom: clamp(1rem, 3cqw, 1.75rem);
   font-family: var(--v-font-h);
-  font-size: clamp(1.5rem, 5.5cqw, 3.5rem);
+  font-size: clamp(1.625rem, 6.4cqw, 4.25rem);
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -115,18 +125,21 @@
   text-wrap: balance;
 }
 
+/* Sa mesure s'arrête avant le bord droit : au-delà commence la courbe du
+   bâtiment, hors de la zone blanche. Quand elle ne tient plus sur une ligne,
+   elle passe sur deux, équilibrées. */
 .v-signin-lede {
-  max-width: 46ch;
-  font-size: clamp(0.9375rem, 1.6cqw, 1.125rem);
-  line-height: 1.6;
+  max-width: max(60cqw, 17.5rem);
+  font-size: clamp(0.9375rem, 2cqw, 1.3125rem);
+  line-height: 1.55;
   color: var(--v-muted);
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 
 /* ── Le volet formulaire ────────────────────────────────────────────────── */
 .v-signin-form {
   display: flex;
-  flex: 1 1 30rem;
+  flex: 1 1 0;
   min-width: min(100%, 22rem);
   align-items: center;
   justify-content: center;
@@ -236,12 +249,15 @@
   color: var(--v-ink);
 }
 
-/* ── Téléphone ──────────────────────────────────────────────────────────
+/* ── Téléphone, tablette en portrait ────────────────────────────────────
    Le volet photo sort : empilé au-dessus du formulaire, il prenait un écran
    entier avant le bouton. Il n'est que décoratif — le logo et la promesse
    qu'il porte se lisent sur la page d'accueil — et le formulaire se centre
-   alors sur toute la hauteur. */
-@media (max-width: 767px) {
+   alors sur toute la hauteur.
+
+   Sur une tablette en portrait il tiendrait à côté, mais en lanière : la
+   moitié d'un écran plus haut que large, la photo rognée sur les côtés. */
+@media (max-width: 767px), (orientation: portrait) and (max-width: 1023px) {
   .v-signin-visual {
     display: none;
   }
