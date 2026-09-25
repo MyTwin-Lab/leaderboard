@@ -1,12 +1,15 @@
 {
   "type": "module",
+  "engines": {
+    "node": "24.21.0"
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "init:macos": "./scripts/macos/init.sh",
     "init:windows": "scripts\\windows\\init.bat",
-    "build": "npm install && cd apps/leaderboard-client && npm ci && npm run build && rm -rf .next/cache",
+    "build": "npm install && cd apps/leaderboard-client && npm ci && npm run build && rm -rf .next/cache && npm prune --omit=dev",
     "start:dev": "cd apps/leaderboard-client && npm run dev",
     "dev": "npm run start:dev",
     "populate-db": "tsx db_data/seed.ts",
