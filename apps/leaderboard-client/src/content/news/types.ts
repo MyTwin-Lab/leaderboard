@@ -85,8 +85,12 @@ export type NewsIllustration =
     }
   | {
       kind: "visual";
-      /** Dessiné pour le panneau clair du cadre, en `em` : il suit la largeur du cadre. */
-      Visual: ComponentType;
+      /**
+       * Dessiné pour le panneau clair du cadre, en `em` : il suit la largeur du
+       * cadre. `hero` : il est montré en grand, en tête de l'article, et peut
+       * y montrer davantage qu'en aperçu.
+       */
+      Visual: ComponentType<{ hero?: boolean }>;
     };
 
 /**

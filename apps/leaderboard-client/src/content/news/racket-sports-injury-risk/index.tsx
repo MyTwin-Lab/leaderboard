@@ -1,5 +1,6 @@
 import { NewsCallout } from "@/components/news/NewsCallout";
 import { NewsLink } from "@/components/news/NewsLink";
+import { newsPath } from "@/lib/paths";
 import type { NewsArticle } from "../types";
 import { BenchmarkScope } from "./benchmark-scope";
 import { RiskWindowIllustration } from "./risk-window-illustration";
@@ -26,6 +27,7 @@ const JOSHUA_STORY = "https://mytwin.care/en/stories/joshua-sports-injury";
 export const racketSportsInjuryRisk: NewsArticle = {
   slug: "racket-sports-injury-risk",
   publishedAt: "2026-09-16",
+  updatedAt: "2026-09-26",
   eventMonth: "2025-08",
   category: "research",
   readingMinutes: 5,
@@ -58,6 +60,12 @@ export const racketSportsInjuryRisk: NewsArticle = {
   ],
   intro: (
     <>
+      <NewsCallout label="Update">
+        <p>
+          September 2026: the model now powers{" "}
+          <NewsLink href={newsPath("mytwin-athlete")}>MyTwin Athlete, an app for professional tennis players</NewsLink>.
+        </p>
+      </NewsCallout>
       <p>
         In August 2025, MyTwin built a first prototype of an injury-risk model for racket sports. Built into the
         athlete’s digital twin, it estimates whether a player is at higher risk of injury over the next 14 days. The

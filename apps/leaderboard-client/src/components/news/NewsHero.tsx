@@ -17,6 +17,7 @@ export function NewsHero({ illustration }: { illustration: NewsIllustration }) {
         illustration={illustration}
         alt={illustration.kind === "image" ? illustration.alt : undefined}
         sizes="(min-width: 1136px) 68rem, 100vw"
+        hero
         className="v-nd-hero-frame bg-[#11161a]"
       />
     </figure>

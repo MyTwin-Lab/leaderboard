@@ -15,6 +15,7 @@ export function NewsIllustrationFrame({
   illustration,
   sizes,
   alt,
+  hero = false,
   className,
 }: {
   illustration: NewsIllustration;
@@ -22,6 +23,8 @@ export function NewsIllustrationFrame({
   sizes: string;
   /** Le texte de remplacement, quand l'image porte le contenu et non l'aperçu. */
   alt?: string;
+  /** En tête d'article : un visuel peut y montrer davantage qu'en aperçu. */
+  hero?: boolean;
   className?: string;
 }) {
   const decorative = alt === undefined;
@@ -70,7 +73,7 @@ export function NewsIllustrationFrame({
       className={cn("@container relative flex items-center justify-center overflow-hidden", className)}
     >
       <div className="flex size-full items-center justify-center bg-[radial-gradient(60%_55%_at_70%_30%,rgb(11_122_100/0.08),transparent_70%),linear-gradient(180deg,#f1f0eb,#e9e7e0)] text-[#11161a] text-[length:clamp(9px,3.6cqw,16px)]">
-        <Visual />
+        <Visual hero={hero} />
       </div>
     </div>
   );
