@@ -4,7 +4,7 @@ import { sandboxPath } from "@/lib/paths";
 import { SITE_URL } from "@/lib/seo";
 import type { NewsArticle } from "../types";
 import { OnDevicePipeline } from "./on-device-pipeline";
-import { PoseIllustration } from "./pose-illustration";
+import { PoseFigure } from "./pose-illustration";
 
 const SANDBOX = sandboxPath("mykine-guided-physio-sessions-with-on-device-pose-estimation");
 const REAL_WORLD_DATA = "https://mytwin.care/en/blog/real-world-data-patient-monitoring";
@@ -28,7 +28,12 @@ export const mykine: NewsArticle = {
   readingMinutes: 5,
   title: "MyKine: guided physiotherapy sessions with on-device pose estimation",
   overviewTitle: "MyKine turns a phone camera into a physio’s measuring tool",
-  illustration: { kind: "visual", Visual: PoseIllustration },
+  illustration: {
+    kind: "image",
+    src: "/news/mykine-motion-capture.webp",
+    alt: "A man squats facing a phone on a tripod while his skeleton, reconstructed by pose estimation, appears on a screen behind it",
+    position: "50% 45%",
+  },
   seoTitle: "MyKine: home physio with pose estimation",
   description:
     "MyKine, a MyTwin Lab Sandbox project, uses the phone camera to count reps and measure joint angles in home physio, with no image leaving the device.",
@@ -62,6 +67,7 @@ export const mykine: NewsArticle = {
         count repetitions and measure joint angles during each exercise, and not a single image leaves the device. It is
         an early project, a web demo, and it is looking for the community’s support to go further.
       </p>
+      <PoseFigure />
     </>
   ),
   sections: [

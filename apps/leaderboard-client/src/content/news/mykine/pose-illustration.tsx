@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { NewsFigure } from "@/components/news/NewsFigure";
+
 // La silhouette que l'estimation de pose reconstruit à partir de la caméra du
 // téléphone, pendant un squat. Les deux relevés suivent le bonhomme : une
 // répétition comptée à chaque remontée, par séries de 12, et l'angle du genou
@@ -190,5 +192,19 @@ export function PoseIllustration() {
       <Chip label="Reps" value={`${String(reps).padStart(2, "0")} / ${SET_SIZE}`} className="top-[1.4em] left-[1.4em]" />
       <Chip label="Knee flexion" value={`${flexion}°`} className="right-[1.4em] bottom-[1.4em]" />
     </div>
+  );
+}
+
+// Le même visuel dans le texte, sous l'intro. Il est dessiné en `em` : la
+// police suit la largeur du cadre (`cqw`), comme dans `NewsIllustrationFrame`.
+export function PoseFigure() {
+  return (
+    <NewsFigure caption="During a squat, the pose model follows the body, counts each repetition and measures the knee angle.">
+      <div aria-hidden className="@container aspect-[16/9] overflow-hidden rounded-[12px]">
+        <div className="size-full text-[length:clamp(9px,3.6cqw,16px)]">
+          <PoseIllustration />
+        </div>
+      </div>
+    </NewsFigure>
   );
 }
