@@ -414,11 +414,6 @@
     font-size: 10.5px;
   }
 
-  /* Le nom du projet quitte la photo : il rejoint la ligne de progression. */
-  .v-ch-project-name-on-shot {
-    display: none;
-  }
-
   .v-ch-pool-value {
     font-size: 17px;
   }
@@ -448,8 +443,8 @@
     padding: 13px 14px;
   }
 
-  /* La sparkline et sa légende sortent : la ligne se réduit à la progression
-     et au nom du projet. */
+  /* La sparkline et sa légende sortent : la ligne se réduit à la
+     progression. */
   .v-ch-meta {
     gap: 10px;
     padding-bottom: 0;
@@ -467,16 +462,6 @@
 
   .v-ch-pct {
     font-size: 11.5px;
-  }
-
-  .v-ch-project-inline {
-    min-width: 0;
-    max-width: 45%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 11.5px;
-    color: var(--v-subtle);
   }
 
   .v-ch-foot {
@@ -531,17 +516,6 @@
 
   .v-ch-strip .v-strip-cta {
     justify-content: center;
-  }
-}
-
-/* Le nom du projet n'apparaît sur la ligne de progression que sur téléphone. */
-.v-ch-project-inline {
-  display: none;
-}
-
-@media (max-width: 767px) {
-  .v-ch-project-inline {
-    display: inline;
   }
 }
 

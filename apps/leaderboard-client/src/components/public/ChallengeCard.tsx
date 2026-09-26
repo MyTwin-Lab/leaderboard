@@ -176,7 +176,6 @@ export function ChallengeCard({
               <span style={{ width: `${barWidth}%` }} />
             </div>
             <span className="v-ch-pct">{completion}%</span>
-            <span className="v-ch-project-inline">{projectName}</span>
           </div>
         </div>
 
