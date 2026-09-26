@@ -147,8 +147,19 @@ export const Navbar = ({ session }: NavbarProps) => {
                   avatarUrl={session.avatarUrl}
                 />
               ) : (
-                <Link href="/signin?from=/contributors/me" className="lab-nav-cta">
-                  Sign in
+                <Link
+                  href="/signin?from=/contributors/me"
+                  className="lab-nav-cta"
+                  aria-label="Sign in"
+                  title="Sign in"
+                >
+                  {/* La silhouette de /profile.svg, en ligne pour qu'elle prenne
+                      la couleur du texte au lieu d'un filtre par thème. */}
+                  <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+                    <path d="M2 28C2 24.6863 4.68629 22 8 22H32C35.3137 22 38 24.6863 38 28H2Z" />
+                    <rect x="11" width="18" height="18" rx="9" />
+                    <path d="M38 28C38 29.5759 37.5344 31.1363 36.6298 32.5922C35.7253 34.0481 34.3994 35.371 32.7279 36.4853C31.0565 37.5996 29.0722 38.4835 26.8883 39.0865C24.7044 39.6896 22.3638 40 20 40C17.6362 40 15.2956 39.6896 13.1117 39.0865C10.9278 38.4835 8.94353 37.5996 7.27208 36.4853C5.60062 35.371 4.27475 34.0481 3.37017 32.5922C2.46558 31.1363 2 29.5759 2 28H20H38Z" />
+                  </svg>
                 </Link>
               )}
             </div>

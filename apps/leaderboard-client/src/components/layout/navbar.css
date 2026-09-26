@@ -206,25 +206,33 @@
   align-items: center;
 }
 
+/* Pas un bouton libellé : la pastille ronde d'avant, avec la silhouette
+   dedans — un fond à peine posé, l'encre du texte. */
 .lab-nav-cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 38px;
   height: 38px;
-  padding-inline: 18px;
   border-radius: 999px;
-  background: var(--n-ink);
-  color: var(--n-bg);
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: background-color 0.3s var(--n-ease);
+  background: var(--n-line);
+  color: color-mix(in srgb, var(--n-ink) 45%, transparent);
+  transition:
+    background-color 0.3s var(--n-ease),
+    color 0.3s var(--n-ease);
 }
 
+.lab-nav-cta svg {
+  width: 19px;
+  height: 19px;
+  fill: currentColor;
+}
+
+/* Au survol la pastille s'assombrit, sans virer à l'accent. */
 .lab-nav-cta:hover,
 .lab-nav-cta:focus-visible {
-  background: var(--n-accent);
-  color: var(--n-bg);
+  background: color-mix(in srgb, var(--n-ink) 20%, transparent);
+  color: color-mix(in srgb, var(--n-ink) 60%, transparent);
 }
 
 .lab-nav-cta:focus-visible {
