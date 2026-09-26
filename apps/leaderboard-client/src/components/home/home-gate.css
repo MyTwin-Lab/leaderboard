@@ -49,6 +49,9 @@
   padding: clamp(1.25rem, 3vh, 2.25rem) var(--v-gutter, clamp(1.25rem, 4vw, 4.5rem))
     clamp(1.25rem, 3.5vh, 2rem);
   background: var(--v-bg);
+  /* Le sol en bas de la photo, sous le voile du bas : la couleur de la rallonge
+     qui passe sous la barre de Safari. */
+  --v-gate-floor: rgb(241 241 242);
   /* Un glissé sur la prépage ne fait rien défiler, pas même la page dessous :
      elle couvre tout l'écran, donc aucun geste ne peut commencer ailleurs. En
      CSS plutôt qu'en JS, pour valoir dès le premier rendu, avant
@@ -70,25 +73,33 @@
   pointer-events: none;
 }
 
-/* Le cadre de la photo du téléphone : la prépage entière.
+/* Le cadre de la photo du téléphone : la prépage entière, et rien de plus.
 
-   Sur Safari iOS, la boîte `inset: 0` d'un élément fixe peut s'arrêter avant
-   le bas réel de l'écran, et la photo avec elle, laissant une bande claire
-   sous la scène. Là seulement, le cadre prend au moins la hauteur du grand
-   viewport : il déborde sous la barre du navigateur et ne fait rien défiler,
-   la prépage étant fixe. `-webkit-touch-callout` ne répond que sur iOS. */
+   Sur Safari iOS, la boîte `inset: 0` d'un élément fixe s'arrête au-dessus de
+   la barre du navigateur, et la page claire se voit dessous, derrière la barre
+   translucide. Agrandir le cadre jusqu'au grand viewport (`100lvh`) comblait
+   la bande, mais la photo se recadrait sur cette hauteur-là : tout son bas
+   passait sous la barre, pieds des visiteurs compris, et le bouton tombait sur
+   le socle du panneau.
+
+   Le cadre reste donc à la taille de ce qu'on voit, et la photo s'y recadre.
+   Seule une rallonge sous le cadre, de la couleur du sol voilé, comble ce que
+   la barre laisse transparaître — ailleurs elle est hors de l'écran et ne se
+   voit pas. */
 .v-gate-frame {
   position: absolute;
   inset: 0;
   z-index: -2;
 }
 
-@supports (-webkit-touch-callout: none) {
-  .v-gate-frame {
-    bottom: auto;
-    height: 100%;
-    min-height: 100lvh;
-  }
+.v-gate-frame::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 100lvh;
+  background: var(--v-gate-floor);
 }
 
 /* La photo du téléphone : prise en portrait, elle se recadre pour couvrir et
@@ -96,7 +107,7 @@
    visiteurs. */
 .v-gate-shot {
   object-fit: cover;
-  object-position: 50% 30%;
+  object-position: 50% 15%;
   z-index: -2;
   animation: v-gate-reveal 1.2s var(--v-ease) both;
 }

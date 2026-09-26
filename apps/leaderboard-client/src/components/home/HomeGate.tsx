@@ -130,8 +130,8 @@ export function HomeGate() {
           faire.
 
           Elle est posée dans un cadre plutôt que directement : `fill` fixe sa
-          boîte en style inline, et c'est le cadre qui la prolonge sous le bas
-          de l'écran sur iOS — voir `home-gate.css`. */}
+          boîte en style inline, et c'est le cadre qui porte la rallonge sous
+          la barre de Safari iOS — voir `home-gate.css`. */}
       <div aria-hidden="true" className="v-gate-frame">
         <Image
           src="/home/enter-the-lab.jpg"
