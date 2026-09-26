@@ -2,6 +2,7 @@ import { NewsCallout } from "@/components/news/NewsCallout";
 import { NewsLink } from "@/components/news/NewsLink";
 import { NewsPhotoRow } from "@/components/news/NewsPhotoRow";
 import { newsPath } from "@/lib/paths";
+import { MYTWIN } from "@/lib/seo";
 import type { NewsArticle } from "../types";
 import { ImageToDynamicModel } from "./image-to-dynamic-model";
 
@@ -59,8 +60,9 @@ export const petScan3dAnatomicalModel: NewsArticle = {
   intro: (
     <>
       <p>
-        As part of the development of MyTwin Lab, we have taken a new step in building the patient’s digital twin: the
-        creation of a 3D anatomical model from a full-body PET scan.
+        As part of the development of MyTwin Lab, we have taken a new step in building{" "}
+        <NewsLink href={MYTWIN.url}>the patient’s digital twin</NewsLink>: the creation of a 3D anatomical model from a
+        full-body PET scan.
       </p>
       <p>
         Starting from the medical imaging data, the different anatomical structures were segmented, then reconstructed in
