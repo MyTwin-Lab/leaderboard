@@ -1,7 +1,6 @@
-import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
 import { GitHubIcon } from "@/components/ui/GitHubIcon";
+import { VitrineAvatar } from "@/components/vitrine/VitrineAvatar";
 import { formatCP } from "@/lib/formatters";
-import { getMedalStyle } from "@/lib/medals";
 import type { ContributorRankGap } from "@/lib/types";
 
 interface ContributorHeaderProps {
@@ -14,6 +13,8 @@ interface ContributorHeaderProps {
   rankGap?: ContributorRankGap;
   contributingSince?: string;
   avatarSlot?: React.ReactNode;
+  /** La pastille « Admin », sur sa propre page quand on en est un. */
+  isAdmin?: boolean;
 }
 
 function formatSince(iso: string) {
@@ -27,6 +28,18 @@ function rankGapLabel(gap: ContributorRankGap) {
     : `${cp} CP behind #${gap.rank}`;
 }
 
+/**
+ * La carte d'identité de la page d'un contributeur, d'après
+ * `Profile Vitrine.dc.html`.
+ *
+ * Colonne de gauche sur écran, où elle reste au défilement pendant qu'on
+ * parcourt les onglets ; en-tête pleine largeur sur téléphone, où la photo
+ * passe à côté du nom (`profile-vitrine.css`).
+ *
+ * Le rang est une pastille sur la photo, sans médaille : la maquette donne la
+ * même à tous les rangs, et l'or du podium est le langage du classement, pas
+ * celui d'une fiche.
+ */
 export function ContributorHeader({
   displayName,
   githubUsername,
@@ -37,78 +50,65 @@ export function ContributorHeader({
   rankGap,
   contributingSince,
   avatarSlot,
+  isAdmin = false,
 }: ContributorHeaderProps) {
-  const medal = globalRank != null && globalRank <= 3 ? getMedalStyle(globalRank) : null;
-
   const metaLine = [bio, contributingSince ? `contributing since ${formatSince(contributingSince)}` : null]
     .filter(Boolean)
     .join(" · ");
 
   return (
-    <div className="animate-fade-up mb-6 overflow-hidden rounded-[28px] sm:mb-8">
-      <div className="flex flex-wrap items-start justify-between gap-6 p-5 sm:p-7">
-        {/* Avatar + identity */}
-        <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
-          <div className="relative shrink-0 animate-count-in" style={{ animationDelay: "0ms" }}>
-            {avatarSlot ?? (
-              <InitialsAvatar name={displayName} size={80} avatarUrl={avatarUrl} className="rounded-[24px]" />
-            )}
-            {medal && (
-              <span
-                className={`absolute -left-1.5 -top-2 flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-bold ${medal.badge}`}
+    <aside className="v-pro-side">
+      <div className="v-pro-id">
+        <div className="v-pro-shot">
+          {avatarSlot ?? (
+            <VitrineAvatar
+              name={displayName}
+              avatarUrl={avatarUrl}
+              size="clamp(4rem, 12vw, 4.5rem)"
+              ring={false}
+            />
+          )}
+          {globalRank != null && <span className="v-pro-rank">#{globalRank}</span>}
+        </div>
+
+        <div className="v-pro-ident">
+          <span className="v-pro-kicker">Contributor profile</span>
+          <h1 className="v-pro-name">{displayName}</h1>
+          {metaLine && <p className="v-pro-meta">{metaLine}</p>}
+        </div>
+
+        {(githubUsername || isAdmin) && (
+          <div className="v-pro-chips">
+            {githubUsername && (
+              <a
+                href={`https://github.com/${githubUsername}`}
+                target="_blank"
+                // Identifiant saisi par le contributeur : `ugc`, pour ne pas
+                // transmettre l'autorité du site.
+                rel="ugc noopener noreferrer"
+                className="v-pro-chip"
               >
-                {medal.label}
+                <GitHubIcon />
+                {githubUsername}
+              </a>
+            )}
+            {isAdmin && (
+              <span className="v-pro-badge">
+                <span className="v-pro-badge-dot" />
+                Admin
               </span>
             )}
           </div>
-
-          <div className="flex min-w-0 flex-col gap-1.5 pt-1">
-            <div className="flex flex-wrap items-center gap-2 animate-fade-up" style={{ animationDelay: "60ms" }}>
-              <h1 className="truncate text-xl font-semibold tracking-tight text-white sm:text-2xl">
-                {displayName}
-              </h1>
-              {githubUsername && (
-                <a
-                  href={`https://github.com/${githubUsername}`}
-                  target="_blank"
-                  // Identifiant saisi par le contributeur : `ugc`, pour ne pas
-                  // transmettre l'autorité du site.
-                  rel="ugc noopener noreferrer"
-                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/8 px-2.5 py-1 text-xs text-white/50 transition-all duration-200 hover:scale-[1.04] hover:bg-white/15 hover:text-white/80"
-                >
-                  <GitHubIcon className="h-3 w-3" />
-                  {githubUsername}
-                </a>
-              )}
-              {medal == null && globalRank != null && (
-                <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/50">
-                  #{globalRank}
-                </span>
-              )}
-            </div>
-
-            {metaLine && (
-              <p
-                className="max-w-md truncate text-sm text-white/45 animate-fade-up"
-                style={{ animationDelay: "100ms" }}
-              >
-                {metaLine}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* CP figure */}
-        <div className="flex shrink-0 flex-col items-end gap-1 animate-fade-up" style={{ animationDelay: "130ms" }}>
-          <span className="inline-flex items-baseline gap-1.5">
-            <span className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              {formatCP(totalCP)}
-            </span>
-            <span className="text-sm font-semibold text-brandCP">CP</span>
-          </span>
-          {rankGap && <span className="text-xs text-white/45">{rankGapLabel(rankGap)}</span>}
-        </div>
+        )}
       </div>
-    </div>
+
+      <div className="v-pro-cp">
+        <span className="v-pro-cp-line">
+          <span className="v-pro-cp-value">{formatCP(totalCP)}</span>
+          <span className="v-pro-cp-unit">CP</span>
+        </span>
+        {rankGap && <span className="v-pro-cp-gap">{rankGapLabel(rankGap)}</span>}
+      </div>
+    </aside>
   );
 }

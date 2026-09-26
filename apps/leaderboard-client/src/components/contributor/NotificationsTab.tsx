@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Check, Loader2, Users, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { challengePath } from '@/lib/paths';
+import { VitrineAvatar } from '@/components/vitrine/VitrineAvatar';
 
 interface NotificationView {
   uuid: string;
@@ -110,87 +111,62 @@ export function NotificationsTab() {
   };
 
   if (loading) {
-    return <p className="py-8 text-center text-xs text-white/30">Loading…</p>;
+    return <p className="v-pro-note" style={{ padding: '2rem 0', textAlign: 'center' }}>Loading…</p>;
   }
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto flex max-w-2xl flex-col items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-10 text-center">
-        <Bell className="h-5 w-5 text-white/20" />
-        <p className="text-sm text-white/40">Nothing here yet.</p>
-        <p className="text-xs text-white/25">
-          Group invitations from other contributors will show up here.
-        </p>
+      <div className="v-pro-empty">
+        <span className="v-pro-empty-title">Nothing waiting for you</span>
+        <span className="v-pro-empty-sub">Group invitations show up here.</span>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-2 py-2">
+    <>
+      <span className="v-pro-kicker">Group invitations</span>
       {items.map(item => {
         const pending = busy === item.uuid;
         const error = errors[item.uuid];
+        const from = String(item.payload.fromName ?? 'A contributor');
         return (
-          <div
-            key={item.uuid}
-            className={`rounded-xl border px-4 py-3 transition-colors ${
-              item.read
-                ? 'border-white/[0.06] bg-white/[0.02]'
-                : 'border-brandCP/20 bg-brandCP/[0.04]'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <Users className="mt-0.5 h-4 w-4 shrink-0 text-brandCP/70" />
+          <div key={item.uuid} className="v-pro-invite">
+            <VitrineAvatar name={from} size="2.25rem" ring={false} />
 
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-white/85">
-                  <span className="font-semibold">
-                    {String(item.payload.fromName ?? 'A contributor')}
-                  </span>
-                  {' invited you to their group on '}
-                  <span className="font-semibold">
-                    {String(item.payload.challengeTitle ?? 'a challenge')}
-                  </span>
-                </p>
-                {item.created_at && (
-                  <p className="mt-0.5 text-[11px] text-white/25">
-                    {new Date(item.created_at).toLocaleDateString('en-US', {
-                      day: 'numeric', month: 'long', year: 'numeric',
-                    })}
-                  </p>
-                )}
-              </div>
-
-              {/* Les deux ronds. Accepter est plein, refuser est un contour :
-                  l'un est l'action offerte, l'autre la sortie. */}
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  onClick={() => accept(item)}
-                  disabled={pending}
-                  aria-label="Accept and join the group"
-                  title="Join the group"
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-brandCP transition-all duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {pending
-                    ? <Loader2 className="h-4 w-4 animate-spin" style={{ color: '#fff' }} />
-                    : <Check className="h-4 w-4" style={{ color: '#fff' }} />}
-                </button>
-                <button
-                  onClick={() => decline(item)}
-                  disabled={pending}
-                  aria-label="Dismiss this invitation"
-                  title="Dismiss"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 text-white/50 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 hover:text-white/80 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+            <div className="v-pro-invite-text">
+              <span className="v-pro-invite-title">{from} invited you to their group</span>
+              <span className="v-pro-invite-sub">
+                {String(item.payload.challengeTitle ?? 'a challenge')}
+                {' · you would share their board, branch and contribution.'}
+              </span>
+              {error && <span className="v-pro-error">{error}</span>}
             </div>
 
-            {error && <p className="mt-2 pl-7 text-xs text-red-400">{error}</p>}
+            {/* Accepter est plein, refuser est du texte : l'un est l'action
+                offerte, l'autre la sortie. */}
+            <div className="v-pro-invite-actions">
+              <button
+                onClick={() => accept(item)}
+                disabled={pending}
+                aria-label="Accept and join the group"
+                className="v-pro-btn"
+              >
+                {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Accept
+              </button>
+              <button
+                onClick={() => decline(item)}
+                disabled={pending}
+                aria-label="Dismiss this invitation"
+                className="v-pro-btn-text"
+              >
+                Decline
+              </button>
+            </div>
           </div>
         );
       })}
-    </div>
+    </>
   );
 }

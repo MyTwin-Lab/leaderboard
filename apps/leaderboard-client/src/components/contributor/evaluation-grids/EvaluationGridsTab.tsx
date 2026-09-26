@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, Plus, Search } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Plus } from 'lucide-react';
 import { ToastProvider, useToast } from '@/components/ui/Toast';
 import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialog';
 import { GridCard } from './GridCard';
@@ -12,9 +11,6 @@ import { GridTestRun } from './GridTestRun';
 import type { EvaluationGrid, EvaluationGridFull } from '@packages/database-service/domain/entities';
 
 type View = { mode: 'list' } | { mode: 'edit'; gridId: string } | { mode: 'test'; gridId: string };
-
-const inputClass =
-  'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-brandCP/50 focus:outline-none focus:ring-1 focus:ring-brandCP/50';
 
 // The contributor profile tree doesn't mount ToastProvider/ConfirmDialogProvider
 // (only apps/leaderboard-client/src/app/admin/layout.tsx does), so this tab
@@ -121,39 +117,36 @@ function EvaluationGridsPanel() {
   }
 
   return (
-    <div className="animate-fade-up space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-          <ClipboardList className="h-3.5 w-3.5" />
-          Evaluation Grids
-        </h2>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search grids…"
-              className={`${inputClass} w-48 pl-8`}
-            />
-          </div>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-3.5 w-3.5" />
+    <>
+      <div className="v-pro-head">
+        <span className="v-pro-kicker">Evaluation grids</span>
+        <div className="v-pro-digest-actions">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search grids…"
+            className="v-pro-input"
+            style={{ width: "12rem" }}
+          />
+          <button className="v-pro-btn" onClick={() => setCreateOpen(true)}>
+            <Plus />
             New grid
-          </Button>
+          </button>
         </div>
       </div>
 
       {loading ? (
         <GridListSkeleton />
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] py-12 text-center text-sm text-white/40">
-          {grids.length === 0
-            ? 'No evaluation grids yet. Create the first one.'
-            : 'No grid matches your search.'}
+        <div className="v-pro-empty">
+          <span className="v-pro-empty-sub">
+            {grids.length === 0
+              ? 'No evaluation grids yet. Create the first one.'
+              : 'No grid matches your search.'}
+          </span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="v-pro-cards">
           {filtered.map((grid) => (
             <GridCard
               key={grid.uuid}
@@ -166,15 +159,15 @@ function EvaluationGridsPanel() {
       )}
 
       <GridDrawer open={createOpen} onClose={() => setCreateOpen(false)} onSaved={handleCreated} />
-    </div>
+    </>
   );
 }
 
 function GridListSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="v-pro-cards">
       {[...Array(3)].map((_, i) => (
-        <div key={i} className="h-28 animate-pulse rounded-xl bg-white/5" />
+        <div key={i} className="v-pro-skeleton" />
       ))}
     </div>
   );

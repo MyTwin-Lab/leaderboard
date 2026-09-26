@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, AlertCircle, Loader2, Palette, Sun, Moon } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { THEMES, type ThemeKey } from "@/lib/themes";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -14,6 +14,15 @@ interface ThemeSettingsProps {
   currentThemeMode: string;
 }
 
+/**
+ * L'onglet Appearance, d'après `Profile Vitrine.dc.html` : une grille de
+ * thèmes montrés par trois pastilles — fond, accent, encre — puis
+ * l'interrupteur du mode sombre sur la carte teintée.
+ *
+ * Les deux couleurs libres ne sont pas dans la maquette : elles écrasent celles
+ * du thème choisi, et ce réglage existe déjà. Elles gardent donc leur bloc, à
+ * la matière de la page.
+ */
 export function ThemeSettings({
   currentTheme,
   currentPrimaryColor,
@@ -69,22 +78,6 @@ export function ThemeSettings({
     });
   };
 
-  const handlePrimaryChange = (hex: string) => {
-    setPrimaryColor(hex);
-  };
-
-  const handlePrimaryCommit = (hex: string) => {
-    save({ primary_color: hex });
-  };
-
-  const handleBackgroundChange = (hex: string) => {
-    setBackgroundColor(hex);
-  };
-
-  const handleBackgroundCommit = (hex: string) => {
-    save({ background_color: hex });
-  };
-
   const toggleMode = () => {
     const next = themeMode === "dark" ? "light" : "dark";
     setThemeMode(next);
@@ -92,142 +85,121 @@ export function ThemeSettings({
   };
 
   return (
-    <div className="animate-fade-up space-y-8 py-2">
+    <>
+      <span className="v-pro-kicker">Theme</span>
 
-      {/* ── Quick presets ── */}
-      <div>
-        <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-          <Palette className="h-3.5 w-3.5" />
-          Quick Presets
-        </h2>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-          {(Object.entries(THEMES) as [ThemeKey, typeof THEMES[ThemeKey]][]).map(([key, tokens]) => {
-            const isActive = activePreset === key && !status;
-            return (
-              <button
-                key={key}
-                onClick={() => applyPreset(key)}
-                disabled={status === "saving"}
-                className={`group relative flex flex-col items-center gap-2 rounded-xl border p-2.5 transition-all duration-200 focus-visible:outline-none disabled:opacity-50 ${
-                  isActive
-                    ? "border-white/30 bg-white/[0.07]"
-                    : "border-white/[0.07] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]"
-                }`}
-              >
-                <div className="relative h-9 w-9 overflow-hidden rounded-lg flex-shrink-0">
-                  <div className="absolute inset-0" style={{ backgroundColor: tokens.background }} />
-                  <div className="absolute bottom-0 left-0 right-0 h-4 rounded-t-full" style={{ backgroundColor: tokens.primary300 }} />
-                  <div className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full" style={{ backgroundColor: tokens.brandCP }} />
-                </div>
-                <span className={`text-[10px] font-medium leading-tight ${isActive ? "text-white" : "text-white/40 group-hover:text-white/60"}`}>
-                  {tokens.label}
-                </span>
-                {isActive && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-white/80" />}
-              </button>
-            );
-          })}
-        </div>
+      <div className="v-pro-themes">
+        {(Object.entries(THEMES) as [ThemeKey, typeof THEMES[ThemeKey]][]).map(([key, tokens]) => (
+          <button
+            key={key}
+            onClick={() => applyPreset(key)}
+            disabled={status === "saving"}
+            className="v-pro-theme"
+            data-on={activePreset === key}
+          >
+            {/* Les trois pastilles de la maquette : le fond, l'accent, et le
+                fond sombre du thème — il n'y a pas de jeton d'encre à montrer. */}
+            <span className="v-pro-theme-swatches">
+              <span style={{ background: tokens.background }} />
+              <span style={{ background: tokens.brandCP }} />
+              <span style={{ background: tokens.backgroundDark }} />
+            </span>
+            <span className="v-pro-theme-label">{tokens.label}</span>
+          </button>
+        ))}
       </div>
 
-      {/* ── Custom colors ── */}
-      <div>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
-          Custom Colors
-        </h2>
-        <div className="flex flex-col gap-4 sm:flex-row">
-
-          {/* Primary / Accent */}
-          <label className="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
-            <div
-              className="h-8 w-8 flex-shrink-0 rounded-lg border border-white/20"
-              style={{ backgroundColor: primaryColor }}
-            />
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold text-white/70">Accent color</p>
-              <p className="text-[10px] text-white/30">{primaryColor}</p>
-            </div>
-            <input
-              type="color"
-              value={primaryColor}
-              onChange={e => handlePrimaryChange(e.target.value)}
-              onBlur={e => handlePrimaryCommit(e.target.value)}
-              className="sr-only"
-            />
-          </label>
-
-          {/* Background */}
-          <label className="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
-            <div
-              className="h-8 w-8 flex-shrink-0 rounded-lg border border-white/20"
-              style={{ backgroundColor: backgroundColor }}
-            />
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold text-white/70">Background</p>
-              <p className="text-[10px] text-white/30">{backgroundColor}</p>
-            </div>
-            <input
-              type="color"
-              value={backgroundColor}
-              onChange={e => handleBackgroundChange(e.target.value)}
-              onBlur={e => handleBackgroundCommit(e.target.value)}
-              className="sr-only"
-            />
-          </label>
+      <div className="v-pro-switch-row" data-tone="mint">
+        <div className="v-pro-switch-text">
+          <span className="v-pro-switch-label">Dark mode</span>
+          <span className="v-pro-switch-desc">
+            Applies to every contributor until they override it.
+          </span>
         </div>
-      </div>
-
-      {/* ── Dark / Light mode ── */}
-      <div>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
-          Mode
-        </h2>
         <button
           onClick={toggleMode}
           disabled={status === "saving"}
-          className="flex w-full items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3 transition-colors hover:border-white/20 hover:bg-white/[0.05] disabled:opacity-50"
+          className="v-pro-toggle"
+          data-on={themeMode === "dark"}
+          aria-label="Toggle dark mode"
+          aria-pressed={themeMode === "dark"}
         >
-          <div className="flex items-center gap-3">
-            {themeMode === "dark"
-              ? <Moon className="h-4 w-4 text-white/50" />
-              : <Sun className="h-4 w-4 text-white/50" />
-            }
-            <div className="text-left">
-              <p className="text-[11px] font-semibold text-white/70">
-                {themeMode === "dark" ? "Dark mode" : "Light mode"}
-              </p>
-              <p className="text-[10px] text-white/30">
-                {themeMode === "dark" ? "Light text on dark background" : "Dark text on light background"}
-              </p>
-            </div>
-          </div>
-          {/* Toggle pill */}
-          <div className={`relative h-5 w-9 flex-shrink-0 rounded-full transition-colors duration-200 ${themeMode === "light" ? "bg-brandCP/70" : "bg-white/15"}`}>
-            <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${themeMode === "light" ? "translate-x-4" : "translate-x-0"}`} />
-          </div>
+          <span />
         </button>
       </div>
 
-      {/* ── Status ── */}
-      <div className="flex items-center justify-end h-5">
+      {/* Les deux couleurs libres, hors maquette : elles prennent le pas sur le
+          thème choisi jusqu'à ce qu'on en choisisse un autre. */}
+      <span className="v-pro-kicker">Custom colors</span>
+      <div className="v-pro-cards">
+        <ColorField
+          label="Accent color"
+          value={primaryColor}
+          onChange={setPrimaryColor}
+          onCommit={(hex) => save({ primary_color: hex })}
+        />
+        <ColorField
+          label="Background"
+          value={backgroundColor}
+          onChange={setBackgroundColor}
+          onCommit={(hex) => save({ background_color: hex })}
+        />
+      </div>
+
+      <div className="v-pro-save">
         {status === "saving" && (
-          <span className="animate-slide-in flex items-center gap-1.5 text-xs text-white/35">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span data-state="saving">
+            <Loader2 className="animate-spin" />
             Applying…
           </span>
         )}
         {status === "saved" && (
-          <span className="animate-slide-in flex items-center gap-1.5 text-xs text-green-400">
-            <CheckCircle2 className="h-3.5 w-3.5" />
+          <span data-state="saved">
+            <CheckCircle2 />
             Theme applied
           </span>
         )}
         {status === "error" && (
-          <span className="animate-slide-in flex items-center gap-1.5 text-xs text-red-400">
-            <AlertCircle className="h-3.5 w-3.5" />
+          <span data-state="error">
+            <AlertCircle />
             Failed to apply
           </span>
         )}
       </div>
-    </div>
+    </>
+  );
+}
+
+function ColorField({
+  label,
+  value,
+  onChange,
+  onCommit,
+}: {
+  label: string;
+  value: string;
+  onChange: (hex: string) => void;
+  onCommit: (hex: string) => void;
+}) {
+  return (
+    <label className="v-pro-switch-row" style={{ cursor: "pointer", gap: "0.875rem" }}>
+      <span
+        className="v-pro-theme-swatches"
+        style={{ flex: "none" }}
+      >
+        <span style={{ background: value, width: "2rem", height: "2rem" }} />
+      </span>
+      <div className="v-pro-switch-text" style={{ flex: 1 }}>
+        <span className="v-pro-switch-label">{label}</span>
+        <span className="v-pro-switch-desc">{value}</span>
+      </div>
+      <input
+        type="color"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onBlur={e => onCommit(e.target.value)}
+        className="sr-only"
+      />
+    </label>
   );
 }

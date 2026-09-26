@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Video, Compass } from "lucide-react";
-import { Toggle } from "@/components/ui/Toggle";
 
 interface Props {
   meetingsEnabled: boolean;
@@ -38,40 +36,37 @@ export function ModulesSettings({ meetingsEnabled: initialMeetings, onboardingEn
       key: "meetings_enabled" as const,
       label: "Meetings",
       description: "Show the meetings sidebar in challenge views for contributors",
-      icon: <Video className="h-4 w-4 text-white/50" />,
       enabled: meetingsEnabled,
     },
     {
       key: "onboarding_enabled" as const,
       label: "Onboarding",
       description: "Show the onboarding quest drawer for contributors",
-      icon: <Compass className="h-4 w-4 text-white/50" />,
       enabled: onboardingEnabled,
     },
   ];
 
   return (
-    <div className="space-y-3">
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
-        Modules
-      </h2>
+    <>
+      <span className="v-pro-kicker">Modules</span>
       {modules.map((mod) => (
-        <div
-          key={mod.key}
-          className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            {mod.icon}
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-white">{mod.label}</p>
-              <p className="text-xs text-white/35 mt-0.5">{mod.description}</p>
-            </div>
+        <div key={mod.key} className="v-pro-switch-row">
+          <div className="v-pro-switch-text">
+            <span className="v-pro-switch-label">{mod.label}</span>
+            <span className="v-pro-switch-desc">{mod.description}</span>
           </div>
-          <div className={`shrink-0 transition-opacity ${saving === mod.key ? "opacity-50" : ""}`}>
-            <Toggle enabled={mod.enabled} onChange={(v) => toggle(mod.key, v)} />
-          </div>
+          <button
+            onClick={() => toggle(mod.key, !mod.enabled)}
+            className="v-pro-toggle"
+            data-on={mod.enabled}
+            aria-label={`Toggle ${mod.label}`}
+            aria-pressed={mod.enabled}
+            style={saving === mod.key ? { opacity: 0.5 } : undefined}
+          >
+            <span />
+          </button>
         </div>
       ))}
-    </div>
+    </>
   );
 }

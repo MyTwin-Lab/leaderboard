@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Sparkles, Star, Trophy } from "lucide-react";
 import { formatCP } from "@/lib/formatters";
 import { sandboxPath } from "@/lib/paths";
 import type { ContributorSandbox } from "@/lib/types";
@@ -15,7 +14,24 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 /**
- * Bloc « Sandbox » de l'onglet Contributions.
+ * Ce qui a été payé, pour chaque ligne du ledger : les paliers d'étoiles
+ * franchis, et la prime de promotion. C'est ce qui rend le total vérifiable.
+ */
+function rewardsLabel(sandbox: ContributorSandbox) {
+  const tiers = sandbox.rewards.filter((reward) => reward.ruleKey !== "promotion").length;
+  const promoted = sandbox.rewards.some((reward) => reward.ruleKey === "promotion");
+
+  return [
+    tiers > 0 ? `${tiers} milestone${tiers === 1 ? "" : "s"} paid` : null,
+    promoted ? "promotion bonus paid" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * Bloc « Sandbox » de l'onglet Contributions, d'après
+ * `Profile Vitrine.dc.html`.
  *
  * Volontairement sobre : la vraie page d'un sandbox est ailleurs et ce bloc
  * n'a qu'un rôle, expliquer d'où viennent des CP que le total affiche mais
@@ -28,59 +44,27 @@ export function SandboxRewardsList({ sandboxes }: SandboxRewardsListProps) {
   const total = sandboxes.reduce((sum, sandbox) => sum + sandbox.totalCP, 0);
 
   return (
-    <div className="mt-6">
-      <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-white/30">
-          <Sparkles className="h-3.5 w-3.5" />
-          Sandbox
-        </h3>
-        <span className="text-xs font-semibold text-brandCP">{formatCP(total)} CP</span>
+    <div className="v-pro-night">
+      <div className="v-pro-night-head">
+        <span className="v-pro-kicker">Sandbox</span>
+        <span className="v-pro-night-total">{formatCP(total)} CP</span>
       </div>
 
-      <div className="space-y-1">
-        {sandboxes.map((sandbox) => (
-          <Link
-            key={sandbox.id}
-            href={sandboxPath(sandbox.slug)}
-            className="block rounded-2xl border border-white/6 bg-white/[0.02] px-4 py-3 transition-colors hover:border-white/10 hover:bg-white/[0.04]"
-          >
-            <div className="flex items-baseline justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-white">{sandbox.title}</p>
-                <p className="mt-0.5 text-xs text-white/25">
-                  {STATUS_LABELS[sandbox.status] ?? sandbox.status}
-                </p>
-              </div>
-              <span className="shrink-0 text-sm font-semibold text-brandCP">
-                {formatCP(sandbox.totalCP)} CP
-              </span>
-            </div>
-
-            {/* Le détail des entrées : un palier de stars franchi ou la
-                promotion. C'est ce qui rend le total vérifiable. */}
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {sandbox.rewards.map((reward) => (
-                <span
-                  key={reward.id}
-                  className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[11px] text-white/50"
-                >
-                  {reward.ruleKey === "promotion" ? (
-                    <>
-                      <Trophy className="h-3 w-3 text-violet-400" />
-                      Promotion
-                    </>
-                  ) : (
-                    <>
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      {reward.tierStars} stars
-                    </>
-                  )}
-                  <span className="text-white/70">+{reward.cp}</span>
+      <div className="v-pro-night-rows">
+        {sandboxes.map((sandbox) => {
+          const detail = rewardsLabel(sandbox);
+          return (
+            <Link key={sandbox.id} href={sandboxPath(sandbox.slug)} className="v-pro-night-row">
+              <span className="v-pro-night-row-text">
+                <span className="v-pro-night-row-title">{sandbox.title}</span>
+                <span className="v-pro-night-row-sub">
+                  {[STATUS_LABELS[sandbox.status] ?? sandbox.status, detail].filter(Boolean).join(" · ")}
                 </span>
-              ))}
-            </div>
-          </Link>
-        ))}
+              </span>
+              <span className="v-pro-night-row-cp">{formatCP(sandbox.totalCP)} CP</span>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Star, Trash2, Trophy } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { formatCP } from "@/lib/formatters";
 import type { SandboxRewardView, SandboxView } from "@/lib/public/sandbox";
 import type { SandboxStarTier } from "@packages/database-service/domain/entities";
@@ -46,8 +45,8 @@ interface AuditResponse {
   groups: AuditGroup[];
 }
 
-const INPUT_CLASS =
-  "rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-white transition-colors focus:border-brandCP/40 focus:outline-none";
+/** La gélule de saisie de la maquette, alignée à droite pour des nombres. */
+const INPUT_CLASS = "v-pro-input";
 
 /**
  * Onglet admin « Sandbox ».
@@ -240,16 +239,16 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
   };
 
   return (
-    <div className="space-y-8">
+    <>
       {/* ── Paliers ──────────────────────────────────────────────────── */}
       <div>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
+        <h2 className="v-pro-kicker">
           Star milestones
         </h2>
 
         <div className="space-y-2">
           {rows.length === 0 && (
-            <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-5 text-center text-xs text-white/30">
+            <p className="v-pro-empty">
               No milestone configured. Stars are a signal, and pay nothing.
             </p>
           )}
@@ -257,10 +256,10 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
           {rows.map((row, index) => (
             <div
               key={index}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
+              className="v-pro-switch-row" style={{ flexWrap: "wrap" }}
             >
               <Star className="h-4 w-4 shrink-0 text-yellow-400" />
-              <label className="flex items-center gap-2 text-xs text-white/40">
+              <label className="v-pro-tier-label">
                 at
                 <input
                   type="number"
@@ -275,7 +274,7 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
                 />
                 stars
               </label>
-              <label className="flex items-center gap-2 text-xs text-white/40">
+              <label className="v-pro-tier-label">
                 pay
                 <input
                   type="number"
@@ -294,7 +293,7 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
                 type="button"
                 onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
                 aria-label="Remove this milestone"
-                className="ml-auto rounded-lg p-1.5 text-white/30 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                className="v-pro-remove"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -303,21 +302,20 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
+          <button
+            className="v-pro-btn-quiet"
             onClick={() => setRows((current) => [...current, { stars: "", cp: "" }])}
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus />
             Add milestone
-          </Button>
-          <Button size="sm" onClick={saveTiers} disabled={savingTiers}>
+          </button>
+          <button className="v-pro-btn" onClick={saveTiers} disabled={savingTiers}>
             {savingTiers ? "Saving…" : "Save milestones"}
-          </Button>
-          {tiersMessage && <span className="text-xs text-brandCP">{tiersMessage}</span>}
+          </button>
+          {tiersMessage && <span className="v-pro-saved">{tiersMessage}</span>}
         </div>
 
-        <p className="mt-3 text-xs leading-relaxed text-white/25">
+        <p className="v-pro-tier-note">
           Thresholds must strictly increase. A milestone is paid once per sandbox and is never
           clawed back - unstarring reverses nothing. Lowering a threshold below a sandbox&apos;s
           current count does not pay it retroactively: it is paid on that sandbox&apos;s next star.
@@ -326,15 +324,15 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
 
       {/* ── Bonus de promotion ───────────────────────────────────────── */}
       <div>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
+        <h2 className="v-pro-kicker">
           Promotion bonus
         </h2>
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5">
+        <div className="v-pro-switch-row">
           <div className="flex min-w-0 items-center gap-3">
             <Trophy className="h-4 w-4 shrink-0 text-violet-400" />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white">CP paid when a sandbox is promoted</p>
-              <p className="mt-0.5 text-xs text-white/35">
+              <p className="v-pro-switch-label">CP paid when a sandbox is promoted</p>
+              <p className="v-pro-switch-desc">
                 Out of pool, once per sandbox. 0 keeps the promotion free.
               </p>
             </div>
@@ -350,18 +348,18 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
         </div>
       </div>
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="v-pro-error">{error}</p>}
 
       {/* ── Audit ────────────────────────────────────────────────────── */}
       <div>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
+        <h2 className="v-pro-kicker">
           Star audit
         </h2>
 
         <select
           value={selectedId}
           onChange={(e) => selectSandbox(e.target.value)}
-          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white focus:border-brandCP/40 focus:outline-none"
+          className="v-pro-input"
         >
           <option value="">Pick a sandbox…</option>
           {(sandboxes ?? []).map((sandbox) => (
@@ -373,12 +371,12 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
         </select>
 
         {sandboxes?.length === 0 && (
-          <p className="mt-3 text-xs text-white/25">No sandbox yet.</p>
+          <p className="v-pro-note">No sandbox yet.</p>
         )}
 
         {audit && (
           <div className="mt-4 space-y-5">
-            <p className="text-xs text-white/40">
+            <p className="v-pro-note">
               {audit.star_count} active star{audit.star_count !== 1 ? "s" : ""} ·{" "}
               {audit.stars.length} row{audit.stars.length !== 1 ? "s" : ""} on record
             </p>
@@ -390,14 +388,14 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
                 {audit.groups.map((group) => (
                   <div
                     key={`${group.origin}-${group.ip_hash_prefix ?? "-"}-${group.day}`}
-                    className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-xs"
+                    className="v-pro-switch-row" style={{ flexWrap: "wrap", fontSize: "0.75rem", padding: "0.6rem 1rem" }}
                   >
-                    <span className="font-medium text-white/70">{group.day}</span>
-                    <span className="text-white/40">{group.origin}</span>
-                    <span className="font-mono text-white/30">
+                    <span className="v-pro-digest-strong">{group.day}</span>
+                    <span className="v-pro-digest-weak">{group.origin}</span>
+                    <span className="v-pro-mono">
                       {group.ip_hash_prefix ?? "no ip"}
                     </span>
-                    <span className="text-white/50">
+                    <span className="v-pro-digest-weak">
                       {group.count} row{group.count !== 1 ? "s" : ""} · {group.active} active
                       {group.attached > 0 ? ` · ${group.attached} attached` : ""}
                     </span>
@@ -405,7 +403,7 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
                       type="button"
                       onClick={() => deleteSelectedStars(group.star_uuids)}
                       disabled={auditBusy}
-                      className="ml-auto rounded-lg px-2 py-1 font-semibold text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-40"
+                      className="v-pro-remove" style={{ fontWeight: 700 }}
                     >
                       Delete group
                     </button>
@@ -416,9 +414,9 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
 
             {/* Lignes brutes : c'est par `uuid` que la suppression se fait. */}
             {audit.stars.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-white/10">
+              <div className="v-pro-table">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-white/[0.03] text-white/35">
+                  <thead className="v-pro-thead-row">
                     <tr>
                       <th className="w-8 px-3 py-2" />
                       <th className="px-3 py-2 font-medium">Day</th>
@@ -427,9 +425,9 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
                       <th className="px-3 py-2 font-medium">State</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/[0.06]">
+                  <tbody className="v-pro-tbody">
                     {audit.stars.map((star) => (
-                      <tr key={star.uuid} className="text-white/60">
+                      <tr key={star.uuid}>
                         <td className="px-3 py-2">
                           <input
                             type="checkbox"
@@ -443,17 +441,17 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
                           {star.origin}
                           {star.is_account ? "" : " (anon)"}
                         </td>
-                        <td className="px-3 py-2 font-mono text-white/35">
+                        <td className="v-pro-mono">
                           {star.ip_hash_prefix ?? "-"}
                         </td>
                         <td className="px-3 py-2">
                           {star.removed_at ? (
-                            <span className="text-white/30">removed</span>
+                            <span className="v-pro-digest-weak">removed</span>
                           ) : (
-                            <span className="text-brandCP">active</span>
+                            <span style={{ color: "var(--v-accent)" }}>active</span>
                           )}
                           {star.attached_at && (
-                            <span className="ml-1.5 text-violet-400">attached</span>
+                            <span className="v-pro-digest-weak" style={{ marginLeft: "0.35rem" }}>attached</span>
                           )}
                         </td>
                       </tr>
@@ -464,21 +462,20 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
             )}
 
             {selectedStars.size > 0 && (
-              <Button
-                variant="danger"
-                size="sm"
+              <button
+                className="v-pro-btn-danger"
                 onClick={() => deleteSelectedStars([...selectedStars])}
                 disabled={auditBusy}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 />
                 Delete {selectedStars.size} selected star{selectedStars.size > 1 ? "s" : ""}
-              </Button>
+              </button>
             )}
 
             {/* Ledger : supprimer une ligne *est* la reprise des CP, le total
                 d'un contributeur étant un SUM en direct sans cache. */}
             <div>
-              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-white/30">
+              <h3 className="v-pro-label">
                 Ledger
               </h3>
               {rewards && rewards.length > 0 ? (
@@ -486,29 +483,29 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
                   {rewards.map((reward) => (
                     <div
                       key={reward.uuid}
-                      className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-xs"
+                      className="v-pro-switch-row" style={{ flexWrap: "wrap", fontSize: "0.75rem", padding: "0.6rem 1rem" }}
                     >
                       {reward.rule_key === "promotion" ? (
                         <Trophy className="h-3.5 w-3.5 text-violet-400" />
                       ) : (
                         <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                       )}
-                      <span className="text-white/70">
+                      <span className="v-pro-digest-strong">
                         {reward.rule_key === "promotion"
                           ? "Promotion"
                           : `${reward.tier_stars} stars milestone`}
                       </span>
-                      <span className="font-semibold text-brandCP">
+                      <span style={{ fontWeight: 700, color: "var(--v-accent)" }}>
                         +{formatCP(reward.points)} CP
                       </span>
-                      <span className="text-white/30">
+                      <span className="v-pro-digest-weak">
                         {reward.created_at ? reward.created_at.slice(0, 10) : "-"}
                       </span>
                       <button
                         type="button"
                         onClick={() => deleteReward(reward.uuid)}
                         disabled={auditBusy}
-                        className="ml-auto rounded-lg px-2 py-1 font-semibold text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-40"
+                        className="v-pro-remove" style={{ fontWeight: 700 }}
                       >
                         Delete
                       </button>
@@ -516,7 +513,7 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-white/25">
+                <p className="v-pro-note">
                   Nothing paid on this sandbox yet.
                 </p>
               )}
@@ -524,6 +521,6 @@ export function SandboxSettings({ tiers: initialTiers, promotionBonusCp }: Sandb
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

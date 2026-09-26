@@ -16,11 +16,18 @@ export interface TabPill {
  * mode. Hardcoding them would break light mode, where globals.css only rewrites
  * `bg-white/<opacity>` and `text-white`, leaving a white pill on a white page.
  */
-export function TabPills({ tabs, active, onChange, className }: {
+export function TabPills({ tabs, active, onChange, className, variant = "lab" }: {
   tabs: TabPill[];
   active: number;
   onChange: (index: number) => void;
   className?: string;
+  /**
+   * `vitrine` porte les gélules des maquettes (`.v-tabs` dans `vitrine.css`) :
+   * surface blanche, filet, fond sombre qui glisse. Même mesure, même
+   * mouvement — seules les couleurs et les polices changent, et elles viennent
+   * de la feuille plutôt que des jetons du Lab.
+   */
+  variant?: "lab" | "vitrine";
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -51,11 +58,17 @@ export function TabPills({ tabs, active, onChange, className }: {
     return () => observer.disconnect();
   }, [active, tabs.length]);
 
+  const vitrine = variant === "vitrine";
+
   return (
     <div className={`overflow-x-auto ${className ?? ""}`}>
       <div
         ref={listRef}
-        className="relative inline-flex w-max gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1"
+        className={
+          vitrine
+            ? "v-tabs"
+            : "relative inline-flex w-max gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1"
+        }
       >
         {/* Sliding fill, drawn under the labels. Animating one shared element
             is what makes the change read as movement; per-button backgrounds
@@ -63,9 +76,13 @@ export function TabPills({ tabs, active, onChange, className }: {
         {fill && (
           <span
             aria-hidden
-            className="absolute left-0 top-0 rounded-full transition-[transform,width] duration-300 ease-out"
+            className={
+              vitrine
+                ? "v-tab-fill"
+                : "absolute left-0 top-0 rounded-full transition-[transform,width] duration-300 ease-out"
+            }
             style={{
-              background: "var(--foreground)",
+              background: vitrine ? undefined : "var(--foreground)",
               width: fill.width,
               height: fill.height,
               transform: `translate(${fill.left}px, ${fill.top}px)`,
@@ -76,6 +93,23 @@ export function TabPills({ tabs, active, onChange, className }: {
         {tabs.map((tab, i) => {
           const isActive = active === i;
           const isFilled = isActive && fill !== null;
+
+          if (vitrine) {
+            return (
+              <button
+                key={i}
+                ref={el => { buttonRefs.current[i] = el; }}
+                onClick={() => onChange(i)}
+                className="v-tab"
+                data-on={isActive}
+                data-filled={isFilled}
+              >
+                {tab.label}
+                {tab.count !== undefined && <span className="v-tab-count">{tab.count}</span>}
+              </button>
+            );
+          }
+
           return (
             <button
               key={i}

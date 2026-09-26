@@ -1,5 +1,5 @@
 import { Check, X } from "lucide-react";
-import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
+import { VitrineAvatar } from "@/components/vitrine/VitrineAvatar";
 import type { OnboardingProgressWithUser } from "@packages/database-service/domain/entities";
 
 const QUESTS: {
@@ -20,71 +20,64 @@ interface Props {
   rows: OnboardingProgressWithUser[];
 }
 
+/**
+ * La table d'avancement de l'onboarding, à la matière de
+ * `Profile Vitrine.dc.html` : une carte blanche, un en-tête gris, un filet par
+ * ligne.
+ *
+ * La maquette montre trois colonnes de dates ; ici ce sont les cinq quêtes
+ * réelles, cochées ou non — c'est ce que la base porte.
+ */
 export function OnboardingProgressTable({ rows }: Props) {
   if (rows.length === 0) {
-    return (
-      <p className="text-sm text-white/30 py-8 text-center">No contributors yet.</p>
-    );
+    return <p className="v-pro-note">No contributors yet.</p>;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-white/8">
-            <th className="pb-2 text-left text-xs font-semibold uppercase tracking-widest text-white/30 pr-4">
-              Contributor
-            </th>
+    <div className="v-pro-table" style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead className="v-pro-thead-row">
+          <tr>
+            <th style={{ textAlign: "left" }}>Contributor</th>
             {QUESTS.map((q) => (
-              <th
-                key={q.key}
-                className="pb-2 text-center text-xs font-semibold uppercase tracking-widest text-white/30 px-2"
-              >
+              <th key={q.key} style={{ textAlign: "center" }}>
                 {q.label}
               </th>
             ))}
-            <th className="pb-2 text-right text-xs font-semibold uppercase tracking-widest text-white/30 pl-4">
-              Status
-            </th>
+            <th style={{ textAlign: "right" }}>Status</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="v-pro-tbody">
           {rows.map((row) => {
             const completedCount = QUESTS.filter((q) => row[q.key]).length;
             const isDone = !!row.completed_at;
             return (
-              <tr
-                key={row.user_id}
-                className={`border-b border-white/[0.04] transition-colors hover:bg-white/[0.02] ${isDone ? "opacity-60" : ""}`}
-              >
-                <td className="py-3 pr-4">
-                  <div className="flex items-center gap-2.5">
-                    <InitialsAvatar
+              <tr key={row.user_id} style={isDone ? { opacity: 0.7 } : undefined}>
+                <td>
+                  <span className="v-pro-tr-name">
+                    <VitrineAvatar
                       name={row.full_name}
-                      size={28}
                       avatarUrl={row.avatar_url ?? undefined}
+                      size="1.5rem"
+                      ring={false}
                     />
-                    <span className="text-sm text-white/80 truncate max-w-[140px]">
-                      {row.full_name}
-                    </span>
-                  </div>
+                    <span>{row.full_name}</span>
+                  </span>
                 </td>
                 {QUESTS.map((q) => (
-                  <td key={q.key} className="py-3 px-2 text-center">
+                  <td key={q.key} style={{ textAlign: "center" }}>
                     {row[q.key] ? (
-                      <Check className="h-3.5 w-3.5 text-brandCP mx-auto" />
+                      <Check className="v-pro-quest-done" />
                     ) : (
-                      <X className="h-3.5 w-3.5 text-white/20 mx-auto" />
+                      <X className="v-pro-quest-todo" />
                     )}
                   </td>
                 ))}
-                <td className="py-3 pl-4 text-right">
+                <td style={{ textAlign: "right" }}>
                   {isDone ? (
-                    <span className="inline-flex items-center rounded-full bg-brandCP/10 px-2 py-0.5 text-[11px] font-medium text-brandCP">
-                      Done
-                    </span>
+                    <span className="v-pro-score">Done</span>
                   ) : (
-                    <span className="text-xs text-white/30">{completedCount}/5</span>
+                    <span className="v-pro-digest-weak">{completedCount}/5</span>
                   )}
                 </td>
               </tr>

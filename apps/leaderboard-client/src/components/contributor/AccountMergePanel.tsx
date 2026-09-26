@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import { Link2, Check, X } from 'lucide-react';
-import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
+import { VitrineAvatar } from '@/components/vitrine/VitrineAvatar';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
-import { Button } from '@/components/ui/Button';
 import { ToastProvider, useToast } from '@/components/ui/Toast';
 import { ConfirmDialogProvider, useConfirm } from '@/components/ui/ConfirmDialog';
 import type { User } from '@packages/database-service/domain/entities';
@@ -75,46 +74,57 @@ function AccountMergePanelInner({ unlinkedUsers, linkedUsers }: Props) {
   };
 
   return (
-    <div className="mt-8 space-y-3">
-      <h3 className="text-xs font-semibold uppercase tracking-widest text-white/30">
-        Comptes sans Google ({unlinked.length})
-      </h3>
-      <div className="divide-y divide-white/[0.04]">
-        {unlinked.map((u) => (
-          <div key={u.uuid} className="flex flex-wrap items-center gap-3 py-3">
-            <InitialsAvatar name={u.full_name} size={28} avatarUrl={u.avatar_url ?? undefined} />
-            <span className="text-sm text-white/80">{u.full_name}</span>
+    <>
+      {/* La maquette range la fusion sur la carte teintée, sous la table : c'est
+          le geste d'exception de l'onglet, pas sa matière courante. */}
+      <div className="v-pro-switch-row" data-tone="mint" style={{ alignItems: "flex-start" }}>
+        <div className="v-pro-switch-text" style={{ flex: "1 1 16rem" }}>
+          <span className="v-pro-switch-label">Merge an unlinked account ({unlinked.length})</span>
+          <span className="v-pro-switch-desc">
+            A contributor created before Google sign-in keeps their CP when merged into a linked
+            account.
+          </span>
+        </div>
+      </div>
 
-            {openFor === u.uuid ? (
-              <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-end">
-                <SelectDropdown
-                  className="w-64"
-                  placeholder="Choisir le compte Google…"
-                  value={selected[u.uuid] ?? ''}
-                  onChange={(value) => setSelected((prev) => ({ ...prev, [u.uuid]: value }))}
-                  options={linked.map((l) => ({ value: l.uuid, label: `${l.full_name} (${l.email ?? '-'})` }))}
-                />
-                <Button
-                  size="sm"
-                  disabled={!selected[u.uuid] || merging === u.uuid}
-                  onClick={() => handleMerge(u)}
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  Confirmer
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => setOpenFor(null)}>
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ) : (
-              <Button size="sm" variant="secondary" className="ml-auto" onClick={() => setOpenFor(u.uuid)}>
-                <Link2 className="h-3.5 w-3.5" />
-                Lier
-              </Button>
-            )}
+      <div className="v-pro-rows">
+        {unlinked.map((u) => (
+          <div key={u.uuid} className="v-pro-row" style={{ padding: "0.7rem 1rem" }}>
+            <div className="v-pro-merge-row">
+              <VitrineAvatar name={u.full_name} avatarUrl={u.avatar_url ?? undefined} size="1.75rem" ring={false} />
+              <span className="v-pro-row-title">{u.full_name}</span>
+
+              {openFor === u.uuid ? (
+                <div className="v-pro-merge-actions">
+                  <SelectDropdown
+                    className="w-64"
+                    placeholder="Choisir le compte Google…"
+                    value={selected[u.uuid] ?? ''}
+                    onChange={(value) => setSelected((prev) => ({ ...prev, [u.uuid]: value }))}
+                    options={linked.map((l) => ({ value: l.uuid, label: `${l.full_name} (${l.email ?? '-'})` }))}
+                  />
+                  <button
+                    className="v-pro-btn"
+                    disabled={!selected[u.uuid] || merging === u.uuid}
+                    onClick={() => handleMerge(u)}
+                  >
+                    <Check />
+                    Confirmer
+                  </button>
+                  <button className="v-pro-btn-quiet" onClick={() => setOpenFor(null)}>
+                    <X />
+                  </button>
+                </div>
+              ) : (
+                <button className="v-pro-btn-quiet" style={{ marginLeft: "auto" }} onClick={() => setOpenFor(u.uuid)}>
+                  <Link2 />
+                  Lier
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 }

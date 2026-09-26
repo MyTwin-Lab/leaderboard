@@ -36,11 +36,13 @@ const VITRINE_BACKGROUNDS: Record<string, string> = {
 };
 
 /**
- * Les vitrines dont l'URL porte un segment variable : une news à son slug.
+ * Les vitrines dont l'URL porte un segment variable : une news à son slug, la
+ * fiche d'un contributeur à son identifiant — `/contributors/me` comprise, qui
+ * est la même page avec ses onglets d'admin.
  * `/news` lui-même est dans la table au-dessus — l'index et les articles sont
  * tous deux au style vitrine.
  */
-const VITRINE_PREFIXES = ["/news/"];
+const VITRINE_PREFIXES = ["/news/", "/contributors/"];
 
 /** La couleur de fond des maquettes vitrine, la même partout. */
 const VITRINE_BACKGROUND = "#fcfcfc";

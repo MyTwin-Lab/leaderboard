@@ -1,9 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronRight, FileClock, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Toggle } from "@/components/ui/Toggle";
+import { ChevronRight, RefreshCw } from "lucide-react";
 import { formatCP } from "@/lib/formatters";
 
 interface DigestCounts {
@@ -76,20 +74,20 @@ function Section({ title, children, empty }: {
   title: string; children: React.ReactNode; empty: boolean;
 }) {
   return (
-    <div className="mt-4 first:mt-0">
-      <h4 className="text-[11px] font-semibold uppercase tracking-widest text-white/30">{title}</h4>
+    <div className="v-pro-digest-section">
+      <h4 className="v-pro-label">{title}</h4>
       {empty
-        ? <p className="mt-1.5 text-xs text-white/25">Nothing in this period</p>
-        : <div className="mt-1.5 space-y-1.5">{children}</div>}
+        ? <p className="v-pro-note">Nothing in this period</p>
+        : <div className="v-pro-digest-rows">{children}</div>}
     </div>
   );
 }
 
 function Row({ left, right }: { left: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 text-sm">
-      <div className="min-w-0 text-white/70">{left}</div>
-      {right !== undefined && <div className="shrink-0 text-xs text-white/40">{right}</div>}
+    <div className="v-pro-digest-row">
+      <div>{left}</div>
+      {right !== undefined && <div className="v-pro-digest-row-right">{right}</div>}
     </div>
   );
 }
@@ -107,20 +105,20 @@ function DigestDetail({ id }: { id: string }) {
     return () => { cancelled = true; };
   }, [id]);
 
-  if (error) return <p className="mt-3 text-xs text-red-400">{error}</p>;
-  if (!payload) return <p className="mt-3 text-xs text-white/25">Loading…</p>;
+  if (error) return <p className="v-pro-error">{error}</p>;
+  if (!payload) return <p className="v-pro-note">Loading…</p>;
 
   return (
-    <div className="mt-3 border-t border-white/[0.06] pt-3">
+    <div className="v-pro-digest-detail">
       <Section title="New contributions" empty={payload.new_contributions.length === 0}>
         {payload.new_contributions.map((c) => (
           <Row
             key={c.contribution_id}
             left={
               <>
-                <span className="text-white/80">{c.title}</span>
-                <span className="text-white/35"> - {c.challenge_title}</span>
-                <span className="block text-xs text-white/35">
+                <span className="v-pro-digest-strong">{c.title}</span>
+                <span className="v-pro-digest-weak"> - {c.challenge_title}</span>
+                <span className="v-pro-digest-sub">
                   {c.contributors.map((u) => u.full_name).join(", ")}
                 </span>
               </>
@@ -136,9 +134,9 @@ function DigestDetail({ id }: { id: string }) {
             key={`${r.user_id}-${r.challenge_title}`}
             left={
               <>
-                <span className="text-white/80">{r.full_name}</span>
-                <span className="text-white/35"> - {r.challenge_title}</span>
-                <span className="block text-xs text-white/30">
+                <span className="v-pro-digest-strong">{r.full_name}</span>
+                <span className="v-pro-digest-weak"> - {r.challenge_title}</span>
+                <span className="v-pro-digest-sub">
                   {Object.entries(r.by_rule)
                     .map(([rule, pts]) => `${rule} ${pts > 0 ? "+" : ""}${pts}`)
                     .join(" · ")}
@@ -156,8 +154,8 @@ function DigestDetail({ id }: { id: string }) {
             key={ch.challenge_id}
             left={
               <>
-                <span className="text-white/80">{ch.title}</span>
-                <span className="text-white/35"> - {ch.project_title || "no project"}</span>
+                <span className="v-pro-digest-strong">{ch.title}</span>
+                <span className="v-pro-digest-weak"> - {ch.project_title || "no project"}</span>
               </>
             }
             right={`${ch.type} · ${formatCP(ch.reward_pool)} pool`}
@@ -169,7 +167,7 @@ function DigestDetail({ id }: { id: string }) {
         {payload.completed_challenges.map((ch) => (
           <Row
             key={ch.challenge_id}
-            left={<span className="text-white/80">{ch.title}</span>}
+            left={<span className="v-pro-digest-strong">{ch.title}</span>}
             right={`${formatCP(ch.cp_awarded)} of ${formatCP(ch.reward_pool)}`}
           />
         ))}
@@ -185,8 +183,8 @@ function DigestDetail({ id }: { id: string }) {
               key={sb.sandbox_id}
               left={
                 <>
-                  <span className="text-white/80">{sb.title}</span>
-                  <span className="text-white/35"> - {sb.author.full_name}</span>
+                  <span className="v-pro-digest-strong">{sb.title}</span>
+                  <span className="v-pro-digest-weak"> - {sb.author.full_name}</span>
                 </>
               }
               right={`${sb.star_count} ★`}
@@ -199,7 +197,7 @@ function DigestDetail({ id }: { id: string }) {
         {payload.new_contributors.map((u) => (
           <Row
             key={u.user_id}
-            left={<span className="text-white/80">{u.full_name}</span>}
+            left={<span className="v-pro-digest-strong">{u.full_name}</span>}
             right={`${u.role} · ${formatDate(u.joined_at)}`}
           />
         ))}
@@ -285,126 +283,124 @@ export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequ
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
-          Digest
-        </h2>
+    <>
+      <span className="v-pro-kicker">Digest</span>
 
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5">
-            <div className="flex items-center gap-3 min-w-0">
-              <FileClock className="h-4 w-4 text-white/50" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-white">Automatic generation</p>
-                <p className="text-xs text-white/35 mt-0.5">
-                  A daily check generates a digest once the interval has elapsed
-                </p>
-              </div>
-            </div>
-            <Toggle enabled={enabled} onChange={toggleEnabled} />
-          </div>
-
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-white">Interval</p>
-              <p className="text-xs text-white/35 mt-0.5">Days between two automatic digests</p>
-            </div>
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
-              onBlur={commitFrequency}
-              className="w-20 shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-right text-sm text-white focus:border-brandCP/40 focus:outline-none"
-            />
-          </div>
+      {/* Les deux réglages : l'automatisme, puis son intervalle. La carte
+          teintée porte le premier — c'est lui qui décide si le reste sert. */}
+      <div className="v-pro-switch-row" data-tone="mint">
+        <div className="v-pro-switch-text">
+          <span className="v-pro-switch-label">Automatic generation</span>
+          <span className="v-pro-switch-desc">
+            A daily check generates a digest once the interval has elapsed.
+          </span>
         </div>
-
-        {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+        <button
+          onClick={() => toggleEnabled(!enabled)}
+          className="v-pro-toggle"
+          data-on={enabled}
+          aria-label="Toggle automatic digests"
+          aria-pressed={enabled}
+        >
+          <span />
+        </button>
       </div>
 
-      <div>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30">
-            History
-          </h2>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-white/35" htmlFor="digest-start">
-              From
-            </label>
-            <input
-              id="digest-start"
-              type="date"
-              value={startDate}
-              max={new Date().toISOString().slice(0, 10)}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-white focus:border-brandCP/40 focus:outline-none [color-scheme:dark]"
-            />
-            {startDate && (
+      <div className="v-pro-switch-row">
+        <div className="v-pro-switch-text">
+          <span className="v-pro-switch-label">Interval</span>
+          <span className="v-pro-switch-desc">Days between two automatic digests</span>
+        </div>
+        <div className="v-pro-num" data-fixed="true">
+          <input
+            type="number"
+            min={1}
+            max={365}
+            value={frequency}
+            onChange={(e) => setFrequency(e.target.value)}
+            onBlur={commitFrequency}
+          />
+          <span className="v-pro-num-unit">days</span>
+        </div>
+      </div>
+
+      {error && <p className="v-pro-error">{error}</p>}
+
+      <div className="v-pro-head">
+        <span className="v-pro-kicker">History</span>
+        <div className="v-pro-digest-actions">
+          <label className="v-pro-note" htmlFor="digest-start">From</label>
+          <input
+            id="digest-start"
+            className="v-pro-input"
+            style={{ width: "auto" }}
+            type="date"
+            value={startDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+          {startDate && (
+            <button
+              type="button"
+              onClick={() => setStartDate("")}
+              title="Back to the end of the last digest"
+              className="v-pro-btn-text"
+            >
+              clear
+            </button>
+          )}
+          <button onClick={generateNow} disabled={generating} className="v-pro-btn">
+            <RefreshCw className={generating ? "animate-spin" : ""} />
+            {generating ? "Generating…" : "Generate now"}
+          </button>
+        </div>
+      </div>
+
+      <p className="v-pro-note">
+        {startDate
+          ? `The digest will cover ${formatDate(`${startDate}T00:00:00.000Z`)} → now. Picking a start can overlap a period an earlier digest already covered.`
+          : "Leave the date empty to start where the last digest ended."}
+      </p>
+
+      {digests === null && <p className="v-pro-note">Loading…</p>}
+
+      {digests?.length === 0 && (
+        <div className="v-pro-empty">
+          <span className="v-pro-empty-title">No digest yet</span>
+          <span className="v-pro-empty-sub">Enable automatic generation, or generate one now.</span>
+        </div>
+      )}
+
+      <div className="v-pro-rows">
+        {digests?.map((d) => {
+          const isOpen = expanded === d.uuid;
+          const total = Object.values(d.counts).reduce((a, b) => a + b, 0);
+          return (
+            <div key={d.uuid} className="v-pro-row" data-open={isOpen}>
               <button
                 type="button"
-                onClick={() => setStartDate("")}
-                title="Back to the end of the last digest"
-                className="text-xs text-white/35 hover:text-white/70"
+                onClick={() => setExpanded(isOpen ? null : d.uuid)}
+                className="v-pro-row-btn"
               >
-                clear
+                <div className="v-pro-row-text">
+                  <p className="v-pro-row-title">
+                    {formatDate(d.period_start)} → {formatDate(d.period_end)}
+                  </p>
+                  <p className="v-pro-row-sub">
+                    {total} {total === 1 ? "entry" : "entries"} · {d.trigger_source}
+                  </p>
+                </div>
+                <ChevronRight className="v-pro-row-chev" />
               </button>
-            )}
-            <Button size="sm" onClick={generateNow} disabled={generating}>
-              <RefreshCw className={`h-3.5 w-3.5 ${generating ? "animate-spin" : ""}`} />
-              {generating ? "Generating…" : "Generate now"}
-            </Button>
-          </div>
-        </div>
-
-        <p className="mb-3 text-xs text-white/25">
-          {startDate
-            ? `The digest will cover ${formatDate(`${startDate}T00:00:00.000Z`)} → now. Picking a start can overlap a period an earlier digest already covered.`
-            : "Leave the date empty to start where the last digest ended."}
-        </p>
-
-        {digests === null && <p className="text-xs text-white/25">Loading…</p>}
-
-        {digests?.length === 0 && (
-          <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-6 text-center text-xs text-white/30">
-            No digest yet. Enable automatic generation, or generate one now.
-          </p>
-        )}
-
-        <div className="space-y-2">
-          {digests?.map((d) => {
-            const isOpen = expanded === d.uuid;
-            const total = Object.values(d.counts).reduce((a, b) => a + b, 0);
-            return (
-              <div
-                key={d.uuid}
-                className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
-              >
-                <button
-                  type="button"
-                  onClick={() => setExpanded(isOpen ? null : d.uuid)}
-                  className="flex w-full items-center justify-between gap-3 text-left"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-white">
-                      {formatDate(d.period_start)} → {formatDate(d.period_end)}
-                    </p>
-                    <p className="mt-0.5 text-xs text-white/35">
-                      {total} {total === 1 ? "entry" : "entries"} · {d.trigger_source}
-                    </p>
-                  </div>
-                  <ChevronRight
-                    className={`h-4 w-4 shrink-0 text-white/30 transition-transform ${isOpen ? "rotate-90" : ""}`}
-                  />
-                </button>
-                {isOpen && <DigestDetail id={d.uuid} />}
-              </div>
-            );
-          })}
-        </div>
+              {isOpen && (
+                <div className="v-pro-row-body">
+                  <DigestDetail id={d.uuid} />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
-    </div>
+    </>
   );
 }

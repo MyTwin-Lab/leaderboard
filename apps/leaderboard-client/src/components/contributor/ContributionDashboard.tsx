@@ -3,15 +3,30 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { formatCP } from "@/lib/formatters";
-import { getMedalStyle } from "@/lib/medals";
 import type { ContributorProfile } from "@/lib/types";
 
 interface ContributionDashboardProps {
   challenges: ContributorProfile["challenges"];
 }
 
-const SEGMENT_COLORS = ["bg-brandCP", "bg-brandCP/55", "bg-brandCP/32", "bg-brandCP/18"];
+/** L'accent, puis trois dilutions : la maquette n'emploie qu'une teinte. */
+const SEGMENT_COLORS = [
+  "var(--v-accent)",
+  "color-mix(in srgb, var(--v-accent) 55%, transparent)",
+  "color-mix(in srgb, var(--v-accent) 32%, transparent)",
+  "color-mix(in srgb, var(--v-accent) 18%, transparent)",
+];
 
+/**
+ * Le tableau de bord de l'onglet Overview, d'après `Profile Vitrine.dc.html`.
+ *
+ * Trois challenges, pas plus : au-delà, la liste devient un tableau qu'on ne
+ * lit plus — et l'onglet Contributions les porte tous. La part du pool est dite
+ * deux fois, en mots et par le filet en pied de carte.
+ *
+ * Les barres partent de zéro après le montage : c'est le seul mouvement de la
+ * maquette ici, et il dit dans quel sens lire la carte.
+ */
 export function ContributionDashboard({ challenges }: ContributionDashboardProps) {
   const [barsReady, setBarsReady] = useState(false);
 
@@ -23,11 +38,10 @@ export function ContributionDashboard({ challenges }: ContributionDashboardProps
   if (challenges.length === 0) return null;
 
   const totalCP = challenges.reduce((acc, c) => acc + c.reward, 0);
-  const maxChallengeCP = Math.max(...challenges.map((c) => c.reward), 1);
 
   const topChallenges = [...challenges]
     .sort((a, b) => b.reward - a.reward)
-    .slice(0, 4);
+    .slice(0, 3);
 
   const projectStats = challenges.reduce((acc, challenge) => {
     const project = challenge.projectName;
@@ -48,89 +62,68 @@ export function ContributionDashboard({ challenges }: ContributionDashboardProps
     }));
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 sm:items-start sm:gap-6">
-      {/* Track record — biggest challenges */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">Track record</span>
-            <h2 className="text-lg font-semibold tracking-tight text-white">Biggest challenges</h2>
+    <div className="v-pro-cols">
+      <div className="v-pro-col-main">
+        <div className="v-pro-head">
+          <div className="v-pro-head-text">
+            <span className="v-pro-kicker">Track record</span>
+            <h2 className="v-pro-h2">Biggest challenges</h2>
           </div>
-          <Link
-            href="?tab=contributions"
-            className="text-xs font-semibold text-brandCP transition-colors hover:text-brandCP/80"
-          >
+          <Link href="?tab=contributions" className="v-pro-link">
             All contributions
           </Link>
         </div>
 
-        <div className="space-y-2">
-          {topChallenges.map((challenge, i) => {
-            const rank = i + 1;
-            const medal = getMedalStyle(rank);
-            const pct = Math.round((challenge.reward / maxChallengeCP) * 100);
-            return (
-              <div
-                key={challenge.id}
-                className="animate-slide-in-left flex min-w-0 items-center gap-3.5 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 transition-colors duration-150 hover:border-white/12"
-                style={{ animationDelay: `${i * 60}ms`, animationFillMode: "both" }}
-              >
-                <span
-                  className={`flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${medal.badge}`}
-                >
-                  {rank}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-white">{challenge.title}</p>
-                  <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/8">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-brandCP/55 to-brandCP transition-[width] duration-700 ease-out"
-                      style={{ width: barsReady ? `${pct}%` : "0%" }}
-                    />
-                  </div>
-                  <p className="mt-1 truncate text-[11px] text-white/30">{challenge.projectName}</p>
-                </div>
-                <span className="shrink-0 text-sm font-semibold text-brandCP">
-                  {formatCP(challenge.reward)} CP
+        {topChallenges.map((challenge) => {
+          const share = Math.round(challenge.contributionShare * 100);
+          return (
+            <div key={challenge.id} className="v-pro-big">
+              <div className="v-pro-big-top">
+                <span className="v-pro-big-title">{challenge.title}</span>
+                <span className="v-pro-big-cp">
+                  <span className="v-pro-big-cp-value">{formatCP(challenge.reward)}</span>
+                  <span className="v-pro-big-cp-unit">CP</span>
                 </span>
               </div>
-            );
-          })}
-        </div>
+              <div className="v-pro-big-meta">
+                <span className="v-pro-tag">{challenge.projectName}</span>
+                <span className="v-pro-share">{share}% of the pool</span>
+              </div>
+              <div className="v-pro-bar">
+                <div className="v-pro-bar-fill" style={{ width: barsReady ? `${share}%` : "0%" }} />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Where the CP comes from */}
-      <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">
-          Where the CP comes from
-        </span>
+      <div className="v-pro-col-side">
+        <div className="v-pro-night">
+          <span className="v-pro-kicker">Where the CP comes from</span>
 
-        <div className="flex h-3 overflow-hidden rounded-full bg-white/[0.06]">
-          {topProjects.map((project) => (
-            <div
-              key={project.name}
-              className={`h-full transition-[width] duration-700 ease-out ${project.color}`}
-              style={{ width: barsReady ? `${project.pct}%` : "0%" }}
-              title={`${project.name} - ${formatCP(project.cp)} CP`}
-            />
-          ))}
-        </div>
+          <div className="v-pro-split">
+            {topProjects.map((project) => (
+              <div
+                key={project.name}
+                className="v-pro-split-seg"
+                style={{ width: barsReady ? `${project.pct}%` : "0%", background: project.color }}
+                title={`${project.name} - ${formatCP(project.cp)} CP`}
+              />
+            ))}
+          </div>
 
-        <div className="flex flex-col gap-2.5">
-          {topProjects.map((project, i) => (
-            <div
-              key={project.name}
-              className="animate-fade-up flex items-center gap-2.5"
-              style={{ animationDelay: `${i * 60}ms`, animationFillMode: "both" }}
-            >
-              <span className={`h-2.5 w-2.5 shrink-0 rounded-sm ${project.color}`} />
-              <span className="min-w-0 flex-1 truncate text-sm text-white">{project.name}</span>
-              <span className="shrink-0 text-[11px] text-white/30">
-                {project.count} contribution{project.count !== 1 ? "s" : ""}
-              </span>
-              <span className="shrink-0 text-sm font-semibold text-white">{formatCP(project.cp)}</span>
-            </div>
-          ))}
+          <div className="v-pro-projects">
+            {topProjects.map((project) => (
+              <div key={project.name} className="v-pro-proj">
+                <span className="v-pro-proj-dot" style={{ background: project.color }} />
+                <span className="v-pro-proj-name">{project.name}</span>
+                <span className="v-pro-proj-count">
+                  {project.count} contribution{project.count !== 1 ? "s" : ""}
+                </span>
+                <span className="v-pro-proj-cp">{formatCP(project.cp)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -11,9 +11,9 @@ export function LogoutButton() {
         await fetch("/api/auth/logout", { method: "POST" });
         window.location.href = "/";
       }}
-      className="cursor-pointer flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white/30 transition-colors hover:bg-white/[0.05] hover:text-white/60"
+      className="v-pro-btn-quiet"
     >
-      <LogOut className="h-3.5 w-3.5" />
+      <LogOut />
       Log out
     </button>
   );

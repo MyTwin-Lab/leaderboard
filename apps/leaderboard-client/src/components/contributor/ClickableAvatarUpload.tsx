@@ -8,6 +8,11 @@ interface ClickableAvatarUploadProps {
   name: string;
   size?: number;
   initialAvatarUrl?: string | null;
+  /**
+   * Le rond de la maquette vitrine, pour la carte d'identité ; le carré aux
+   * coins arrondis reste celui de l'onglet Profile et du Lab.
+   */
+  round?: boolean;
 }
 
 function compressAvatar(file: File, size = 200): Promise<string> {
@@ -34,7 +39,7 @@ function compressAvatar(file: File, size = 200): Promise<string> {
   });
 }
 
-export function ClickableAvatarUpload({ name, size = 64, initialAvatarUrl }: ClickableAvatarUploadProps) {
+export function ClickableAvatarUpload({ name, size = 64, initialAvatarUrl, round = false }: ClickableAvatarUploadProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
   const [uploading, setUploading] = useState(false);
   const inputId = "avatar-upload-header";
@@ -62,11 +67,16 @@ export function ClickableAvatarUpload({ name, size = 64, initialAvatarUrl }: Cli
     <div className="relative shrink-0 animate-count-in" style={{ animationDelay: "0ms" }}>
       <label
         htmlFor={inputId}
-        className="group relative block cursor-pointer overflow-hidden rounded-3xl"
+        className={`group relative block cursor-pointer overflow-hidden ${round ? "rounded-full" : "rounded-3xl"}`}
         style={{ width: size, height: size }}
         aria-label="Change profile photo"
       >
-        <InitialsAvatar name={name} size={size} avatarUrl={avatarUrl ?? undefined} />
+        <InitialsAvatar
+          name={name}
+          size={size}
+          avatarUrl={avatarUrl ?? undefined}
+          className={round ? "rounded-full" : undefined}
+        />
 
         {/* Hover overlay */}
         <div className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 transition-opacity duration-150 group-hover:opacity-100">

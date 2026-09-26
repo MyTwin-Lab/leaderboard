@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { InitialsAvatar } from "@/components/ui/InitialsAvatar";
 import { CheckCircle2, AlertCircle, Loader2, User } from "lucide-react";
 import { GitHubIcon as Github } from "@/components/ui/GitHubIcon";
 
@@ -21,18 +20,18 @@ interface ProfileEditFormProps {
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-
+/**
+ * L'onglet Profile, d'après `Profile Vitrine.dc.html` : deux champs de nom côte
+ * à côte, le pseudo GitHub derrière son `@`, et l'état de sauvegarde seul en bas
+ * à droite. Rien à valider — chaque champ s'enregistre quand on le quitte.
+ */
 export function ProfileEditForm({
   initialValues,
   fields = ["firstName", "lastName", "githubUsername"],
-  initialAvatarUrl = null,
 }: ProfileEditFormProps) {
   const [values, setValues] = useState(initialValues);
   const [status, setStatus] = useState<SaveStatus>("idle");
-  const [avatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
   const savedValues = useRef<FormValues>(initialValues);
-
-  const displayName = [values.firstName, values.lastName].filter(Boolean).join(" ") || "-";
 
   const save = async (current: FormValues) => {
     setStatus("saving");
@@ -63,84 +62,78 @@ export function ProfileEditForm({
   const showGithub = fields.includes("githubUsername");
 
   return (
-    <div className="animate-fade-up space-y-8">
-      {/* Fields */}
-      <div className="space-y-5">
-
-        {/* Name */}
-        {showName && (
-          <div>
-            <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-              <User className="h-3.5 w-3.5" />
-              Identity
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              {fields.includes("firstName") && (
-                <Field
-                  label="First name"
-                  value={values.firstName}
-                  placeholder="Jean"
-                  onChange={v => setValues(prev => ({ ...prev, firstName: v }))}
-                  onBlur={() => handleBlur("firstName", values)}
-                />
-              )}
-              {fields.includes("lastName") && (
-                <Field
-                  label="Last name"
-                  value={values.lastName}
-                  placeholder="Dupont"
-                  onChange={v => setValues(prev => ({ ...prev, lastName: v }))}
-                  onBlur={() => handleBlur("lastName", values)}
-                />
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* GitHub */}
-        {showGithub && (
-          <div>
-            <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-              <Github className="h-3.5 w-3.5" />
-              GitHub
-            </h2>
-            <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-200 focus-within:border-brandCP/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]">
-              <span className="select-none pl-3.5 text-sm text-white/25">@</span>
-              <input
-                type="text"
-                value={values.githubUsername}
-                placeholder="username"
-                onChange={e => setValues(prev => ({ ...prev, githubUsername: e.target.value }))}
-                onBlur={() => handleBlur("githubUsername", values)}
-                className="flex-1 bg-transparent py-2.5 pr-3.5 pl-1 text-sm text-white placeholder:text-white/20 focus:outline-none"
+    <>
+      {showName && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <span className="v-pro-legend-title">
+            <User />
+            Identity
+          </span>
+          <div className="v-pro-fields">
+            {fields.includes("firstName") && (
+              <Field
+                label="First name"
+                value={values.firstName}
+                placeholder="Jean"
+                onChange={v => setValues(prev => ({ ...prev, firstName: v }))}
+                onBlur={() => handleBlur("firstName", values)}
               />
-            </div>
+            )}
+            {fields.includes("lastName") && (
+              <Field
+                label="Last name"
+                value={values.lastName}
+                placeholder="Dupont"
+                onChange={v => setValues(prev => ({ ...prev, lastName: v }))}
+                onBlur={() => handleBlur("lastName", values)}
+              />
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Save status */}
-      <div className="flex items-center justify-end h-5">
+      {showGithub && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <span className="v-pro-legend-title">
+            <Github />
+            GitHub
+          </span>
+          <div className="v-pro-prefixed">
+            <span className="v-pro-prefix">@</span>
+            <input
+              type="text"
+              value={values.githubUsername}
+              placeholder="username"
+              onChange={e => setValues(prev => ({ ...prev, githubUsername: e.target.value }))}
+              onBlur={() => handleBlur("githubUsername", values)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* La place de l'état est réservée, même au repos : l'apparition de
+          « Saved » ne doit pas faire sauter la carte. */}
+      <div className="v-pro-save">
         {status === "saving" && (
-          <span className="animate-slide-in flex items-center gap-1.5 text-xs text-white/35">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span data-state="saving">
+            <Loader2 className="animate-spin" />
             Saving…
           </span>
         )}
         {status === "saved" && (
-          <span className="animate-slide-in flex items-center gap-1.5 text-xs text-green-400">
-            <CheckCircle2 className="h-3.5 w-3.5" />
+          <span data-state="saved">
+            <CheckCircle2 />
             Saved
           </span>
         )}
         {status === "error" && (
-          <span className="animate-slide-in flex items-center gap-1.5 text-xs text-red-400">
-            <AlertCircle className="h-3.5 w-3.5" />
+          <span data-state="error">
+            <AlertCircle />
             Failed to save
           </span>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -158,18 +151,16 @@ function Field({
   onBlur: () => void;
 }) {
   return (
-    <div>
-      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-white/25">
-        {label}
-      </label>
+    <label className="v-pro-field">
+      <span className="v-pro-field-label">{label}</span>
       <input
+        className="v-pro-input"
         type="text"
         value={value}
         placeholder={placeholder}
         onChange={e => onChange(e.target.value)}
         onBlur={onBlur}
-        className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 transition-all duration-200 focus:border-brandCP/40 focus:bg-white/[0.05] focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
       />
-    </div>
+    </label>
   );
 }

@@ -396,6 +396,90 @@ html[data-mode="light"] .vitrine-embed textarea.v-bare {
 }
 
 /* ── L'état vide ────────────────────────────────────────────────────── */
+/* ── Les onglets en gélule ──────────────────────────────────────────────
+   Le sélecteur des maquettes : une gélule blanche qui porte des pastilles, et
+   un fond sombre qui glisse d'un onglet à l'autre (`components/ui/TabPills`
+   mesure et déplace `.v-tab-fill`). D'abord vu sur `Profile Vitrine.dc.html` ;
+   ici plutôt que dans sa feuille, parce que toute vitrine à onglets le
+   reprendra. */
+.v-tabs {
+  position: relative;
+  display: inline-flex;
+  width: max-content;
+  gap: 0.25rem;
+  border: 1px solid var(--v-line);
+  border-radius: 999px;
+  background: var(--v-surface);
+  padding: 0.25rem;
+}
+
+.v-tab-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 999px;
+  background: var(--v-ink);
+  transition: transform 0.3s var(--v-ease), width 0.3s var(--v-ease);
+}
+
+.v-tab {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-family: var(--v-font-h);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--v-ink);
+  opacity: 0.5;
+  white-space: nowrap;
+  transition: color 0.25s var(--v-ease), opacity 0.25s var(--v-ease);
+}
+
+.v-tab:hover {
+  opacity: 0.8;
+}
+
+.v-tab[data-on="true"] {
+  color: #ffffff;
+  opacity: 1;
+}
+
+/* Tant que le fond n'est pas mesuré (premier rendu, serveur), l'onglet actif
+   garde l'encre de la page : sinon il s'écrirait en blanc sur blanc. */
+.v-tab[data-on="true"][data-filled="false"] {
+  color: var(--v-ink);
+}
+
+.v-tab-count {
+  border-radius: 999px;
+  background: rgb(17 22 26 / 0.07);
+  padding: 0 0.35rem;
+  font-family: var(--v-font-s);
+  font-size: 0.625rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--v-muted);
+}
+
+.v-tab[data-on="true"][data-filled="true"] .v-tab-count {
+  background: #ffffff;
+  color: var(--v-ink);
+}
+
+/* Sur téléphone la maquette élargit la cible : des gélules de 2.5rem qu'on
+   fait défiler au doigt. */
+@media (max-width: 767px) {
+  .v-tab {
+    height: 2.5rem;
+  }
+}
+
 .v-empty {
   display: flex;
   flex-direction: column;

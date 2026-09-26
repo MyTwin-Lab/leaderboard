@@ -27,6 +27,10 @@ import { EvaluationGridsTab } from "@/components/contributor/evaluation-grids/Ev
 import { DigestTab } from "@/components/contributor/DigestTab";
 import { NotificationsTab } from "@/components/contributor/NotificationsTab";
 import { SandboxSettings } from "@/components/contributor/SandboxSettings";
+import { vitrineFontVars } from "@/components/vitrine/fonts";
+
+import "@/components/vitrine/vitrine.css";
+import "@/components/contributor/vitrine/profile-vitrine.css";
 
 export const metadata = {
   title: "Profile",
@@ -64,10 +68,10 @@ export default async function ContributorSelfPage({
     {
       label: "Overview",
       panel: (
-        <div className="space-y-4 sm:space-y-6">
+        <>
           <ContributionHeatmap challenges={profile.challenges} />
           <ContributionDashboard challenges={profile.challenges} />
-        </div>
+        </>
       ),
     },
     {
@@ -89,8 +93,11 @@ export default async function ContributorSelfPage({
     {
       label: "Profile",
       panel: (
-        <div className="mx-auto grid max-w-3xl gap-5 sm:grid-cols-2 sm:items-start">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
+        <div className="v-pro-cols">
+          {/* La carte d'identité prend la place, celle de la photo suit : c'est
+              l'ordre de la maquette, et les deux se replient l'une sous
+              l'autre sous 22rem de large. */}
+          <div className="v-pro-card v-pro-col-main" style={{ gap: "1.5rem" }}>
             <ProfileEditForm
               initialValues={{
                 firstName,
@@ -100,17 +107,15 @@ export default async function ContributorSelfPage({
               initialAvatarUrl={profile.avatarUrl ?? null}
             />
           </div>
-          <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
-            <span className="text-xs font-semibold uppercase tracking-widest text-white/30">Avatar</span>
-            <div className="flex items-center gap-4">
+          <div className="v-pro-card" style={{ flex: "1 1 16rem", minWidth: 0 }}>
+            <span className="v-pro-kicker">Avatar</span>
+            <div className="v-pro-avatar-row">
               <ClickableAvatarUpload
                 name={profile.displayName}
                 size={64}
                 initialAvatarUrl={profile.avatarUrl}
               />
-              <p className="text-sm text-white/50">
-                Click your avatar to replace it - PNG or JPG, square works best.
-              </p>
+              <p>Click your avatar to replace it — PNG or JPG, square works best.</p>
             </div>
           </div>
         </div>
@@ -127,122 +132,115 @@ export default async function ContributorSelfPage({
     const unlinkedUsers = allUsers.filter((u) => !u.google_user_id);
     const linkedUsers = allUsers.filter((u) => u.google_user_id);
     const themeKey = isValidThemeKey(settings.theme_key) ? settings.theme_key : DEFAULT_THEME_KEY;
+    // Les panneaux d'admin ne portent plus de largeur à eux : la maquette leur
+    // donne la colonne entière, et chaque composant pose ses propres cartes.
     tabs.push({
       label: "Appearance",
       panel: (
-        <div className="mx-auto max-w-lg py-2">
-          <ThemeSettings
-            currentTheme={themeKey}
-            currentPrimaryColor={settings.primary_color ?? null}
-            currentBackgroundColor={settings.background_color ?? null}
-            currentThemeMode={settings.theme_mode}
-          />
-        </div>
+        <ThemeSettings
+          currentTheme={themeKey}
+          currentPrimaryColor={settings.primary_color ?? null}
+          currentBackgroundColor={settings.background_color ?? null}
+          currentThemeMode={settings.theme_mode}
+        />
       ),
     });
     tabs.push({
       label: "Integrations",
       panel: (
-        <div className="mx-auto max-w-lg lg:max-w-4xl py-2 space-y-8">
-          <div>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">
-              Integrations
-            </h2>
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
-              <GitHubConnectionCard initialError={githubError} />
-              <KaggleConnectionCard />
-              <SlackConnectionCard />
-              <OpenAIConnectionCard />
-              <ScalewayConnectionCard />
-            </div>
+        <>
+          <span className="v-pro-kicker">Integrations</span>
+          <div className="v-pro-cards">
+            <GitHubConnectionCard initialError={githubError} />
+            <KaggleConnectionCard />
+            <SlackConnectionCard />
+            <OpenAIConnectionCard />
+            <ScalewayConnectionCard />
           </div>
-        </div>
+        </>
       ),
     });
     tabs.push({
       label: "Evaluation Grids",
-      panel: (
-        <div className="mx-auto max-w-lg py-2 lg:max-w-5xl">
-          <EvaluationGridsTab />
-        </div>
-      ),
+      panel: <EvaluationGridsTab />,
     });
     tabs.push({
       label: "Modules",
       panel: (
-        <div className="mx-auto max-w-lg py-2">
-          <ModulesSettings
-            meetingsEnabled={settings.modules_meetings_enabled}
-            onboardingEnabled={settings.modules_onboarding_enabled}
-          />
-        </div>
+        <ModulesSettings
+          meetingsEnabled={settings.modules_meetings_enabled}
+          onboardingEnabled={settings.modules_onboarding_enabled}
+        />
       ),
     });
     tabs.push({
       label: "Digest",
       panel: (
-        <div className="mx-auto max-w-lg py-2 lg:max-w-4xl">
-          <DigestTab
-            enabled={settings.digest_enabled}
-            frequencyDays={settings.digest_frequency_days}
-          />
-        </div>
+        <DigestTab
+          enabled={settings.digest_enabled}
+          frequencyDays={settings.digest_frequency_days}
+        />
       ),
     });
     tabs.push({
       label: "Sandbox",
       panel: (
-        <div className="mx-auto max-w-lg py-2 lg:max-w-4xl">
-          <SandboxSettings
-            tiers={settings.sandbox_star_tiers ?? []}
-            promotionBonusCp={settings.sandbox_promotion_bonus_cp ?? 0}
-          />
-        </div>
+        <SandboxSettings
+          tiers={settings.sandbox_star_tiers ?? []}
+          promotionBonusCp={settings.sandbox_promotion_bonus_cp ?? 0}
+        />
       ),
     });
     tabs.push({
       label: "Onboarding",
       panel: (
-        <div className="mx-auto max-w-2xl py-2">
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-white/30">
-            Onboarding Progress
-          </h2>
+        <>
+          <span className="v-pro-kicker">Onboarding progress</span>
           <OnboardingProgressTable rows={onboardingRows} />
           <AccountMergePanel unlinkedUsers={unlinkedUsers} linkedUsers={linkedUsers} />
-        </div>
+        </>
       ),
     });
   }
 
   return (
-    <div className="mx-auto mt-4 max-w-4xl px-4 sm:mt-6">
-      <ContributorTopBar
-        actions={
-          <>
-            {session.role === "admin" && <AdminButton />}
-            <LogoutButton />
-          </>
-        }
-      />
-      <ContributorHeader
-        displayName={profile.displayName}
-        githubUsername={profile.githubUsername}
-        bio={profile.bio}
-        avatarUrl={profile.avatarUrl}
-        totalCP={profile.totalCP}
-        globalRank={profile.globalRank}
-        rankGap={profile.rankGap}
-        contributingSince={profile.contributingSince}
-        avatarSlot={
-          <ClickableAvatarUpload
-            name={profile.displayName}
-            size={80}
-            initialAvatarUrl={profile.avatarUrl}
-          />
-        }
-      />
+    <div className={`vitrine v-profile ${vitrineFontVars}`}>
+      <div className="v-main">
+        <ContributorTopBar
+          actions={
+            <>
+              {session.role === "admin" && <AdminButton />}
+              <LogoutButton />
+            </>
+          }
+        />
 
-      <ContributorTabs tabs={tabs} initialTab={initialTab} />
+        <div className="v-pro-grid">
+          <ContributorHeader
+            displayName={profile.displayName}
+            githubUsername={profile.githubUsername}
+            bio={profile.bio}
+            avatarUrl={profile.avatarUrl}
+            totalCP={profile.totalCP}
+            globalRank={profile.globalRank}
+            rankGap={profile.rankGap}
+            contributingSince={profile.contributingSince}
+            isAdmin={session.role === "admin"}
+            avatarSlot={
+              <ClickableAvatarUpload
+                name={profile.displayName}
+                size={72}
+                initialAvatarUrl={profile.avatarUrl}
+                round
+              />
+            }
+          />
+
+          <div className="v-pro-panels">
+            <ContributorTabs tabs={tabs} initialTab={initialTab} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
