@@ -5,9 +5,9 @@ import { NEWS_CATEGORY_LABELS } from "@/content/news/types";
 
 /**
  * L'aperçu partagé d'une news (LinkedIn, Slack, X) et l'`image` de son
- * `NewsArticle` : son titre sur le fond de l'image du site
- * (`app/opengraph-image.tsx`), pour que chaque news se reconnaisse dans un fil
- * sans produire d'illustration. Générée au build, comme celle du site.
+ * `NewsArticle` : son titre sur le fond sombre de la marque, pour que chaque
+ * news se reconnaisse dans un fil sans produire d'illustration. Générée au
+ * build ; celle du site, elle, est une image fixe (`app/opengraph-image.png`).
  */
 export const alt = "MyTwin Lab News";
 export const size = { width: 1200, height: 630 };

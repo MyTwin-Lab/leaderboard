@@ -31,7 +31,7 @@ Where things live:
 - `src/lib/paths.ts` — every link to a challenge, sandbox or news page (`challengePath`, `sandboxPath`, `newsPath`, the invite and sign-in links). Pure, client-safe.
 - `src/lib/server/pageRefs.ts` — resolves a page's URL segment: current slug, moved (UUID, former slug, capitalised slug) or missing.
 - `packages/database-service/domain/slug.ts` — what a slug may be, `slugify`, collision numbering, the deploy-time backfill plan.
-- `src/app/robots.ts`, `src/app/sitemap.ts`, `src/app/opengraph-image.tsx`.
+- `src/app/robots.ts`, `src/app/sitemap.ts`, `src/app/opengraph-image.png`.
 - `src/components/layout/Footer.tsx` — site-wide links, including the editorial link to mytwin.care, the news and the legal pages.
 
 ## Gotchas

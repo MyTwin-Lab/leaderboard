@@ -16,7 +16,7 @@ leaderboard/
 │       │   │   ├── leaderboard/       # Full leaderboard
 │       │   │   ├── about/             # MyTwin Lab landing (institutions + contributors)
 │       │   │   ├── terms-of-use/  privacy-policy/   # legal pages, markdown in content/legal/
-│       │   │   ├── robots.ts  sitemap.ts  opengraph-image.tsx   # see seo.md
+│       │   │   ├── robots.ts  sitemap.ts  opengraph-image.png   # see seo.md
 │       │   │   ├── signin/            # Sign-in page
 │       │   │   ├── admin/             # Admin section (protected, admin role only)
 │       │   │   │   ├── challenges/  contributions/  evaluation-grids/

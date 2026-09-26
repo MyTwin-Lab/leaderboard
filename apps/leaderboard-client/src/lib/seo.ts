@@ -6,7 +6,7 @@ import { NEWS_PATH, challengePath, newsPath, sandboxPath } from "@/lib/paths";
  * URL publique, descriptions, forme des métadonnées d'une page et données
  * structurées (JSON-LD).
  *
- * Pur (ni base, ni `server-only`) : `robots.ts`, `opengraph-image.tsx` et les
+ * Pur (ni base, ni `server-only`) : `robots.ts`, `sitemap.ts` et les
  * layouts l'importent, et les tests l'appellent sans rien mocker.
  */
 export const SITE_NAME = "MyTwin Lab";
@@ -98,7 +98,7 @@ export function toMetaDescription(text: string | null | undefined, max = 160): s
  * serait hérité par toutes les pages et les désignerait toutes comme doublons
  * de l'accueil. `openGraph` est de même reconstruit en entier, parce que Next
  * remplace cet objet d'un niveau à l'autre au lieu de le fusionner. L'image,
- * elle, vient de `app/opengraph-image.tsx` et s'applique partout.
+ * elle, vient de `app/opengraph-image.png` et s'applique partout.
  *
  * `title` passe par le gabarit du layout (« Titre | MyTwin Lab ») ;
  * `absoluteTitle` l'écrit en entier, pour les pages dont le titre commence par
