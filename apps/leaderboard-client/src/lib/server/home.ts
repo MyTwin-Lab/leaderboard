@@ -206,12 +206,14 @@ export async function fetchHomeOverview(): Promise<HomeOverview> {
     coverImageUrl: c.cover_image_url ?? null,
   });
 
-  // Both paths below share this: a draft is not published yet, and an archived
-  // challenge is over. Recent activity on an archived one — a late evaluation
-  // landing, say — used to be enough to surface it here, which is precisely
-  // when it must not appear.
+  // Both paths below share this: a draft is not published yet, and 'completed'
+  // ou 'archived' est fermé — le même couple que `isOpen()` dans joinGate.ts,
+  // qui décide si on propose encore de rejoindre. Mettre en avant un challenge
+  // qu'on ne peut plus rejoindre n'a pas de sens. Recent activity on a closed
+  // one — a late evaluation landing, say — used to be enough to surface it
+  // here, which is precisely when it must not appear.
   const isTrendable = (c: (typeof challenges)[number]) =>
-    !["draft", "archived"].includes(c.status);
+    !["draft", "completed", "archived"].includes(c.status);
 
   // What actually moved in the last 7 days, busiest first.
   const movingNow = challenges
