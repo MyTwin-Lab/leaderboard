@@ -59,6 +59,16 @@ export function HomeChallengesPreview({ challenges }: HomeChallengesPreviewProps
                   <h3>{challenge.title}</h3>
                   {challenge.description && <p>{challenge.description}</p>}
                 </div>
+                {/* Sur téléphone seulement : elle remplace le filet qui séparait
+                    le texte du pool, et qui ne disait rien. */}
+                <div className="v-home-challenge-progress">
+                  <span aria-hidden="true" className="v-home-challenge-track">
+                    <span style={{ width: `${challenge.completion}%` }} />
+                  </span>
+                  <span className="v-home-challenge-pct">
+                    {challenge.completion}%<span className="sr-only"> complete</span>
+                  </span>
+                </div>
                 <div className="v-home-challenge-aside">
                   <span className="v-home-pool">
                     <b>{formatCP(challenge.rewardPool)}</b> CP pool

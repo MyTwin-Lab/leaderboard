@@ -959,6 +959,11 @@
   flex: none;
 }
 
+/* La jauge d'avancement n'existe que sur téléphone (voir plus bas). */
+.v-home-challenge-progress {
+  display: none;
+}
+
 /* ── L'état vide ────────────────────────────────────────────────────────── */
 
 .v-home-empty {
@@ -1374,14 +1379,45 @@
     line-height: 1.5;
   }
 
+  /* À la place du filet : l'avancement du challenge, un trait fin sur toute
+     la largeur et son pourcentage, discret, en accent. */
+  .v-home-challenge-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.25rem 0.375rem;
+  }
+
+  .v-home-challenge-track {
+    flex: 1;
+    height: 1px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--v-line);
+  }
+
+  .v-home-challenge-track > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--v-accent);
+  }
+
+  .v-home-challenge-pct {
+    flex: none;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--v-accent);
+    font-variant-numeric: tabular-nums;
+  }
+
   .v-home-challenge-aside {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.75rem 0.375rem 0;
+    padding: 0 0.375rem;
     border-left: none;
-    border-top: 1px solid var(--v-line);
   }
 
   .v-home-pool {
