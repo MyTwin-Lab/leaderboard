@@ -98,7 +98,8 @@ export function toMetaDescription(text: string | null | undefined, max = 160): s
  * serait hérité par toutes les pages et les désignerait toutes comme doublons
  * de l'accueil. `openGraph` est de même reconstruit en entier, parce que Next
  * remplace cet objet d'un niveau à l'autre au lieu de le fusionner. L'image,
- * elle, vient de `app/opengraph-image.png` et s'applique partout.
+ * elle, vient de `app/opengraph-image.jpg`, qui n'habille que l'accueil : ce
+ * remplacement emporte aussi l'image héritée du segment racine.
  *
  * `title` passe par le gabarit du layout (« Titre | MyTwin Lab ») ;
  * `absoluteTitle` l'écrit en entier, pour les pages dont le titre commence par
