@@ -97,9 +97,13 @@ export function ProjectChallengesExplorer({
           coverImageUrl: challenge.coverImageUrl,
         }))
       )
-      // Most recent first; undated challenges have no place on that axis, so
-      // they sink to the bottom rather than sorting as NaN.
+      // Les actifs d'abord — c'est là qu'on peut encore contribuer, et la pill
+      // « All » doit ouvrir sur eux. Ensuite la date de début décroissante, au
+      // sein de chaque groupe ; les challenges sans date n'ont pas de place sur
+      // cet axe et coulent en bas plutôt que de trier comme NaN.
       .sort((a, b) => {
+        const rank = (status: FlatChallenge["status"]) => (status === "active" ? 0 : 1);
+        if (rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status);
         if (!a.startDate) return b.startDate ? 1 : 0;
         if (!b.startDate) return -1;
         return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
@@ -149,10 +153,17 @@ export function ProjectChallengesExplorer({
     });
   }, [allChallenges, needle, selectedProjectId]);
 
+  /**
+   * Les archivés ne s'affichent que si on les demande : « All » veut dire tout
+   * ce à quoi on peut encore prendre part, pas le fond d'archive. La pastille
+   * « Archived » reste le seul chemin vers eux — leurs pages publiques, elles,
+   * ne bougent pas. « Manage » les garde : un manager doit voir tout son
+   * projet, archives comprises.
+   */
   const filteredChallenges = useMemo(() => {
     return searchPool.filter((challenge) =>
       statusFilter === "all"
-        ? true
+        ? challenge.status !== "archived"
         : statusFilter === "manage"
           ? managedSet.has(challenge.projectId)
           : challenge.status === statusFilter,
@@ -165,7 +176,8 @@ export function ProjectChallengesExplorer({
     return [
       { value: "active" as StatusFilter, label: "Active", count: count((c) => c.status === "active") },
       { value: "completed" as StatusFilter, label: "Completed", count: count((c) => c.status === "completed") },
-      { value: "all" as StatusFilter, label: "All", count: searchPool.length },
+      // Hors archives, comme la vue qu'elle ouvre.
+      { value: "all" as StatusFilter, label: "All", count: count((c) => c.status !== "archived") },
       // Conditionnée au compte, et non au rôle : un challenge archivé
       // n'atteint le client que pour un admin ou le manager de son projet
       // (voir `lib/server/publicPages.ts`). Se fier au compte évite de
