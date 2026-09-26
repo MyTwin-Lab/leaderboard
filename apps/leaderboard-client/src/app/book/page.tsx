@@ -72,10 +72,6 @@ export default async function BookPage({
                 30 minutes
               </li>
               <li>
-                <PersonIcon />
-                One-to-one with Rubens Valcy
-              </li>
-              <li>
                 <VideoIcon />
                 Google Meet, link sent on booking
               </li>
@@ -94,15 +90,6 @@ function ClockIcon() {
     <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="1.5" />
       <path d="M8 4.75V8l2.25 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function PersonIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="8" cy="5.25" r="2.75" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M2.75 14c.6-2.6 2.7-4.25 5.25-4.25s4.65 1.65 5.25 4.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }

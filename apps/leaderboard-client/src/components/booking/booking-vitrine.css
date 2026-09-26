@@ -127,13 +127,6 @@
   flex: none;
 }
 
-.v-book-note {
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--v-subtle);
-  text-wrap: pretty;
-}
-
 /* ── Téléphone et tablette étroite : une seule colonne ─────────────── */
 @media (max-width: 820px) {
   .v-book-grid {

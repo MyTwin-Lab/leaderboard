@@ -80,11 +80,6 @@ export function BookingForm({ intent }: { intent: BookingIntent | null }) {
           </svg>
         )}
       </button>
-
-      <p className="v-book-note">
-        Next, you&rsquo;ll pick a slot on Calendly, with your details already filled in. They are only used to
-        arrange this call.
-      </p>
     </form>
   );
 }
