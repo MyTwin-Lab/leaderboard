@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 
 import {
+  getPodcastEpisode,
   PODCAST_EPISODES,
   podcastEmbedUrl,
   type PodcastEpisode,
@@ -11,7 +12,14 @@ import {
 } from "@/components/podcast/episodes";
 
 /**
- * Les épisodes MyTwin Inside : le dernier en vedette, les trois autres en rang.
+ * L'épisode mis en avant sur la home. Choix éditorial, indépendant de l'ordre
+ * de `PODCAST_EPISODES` qui recopie celui de mytwin.care : la page /podcast
+ * garde l'ordre de la chaîne, la home ouvre sur celui-ci.
+ */
+const LEAD_EPISODE: PodcastEpisodeKey = "voice";
+
+/**
+ * Les épisodes MyTwin Inside : un en vedette, les trois autres en rang.
  *
  * Forme de la maquette, comportement de `PodcastVideos` — lancer un épisode
  * met en pause celui qui jouait, et une vidéo déjà lancée garde son iframe
@@ -23,7 +31,8 @@ import {
  * ceux des épisodes s'ils étaient enfouis dans un libellé de commande.
  */
 export function HomePodcastRail() {
-  const [lead, ...rest] = PODCAST_EPISODES;
+  const lead = getPodcastEpisode(LEAD_EPISODE);
+  const rest = PODCAST_EPISODES.filter((episode) => episode.key !== LEAD_EPISODE);
   const [active, setActive] = useState<PodcastEpisodeKey | null>(null);
   const [started, setStarted] = useState<ReadonlySet<PodcastEpisodeKey>>(new Set());
   const frames = useRef<Partial<Record<PodcastEpisodeKey, HTMLIFrameElement>>>({});

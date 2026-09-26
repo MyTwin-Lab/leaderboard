@@ -166,13 +166,14 @@
   justify-self: center;
   align-self: end;
   gap: 0.5rem;
-  height: 3rem;
+  /* 2.75rem = 44px : la cible tactile reste à la taille minimale conseillée. */
+  height: 2.75rem;
   padding-inline: 1.5rem 1.3rem;
   border-radius: 999px;
   background: var(--v-ink);
   color: var(--v-bg);
   font-family: var(--v-font-h);
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 18px 40px -22px rgb(17 22 26 / 0.7);
@@ -245,10 +246,10 @@
     align-self: start;
     justify-self: start;
     gap: 0.6rem;
-    height: 3.5rem;
+    height: 3.15rem;
     padding-inline: 1.9rem 1.6rem;
     margin-top: clamp(2.25rem, 5vh, 3.75rem);
-    font-size: 1rem;
+    font-size: 0.9375rem;
   }
 }
 
