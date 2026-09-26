@@ -1,0 +1,145 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   `/book` — la prise de rendez-vous. Les jetons, le titre, l'accroche et le
+   surtitre viennent de `vitrine.css` ; ici, seulement la mise en page à deux
+   colonnes et la carte du formulaire. Le bouton reprend la gélule accent du
+   bandeau `.v-strip-cta`, en plus grand.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.v-book-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: clamp(32px, 6vw, 88px);
+  padding-block: clamp(16px, 5vw, 64px) clamp(8px, 3vw, 32px);
+}
+
+.v-book-intro {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.v-book-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.v-book-facts li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14.5px;
+  color: var(--v-muted);
+}
+
+.v-book-facts svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--v-accent);
+}
+
+/* ── La carte ───────────────────────────────────────────────────────── */
+.v-book-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 18px;
+  border: 1px solid var(--v-line);
+  border-radius: 20px;
+  background: var(--v-surface);
+  padding: clamp(22px, 3vw, 32px);
+  box-shadow: 0 24px 48px -36px rgb(17 22 26 / 0.35);
+}
+
+.v-book-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.v-book-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--v-ink);
+}
+
+.v-book-field input {
+  width: 100%;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  padding: 13px 16px;
+  /* 16px : en dessous, Safari iOS zoome la page au focus. */
+  font-size: 16px;
+  color: var(--v-ink);
+  outline: none;
+  transition: border-color 0.3s var(--v-ease), box-shadow 0.3s var(--v-ease);
+}
+
+/* `!important` pour passer devant la réécriture du mode clair de `globals.css`,
+   comme `.v-search input:focus`. */
+.v-book-field input:focus {
+  border-color: rgb(11 122 100 / 0.5) !important;
+  box-shadow: 0 0 0 3px rgb(63 161 170 / 0.14);
+}
+
+.v-book-cta {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: var(--v-accent);
+  padding: 14px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #ffffff;
+  text-align: center;
+  transition: transform 0.3s var(--v-ease), box-shadow 0.3s var(--v-ease), opacity 0.3s var(--v-ease);
+}
+
+.v-book-cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -18px rgb(11 122 100 / 0.9);
+}
+
+.v-book-cta:focus-visible {
+  outline: 2px solid var(--v-accent);
+  outline-offset: 3px;
+}
+
+.v-book-cta:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.v-book-cta svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.v-book-note {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--v-subtle);
+  text-wrap: pretty;
+}
+
+/* ── Téléphone et tablette étroite : une seule colonne ─────────────── */
+@media (max-width: 820px) {
+  .v-book-grid {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 28px;
+    padding-block: 8px 0;
+  }
+}

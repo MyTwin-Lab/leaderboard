@@ -2,14 +2,12 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 
 import { fetchJson } from "@/lib/fetchJson";
 import type { SandboxView } from "@/lib/public/sandbox";
 import type { SandboxStarTier } from "../../../../../packages/database-service/domain/entities";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
 import { SearchIcon } from "@/components/vitrine/SearchIcon";
-import { CreateSandboxModal } from "./CreateSandboxModal";
 import { SandboxCard } from "./SandboxCard";
 import {
   filterAndSort,
@@ -22,25 +20,13 @@ import type { StarState } from "./StarButton";
 import "@/components/vitrine/vitrine.css";
 import "./sandbox-vitrine.css";
 import { BackToLab } from "@/components/vitrine/BackToLab";
-import { CREATE_SANDBOX_LABEL, CreateSandboxStrip } from "@/components/vitrine/CreateSandboxStrip";
+import { CreateSandboxStrip } from "@/components/vitrine/CreateSandboxStrip";
 
 interface SandboxListResponse {
   sandboxes: SandboxView[];
   tiers: SandboxStarTier[];
   promotion_bonus_cp: number;
 }
-
-/**
- * Les rôles autorisés à déposer une proposition.
- *
- * Copie assumée de `SANDBOX_CREATOR_ROLES` (`lib/server/sandboxAuth.ts`), que
- * ce composant client ne peut pas importer sans traîner un module serveur dans
- * le bundle. La règle est **appliquée par l'API** : ici, elle ne fait que
- * cacher un bouton qui mènerait à un 403.
- *
- * Un manager n'y figure pas : sur un sandbox, il est un contributeur ordinaire.
- */
-const CREATOR_ROLES = ["admin", "contributor", "medical_pro"];
 
 const PILLS: { key: SandboxStatusFilter; label: string }[] = [
   { key: "open", label: "Open" },
@@ -57,7 +43,7 @@ const PILLS: { key: SandboxStatusFilter; label: string }[] = [
  * sous l'accroche.
  *
  * Tout se lit côté client, parce que l'état du visiteur (sa star, ses
- * propositions, son droit de créer) dépend de sa session — sauf pour un
+ * propositions) dépend de sa session — sauf pour un
  * visiteur sans aucun cookie (`knownAnonymous`), à qui la page serveur
  * pré-remplit le listing pour qu'il arrive dans le HTML.
  */
@@ -66,9 +52,6 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
 
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<SandboxStatusFilter>("open");
-  const [createOpen, setCreateOpen] = useState(false);
-  // Le rectangle du bouton cliqué : la modale s'ouvre depuis lui.
-  const [origin, setOrigin] = useState<{ x: number; y: number; w: number } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   /**
@@ -76,8 +59,7 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
    *
    * `/api/sandboxes/**` est hors du matcher du proxy : aucun refresh silencieux
    * n'y joue, et un access_token expiré y ferait passer un connecté pour un
-   * anonyme — plus de « Mine », plus de « my_star », plus de bouton de
-   * création. `/api/contributors/me`, lui, est dans le matcher : c'est ce
+   * anonyme — plus de « Mine », plus de « my_star ». `/api/contributors/me`, lui, est dans le matcher : c'est ce
    * fetch-là qui renouvelle le jeton.
    *
    * `retry: false` : un 401 est ici un état normal (visiteur non connecté), pas
@@ -105,7 +87,6 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
 
   const me = meQuery.data?.user ?? null;
   const currentUserId: string | null = me?.id ?? null;
-  const canCreate = !!me && CREATOR_ROLES.includes(me.role);
 
   const sandboxes = useMemo(() => listQuery.data?.sandboxes ?? [], [listQuery.data]);
 
@@ -150,21 +131,6 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
         ),
       };
     });
-  };
-
-  const onCreated = (created: SandboxView) => {
-    queryClient.setQueryData<SandboxListResponse>(["sandboxes"], (current) =>
-      current ? { ...current, sandboxes: [created, ...current.sandboxes] } : current,
-    );
-    // La proposition part `open`, mais c'est sous « Mine » que son auteur la
-    // cherchera juste après l'avoir déposée.
-    setStatus("mine");
-  };
-
-  const openCreate = (event: React.MouseEvent<HTMLElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    setOrigin({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, w: rect.width });
-    setCreateOpen(true);
   };
 
   const loading = listQuery.isPending || !sessionKnown;
@@ -263,32 +229,10 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
           </div>
         )}
 
-        {/* ── Le bandeau de bas de page : le seul chemin vers la création
-            d'une sandbox depuis que le bouton noir des filtres est parti. ── */}
-        <CreateSandboxStrip
-          action={
-            canCreate ? (
-              <button type="button" className="v-strip-cta" onClick={openCreate}>
-                {CREATE_SANDBOX_LABEL}
-              </button>
-            ) : (
-              <Link href="/signin?from=/sandbox" className="v-strip-cta">
-                {CREATE_SANDBOX_LABEL}
-              </Link>
-            )
-          }
-        />
-
+        {/* ── Le bandeau de bas de page : un projet se propose désormais en
+            prenant rendez-vous, pas en déposant soi-même une sandbox. ── */}
+        <CreateSandboxStrip />
       </div>
-
-      {/* Monté hors du conteneur : une modale `fixed` rendue dans un sous-arbre
-          transformé se retrouverait confinée dans sa boîte. */}
-      <CreateSandboxModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSaved={onCreated}
-        origin={origin}
-      />
     </div>
   );
 }

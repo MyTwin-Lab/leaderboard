@@ -1,10 +1,13 @@
 import Image from "next/image";
+import Link from "next/link";
+
+import { bookingPath } from "@/lib/booking";
 
 import { HomeArrow } from "./HomeSection";
 
 /**
- * « Create your twin » : un encart qui renvoie vers mytwin.care, où l'on crée
- * son jumeau.
+ * « Create your twin » : un encart qui mène à la prise de rendez-vous
+ * (`/book?for=twin`) — on crée son jumeau en en parlant avec l'équipe.
  *
  * Toute la carte est le lien, pas seulement le libellé souligné : l'image est
  * la plus grande cible de la section. Elle y est décorative (`alt=""`), sans
@@ -23,7 +26,7 @@ export function HomeCreateTwin() {
         </h2>
       </div>
 
-      <a href="https://mytwin.care" className="v-home-twin-card">
+      <Link href={bookingPath("twin")} className="v-home-twin-card">
         <Image
           src="/home/twin/create-your-twin.webp"
           alt=""
@@ -37,7 +40,7 @@ export function HomeCreateTwin() {
           Create Your Twin
           <HomeArrow />
         </span>
-      </a>
+      </Link>
     </section>
   );
 }

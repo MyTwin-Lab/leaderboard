@@ -50,8 +50,8 @@ export default async function HomePage() {
   // rejoindre, et de montrer qui contribue et sur quoi.
   //
   // « Create your twin » fait exception et ferme la page. La maquette le posait
-  // au milieu ; c'est le seul encart qui sort du Lab, et il se lit mieux une
-  // fois le Lab montré — on part vers mytwin.care après avoir vu, pas avant.
+  // au milieu ; c'est le seul appel à prendre rendez-vous de l'accueil, et il
+  // se lit mieux une fois le Lab montré — on réserve après avoir vu, pas avant.
   //
   // La navbar et le pied de page de la maquette ne sont pas repris : `LabShell`
   // les pose déjà pour toute l'app, et cette page n'a pas à en porter une
