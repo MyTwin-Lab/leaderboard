@@ -10,7 +10,7 @@ export const mytwinAthlete: NewsArticle = {
   slug: "mytwin-athlete",
   publishedAt: "2026-09-26",
   eventMonth: "2026-09",
-  category: "research",
+  category: "product",
   readingMinutes: 3,
   title: "MyTwin Athlete: predicting injury risk before it happens",
   overviewTitle: "MyTwin Athlete: a Vigilance Score for tennis players",
