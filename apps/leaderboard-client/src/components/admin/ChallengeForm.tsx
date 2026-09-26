@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FormField, FormFooter, FormSection, inputClass, selectClass } from '@/components/ui/FormField';
 import { ChallengeTasksEditor } from './ChallengeTasksEditor';
-import { Code2, BrainCircuit, ShieldCheck, Cpu, Package, Eye, Pencil, Plus, Loader2 } from 'lucide-react';
+import { Code2, BrainCircuit, ShieldCheck, Bookmark, Cpu, Package, Eye, Pencil, Plus, Loader2 } from 'lucide-react';
 import { Toggle } from '@/components/ui/Toggle';
 import { SlugField } from '@/components/ui/SlugField';
 import { Markdown } from '@/components/ui/Markdown';
@@ -230,11 +230,17 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
 
         {/* Type picker */}
         <FormField label="Type">
-          <div className="flex gap-2">
+          {/* `flex-wrap` et une base : à quatre options, une seule ligne
+              rognait chaque libellé jusqu'à l'illisible. */}
+          <div className="flex flex-wrap gap-2">
             {([
               { value: 'code',       label: 'Code',       icon: Code2,        desc: 'Tasks, Kanban, GitHub' },
               { value: 'ml',         label: 'ML',         icon: BrainCircuit, desc: 'Dataset, Model, API' },
               { value: 'validation', label: 'Validation', icon: ShieldCheck,  desc: 'Test a submitted API live' },
+              // Sans cette entrée, éditer un challenge repère n'allumait aucun
+              // bouton : le type restait celui de la base, l'écran n'en disait
+              // rien.
+              { value: 'none',       label: 'None',       icon: Bookmark,     desc: 'A placeholder — nothing to join' },
             ] as const).map(opt => {
               const Icon = opt.icon;
               const active = formData.type === opt.value;
@@ -243,7 +249,7 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
                   key={opt.value}
                   type="button"
                   onClick={() => setFormData(p => ({ ...p, type: opt.value }))}
-                  className={`flex flex-1 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
+                  className={`flex flex-1 basis-40 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
                     active
                       ? 'border-brandCP/40 bg-brandCP/10 ring-1 ring-brandCP/20'
                       : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'
