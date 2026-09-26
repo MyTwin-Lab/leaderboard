@@ -58,6 +58,22 @@ const VITRINE_BACKGROUND = "#fcfcfc";
  */
 const BARE_ROUTES = new Set(["/signin"]);
 
+function vitrineBackgroundFor(pathname: string) {
+  return (
+    VITRINE_BACKGROUNDS[pathname] ??
+    (VITRINE_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ? VITRINE_BACKGROUND : undefined)
+  );
+}
+
+/**
+ * Vrai sur une page vitrine. La navbar s'en sert pour prendre la palette des
+ * maquettes plutôt que celle du thème : posée sur le #fcfcfc d'une vitrine,
+ * une barre au fond sombre du thème ferait tache.
+ */
+export function isVitrineRoute(pathname: string) {
+  return vitrineBackgroundFor(pathname) !== undefined;
+}
+
 export function LabShell({ navbar, footer, overlays, children }: LabShellProps) {
   const pathname = usePathname();
 
@@ -65,9 +81,7 @@ export function LabShell({ navbar, footer, overlays, children }: LabShellProps) 
     return <>{children}</>;
   }
 
-  const vitrineBackground =
-    VITRINE_BACKGROUNDS[pathname] ??
-    (VITRINE_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ? VITRINE_BACKGROUND : undefined);
+  const vitrineBackground = vitrineBackgroundFor(pathname);
   const vitrine = vitrineBackground !== undefined;
 
   return (

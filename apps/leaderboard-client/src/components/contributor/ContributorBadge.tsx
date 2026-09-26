@@ -20,7 +20,7 @@ export function ContributorBadge({ fullName, avatarUrl }: ContributorBadgeProps)
   return (
     <Link
       href="/contributors/me"
-      className="flex h-10 w-10 items-center justify-center rounded-2xl overflow-hidden transition hover:opacity-85"
+      className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full ring-1 ring-[color:var(--n-line)] ring-offset-2 ring-offset-transparent transition hover:ring-[color:var(--n-accent,var(--theme-primary))]"
       aria-label="My profile"
     >
       {avatarUrl ? (

@@ -1,57 +1,186 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   Les liens de la navbar.
+   La navbar du Lab.
 
-   Trois choses que les utilitaires ne savent pas faire : un `clip-path` animé,
-   un état survolé qui pilote deux enfants à la fois, et un agrandissement qui
-   ne déplace pas ses voisins. D'où cette feuille plutôt que des classes en
-   ligne.
+   Au repos, en haut de page, elle n'a pas de matière : le logo, trois liens,
+   un bouton, posés sur le fond. Dès qu'on défile, elle se détache en îlot —
+   verre clair, filet d'un pixel, ombre à peine portée. Tout le mouvement se
+   joue en transitions CSS sur un seul attribut (`data-scrolled`), pas en
+   valeurs recalculées à chaque pixel de défilement.
+
+   Deux palettes : celle des maquettes sur les pages vitrine (`#fcfcfc`,
+   encre, accent), celle du thème ailleurs — l'app peut être sombre.
    ───────────────────────────────────────────────────────────────────────── */
 
-.nav-link {
+.lab-nav {
+  --n-ink: var(--foreground);
+  --n-bg: var(--background);
+  --n-muted: color-mix(in srgb, var(--foreground) 60%, transparent);
+  --n-line: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --n-hover: color-mix(in srgb, var(--foreground) 7%, transparent);
+  --n-accent: var(--theme-primary);
+  --n-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 12px 32px -12px rgb(0 0 0 / 0.5);
+  --n-ease: cubic-bezier(0.22, 0.61, 0.21, 1);
+  --n-dur: 0.5s;
+
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 50;
+  padding: env(safe-area-inset-top, 0px) 0 0;
+  pointer-events: none;
+  transition: padding var(--n-dur) var(--n-ease);
+}
+
+.lab-nav[data-surface="vitrine"] {
+  --n-ink: #11161a;
+  --n-bg: #fcfcfc;
+  --n-muted: #586067;
+  --n-line: rgb(17 22 26 / 0.08);
+  --n-hover: rgb(17 22 26 / 0.05);
+  --n-accent: #3fa1aa;
+  --n-shadow: 0 1px 2px rgb(17 22 26 / 0.04), 0 10px 30px -14px rgb(17 22 26 / 0.16);
+}
+
+.lab-nav[data-scrolled="true"] {
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 0;
+}
+
+/* ── L'îlot ─────────────────────────────────────────────────────────────── */
+
+.lab-nav-island {
   position: relative;
-  display: inline-block;
-  /* `line-height: 1` rend la hauteur de la boîte prévisible, ce dont dépend le
-     rayon du balayage ci-dessous. */
-  line-height: 1;
+  pointer-events: auto;
+  max-width: 1152px;
+  margin-inline: auto;
+  border: 1px solid transparent;
+  border-radius: 28px;
+  background: transparent;
+  color: var(--n-ink);
+  transition:
+    max-width var(--n-dur) var(--n-ease),
+    background-color var(--n-dur) var(--n-ease),
+    border-color var(--n-dur) var(--n-ease),
+    box-shadow var(--n-dur) var(--n-ease);
+}
+
+.lab-nav[data-scrolled="true"] .lab-nav-island {
+  max-width: 1080px;
+  border-color: var(--n-line);
+  background: color-mix(in srgb, var(--n-bg) 86%, transparent);
+  box-shadow: var(--n-shadow);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Le verre est un luxe : sans `backdrop-filter`, un fond presque plein. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lab-nav[data-scrolled="true"] .lab-nav-island {
+    background: color-mix(in srgb, var(--n-bg) 96%, transparent);
+  }
+}
+
+/* Trois colonnes, les deux extrêmes de même largeur : les liens tombent au
+   centre exact de la barre, quelle que soit la largeur du logo ou du bouton. */
+.lab-nav-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: 64px;
+  padding-inline: 24px;
+  transition:
+    height var(--n-dur) var(--n-ease),
+    padding var(--n-dur) var(--n-ease);
+}
+
+.lab-nav[data-scrolled="true"] .lab-nav-row {
+  height: 54px;
+  padding-inline: 20px 8px;
+}
+
+.lab-nav-logo {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  color: var(--n-ink);
+  transform-origin: left center;
+  transition: transform var(--n-dur) var(--n-ease), opacity 0.2s ease;
+}
+
+.lab-nav-logo:hover {
+  opacity: 0.75;
+}
+
+.lab-nav[data-scrolled="true"] .lab-nav-logo {
+  transform: scale(0.92);
+}
+
+/* ── Les liens : la couleur qui se remplit dans le mot ──────────────────── */
+
+.lab-nav-links ul {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lab-nav-link {
+  display: block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--n-muted);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.lab-nav-link[aria-current="page"] {
+  color: var(--n-ink);
+}
+
+.lab-nav-link:focus-visible {
+  outline: 2px solid var(--n-accent);
+  outline-offset: 2px;
 }
 
 /* L'agrandissement se fait en `transform` et non en `font-size`.
-   Changer la taille de police reflow la ligne à chaque image — les trois liens
-   se poussaient les uns les autres pendant toute la transition, ce qui est
-   exactement ce qui ne paraissait pas fluide. Une mise à l'échelle est
-   composée par le GPU et ne touche pas la mise en page : les voisins ne
-   bougent plus du tout. */
-.nav-link-label {
+   Changer la taille de police reflow la ligne à chaque image — les liens se
+   pousseraient les uns les autres pendant toute la transition. Une mise à
+   l'échelle est composée par le GPU et ne touche pas la mise en page : les
+   voisins ne bougent pas. `line-height: 1` rend la hauteur de la boîte
+   prévisible, ce dont dépend le rayon du balayage ci-dessous. */
+.lab-nav-link-label {
   position: relative;
   display: inline-block;
+  line-height: 1;
   transform: scale(1);
   transform-origin: center;
-  transition: transform 0.52s cubic-bezier(0.22, 0.61, 0.21, 1);
+  transition: transform 0.52s var(--n-ease);
   will-change: transform;
 }
 
-.nav-link:hover .nav-link-label,
-.nav-link:focus-visible .nav-link-label,
-.nav-link[data-on="true"] .nav-link-label {
+.lab-nav-link:hover .lab-nav-link-label,
+.lab-nav-link:focus-visible .lab-nav-link-label,
+.lab-nav-link[aria-current="page"] .lab-nav-link-label {
   transform: scale(1.14);
 }
 
 /* Le balayage : une seconde copie du texte, à la couleur du thème, révélée de
    la gauche vers la droite.
    Le `round` donne au front qui avance un bord arrondi plutôt qu'une coupe
-   nette — c'est la forme que l'ancienne barre soulignée avait déjà. Un rayon
-   de pilule vaut la moitié de la hauteur de la boîte, d'où le padding
-   horizontal : sans lui, l'arrondi mordrait la première et la dernière lettre
-   une fois le balayage terminé.
+   nette. Un rayon de pilule vaut la moitié de la hauteur de la boîte, d'où le
+   padding horizontal : sans lui, l'arrondi mordrait la première et la dernière
+   lettre une fois le balayage terminé.
 
-   La boîte déborde de `0.2em` en haut et en bas. Avec `line-height: 1` elle
+   La boîte déborde de `0.2em` en haut et en bas : avec `line-height: 1` elle
    s'arrêtait à la cadratine, et la jambe du « g » de Challenges tombait hors
-   du rognage : la lettre restait à moitié grise, le balayage passé. Le padding
-   vertical remet le texte à sa place — c'est la boîte qui grandit, pas lui —
-   et le padding horizontal suit la moitié de la nouvelle hauteur (1.4em / 2,
-   arrondi au-dessus). */
-.nav-link-fill {
+   du rognage. Le padding vertical remet le texte à sa place — c'est la boîte
+   qui grandit, pas lui — et le padding horizontal suit la moitié de la
+   nouvelle hauteur (1.4em / 2, arrondi au-dessus). */
+.lab-nav-link-fill {
   position: absolute;
   top: -0.2em;
   bottom: -0.2em;
@@ -59,21 +188,201 @@
   padding: 0.2em 0.8em;
   color: var(--theme-primary);
   clip-path: inset(0 100% 0 0 round 999px);
-  transition: clip-path 0.52s cubic-bezier(0.22, 0.61, 0.21, 1);
+  transition: clip-path 0.52s var(--n-ease);
   pointer-events: none;
 }
 
-.nav-link:hover .nav-link-fill,
-.nav-link:focus-visible .nav-link-fill,
-.nav-link[data-on="true"] .nav-link-fill {
+.lab-nav-link:hover .lab-nav-link-fill,
+.lab-nav-link:focus-visible .lab-nav-link-fill,
+.lab-nav-link[aria-current="page"] .lab-nav-link-fill {
   clip-path: inset(0 0 0 0 round 999px);
 }
 
-/* Le balayage est un mouvement décoratif : sous `reduce`, la couleur arrive
-   d'un coup plutôt que de traverser le mot. */
+/* ── À droite : se connecter, ou son avatar ─────────────────────────────── */
+
+.lab-nav-actions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+}
+
+.lab-nav-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding-inline: 18px;
+  border-radius: 999px;
+  background: var(--n-ink);
+  color: var(--n-bg);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 0.3s var(--n-ease);
+}
+
+.lab-nav-cta:hover,
+.lab-nav-cta:focus-visible {
+  background: var(--n-accent);
+  color: var(--n-bg);
+}
+
+.lab-nav-cta:focus-visible {
+  outline: 2px solid var(--n-accent);
+  outline-offset: 2px;
+}
+
+/* ── Mobile : le bouton à deux traits, et le menu qui se déplie ─────────── */
+
+.lab-nav-burger {
+  display: none;
+  justify-self: end;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--n-ink);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lab-nav-burger span {
+  position: absolute;
+  left: 11px;
+  width: 18px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+  transition:
+    transform 0.45s var(--n-ease),
+    top 0.45s var(--n-ease);
+}
+
+.lab-nav-burger span:first-child {
+  top: 16px;
+}
+
+.lab-nav-burger span:last-child {
+  top: 22.5px;
+}
+
+.lab-nav[data-open="true"] .lab-nav-burger span:first-child {
+  top: 19.25px;
+  transform: rotate(45deg);
+}
+
+.lab-nav[data-open="true"] .lab-nav-burger span:last-child {
+  top: 19.25px;
+  transform: rotate(-45deg);
+}
+
+/* Le menu plein écran. Il vit dans le `<header>`, avant l'îlot : même
+   contexte d'empilement, donc la barre reste peinte au-dessus, et il hérite
+   des jetons `--n-*` de la surface courante. */
+.lab-nav-menu {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 32px calc(48px + env(safe-area-inset-bottom, 0px));
+  background: color-mix(in srgb, var(--n-bg) 97%, transparent);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--n-dur) var(--n-ease);
+}
+
+.lab-nav[data-open="true"] .lab-nav-menu {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.lab-nav-menu ul {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lab-nav-menu li {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s var(--n-ease);
+}
+
+.lab-nav[data-open="true"] .lab-nav-menu li {
+  opacity: 1;
+  transform: none;
+  transition-duration: 0.6s;
+  transition-delay: calc(0.15s + var(--i, 0) * 0.07s);
+}
+
+/* Le compte se tient un peu à l'écart des trois pages. */
+.lab-nav-menu-account {
+  margin-top: 20px;
+}
+
+.lab-nav-menu-link {
+  color: var(--n-ink);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  transition: color 0.25s ease;
+}
+
+.lab-nav-menu-link:hover,
+.lab-nav-menu-link[aria-current="page"] {
+  color: var(--n-accent);
+}
+
+.lab-nav-menu-account .lab-nav-menu-link {
+  color: var(--n-muted);
+}
+
+@media (max-width: 767px) {
+  .lab-nav-row {
+    grid-template-columns: 1fr auto;
+    height: 58px;
+    padding-inline: 16px 8px;
+  }
+
+  .lab-nav[data-scrolled="true"] .lab-nav-row {
+    height: 52px;
+    padding-inline: 16px 6px;
+  }
+
+  .lab-nav[data-scrolled="true"] {
+    padding-inline: 10px;
+  }
+
+  .lab-nav-links,
+  .lab-nav-actions {
+    display: none;
+  }
+
+  .lab-nav-menu {
+    display: flex;
+  }
+
+  .lab-nav-burger {
+    display: block;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .nav-link-label,
-  .nav-link-fill {
-    transition: none;
+  .lab-nav,
+  .lab-nav * {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
   }
 }
