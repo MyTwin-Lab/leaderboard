@@ -143,9 +143,8 @@
   /* Le plancher ne joue que sur téléphone : dès 768px, 5.5vw le dépasse. */
   font-size: clamp(1.5rem, 5.5vw, 3.5rem);
   line-height: 1.05;
-  /* Medium sur téléphone : en bold, le titre écrase l'écran de garde. Le PC
-     repasse en bold plus bas. */
-  font-weight: 500;
+  /* Semi-bold partout : en bold, le titre écrase l'écran de garde. */
+  font-weight: 600;
   letter-spacing: -0.04em;
   color: var(--v-ink);
   text-wrap: balance;
@@ -236,11 +235,9 @@
   }
 
   /* La mesure du titre se resserre pour qu'il passe sur une ligne de plus :
-     quatre lignes courtes tiennent mieux l'écran de garde que trois longues.
-     À cette taille le titre reprend le bold que le téléphone lui retire. */
+     quatre lignes courtes tiennent mieux l'écran de garde que trois longues. */
   .v-gate-title {
     max-width: 14ch;
-    font-weight: 700;
   }
 
   /* Le bouton quitte le bas de l'écran. Il reste dans la même ligne élastique
