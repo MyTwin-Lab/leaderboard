@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Play } from "lucide-react";
 import type { NewsIllustration } from "@/content/news/types";
 import { cn } from "@/lib/utils";
 
@@ -7,6 +8,11 @@ import { cn } from "@/lib/utils";
  * format, l'illustration le remplit : une image est recadrée (ou montrée en
  * entier sur fond noir, avec `fit: "contain"`), un visuel se centre sur un
  * panneau clair, quel que soit le thème du Lab.
+ *
+ * Une vidéo s'y montre par son image, un petit bouton lecture dans l'angle
+ * bas droit : il signale la vidéo, le clic va à l'article, qui la pose en tête
+ * (`NewsHero`). Le bouton suit la largeur du cadre (`cqw`), de la vignette de
+ * l'accueil à la une de `/news`.
  *
  * Décoratif par défaut : dans un aperçu, le titre dit déjà ce que montre
  * l'image. En tête d'article elle est du contenu, et `alt` la décrit.
@@ -57,6 +63,24 @@ export function NewsIllustrationFrame({
           className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
           style={{ objectPosition: illustration.position }}
         />
+      </div>
+    );
+  }
+
+  if (illustration.kind === "video") {
+    return (
+      <div aria-hidden={decorative || undefined} className={cn("@container relative overflow-hidden", className)}>
+        <Image
+          src={illustration.src}
+          alt={alt ?? ""}
+          fill
+          sizes={sizes}
+          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+          style={{ objectPosition: illustration.position }}
+        />
+        <span className="absolute bottom-[clamp(0.375rem,4cqw,0.875rem)] right-[clamp(0.375rem,4cqw,0.875rem)] flex size-[clamp(1.5rem,11cqw,2.75rem)] items-center justify-center rounded-full bg-[rgb(255_255_255/0.92)] text-[#11161a] shadow-[0_2px_12px_rgb(17_22_26/0.25)] backdrop-blur-sm transition-transform duration-300 ease-out group-hover:scale-110">
+          <Play className="size-[42%] translate-x-[6%] fill-current" strokeWidth={0} />
+        </span>
       </div>
     );
   }

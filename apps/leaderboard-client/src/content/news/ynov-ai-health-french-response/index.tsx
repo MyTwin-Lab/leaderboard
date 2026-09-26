@@ -1,6 +1,5 @@
 import { NewsCallout } from "@/components/news/NewsCallout";
 import { NewsLink } from "@/components/news/NewsLink";
-import { NewsVideoEmbed } from "@/components/news/NewsVideoEmbed";
 import { newsPath } from "@/lib/paths";
 import type { NewsArticle, NewsVideo } from "../types";
 
@@ -15,7 +14,8 @@ const SOURCES = {
 
 // L'extrait de l'enregistrement d'Ynov consacré à l'intervention de Rubens
 // Valcy, servi par le Lab plutôt qu'intégré depuis YouTube : on reste sur la
-// page, et rien n'est chargé avant le clic.
+// page, et rien n'est chargé avant le clic. C'est l'illustration de la news :
+// le lecteur en tête d'article, sous-titré en anglais par une piste WebVTT.
 const TALK: NewsVideo = {
   src: "/news/ynov-talk.mp4",
   poster: "/news/ynov-talk-video.webp",
@@ -25,6 +25,7 @@ const TALK: NewsVideo = {
   duration: "PT15M29S",
   uploadDate: "2026-09-24",
   language: "fr",
+  captions: { src: "/news/ynov-talk.en.vtt", lang: "en", label: "English" },
 };
 
 export const ynovAiHealthFrenchResponse: NewsArticle = {
@@ -36,10 +37,12 @@ export const ynovAiHealthFrenchResponse: NewsArticle = {
   title: "Connecting health innovations around the patient: MyTwin Lab at Ynov Campus’s Scientific Council",
   overviewTitle: "Connecting health innovations around the patient",
   illustration: {
-    kind: "image",
+    kind: "video",
+    video: TALK,
     src: "/news/ynov-talk.webp",
     alt: "Rubens Valcy speaks into a microphone on stage, in front of a projection screen, during a conversation",
     position: "60% 40%",
+    caption: "Rubens Valcy at Ynov Campus’s Scientific Council, Bordeaux, 5 February 2026.",
   },
   seoTitle: "AI and health: MyTwin Lab at Ynov Campus",
   description:
@@ -62,7 +65,7 @@ export const ynovAiHealthFrenchResponse: NewsArticle = {
     },
     { label: "Who", value: "Rubens Valcy, founder of MyTwin and MyTwin Lab" },
     { label: "Stage", value: "A talk: the vision behind MyTwin and MyTwin Lab" },
-    { label: "Video", value: "The talk, 15 minutes, in French" },
+    { label: "Video", value: "The talk, 15 minutes, in French with English subtitles" },
   ],
   intro: (
     <>
@@ -75,10 +78,6 @@ export const ynovAiHealthFrenchResponse: NewsArticle = {
       <p>
         A talk about AI, health, prevention, and how innovation can become truly accessible to patients.
       </p>
-      <NewsVideoEmbed
-        video={TALK}
-        caption="Rubens Valcy at Ynov Campus’s Scientific Council, Bordeaux, 5 February 2026."
-      />
     </>
   ),
   sections: [

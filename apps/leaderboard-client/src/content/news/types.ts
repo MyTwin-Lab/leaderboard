@@ -9,13 +9,14 @@ import type { ComponentType, ReactNode } from "react";
  */
 
 /** Le type d'événement : il choisit la pastille, et rien d'autre. */
-export type NewsCategory = "partnership" | "challenge" | "sandbox" | "research" | "community";
+export type NewsCategory = "partnership" | "challenge" | "sandbox" | "research" | "product" | "community";
 
 export const NEWS_CATEGORY_LABELS: Record<NewsCategory, string> = {
   partnership: "Partnership",
   challenge: "Challenge",
   sandbox: "Sandbox",
   research: "Research",
+  product: "Product",
   community: "Community",
 };
 
@@ -61,9 +62,10 @@ export type NewsCta = {
 };
 
 /**
- * L'illustration d'une news dans ses aperçus (les cartes) : une image, ou
- * un visuel dessiné en HTML/SVG. Même règle qu'un bloc visuel : elle illustre
- * et n'ajoute rien, ni chiffre ni résultat qui ne soit dans l'article.
+ * L'illustration d'une news dans ses aperçus (les cartes) : une image, un
+ * visuel dessiné en HTML/SVG, ou une vidéo. Même règle qu'un bloc visuel :
+ * elle illustre et n'ajoute rien, ni chiffre ni résultat qui ne soit dans
+ * l'article.
  */
 export type NewsIllustration =
   | {
@@ -91,12 +93,42 @@ export type NewsIllustration =
        * y montrer davantage qu'en aperçu.
        */
       Visual: ComponentType<{ hero?: boolean }>;
+    }
+  | {
+      /**
+       * La news rend compte d'une vidéo, et c'est elle son illustration : les
+       * aperçus montrent l'image avec un petit bouton lecture, l'article pose
+       * le lecteur en tête, à la place de l'image.
+       */
+      kind: "video";
+      video: NewsVideo;
+      /** L'image des aperçus, et celle du lecteur avant le clic. Dans `public/news/`. */
+      src: string;
+      alt: string;
+      /** `object-position` : le cadre des aperçus est paysage, l'image est recadrée. */
+      position?: string;
+      /** La légende sous le lecteur, en tête d'article. La langue parlée s'y ajoute. */
+      caption?: string;
     };
 
 /**
+ * Les sous-titres d'une vidéo, en WebVTT dans `public/news/` : le lecteur les
+ * affiche lui-même, à la typographie du Lab, plutôt que de les incruster dans
+ * le MP4 (un fichier par langue, et le texte reste lisible par les moteurs).
+ */
+export type NewsVideoCaptions = {
+  src: string;
+  /** Code BCP 47 de la langue des sous-titres (`en`). */
+  lang: string;
+  /** Le nom de la piste dans le menu du lecteur (`English`). */
+  label: string;
+};
+
+/**
  * Une vidéo dont la news rend compte (une intervention, une conférence),
- * servie par le site : l'article la place dans son texte avec
- * `NewsVideoEmbed`, et la page la déclare en `video` dans le JSON-LD.
+ * servie par le site : l'article la pose en tête comme illustration
+ * (`kind: "video"`) ou dans son texte avec `NewsVideoEmbed`, et la page la
+ * déclare en `video` dans le JSON-LD.
  */
 export type NewsVideo = {
   /** Dans `public/news/` : MP4 H.264 en `faststart`, la lecture démarre sans attendre le fichier entier. */
@@ -112,6 +144,7 @@ export type NewsVideo = {
   uploadDate: string;
   /** Code BCP 47 de la langue parlée (`fr`), dite sous la vidéo si ce n'est pas l'anglais. */
   language: string;
+  captions?: NewsVideoCaptions;
 };
 
 export type NewsArticle = {

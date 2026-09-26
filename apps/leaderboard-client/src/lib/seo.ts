@@ -351,6 +351,7 @@ export function newsArticleJsonLd({
     duration: string;
     uploadDate: string;
     language: string;
+    captions?: { src: string; lang: string };
   };
 }): JsonLdNode {
   const url = `${SITE_URL}${path}`;
@@ -387,6 +388,16 @@ export function newsArticleJsonLd({
             duration: video.duration,
             uploadDate: video.uploadDate,
             inLanguage: video.language,
+            ...(video.captions
+              ? {
+                  caption: {
+                    "@type": "MediaObject",
+                    contentUrl: `${SITE_URL}${video.captions.src}`,
+                    encodingFormat: "text/vtt",
+                    inLanguage: video.captions.lang,
+                  },
+                }
+              : {}),
           },
         }
       : {}),

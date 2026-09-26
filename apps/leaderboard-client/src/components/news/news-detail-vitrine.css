@@ -224,6 +224,23 @@
   height: 100%;
 }
 
+/* Une vidéo en tête : le lecteur, et sa légende dessous. Avant le clic il
+   garde la bande des autres news, où le bouton lecture reste au-dessus de la
+   ligne de flottaison ; lancé, il s'ouvre en 16:9 pour montrer toute
+   l'image. */
+.v-nd-hero-fig {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.v-nd-hero[data-kind="video"] {
+  position: relative;
+}
+
+.v-nd-hero[data-kind="video"]:has(video) {
+  aspect-ratio: 16 / 9;
+}
+
 /* ── Les deux colonnes : sommaire collant, article ──────────────────── */
 
 .v-nd-body {
@@ -813,12 +830,59 @@ details[open] > summary .v-nd-plus {
   background: var(--nd-night);
 }
 
-.v-nd-video video,
-.v-nd-video-btn {
+/* Le lecteur remplit son cadre : le 16:9 d'une vidéo dans le texte, ou la
+   bande de tête. `cqw` : les sous-titres suivent sa largeur. */
+.v-nd-player {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  container-type: inline-size;
+}
+
+.v-nd-player video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--nd-night);
+}
+
+/* Les sous-titres, dessinés par le lecteur : une ligne blanche sur un voile
+   de nuit, centrée au-dessus des contrôles natifs. Aucun événement : les
+   contrôles dessous restent cliquables. */
+.v-nd-subs {
+  position: absolute;
+  inset-inline: 0;
+  bottom: clamp(3.375rem, 9cqw, 4.5rem);
+  display: flex;
+  justify-content: center;
+  padding-inline: 6%;
+  pointer-events: none;
+}
+
+.v-nd-sub {
+  max-width: 44em;
+  padding: 0.2em 0.6em;
+  border-radius: 0.3em;
+  background: rgb(17 22 26 / 0.72);
+  color: #ffffff;
+  font-size: clamp(0.8125rem, 2.3cqw, 1.3125rem);
+  font-weight: 500;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+  text-align: center;
+  white-space: pre-line;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* En plein écran natif, le navigateur dessine la piste lui-même : même voile,
+   même blanc. */
+.v-nd-player video::cue {
+  background: rgb(17 22 26 / 0.72);
+  color: #ffffff;
+  font-family: inherit;
+  font-weight: 500;
 }
 
 .v-nd-video-btn {
@@ -1296,6 +1360,11 @@ details[open] > summary .v-nd-badge {
   .v-nd-hero {
     aspect-ratio: 4 / 3;
     margin-inline: calc(0.75rem - var(--nd-gutter));
+  }
+
+  /* Sur téléphone, le 16:9 d'emblée : la vidéo tient déjà dans l'écran. */
+  .v-nd-hero[data-kind="video"] {
+    aspect-ratio: 16 / 9;
   }
 
   .v-nd-body {
