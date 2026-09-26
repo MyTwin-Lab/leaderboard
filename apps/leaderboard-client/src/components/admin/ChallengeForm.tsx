@@ -175,8 +175,10 @@ export function ChallengeForm({ challenge, projects, onSubmit, onCancel }: Chall
     // Reward rules only apply to ML challenges. For other types we omit the
     // key entirely (PUT treats an absent field as "unchanged") instead of
     // sending null, which would wipe out a code challenge's real rules.
-    // source_challenge_id / cp_per_validation are creation-only (locked after,
-    // like the pool/project) — only sent when creating a new challenge.
+    // source_challenge_id / cp_per_validation are creation-only: the shape of
+    // a validation challenge is settled once (see the columns in drizzle.ts),
+    // so they only go out on a POST. The pool and the project are not in that
+    // group — both stay editable here and ship on every save.
     onSubmit({
       ...formData,
       // En édition, seulement s'il a changé : l'ancien devient une redirection.
