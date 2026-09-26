@@ -35,7 +35,7 @@ export const ynovAiHealthFrenchResponse: NewsArticle = {
   category: "community",
   readingMinutes: 6,
   title: "Connecting health innovations around the patient: MyTwin Lab at Ynov Campus’s Scientific Council",
-  overviewTitle: "Connecting health innovations around the patient",
+  overviewTitle: "MyTwin Lab at Ynov Campus’s Scientific Council",
   illustration: {
     kind: "video",
     video: TALK,
