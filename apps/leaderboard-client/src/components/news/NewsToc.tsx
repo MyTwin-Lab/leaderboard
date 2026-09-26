@@ -1,14 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { formatIndex } from "@/content/news/format";
 import { useScrollSpy } from "@/lib/useScrollSpy";
 
 export type TocItem = { id: string; title: string };
 
 /**
- * Le sommaire collant de la marge, d'après la maquette : un numéro, un titre,
- * et la section en vue sur un fond menthe.
+ * Le sommaire collant de la marge, d'après la maquette : les titres, et la
+ * section en vue sur un fond menthe. Sans les numéros de la maquette.
  *
  * Sous 900px il n'y a plus de marge où coller : le sommaire replié de
  * `NewsArticleBody` prend le relais, en `<details>` natif et sans JS.
@@ -21,7 +20,7 @@ export function NewsToc({ items }: { items: TocItem[] }) {
     <nav aria-label="Contents" className="v-nd-toc-nav">
       <span className="v-nd-toc-label">Contents</span>
       <ol className="v-nd-toc-list">
-        {items.map((item, index) => {
+        {items.map((item) => {
           const isActive = active === item.id;
           return (
             <li key={item.id}>
@@ -37,7 +36,6 @@ export function NewsToc({ items }: { items: TocItem[] }) {
                   window.history.replaceState(null, "", `#${item.id}`);
                 }}
               >
-                <span className="v-nd-toc-num">{formatIndex(index)}</span>
                 <span className="v-nd-toc-title">{item.title}</span>
               </a>
             </li>

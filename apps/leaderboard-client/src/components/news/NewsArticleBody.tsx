@@ -1,4 +1,3 @@
-import { formatIndex } from "@/content/news/format";
 import type { NewsArticle } from "@/content/news/types";
 
 import "@/components/vitrine/vitrine.css";
@@ -24,7 +23,7 @@ const MIN_SECTIONS_FOR_TOC = 3;
 /**
  * Le corps d'une news, d'après `News Detail Redesign Vitrine.dc.html` :
  * en-tête, image de tête, puis les deux colonnes — sommaire collant à gauche,
- * article à droite — et enfin le chapeau, les sections numérotées, la FAQ,
+ * article à droite — et enfin le chapeau, les sections, la FAQ,
  * l'appel à l'action et les sources.
  *
  * L'encart « At a glance » de la maquette n'est plus posé : l'article démarre
@@ -74,12 +73,9 @@ export function NewsArticleBody({ article }: { article: NewsArticle }) {
                 </span>
               </summary>
               <ol className="v-nd-contents-list">
-                {tocItems.map((item, index) => (
+                {tocItems.map((item) => (
                   <li key={item.id}>
-                    <a href={`#${item.id}`}>
-                      <span>{formatIndex(index)}</span>
-                      {item.title}
-                    </a>
+                    <a href={`#${item.id}`}>{item.title}</a>
                   </li>
                 ))}
               </ol>
@@ -88,16 +84,11 @@ export function NewsArticleBody({ article }: { article: NewsArticle }) {
 
           <NewsProse className="v-nd-intro">{article.intro}</NewsProse>
 
-          {article.sections.map((section, index) => (
+          {article.sections.map((section) => (
             <section key={section.id} aria-labelledby={section.id} className="v-nd-section">
-              <div className="v-nd-section-head">
-                <span aria-hidden className="v-nd-section-num">
-                  {formatIndex(index)}
-                </span>
-                <h2 id={section.id} className="v-nd-section-title">
-                  {section.title}
-                </h2>
-              </div>
+              <h2 id={section.id} className="v-nd-section-title">
+                {section.title}
+              </h2>
               <NewsProse>{section.content}</NewsProse>
             </section>
           ))}

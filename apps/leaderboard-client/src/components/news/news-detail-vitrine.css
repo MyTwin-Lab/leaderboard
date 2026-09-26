@@ -271,10 +271,7 @@
 }
 
 .v-nd-toc-link {
-  display: grid;
-  grid-template-columns: 1.75rem minmax(0, 1fr);
-  gap: 0.5rem;
-  align-items: baseline;
+  display: block;
   padding: 0.5rem 0.625rem;
   border-radius: 8px;
   background: transparent;
@@ -291,17 +288,6 @@
 .v-nd-toc-link[data-on="true"] {
   background: var(--nd-mint);
   color: var(--v-ink);
-}
-
-.v-nd-toc-num {
-  font-family: var(--v-font-h);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--v-subtle);
-}
-
-.v-nd-toc-link[data-on="true"] .v-nd-toc-num {
-  color: var(--v-accent);
 }
 
 .v-nd-toc-link[data-on="true"] .v-nd-toc-title {
@@ -353,19 +339,10 @@ details[open] > summary .v-nd-plus {
 }
 
 .v-nd-contents-list a {
-  display: grid;
-  grid-template-columns: 1.75rem minmax(0, 1fr);
-  gap: 0.5rem;
+  display: block;
   padding: 0.5rem 0;
   font-size: 0.875rem;
   color: var(--v-muted);
-}
-
-.v-nd-contents-list a span {
-  font-family: var(--v-font-h);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--v-accent);
 }
 
 /* ── Le texte courant ───────────────────────────────────────────────── */
@@ -475,7 +452,7 @@ details[open] > summary .v-nd-plus {
   border-bottom-color: var(--v-accent);
 }
 
-/* ── Les sections numérotées ────────────────────────────────────────── */
+/* ── Les sections ────────────────────────────────────────────────── */
 
 .v-nd-section {
   display: grid;
@@ -483,28 +460,6 @@ details[open] > summary .v-nd-plus {
   margin-top: clamp(2.25rem, 4vw, 3rem);
   padding-top: clamp(1.75rem, 3.2vw, 2.25rem);
   border-top: 1px solid var(--v-line);
-}
-
-.v-nd-section-head {
-  display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr);
-  gap: 1rem;
-  align-items: center;
-}
-
-.v-nd-section-num {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 999px;
-  border: 1px solid var(--nd-ring);
-  background: var(--v-surface);
-  font-family: var(--v-font-h);
-  font-size: 1rem;
-  font-weight: 500;
-  color: var(--v-accent);
 }
 
 .v-nd-section-title {
@@ -1384,17 +1339,6 @@ details[open] > summary .v-nd-badge {
     gap: 1rem;
     margin-top: 1.75rem;
     padding-top: 1.75rem;
-  }
-
-  .v-nd-section-head {
-    grid-template-columns: 2.75rem minmax(0, 1fr);
-    gap: 0.875rem;
-  }
-
-  .v-nd-section-num {
-    width: 2.75rem;
-    height: 2.75rem;
-    font-size: 0.9375rem;
   }
 
   .v-nd-section-title {
