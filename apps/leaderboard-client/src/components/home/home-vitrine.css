@@ -135,6 +135,13 @@
   text-wrap: balance;
 }
 
+/* La seconde phrase repart à la ligne, un souffle à peine plus bas que
+   l'interligne du titre. */
+.v-home-mission-aim {
+  display: block;
+  margin-top: 0.3em;
+}
+
 /* « human digital twin » reste un `<em>` — l'emphase est dans le sens de la
    phrase — mais ne se distingue plus à l'œil : ni italique, ni accent, ni
    graisse. Il faut donc aussi neutraliser l'italique que le navigateur pose

@@ -13,7 +13,10 @@ export function HomeHero() {
       </span>
       <h1>
         A collective mission to build the world&rsquo;s most advanced{" "}
-        <em>human digital twin</em> and make health innovation accessible to everyone.
+        <em>human digital twin</em>.{" "}
+        <span className="v-home-mission-aim">
+          Designed to enable predictive, preventive, personalized and proactive health.
+        </span>
       </h1>
     </section>
   );
