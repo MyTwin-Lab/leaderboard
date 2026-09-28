@@ -4,9 +4,10 @@ import { z } from "zod";
  * Réglages du module watch (`module_settings.settings`) : le contact donné à
  * OpenAlex, les domaines cherchés par défaut et les bornes de l'affichage.
  *
- * `openalex_mailto` a une valeur vide par défaut pour que les réglages se
- * lisent toujours ; c'est la garde d'activation (`watchEnableBlocker`) qui
- * exige un email avant que le module ne tourne.
+ * `openalex_mailto` est recommandé, pas obligatoire : OpenAlex répond sans
+ * lui, moins vite et avec plus de limitations (le « polite pool » lui est
+ * réservé). La garde d'activation (`watchEnableBlocker`) refuse seulement un
+ * email mal formé.
  */
 export const watchSettingsSchema = z.object({
   openalex_mailto: z.string().trim().max(254).default(""),
@@ -19,10 +20,9 @@ export const watchSettingsSchema = z.object({
 
 export type WatchSettings = z.infer<typeof watchSettingsSchema>;
 
-/** Ce qui empêche le module d'être actif avec ces réglages, ou `null`. */
+/** Ce qui empêche le module d'être actif avec ces réglages, ou `null` : un email mal formé, rien d'autre. */
 export function watchEnableBlocker(settings: Record<string, unknown>): string | null {
   const mailto = typeof settings.openalex_mailto === "string" ? settings.openalex_mailto.trim() : "";
-  if (!mailto) return "An OpenAlex contact email is required to enable the Watch module";
-  if (!z.email().safeParse(mailto).success) return "The OpenAlex contact email is not a valid email address";
+  if (mailto && !z.email().safeParse(mailto).success) return "The OpenAlex contact email is not a valid email address";
   return null;
 }

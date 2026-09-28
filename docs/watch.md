@@ -2,9 +2,9 @@
 
 Watch is a **search page over the health literature**, backed by [OpenAlex](https://openalex.org): a query, filters that speak (topics, period, open access, high-impact journals), and results readable at a glance — title, journal and its impact score, abstract, PubMed link. No feed to configure, no cron: you search, you read, you close.
 
-It is a product **module** (`modules/watch`), **disabled by default**, that an admin turns on from the Modules tab of `/contributors/me` (see [`admin-settings.md`](./admin-settings.md)). It is reached from the **« Open resources »** link of the home page, and lives at `/watch`.
+It is a product **module** (`modules/watch`), **enabled by default**, that an admin can turn off from the Modules tab of `/contributors/me` (see [`admin-settings.md`](./admin-settings.md)). It is reached from the **« Open resources »** link of the home page, and lives at `/watch`.
 
-**Requires:** an OpenAlex contact email (the module's `openalex_mailto` setting). Nothing else — OpenAlex is public, free, and needs no API key. The email earns the "polite pool" (faster, less throttled) and is the only thing that stops the module from being enabled without it.
+**Requires:** nothing — OpenAlex is public, free, and needs no API key. An OpenAlex contact email (the module's `openalex_mailto` setting) is recommended: it earns the "polite pool" (faster, less throttled).
 
 **Reference document:** [`input/spec-watch-module.md`](./input/spec-watch-module.md) (functional spec, V1).
 
@@ -39,13 +39,13 @@ An OpenAlex failure (timeout, rate limit, 5xx) does not empty the list: the last
 
 | Setting | Default | Role |
 |---|---|---|
-| `openalex_mailto` | empty | Contact email sent with every OpenAlex call (`mailto=` and `User-Agent`). **Required to enable the module.** |
+| `openalex_mailto` | empty | Contact email sent with every OpenAlex call (`mailto=` and `User-Agent`) when set. Recommended for the polite pool; without it, OpenAlex still answers. |
 | `default_domain_ids` | `["4"]` | OpenAlex domains searched by default (`4` = Health Sciences; ids at `GET https://api.openalex.org/domains`). |
 | `high_impact_threshold` | `9` | 2-year mean citedness at or above which a journal counts as high-impact. |
 | `page_size` | `25` | Results per page, 1 to 50. Never taken from the client. |
 | `cache_ttl_seconds` | `600` | How long a search answer is reused before asking OpenAlex again. |
 
-**Enable guard.** The module is the first to use `ModuleDefinition.enableGuard` (challenge 020's registry, `packages/registry/platform.ts`): a function of the settings that says what prevents the module from being active, or `null`. The `modules` capability calls it on every update that leaves the module enabled — turning it on without an email, or clearing the email once it is on, are both refused with a `ModuleEnableError`, which `PATCH /api/modules/[key]` answers as `409` with the reason. Disabling never consults the guard.
+**Enable guard.** The module is the first to use `ModuleDefinition.enableGuard` (challenge 020's registry, `packages/registry/platform.ts`): a function of the settings that says what prevents the module from being active, or `null`. The `modules` capability calls it on every update that leaves the module enabled; the watch guard refuses a malformed email with a `ModuleEnableError`, which `PATCH /api/modules/[key]` answers as `409` with the reason. Disabling never consults the guard.
 
 The admin editor (`components/watch/WatchSettings.tsx`, wired in `distribution/modules/settings.tsx`) edits the five settings, each saved on blur.
 
@@ -70,13 +70,13 @@ Signed-in sessions only (`/api/watch` is in the proxy matcher, and the handler r
 
 The response is the spec's shape: `results[]` (id, title, doi, pmid, url, publication_date, cited_by_count, is_oa, oa_url, `journal { source_id, name, citedness_2yr }`, `primary_topic { id, name, subfield }`, first three `authors`, `authors_count`, `abstract`), `facets.topics[]` (`{ id, name, count }`, 15 at most), `total`, `page`, `page_size`, `high_impact_truncated`.
 
-Failures are typed for the client (`kind` in the body): `429` when OpenAlex rate-limits the server, `504` on a timeout, `502` on a 5xx or an unreachable OpenAlex, `503` with `not_configured` while the module has no contact email.
+Failures are typed for the client (`kind` in the body): `429` when OpenAlex rate-limits the server, `504` on a timeout, `502` on a 5xx or an unreachable OpenAlex.
 
 ---
 
 ## The OpenAlex integration
 
-**Client** — `lib/server/openalex.ts`, native `fetch`, no SDK. Every call carries `mailto=` and `User-Agent: MyTwinLeaderboard/1.0 (mailto:…)`. Per process: at most **5 requests per second** (a sliding-window limiter on `globalThis`), an **8 s timeout**, and **one retry** after 500 ms on `429` or `5xx`. Errors are `OpenAlexError` with a `kind` (`timeout`, `rate_limited`, `upstream`, `network`, `invalid`).
+**Client** — `lib/server/openalex.ts`, native `fetch`, no SDK. When the module has a contact email, every call carries `mailto=` and `User-Agent: MyTwinLeaderboard/1.0 (mailto:…)`. Per process: at most **5 requests per second** (a sliding-window limiter on `globalThis`), an **8 s timeout**, and **one retry** after 500 ms on `429` or `5xx`. Errors are `OpenAlexError` with a `kind` (`timeout`, `rate_limited`, `upstream`, `network`, `invalid`).
 
 **Query** — `lib/server/watch/query.ts`, pure. The `/works` filter always carries `type:article`, `primary_location.source.type:journal`, `language:en` and `primary_topic.domain.id:<defaults>`; the rest follows the params (`from_publication_date`, `to_publication_date`, `primary_topic.subfield.id:a|b` or `topics.id:…`, `is_oa:true`, `cited_by_count:>N-1`). `select=` limits the payload to what the card shows. The abstract is rebuilt from `abstract_inverted_index` by sorting positions.
 

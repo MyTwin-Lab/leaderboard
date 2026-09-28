@@ -11,14 +11,15 @@ export { watchSettingsSchema, watchEnableBlocker, type WatchSettings } from "./s
  * (`watch_sources`). Aucun job, aucune intégration : on cherche, on lit, on
  * ferme. Désactivé, la page et la route répondent 404.
  *
- * Il ne s'active qu'avec un email de contact pour le « polite pool »
- * d'OpenAlex : sans lui, le service refuserait ou ralentirait les appels.
+ * Actif par défaut : la carte « Open resources » de l'accueil mène à sa page.
+ * Un email de contact est recommandé pour le « polite pool » d'OpenAlex
+ * (plus rapide, moins limité) ; sans lui, le service répond quand même.
  */
 export const watchModule: ModuleDefinition = {
   key: "watch",
   label: "Watch",
   description: "Search the health literature on OpenAlex: topics, period, open access and journal impact.",
-  defaultEnabled: false,
+  defaultEnabled: true,
   settings: { schema: watchSettingsSchema },
   enableGuard: watchEnableBlocker,
 };

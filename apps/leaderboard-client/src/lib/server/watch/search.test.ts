@@ -7,7 +7,6 @@ import {
   resolveSourceCitedness,
   searchWatch,
   SOURCE_STALE_MS,
-  WatchNotConfiguredError,
   type WatchSearchDeps,
   type WatchSourceStore,
 } from "./search";
@@ -96,10 +95,10 @@ function deps(overrides: Partial<WatchSearchDeps> & { clientImpl?: OpenAlexClien
 beforeEach(() => vi.clearAllMocks());
 
 describe("searchWatch", () => {
-  it("refuses to search without an OpenAlex contact email", async () => {
-    await expect(searchWatch(QUERY, deps({ settings: async () => ({ ...SETTINGS, openalexMailto: "" }) }))).rejects.toThrow(
-      WatchNotConfiguredError,
-    );
+  it("searches without a contact email, handing the client an empty mailto", async () => {
+    const client = vi.fn(() => fakeClient({}).client);
+    await searchWatch(QUERY, deps({ settings: async () => ({ ...SETTINGS, openalexMailto: "" }), client }));
+    expect(client).toHaveBeenCalledWith("");
   });
 
   it("asks OpenAlex for the page and the facets, resolves journal scores, and shapes the response", async () => {

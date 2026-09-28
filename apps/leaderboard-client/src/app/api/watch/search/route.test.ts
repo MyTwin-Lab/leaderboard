@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 import { OpenAlexError } from "@/lib/server/openalex";
-import { WatchNotConfiguredError } from "@/lib/server/watch/search";
 
 const { mockVerifyRequestToken, mockModuleNotFoundResponse, mockSearchWatch } = vi.hoisted(() => ({
   mockVerifyRequestToken: vi.fn(),
@@ -120,12 +119,4 @@ describe("GET /api/watch/search", () => {
     }
   });
 
-  it("answers 503 while the module has no OpenAlex contact email", async () => {
-    mockSearchWatch.mockRejectedValueOnce(new WatchNotConfiguredError());
-
-    const res = await search();
-
-    expect(res.status).toBe(503);
-    expect((await res.json()).kind).toBe("not_configured");
-  });
 });

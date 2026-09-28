@@ -26,6 +26,17 @@ describe("createOpenAlexClient", () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it("calls OpenAlex without mailto when the module has no contact email", async () => {
+    const fetchImpl = vi.fn(async () => json({}));
+    const client = createOpenAlexClient({ mailto: "  ", fetchImpl, limiter: noLimit });
+
+    await client.get("/works", { search: "liver" });
+
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [URL, RequestInit];
+    expect(url.searchParams.has("mailto")).toBe(false);
+    expect((init.headers as Record<string, string>)["User-Agent"]).toBe("MyTwinLeaderboard/1.0");
+  });
+
   it("retries once on 429 or 5xx after the delay, then gives up with a typed error", async () => {
     const sleep = vi.fn(async () => {});
     const fetchImpl = vi.fn(async () => json({ error: "slow down" }, 429));

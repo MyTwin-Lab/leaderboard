@@ -3,9 +3,10 @@ import "server-only";
 /**
  * Client OpenAlex (module watch)
  * ------------------------------
- * `fetch` natif, sans SDK ni clé : OpenAlex est public. Chaque appel porte le
- * `mailto` du réglage du module, en paramètre et dans le `User-Agent`, ce qui
- * vaut l'accès au « polite pool » (plus rapide, moins limité).
+ * `fetch` natif, sans SDK ni clé : OpenAlex est public. Quand le module a un
+ * email de contact, chaque appel le porte en paramètre `mailto` et dans le
+ * `User-Agent`, ce qui vaut l'accès au « polite pool » (plus rapide, moins
+ * limité) ; sans lui, OpenAlex répond quand même.
  *
  * Garde-fous, par processus : au plus `MAX_REQUESTS_PER_SECOND` appels par
  * seconde, un délai de 8 s par appel, et une seule nouvelle tentative sur 429
@@ -33,6 +34,7 @@ export class OpenAlexError extends Error {
 }
 
 export interface OpenAlexClientOptions {
+  /** L'email de contact du module ; vide, OpenAlex est appelé sans `mailto`. */
   mailto: string;
   fetchImpl?: typeof fetch;
   baseUrl?: string;
@@ -107,7 +109,8 @@ export function createOpenAlexClient(options: OpenAlexClientOptions): OpenAlexCl
   const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
   const limiter = options.limiter ?? processRateLimiter();
   const sleep = options.sleep ?? defaultSleep;
-  const userAgent = `MyTwinLeaderboard/1.0 (mailto:${options.mailto})`;
+  const mailto = options.mailto.trim();
+  const userAgent = mailto ? `MyTwinLeaderboard/1.0 (mailto:${mailto})` : "MyTwinLeaderboard/1.0";
 
   async function attempt(url: URL): Promise<Response> {
     await limiter.acquire();
@@ -130,7 +133,7 @@ export function createOpenAlexClient(options: OpenAlexClientOptions): OpenAlexCl
       for (const [key, value] of Object.entries(params)) {
         if (value !== undefined && value !== "") url.searchParams.set(key, value);
       }
-      url.searchParams.set("mailto", options.mailto);
+      if (mailto) url.searchParams.set("mailto", mailto);
 
       let response = await attempt(url);
       if (isRetryable(response.status)) {

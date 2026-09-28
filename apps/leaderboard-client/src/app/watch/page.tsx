@@ -33,7 +33,7 @@ export default async function WatchPage() {
   return (
     // `useSearchParams` dans l'explorateur : Next exige une frontière Suspense.
     <Suspense fallback={null}>
-      <WatchExplorer highImpactThreshold={settings.highImpactThreshold} configured={settings.openalexMailto.length > 0} />
+      <WatchExplorer highImpactThreshold={settings.highImpactThreshold} />
     </Suspense>
   );
 }

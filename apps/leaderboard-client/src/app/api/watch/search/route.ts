@@ -3,7 +3,7 @@ import { verifyRequestToken } from "@/lib/auth";
 import { moduleNotFoundResponse } from "@/lib/server/modules";
 import { OpenAlexError } from "@/lib/server/openalex";
 import { parseWatchSearchQuery } from "@/lib/server/watch/query";
-import { searchWatch, WatchNotConfiguredError } from "@/lib/server/watch/search";
+import { searchWatch } from "@/lib/server/watch/search";
 import { WATCH_MODULE } from "@/lib/server/watch/settings";
 import type { WatchSearchError } from "@/lib/watch";
 
@@ -33,10 +33,6 @@ export async function GET(request: NextRequest) {
   try {
     return NextResponse.json(await searchWatch(parsed.query));
   } catch (error) {
-    if (error instanceof WatchNotConfiguredError) {
-      const body: WatchSearchError = { error: error.message, kind: "not_configured" };
-      return NextResponse.json(body, { status: 503 });
-    }
     if (error instanceof OpenAlexError) {
       // Un 400 d'OpenAlex est une requête que nous avons mal construite, pas une panne.
       const status = error.kind === "invalid" ? 502 : error.kind === "rate_limited" ? 429 : error.kind === "timeout" ? 504 : 502;

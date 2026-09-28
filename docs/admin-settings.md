@@ -44,13 +44,13 @@ Setting up the Slack bot: create an app on <https://api.slack.com/apps>, add the
 
 ## Modules
 
-Product modules — **meetings**, **onboarding**, **digest**, **sandbox** and **watch** — are listed on the **Modules** tab (`ModulesPanel`), one toggle each, with a settings editor for the modules that have settings (`apps/leaderboard-client/src/distribution/modules/settings.tsx`). A module without a row in `module_settings` takes the default it declares: sandbox is on, the others are off.
+Product modules — **meetings**, **onboarding**, **digest**, **sandbox** and **watch** — are listed on the **Modules** tab (`ModulesPanel`), one toggle each, with a settings editor for the modules that have settings (`apps/leaderboard-client/src/distribution/modules/settings.tsx`). A module without a row in `module_settings` takes the default it declares: sandbox and watch are on, the others are off.
 
 A disabled module disappears entirely, not only from the UI: its routes and pages answer 404, its jobs are skipped by the cron tick, its event subscriptions consume nothing, and its UI slots (challenge sections, admin menu entries, public navigation) are hidden.
 
 - `GET /api/modules` — public, the installed modules and whether each is enabled (never their settings).
 - `GET /api/modules/[key]` — admin-only, a module's state and validated settings.
-- `PATCH /api/modules/[key]` — admin-only, `{ enabled?, settings? }`. Settings are merged into the stored ones and validated by the module's schema (400 on invalid settings, 404 for a module the distribution does not install). A module may declare an **enable guard** (`ModuleDefinition.enableGuard`): a save that would leave it enabled against its guard — the watch module without an OpenAlex contact email — answers 409 with the reason.
+- `PATCH /api/modules/[key]` — admin-only, `{ enabled?, settings? }`. Settings are merged into the stored ones and validated by the module's schema (400 on invalid settings, 404 for a module the distribution does not install). A module may declare an **enable guard** (`ModuleDefinition.enableGuard`): a save that would leave it enabled against its guard — the watch module with a malformed OpenAlex contact email — answers 409 with the reason.
 
 ### Digest settings
 
@@ -73,7 +73,7 @@ The same editor carries the **star audit**: a sandbox's stars grouped by origin,
 
 ### Watch settings
 
-The OpenAlex contact email (**required to enable the module**), the default OpenAlex domains (`4` = Health Sciences), the high-impact threshold (2-year mean citedness, default 9), the page size (1–50) and the cache TTL. See [`watch.md`](./watch.md).
+The OpenAlex contact email (recommended: it earns OpenAlex's polite pool), the default OpenAlex domains (`4` = Health Sciences), the high-impact threshold (2-year mean citedness, default 9), the page size (1–50) and the cache TTL. See [`watch.md`](./watch.md).
 
 ### Onboarding
 

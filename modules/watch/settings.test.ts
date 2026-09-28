@@ -3,9 +3,9 @@ import { watchModule } from "./index.js";
 import { watchEnableBlocker, watchSettingsSchema } from "./settings.js";
 
 describe("watch module settings", () => {
-  it("is declared by the module, disabled by default, with the spec defaults", () => {
+  it("is declared by the module, enabled by default, with the spec defaults", () => {
     expect(watchModule.settings?.schema).toBe(watchSettingsSchema);
-    expect(watchModule.defaultEnabled).toBe(false);
+    expect(watchModule.defaultEnabled).toBe(true);
     expect(watchSettingsSchema.parse({})).toEqual({
       openalex_mailto: "",
       default_domain_ids: ["4"],
@@ -27,10 +27,10 @@ describe("watch module settings", () => {
     });
   });
 
-  it("only lets the module be enabled with a valid contact email", () => {
+  it("refuses a malformed contact email, and nothing else", () => {
     expect(watchModule.enableGuard).toBe(watchEnableBlocker);
-    expect(watchEnableBlocker({})).toMatch(/contact email is required/);
-    expect(watchEnableBlocker({ openalex_mailto: "" })).toMatch(/contact email is required/);
+    expect(watchEnableBlocker({})).toBeNull();
+    expect(watchEnableBlocker({ openalex_mailto: "" })).toBeNull();
     expect(watchEnableBlocker({ openalex_mailto: "not-an-email" })).toMatch(/not a valid email/);
     expect(watchEnableBlocker({ openalex_mailto: "lab@example.org" })).toBeNull();
   });

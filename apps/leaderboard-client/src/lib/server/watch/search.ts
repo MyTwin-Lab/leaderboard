@@ -39,14 +39,6 @@ export const HIGH_IMPACT_FETCH_SIZE = 100;
 export const SOURCES_BATCH_SIZE = 50;
 const CACHE_MAX_ENTRIES = 500;
 
-/** Le module n'a pas d'email de contact OpenAlex : il ne peut pas chercher. */
-export class WatchNotConfiguredError extends Error {
-  constructor() {
-    super("The Watch module has no OpenAlex contact email");
-    this.name = "WatchNotConfiguredError";
-  }
-}
-
 // ─── Cache mémoire ───────────────────────────────────────────────────────────
 
 export interface TtlCache {
@@ -206,14 +198,13 @@ async function loadFacets(
   }
 }
 
-/** Une page de résultats pour ces paramètres. Lève `OpenAlexError` ou `WatchNotConfiguredError`. */
+/** Une page de résultats pour ces paramètres. Lève `OpenAlexError` quand OpenAlex n'a pas répondu. */
 export async function searchWatch(
   query: WatchSearchQuery,
   overrides: Partial<WatchSearchDeps> = {},
 ): Promise<WatchSearchResponse> {
   const deps: WatchSearchDeps = { ...DEFAULT_DEPS, ...overrides };
   const settings = await deps.settings();
-  if (!settings.openalexMailto) throw new WatchNotConfiguredError();
 
   const ttlMs = settings.cacheTtlSeconds * 1_000;
   const key = searchCacheKey(query, settings);

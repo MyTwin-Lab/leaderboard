@@ -4,7 +4,7 @@ import { useState } from "react";
 
 /**
  * Les réglages du module watch, dans l'onglet Modules (admin) : le contact
- * OpenAlex — obligatoire pour activer le module —, les domaines cherchés par
+ * OpenAlex — recommandé pour le polite pool —, les domaines cherchés par
  * défaut, le seuil high-impact, la taille de page et le TTL du cache.
  *
  * Chaque champ s'enregistre à la sortie (blur) ; la validation fine est celle
@@ -113,7 +113,7 @@ export function WatchSettings({ settings, onSaved, save }: WatchSettingsProps) {
 
   return (
     <div className="space-y-3">
-      <Row label="OpenAlex contact email" hint="Required to enable the module: OpenAlex's polite pool">
+      <Row label="OpenAlex contact email" hint="Recommended: earns OpenAlex's polite pool (faster, less throttled)">
         <input
           type="email"
           value={mailto}

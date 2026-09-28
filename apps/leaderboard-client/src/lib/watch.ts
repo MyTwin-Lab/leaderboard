@@ -50,7 +50,7 @@ export interface WatchSearchResponse {
 /** Ce que l'API rend quand OpenAlex n'a pas répondu, ou que le module n'est pas réglé. */
 export interface WatchSearchError {
   error: string;
-  kind?: "timeout" | "rate_limited" | "upstream" | "network" | "invalid" | "not_configured";
+  kind?: "timeout" | "rate_limited" | "upstream" | "network" | "invalid";
 }
 
 export interface WatchFilters {

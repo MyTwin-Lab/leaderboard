@@ -37,8 +37,6 @@ const DEBOUNCE_MS = 400;
 
 interface WatchExplorerProps {
   highImpactThreshold: number;
-  /** Faux tant que l'admin n'a pas donné d'email OpenAlex : la page le dit au lieu d'échouer. */
-  configured: boolean;
 }
 
 /** Une réponse d'erreur de la route, ou le statut seul. */
@@ -60,9 +58,7 @@ async function fetchSearch(query: string): Promise<WatchSearchResponse> {
         ? "OpenAlex is rate limiting the server, try again in a moment"
         : res.status === 504
           ? "OpenAlex took too long to answer"
-          : res.status === 503
-            ? "The Watch module has no OpenAlex contact email yet"
-            : (body?.error ?? `Search failed (${res.status})`);
+          : (body?.error ?? `Search failed (${res.status})`);
     throw new SearchRequestError(message, res.status);
   }
   return (await res.json()) as WatchSearchResponse;
@@ -83,7 +79,7 @@ function Skeletons() {
   );
 }
 
-function Explorer({ highImpactThreshold, configured }: WatchExplorerProps) {
+function Explorer({ highImpactThreshold }: WatchExplorerProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -143,7 +139,7 @@ function Explorer({ highImpactThreshold, configured }: WatchExplorerProps) {
   const query = useQuery({
     queryKey: ["watch-search", apiQuery],
     queryFn: () => fetchSearch(apiQuery),
-    enabled: configured && !initial,
+    enabled: !initial,
     placeholderData: keepPreviousData,
     staleTime: 60_000,
     retry: false,
@@ -224,12 +220,6 @@ function Explorer({ highImpactThreshold, configured }: WatchExplorerProps) {
           </button>
         </div>
       </form>
-
-      {!configured && (
-        <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/[0.06] px-4 py-3 text-sm text-yellow-300">
-          The Watch module has no OpenAlex contact email yet. An admin sets it in the Modules tab of their profile.
-        </div>
-      )}
 
       <div className="flex items-start gap-8">
         {/* Panneau des filtres : colonne à gauche, tiroir sur mobile. */}
