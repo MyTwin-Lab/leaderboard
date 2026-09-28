@@ -26,6 +26,7 @@ leaderboard/
 │       │   │   ├── contributors/      # Contributor profiles + /me (settings, integrations, modules)
 │       │   │   ├── sandbox/           # Sandbox module pages (404 when disabled)
 │       │   │   ├── sync-meetings/     # Meetings module pages (404 when disabled)
+│       │   │   ├── watch/             # Watch module page — health-literature search (404 when disabled)
 │       │   │   ├── tasks/             # Task detail page
 │       │   │   └── api/               # Next.js Route Handlers — see api.md
 │       │   │       ├── admin/              # theme, digests, sandboxes, sandbox-rewards
@@ -55,6 +56,7 @@ leaderboard/
 │       │   │   ├── onboarding/        # onboarding drawer + quests
 │       │   │   ├── public/            # challenge cards, filters, project explorer
 │       │   │   ├── sandbox/           # proposal listing, detail, forms
+│       │   │   ├── watch/             # search explorer, filters, result cards, module settings
 │       │   │   └── ui/                # design-system primitives (Button, Markdown, Toast…)
 │       │   ├── distribution/          # composition root — the only shell code that may import
 │       │   │   │                      # content/ and modules/
@@ -129,7 +131,7 @@ leaderboard/
 │   ├── workspace-providers/           # github-branch
 │   └── grids/                         # code  dataset  model (seeds)
 │
-├── modules/                           # PRODUCT MODULES — meetings  onboarding  digest  sandbox
+├── modules/                           # PRODUCT MODULES — meetings  onboarding  digest  sandbox  watch
 │
 ├── db_data/                           # seed data
 │   ├── seed.ts  seed-demo.ts  seed-sandbox.ts
@@ -182,6 +184,7 @@ leaderboard/
 | Slack signals | `content/extensions/slack-signals/` + `packages/services/slack/` + `packages/slack-signal-agent/` |
 | Activity digest | `modules/digest/` + `packages/services/digest/` (see [`digest.md`](./digest.md)) |
 | Sandbox (contributor proposals) | `modules/sandbox/` + `packages/services/sandbox/` + `content/flows/*/proposable.ts` + `apps/leaderboard-client/src/app/sandbox/` (see [`sandbox.md`](./sandbox.md)) |
+| Watch (health-literature search) | `modules/watch/` + `apps/leaderboard-client/src/lib/server/openalex.ts` + `apps/leaderboard-client/src/lib/server/watch/` + `apps/leaderboard-client/src/app/watch/` (see [`watch.md`](./watch.md)) |
 | Integrations (connections) | `packages/connectors/integrations.ts` + `content/connectors/*/integration.ts` + `packages/capabilities/credentials.ts` |
 | Module toggles and settings | `packages/capabilities/modules.ts` (`module_settings`, see [`admin-settings.md`](./admin-settings.md)) |
 | Theme | `packages/database-service/repositories/appSettings.repo.ts` |

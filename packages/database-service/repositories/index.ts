@@ -50,3 +50,5 @@ export { EventDeliveryRepository } from "./eventDelivery.repo.js";
 export type { EventDelivery } from "./eventDelivery.repo.js";
 export { ResourceRepository, ResourceDrawTransaction } from "./resource.repo.js";
 export type { ResourceInstance, ResourceClaim, ConsumedClaim } from "./resource.repo.js";
+export { WatchSourceRepository } from "./watchSource.repo.js";
+export type { WatchSource, WatchSourceDraft } from "./watchSource.repo.js";

@@ -29,6 +29,8 @@ export interface ModuleState {
 
 export class ModuleNotFoundError extends Error {}
 export class ModuleSettingsError extends Error {}
+/** Le module ne peut pas être actif avec ces réglages ; le message dit pourquoi. */
+export class ModuleEnableError extends Error {}
 
 function parseSettings(module: ModuleDefinition, raw: unknown, strict: boolean): Record<string, unknown> {
   if (!module.settings) return {};
@@ -113,7 +115,12 @@ export function createModules(store?: ModuleSettingStore): Modules {
       const settings = patch.settings === undefined
         ? current.settings
         : parseSettings(module, { ...current.settings, ...patch.settings }, true);
-      const row = await (await repo()).save(key, { enabled: patch.enabled ?? current.enabled, settings }, updatedBy);
+      const enabled = patch.enabled ?? current.enabled;
+      // Un module actif reste conforme à sa garde : activer sans le réglage
+      // requis, ou l'effacer une fois actif, sont refusés de la même façon.
+      const blocker = enabled ? (module.enableGuard?.(settings) ?? null) : null;
+      if (blocker) throw new ModuleEnableError(blocker);
+      const row = await (await repo()).save(key, { enabled, settings }, updatedBy);
       return stateOf(module, row);
     },
   };

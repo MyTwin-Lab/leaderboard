@@ -6,7 +6,7 @@ This is a monorepo managed with npm workspaces. The code is split by **nature**,
 
 - **`packages/`** — the **core**: identity, structure, economy, capabilities and the registries. It knows no flow, connector or module by name.
 - **`content/`** — **installed content**: challenge flows, the kits they share, extensions, connectors, bundle sources, workspace providers and grid seeds.
-- **`modules/`** — **product modules** an admin can switch on and off: meetings, onboarding, digest, sandbox.
+- **`modules/`** — **product modules** an admin can switch on and off: meetings, onboarding, digest, sandbox, watch.
 - **`apps/leaderboard-client/`** — the **shell** (Next.js pages, routes, UI) and the **distribution** (`src/distribution/`), the manifest that assembles core, content and modules for MyTwin.
 
 ```
@@ -36,7 +36,7 @@ leaderboard/
 │   ├── bundle-sources/            ← github-snapshot, kaggle-artifact
 │   ├── workspace-providers/       ← github-branch
 │   └── grids/                     ← code, model, dataset (seeds)
-└── modules/                       ← meetings, onboarding, digest, sandbox
+└── modules/                       ← meetings, onboarding, digest, sandbox, watch
 ```
 
 To add a challenge flow without touching the core, see [`writing-a-flow.md`](./writing-a-flow.md).
@@ -76,10 +76,10 @@ flowchart LR
 |----------|-------------|--------------|
 | Flow (`FlowDefinition`: descriptor, `flow_config` schema, rules, rule keys, contribution types, deliverables, hooks, actions, events, quests, proposable) | `content/flows/*` | `PlatformRegistry` |
 | Extension (compatible flows, actions, hooks) | `content/extensions/*` | `PlatformRegistry` |
-| Module (settings, jobs, events, subscriptions, `questRecorder`, `cpSource`) | `modules/*` | `PlatformRegistry` + capability `modules` |
+| Module (settings, `enableGuard`, jobs, events, subscriptions, `questRecorder`, `cpSource`) | `modules/*` | `PlatformRegistry` + capability `modules` |
 | Connector, integration, bundle source, provider, grid | `content/*` | their own core registry |
 | Client slots (tabs, form sections, rules view, hero stat, activity) | `distribution/mytwin.client.tsx`, `mytwin.forms.tsx`, `mytwin.activity.tsx` | `lib/flowSlots.ts`, `lib/flowFormSlots.ts` |
-| Module slots (challenge section, admin nav and tab, public nav) | `distribution/mytwin.modules.tsx` | `lib/moduleSlots.ts` |
+| Module slots (challenge section, admin nav and tab, public nav, home links) | `distribution/mytwin.modules.tsx` | `lib/moduleSlots.ts` |
 
 ### Generic routes
 

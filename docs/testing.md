@@ -27,6 +27,12 @@ npm run test:coverage   # generate coverage report
 
 Test files live alongside the code they test, typically as `*.test.ts` or `*.spec.ts`.
 
+**External tests.** A suite that calls a real third-party service is named `*.external.test.ts` and skipped by default (`describe.skipIf`), and always in CI. The watch module's OpenAlex check runs with:
+
+```bash
+cd apps/leaderboard-client && WATCH_EXTERNAL_TESTS=1 npx vitest run openalex.external
+```
+
 ---
 
 ## What to test when contributing

@@ -38,6 +38,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`admin-settings.md`](./admin-settings.md) | Instance-wide theme, integrations (GitHub, Kaggle, OpenAI, Slack, Scaleway), modules and qualifications |
 | [`digest.md`](./digest.md) | Periodic, frozen snapshots of platform activity, browsable by admins |
 | [`sandbox.md`](./sandbox.md) | Contributor-proposed open challenges, community stars, and promotion into official challenges |
+| [`watch.md`](./watch.md) | Searching the health literature on OpenAlex: topics, period, open access, journal impact — behind « Open resources » on the home page |
 | [`seo.md`](./seo.md) | What search engines may index, the MyTwin Lab entity linked to mytwin.care, the `/about` landing and legal pages |
 
 ## Dev & ops

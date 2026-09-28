@@ -1,6 +1,6 @@
 import { config } from "../../config/index.js";
 import "dotenv/config";
-import { pgTable, text, varchar, timestamp, uuid, integer, json, jsonb, date, serial, real, index, uniqueIndex, boolean, customType, primaryKey, check } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, uuid, integer, json, jsonb, date, serial, real, numeric, index, uniqueIndex, boolean, customType, primaryKey, check } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 // Import de type seul : effacé à la compilation, donc aucun cycle d'import à
 // l'exécution entre le schéma et le domaine.
@@ -1415,6 +1415,19 @@ export const resource_claims = pgTable("resource_claims", {
   userIdx: index("idx_resource_claims_challenge_user").on(table.challenge_id, table.user_id),
   liveIdx: uniqueIndex("idx_resource_claims_live").on(table.resource_id, table.user_id).where(sql`released_at IS NULL`),
 }));
+
+// --- WATCH_SOURCES ---
+// Module watch : le cache persistant des revues OpenAlex (`/sources/{id}`),
+// dont `summary_stats.2yr_mean_citedness` n'est pas exposé sur `/works`. Une
+// ligne de plus de 30 jours se rafraîchit à la prochaine recherche qui la
+// touche ; rien ne s'y supprime.
+export const watch_sources = pgTable("watch_sources", {
+  // Ex. `S137773608`, sans le préfixe d'URL OpenAlex.
+  source_id: text("source_id").primaryKey(),
+  display_name: text("display_name").notNull(),
+  citedness_2yr: numeric("citedness_2yr", { precision: 8, scale: 3 }),
+  refreshed_at: timestamp("refreshed_at", { withTimezone: true }).defaultNow().notNull(),
+});
 
 // --- DATABASE CLIENT ---
 

@@ -10,6 +10,13 @@
 export interface ModuleProxyRoutes {
   /** Préfixes d'API qui exigent une session. `config.matcher` doit aussi les couvrir. */
   protectedApiRoutes: readonly string[];
+  /**
+   * Préfixes de pages qui exigent une session, quel que soit le rôle. Le proxy
+   * y rafraîchit un jeton expiré et renvoie l'anonyme vers `/signin` ; la page
+   * décide ensuite du reste (module désactivé → 404). `config.matcher` doit
+   * aussi les couvrir.
+   */
+  protectedPages?: readonly string[];
   /** Écritures qu'un non-admin peut tenter : le handler vérifie lui-même le droit. */
   nonAdminWrites: ReadonlyArray<(pathname: string, method: string) => boolean>;
 }

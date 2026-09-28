@@ -11,6 +11,7 @@ import { sandboxModule } from '../../../../modules/sandbox';
 import { meetingsModule } from '../../../../modules/meetings';
 import { digestModule } from '../../../../modules/digest';
 import { onboardingModule } from '../../../../modules/onboarding';
+import { watchModule } from '../../../../modules/watch';
 
 /** La qualification des professionnels de santé, exigée par les validations MyTwin. */
 export const MEDICAL_PRO = 'medical_pro';
@@ -33,7 +34,7 @@ export const platform: PlatformDefinitions = {
   ],
   kits: [validationKit],
   extensions: [slackSignalsExtension, computeExtension],
-  modules: [sandboxModule, meetingsModule, digestModule, onboardingModule],
+  modules: [sandboxModule, meetingsModule, digestModule, onboardingModule, watchModule],
   qualifications: [
     {
       key: MEDICAL_PRO,

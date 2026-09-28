@@ -1237,6 +1237,18 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
     sql: `ALTER TABLE sandboxes ADD COLUMN IF NOT EXISTS slug varchar(80)`,
   },
   slugStatement("sandboxes", "sandbox_slug_redirects"),
+
+  // --- Module watch ---
+  {
+    label: "watch_sources",
+    sql: `
+      CREATE TABLE IF NOT EXISTS watch_sources (
+        source_id text PRIMARY KEY,
+        display_name text NOT NULL,
+        citedness_2yr numeric(8,3),
+        refreshed_at timestamptz NOT NULL DEFAULT now()
+      )`,
+  },
 ];
 
 async function main() {

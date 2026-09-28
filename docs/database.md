@@ -158,6 +158,12 @@ Claimable work units of the core `resources` capability (`packages/capabilities/
 | `sandbox_stars` | One row per identity per sandbox, signed in (`user_id`) or not (`anon_id`, from a signed cookie). Uniqueness is two partial unique indexes rather than a composite key, which tolerates no NULL. Unstarring is a soft delete (`removed_at`): a paid milestone is never taken back, so the wave has to stay auditable. `ip_hash` is HMAC'd and rate-limits only — never uniqueness, since a campus leaves through one address — and is purged after 30 days. |
 | `sandbox_rewards` | The sandbox CP ledger, separate from `reward_entries` (whose `challenge_id` is NOT NULL and whose rows the leaderboard aggregates per contribution). Two partial unique indexes carry idempotence: one `star_tier` row per crossed threshold, one `promotion` row per sandbox. No cached total — the CP are summed live, so deleting a row is the clawback. See [`sandbox.md`](./sandbox.md). |
 
+### Watch
+
+| Table | Purpose |
+|-------|---------|
+| `watch_sources` | The persistent cache of OpenAlex journals for the watch module: `source_id` (`S…`, primary key), `display_name`, `citedness_2yr` (`numeric(8,3)`, the journal's 2-year mean citedness, null when OpenAlex has none), `refreshed_at`. Rows older than 30 days are refreshed by the next search that touches them; nothing is deleted. See [`watch.md`](./watch.md). |
+
 ### Notifications
 
 | Table | Purpose |

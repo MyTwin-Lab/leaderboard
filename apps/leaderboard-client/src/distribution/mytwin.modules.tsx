@@ -4,6 +4,7 @@ import { fetchJson } from '@/lib/fetchJson';
 import type { ModuleSlots, ModulesResponse } from '@/lib/moduleSlots';
 import { meetingsSlots } from './modules/meetings';
 import { sandboxSlots } from './modules/sandbox';
+import { watchSlots } from './modules/watch';
 
 /**
  * Distribution MyTwin — slots d'interface des modules
@@ -12,7 +13,7 @@ import { sandboxSlots } from './modules/sandbox';
  * absent de cette liste n'a pas d'interface ; un module présent n'en a que
  * s'il est actif.
  */
-const SLOTS: readonly ModuleSlots[] = [sandboxSlots, meetingsSlots];
+const SLOTS: readonly ModuleSlots[] = [sandboxSlots, meetingsSlots, watchSlots];
 
 /** Les slots des modules actifs. Tant que l'état est inconnu, aucun : un module est désactivé par défaut. */
 export function enabledModuleSlots(

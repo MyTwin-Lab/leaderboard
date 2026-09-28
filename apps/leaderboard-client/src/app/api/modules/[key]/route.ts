@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { modules, ModuleNotFoundError, ModuleSettingsError } from "@packages/capabilities/modules";
+import { modules, ModuleEnableError, ModuleNotFoundError, ModuleSettingsError } from "@packages/capabilities/modules";
 import { fetchContributorSession } from "@/lib/contributor";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +57,10 @@ export async function PATCH(request: Request, { params }: Params) {
     if (error instanceof ModuleNotFoundError) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (error instanceof ModuleSettingsError) {
       return NextResponse.json({ error: "Invalid settings", details: error.message }, { status: 400 });
+    }
+    // Le module ne peut pas être actif ainsi : le message dit ce qui manque.
+    if (error instanceof ModuleEnableError) {
+      return NextResponse.json({ error: error.message, details: error.message }, { status: 409 });
     }
     throw error;
   }

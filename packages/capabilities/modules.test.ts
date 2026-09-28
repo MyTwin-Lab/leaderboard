@@ -4,6 +4,7 @@ import type { ModuleSetting } from "../database-service/repositories/moduleSetti
 import { PlatformRegistry } from "../registry/platform.js";
 import {
   createModules,
+  ModuleEnableError,
   ModuleNotFoundError,
   ModuleSettingsError,
   ownerEnabled,
@@ -37,6 +38,12 @@ beforeEach(() => {
         label: "Digest",
         settings: { schema: z.object({ frequency_days: z.number().int().min(1).max(365).default(7) }) },
       },
+      {
+        key: "watch",
+        label: "Watch",
+        settings: { schema: z.object({ mailto: z.string().default("") }) },
+        enableGuard: (settings) => (settings.mailto ? null : "A contact email is required"),
+      },
     ],
   });
 });
@@ -52,6 +59,7 @@ describe("modules", () => {
     expect(await modules.all()).toEqual([
       { key: "sandbox", label: "Sandbox", description: null, enabled: true, settings: {}, updatedAt: null },
       { key: "digest", label: "Digest", description: null, enabled: false, settings: { frequency_days: 7 }, updatedAt: null },
+      { key: "watch", label: "Watch", description: null, enabled: false, settings: { mailto: "" }, updatedAt: null },
     ]);
   });
 
@@ -88,6 +96,24 @@ describe("modules", () => {
 
     await expect(modules.update("digest", { settings: { frequency_days: 0 } }, null)).rejects.toThrow(ModuleSettingsError);
     await expect(modules.update("meetings", { enabled: true }, null)).rejects.toThrow(ModuleNotFoundError);
+  });
+
+  it("refuses to leave a module active against its enable guard", async () => {
+    const modules = createModules(memoryStore());
+
+    await expect(modules.update("watch", { enabled: true }, null)).rejects.toThrow(ModuleEnableError);
+    await expect(modules.update("watch", { enabled: true }, null)).rejects.toThrow("A contact email is required");
+    expect(await modules.enabled("watch")).toBe(false);
+
+    // Le réglage requis posé, l'activation passe ; l'effacer une fois actif est refusé.
+    await modules.update("watch", { enabled: true, settings: { mailto: "lab@example.org" } }, null);
+    expect(await modules.enabled("watch")).toBe(true);
+    await expect(modules.update("watch", { settings: { mailto: "" } }, null)).rejects.toThrow(ModuleEnableError);
+    expect(await modules.settings("watch")).toEqual({ mailto: "lab@example.org" });
+
+    // Désactiver ne consulte pas la garde.
+    await modules.update("watch", { enabled: false, settings: { mailto: "" } }, null);
+    expect(await modules.enabled("watch")).toBe(false);
   });
 
   it("falls back to defaults when stored settings no longer parse", async () => {

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, type ComponentType, type ReactNode } from "react";
-import { Compass, FileClock, FlaskConical, Puzzle, Video } from "lucide-react";
+import { Compass, FileClock, FlaskConical, Puzzle, Telescope, Video } from "lucide-react";
 import { SandboxSettings } from "@/components/contributor/SandboxSettings";
+import { WatchSettings } from "@/components/watch/WatchSettings";
 import type { SandboxStarTier } from "@packages/database-service/domain/entities";
 
 /**
@@ -35,6 +36,7 @@ const ICONS: Record<string, ReactNode> = {
   onboarding: <Compass className={ICON_CLASS} />,
   digest: <FileClock className={ICON_CLASS} />,
   sandbox: <FlaskConical className={ICON_CLASS} />,
+  watch: <Telescope className={ICON_CLASS} />,
 };
 
 export function moduleIcon(key: string): ReactNode {
@@ -108,7 +110,13 @@ function SandboxSettingsEditor({ settings }: ModuleSettingsEditorProps) {
   );
 }
 
+/** Le module watch : le contact OpenAlex, les domaines et les bornes de la page, dans le composant du module. */
+function WatchSettingsEditor({ settings, onSaved }: ModuleSettingsEditorProps) {
+  return <WatchSettings settings={settings} onSaved={onSaved} save={(next) => saveModuleSettings("watch", next)} />;
+}
+
 export const moduleSettingsEditors: Readonly<Record<string, ComponentType<ModuleSettingsEditorProps>>> = {
   digest: DigestSettingsEditor,
   sandbox: SandboxSettingsEditor,
+  watch: WatchSettingsEditor,
 };

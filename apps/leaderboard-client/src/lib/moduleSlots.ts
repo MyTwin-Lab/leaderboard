@@ -33,6 +33,8 @@ export interface ModuleSlots {
   key: string;
   /** Entrées de la navigation publique (barre du haut et pied de page), avant celles du core. */
   publicNav?: readonly ModuleNavItem[];
+  /** Liens de l'accueil, à côté de « About the Lab » (« Open resources » du module watch). */
+  homeLinks?: readonly ModuleNavItem[];
   /** Au-dessus des onglets de la page d'un challenge, pour un visiteur connecté. */
   ChallengeSection?: ComponentType<ModuleChallengeSectionProps>;
   /** Au-dessus des onglets de la vue de pilotage (admin et managers). */

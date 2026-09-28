@@ -297,6 +297,16 @@ Star responses carry `paid_tier_thresholds` alongside the count. Paid milestones
 
 ---
 
+## Watch
+
+The health-literature search, proxied to OpenAlex. See [`watch.md`](./watch.md). `/api/watch` is in the proxy matcher (any signed-in role), and the route answers `404` while the `watch` module is disabled.
+
+| Method | Path | Description | Auth |
+|--------|------|-------------|------|
+| `GET` | `/api/watch/search` | `q`, `scope` (`all` \| `title`), `from`, `to`, `topics` (comma-separated OpenAlex subfield ids), `oa`, `high_impact`, `min_cited`, `sort` (`relevance` \| `date` \| `cited`), `page` (≤ 40). Returns `results`, `facets.topics`, `total`, `page`, `page_size` (from the module settings, never the client) and `high_impact_truncated`. `400` with `details` on a bad param; `429` / `504` / `502` when OpenAlex fails, `503` while the module has no contact email. | Any signed-in role |
+
+---
+
 ## Admin settings
 
 See [`admin-settings.md`](./admin-settings.md) for what each of these controls.

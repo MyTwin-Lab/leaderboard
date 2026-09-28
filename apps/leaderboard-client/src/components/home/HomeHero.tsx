@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MYTWIN } from "@/lib/seo";
 import { ArrowIcon } from "./ArrowIcon";
+import { ModuleHomeLinks } from "./ModuleHomeLinks";
 
 export function HomeHero() {
   return (
@@ -32,13 +33,18 @@ export function HomeHero() {
           best health innovations accessible to everyone. Every contribution is tracked,
           evaluated and rewarded in CP.
         </p>
-        <Link
-          href="/about"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:gap-2"
-        >
-          About the Lab
-          <ArrowIcon />
-        </Link>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {/* Les liens des modules actifs (« Open resources » du module watch),
+              avant « About the Lab » : dans le HTML initial, comme la nav. */}
+          <ModuleHomeLinks />
+          <Link
+            href="/about"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-brandCP transition-all duration-200 hover:gap-2"
+          >
+            About the Lab
+            <ArrowIcon />
+          </Link>
+        </div>
       </div>
     </div>
   );

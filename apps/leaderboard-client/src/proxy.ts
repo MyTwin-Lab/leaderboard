@@ -4,10 +4,12 @@ import { jwtVerify } from 'jose';
 import { getBaseUrl, getInternalBaseUrl } from '@/lib/url';
 import { isPublicPage, isPublicApiRoute } from '@/lib/routeVisibility';
 import { parseSessionClaims } from '@/lib/sessionClaims';
-import { isModuleNonAdminWrite, moduleProtectedApiRoutes } from '@/distribution/mytwin.proxy';
+import { isModuleNonAdminWrite, moduleProtectedApiRoutes, moduleProtectedPages } from '@/distribution/mytwin.proxy';
 
 type UserRole = 'admin' | 'contributor' | 'viewer' | 'medical_pro';
 type ProtectedPage = { prefix: string; roles: readonly UserRole[] };
+
+const ALL_ROLES: readonly UserRole[] = ['admin', 'contributor', 'viewer', 'medical_pro'];
 
 // Every authenticated role can view their own profile and the challenges
 // list/detail pages — role-specific gating (e.g. medical_pro-only voting on a
@@ -17,8 +19,11 @@ type ProtectedPage = { prefix: string; roles: readonly UserRole[] };
 // other authenticated role could already reach.
 const protectedPages: ProtectedPage[] = [
   { prefix: '/admin', roles: ['admin'] },
-  { prefix: '/contributors/me', roles: ['admin', 'contributor', 'viewer', 'medical_pro'] },
-  { prefix: '/challenges/', roles: ['admin', 'contributor', 'viewer', 'medical_pro'] },
+  { prefix: '/contributors/me', roles: ALL_ROLES },
+  { prefix: '/challenges/', roles: ALL_ROLES },
+  // Les pages des modules installés réservées aux comptes connectés
+  // (distribution/mytwin.proxy.ts) : tout rôle, la page fait le reste.
+  ...moduleProtectedPages.map((prefix) => ({ prefix, roles: ALL_ROLES })),
 ];
 
 // Routes API qui nécessitent une authentification (sauf auth)
@@ -386,5 +391,8 @@ export const config = {
     // refuse une valeur calculée depuis distribution/mytwin.proxy.ts, qui
     // vérifie en test que chacune de ses routes figure ici.
     '/api/sync-meetings/:path*',
+    // Module watch : sa page et sa route, réservées aux comptes connectés.
+    '/watch/:path*',
+    '/api/watch/:path*',
   ],
 };

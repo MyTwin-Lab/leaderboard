@@ -437,6 +437,12 @@ export interface ModuleDefinition extends Declarations {
   defaultEnabled?: boolean;
   /** Ses réglages (`module_settings.settings`), validés et complétés par le schéma. */
   settings?: { schema: ConfigSchema };
+  /**
+   * Ce qui s'oppose à ce que le module soit actif avec ces réglages (un email
+   * de contact absent, par exemple), ou `null`. Lu à chaque enregistrement qui
+   * laisse le module actif ; sans garde, tout réglage valide suffit.
+   */
+  enableGuard?(settings: Record<string, unknown>): string | null;
   /** Le module qui enregistre la progression des quêtes. Un seul par plateforme. */
   questRecorder?: { record(userId: string, questKey: string, completedAt: Date): Promise<void> };
   /** CP que le module verse hors du ledger des challenges. */
