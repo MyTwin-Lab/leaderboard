@@ -7,8 +7,7 @@
  *
  * `type` y figure depuis qu'un sandbox est un projet : `code` / `ml` était le
  * vocabulaire des challenges, une proposition n'en porte plus, et c'est donc
- * l'admin qui tranche ici. Le serveur ne le lit que dans ce cas — une
- * proposition d'avant impose le sien, quoi qu'envoie le tiroir.
+ * l'admin qui tranche ici, parmi les formes qu'une proposition peut prendre.
  *
  * Ce qui n'y figure **pas** reste le cœur de la règle : `workspace_mode` et
  * `github_repo` découlent du type (un challenge `code` promu est un `own_repo`
@@ -22,7 +21,7 @@ export interface PromotionFormState {
   /** Le slug du challenge — pré-rempli avec celui de la proposition, modifiable. */
   slug: string;
   status: string;
-  /** Choisi par l'admin, sauf sur une proposition d'avant qui impose le sien. */
+  /** Choisi par l'admin dans le tiroir. */
   type: "code" | "ml";
   startDate: string;
   endDate: string;

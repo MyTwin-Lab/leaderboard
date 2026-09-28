@@ -27,10 +27,8 @@ const service = new SandboxPromotionService();
  */
 const promoteSchema = z.object({
   /**
-   * La forme du challenge. Lue **seulement** quand la proposition n'a pas de
-   * type — c'est le cas de toutes celles déposées depuis qu'un sandbox est un
-   * projet. Sur une proposition d'avant, `buildPromotedChallengeDraft` impose
-   * le type hérité et ce champ est ignoré, comme le tiroir qui le verrouille.
+   * La forme du challenge, choisie par l'admin : une proposition n'en porte
+   * pas. Absent = `code`, la forme la plus courante (`buildPromotedChallengeDraft`).
    */
   type: z.enum(["code", "ml"]).optional(),
   title: z.string().min(1).optional(),

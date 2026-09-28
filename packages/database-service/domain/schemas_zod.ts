@@ -539,8 +539,5 @@ export const sandboxUpdateSchema = z.object({
   cover_image_url: coverImageUrlSchema.nullable().optional(),
 });
 
-/** Les clés d'un corps de création ou d'édition qui ne sont pas des champs de proposition. */
-export const SANDBOX_COMMON_KEYS = ["type", "title", "slug", "context", "goals", "why", "status"] as const;
-
 export type SandboxCreateInput = z.infer<typeof sandboxCreateSchema>;
 export type SandboxUpdateInput = z.infer<typeof sandboxUpdateSchema>;

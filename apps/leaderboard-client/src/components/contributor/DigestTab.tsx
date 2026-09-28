@@ -46,7 +46,8 @@ interface DigestPayload {
   }>;
   /** Absente des payloads v1 : un digest figé avant cette section reste lisible. */
   new_sandboxes?: Array<{
-    sandbox_id: string; title: string; type: string;
+    /** Plus écrit depuis qu'un sandbox est un projet ; gardé pour les vieux digests figés. */
+    sandbox_id: string; title: string; type?: string;
     author: { user_id: string; full_name: string }; star_count: number;
   }>;
   cp_distributed: Array<{

@@ -438,10 +438,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
               </p>
               <ul className="space-y-1 text-[11px] leading-relaxed" style={{ color: fgAt(0.5) }}>
                 <li>• Creates this challenge and closes the sandbox as <strong>Promoted</strong> - for good.</li>
-                <li>• The author joins as a member, with their repository already declared.</li>
-                <li>• The work already submitted becomes contributions and gets scored on this pool.</li>
-                <li>• The promotion bonus is paid to the author, per the Sandbox settings.</li>
-                <li>• The type stays the sandbox&apos;s - it decides the steps and the grid.</li>
+                <li>• The author joins as a member; they declare their workspace from the challenge, like everyone else.</li>
+                <li>• Nothing is carried over: a proposal is an idea, the author submits from the challenge.</li>
+                <li>• The promotion bonus is paid to the author, per the Sandbox module settings.</li>
+                <li>• The type is your call, below - it decides the steps and the grid. The cover image follows the proposal.</li>
               </ul>
             </div>
           )}

@@ -8,6 +8,7 @@ import { VitrineAvatar } from '@/components/vitrine/VitrineAvatar';
 import { vitrineFontVars } from '@/components/vitrine/fonts';
 import { coverShot } from '@/lib/coverImage';
 import { formatCP } from '@/lib/formatters';
+import { flowCatalog } from '@/distribution/mytwin.flows';
 import { leadAndBody, splitBriefContext, stripInlineMarkdown } from '@/lib/briefSections';
 import type { GroupInvite } from '@/lib/challengeBrief';
 import type { TeamMember } from '@/lib/types';
@@ -74,13 +75,6 @@ const STATUS_LABELS: Record<string, string> = {
   completed: 'Closed',
   draft: 'Draft',
   archived: 'Archived',
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  ml: 'ML',
-  validation: 'Validation',
-  code: 'Code',
-  none: 'None',
 };
 
 const INVITE_BLOCKERS: Record<string, string> = {
@@ -198,7 +192,8 @@ export function ChallengeVitrine({
   const status = challenge.status;
   const statusLabel = STATUS_LABELS[status] ?? status.charAt(0).toUpperCase() + status.slice(1);
   const isOpen = status !== 'completed' && status !== 'archived';
-  const typeLabel = TYPE_LABELS[challenge.type] ?? 'Code';
+  // Le nom vient du flow ; un type absent ou inconnu s'affiche comme le flow par défaut.
+  const typeLabel = flowCatalog.resolve(challenge.type).label;
 
   const shot = coverShot(challenge.cover_image_url, shotIndex(challenge.uuid), 'challenge');
 
