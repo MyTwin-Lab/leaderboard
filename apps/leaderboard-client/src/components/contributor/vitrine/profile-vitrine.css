@@ -2084,3 +2084,21 @@
     transition-duration: 0.01ms;
   }
 }
+
+/* ── L'onglet Modules ──────────────────────────────────────────────────────
+   Un module par bloc : la ligne « libellé + interrupteur », et sous elle les
+   réglages que la distribution lui donne, en retrait d'un filet. */
+.v-pro-mod {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.v-pro-mod-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-left: 0.75rem;
+  border-left: 2px solid var(--v-line);
+  padding-left: 0.875rem;
+}

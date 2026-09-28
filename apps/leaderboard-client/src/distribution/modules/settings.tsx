@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, type ComponentType, type ReactNode } from "react";
-import { Compass, FileClock, FlaskConical, Puzzle, Telescope, Video } from "lucide-react";
+import { useState, type ComponentType } from "react";
 import { SandboxSettings } from "@/components/contributor/SandboxSettings";
 import { WatchSettings } from "@/components/watch/WatchSettings";
 import type { SandboxStarTier } from "@packages/database-service/domain/entities";
@@ -9,9 +8,9 @@ import type { SandboxStarTier } from "@packages/database-service/domain/entities
 /**
  * Distribution MyTwin — l'écran des modules
  * -----------------------------------------
- * L'icône et l'éditeur de réglages de chaque module installé, rendus par
- * l'écran générique des modules (`components/contributor/ModulesPanel.tsx`).
- * Un module sans éditeur n'a qu'un interrupteur.
+ * L'éditeur de réglages de chaque module installé, rendu par l'écran
+ * générique des modules (`components/contributor/ModulesPanel.tsx`), à la
+ * matière du profil vitrine. Un module sans éditeur n'a qu'un interrupteur.
  */
 
 /** Un module tel que l'écran l'affiche : ce que rend `GET /api/modules/[key]`, sans date. */
@@ -27,20 +26,6 @@ export interface ModuleSettingsEditorProps {
   settings: Record<string, unknown>;
   /** L'état du module après un enregistrement réussi. */
   onSaved(entry: ModuleEntry): void;
-}
-
-const ICON_CLASS = "h-4 w-4 text-white/50";
-
-const ICONS: Record<string, ReactNode> = {
-  meetings: <Video className={ICON_CLASS} />,
-  onboarding: <Compass className={ICON_CLASS} />,
-  digest: <FileClock className={ICON_CLASS} />,
-  sandbox: <FlaskConical className={ICON_CLASS} />,
-  watch: <Telescope className={ICON_CLASS} />,
-};
-
-export function moduleIcon(key: string): ReactNode {
-  return ICONS[key] ?? <Puzzle className={ICON_CLASS} />;
 }
 
 /** Enregistre les réglages d'un module ; rend son état, ou lève avec le message de la route. */
@@ -79,24 +64,26 @@ function DigestSettingsEditor({ settings, onSaved }: ModuleSettingsEditorProps) 
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-sm text-white/70">Interval</p>
-          <p className="mt-0.5 text-xs text-white/35">Days between two automatic digests</p>
+    <>
+      <div className="v-pro-switch-row">
+        <div className="v-pro-switch-text">
+          <span className="v-pro-switch-label">Interval</span>
+          <span className="v-pro-switch-desc">Days between two automatic digests</span>
         </div>
-        <input
-          type="number"
-          min={1}
-          max={365}
-          value={frequency}
-          onChange={(e) => setFrequency(e.target.value)}
-          onBlur={() => void commit()}
-          className="w-20 shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-right text-sm text-white focus:border-brandCP/40 focus:outline-none"
-        />
+        <div className="v-pro-num" data-fixed="true">
+          <input
+            type="number"
+            min={1}
+            max={365}
+            value={frequency}
+            onChange={(e) => setFrequency(e.target.value)}
+            onBlur={() => void commit()}
+          />
+          <span className="v-pro-num-unit">days</span>
+        </div>
       </div>
-      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
-    </div>
+      {error && <p className="v-pro-error">{error}</p>}
+    </>
   );
 }
 

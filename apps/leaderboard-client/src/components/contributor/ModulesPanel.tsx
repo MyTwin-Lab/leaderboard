@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Toggle } from "@/components/ui/Toggle";
-import { moduleIcon, moduleSettingsEditors, type ModuleEntry } from "@/distribution/modules/settings";
+import { moduleSettingsEditors, type ModuleEntry } from "@/distribution/modules/settings";
 
 /**
- * L'écran des modules (onglet admin) : chaque module installé, son
- * interrupteur, et l'éditeur de réglages que la distribution lui donne.
- * Désactivé, un module disparaît de l'interface et ses routes répondent 404 ;
- * ses onglets propres (le digest) se masquent au prochain chargement.
+ * L'écran des modules (onglet admin), à la matière de `Profile Vitrine.dc.html` :
+ * chaque module installé sur une ligne « libellé + interrupteur », et sous
+ * elle l'éditeur de réglages que la distribution lui donne. Désactivé, un
+ * module disparaît de l'interface et ses routes répondent 404 ; ses onglets
+ * propres (le digest) se masquent au prochain chargement.
  */
 export function ModulesPanel({ initialModules }: { initialModules: ModuleEntry[] }) {
   const [entries, setEntries] = useState(initialModules);
@@ -40,34 +40,38 @@ export function ModulesPanel({ initialModules }: { initialModules: ModuleEntry[]
   };
 
   return (
-    <div className="space-y-3">
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">Modules</h2>
-      {error && <p className="text-xs text-red-400">{error}</p>}
-      {entries.length === 0 && <p className="text-xs text-white/30">No module installed.</p>}
+    <>
+      {error && <p className="v-pro-error">{error}</p>}
+      {entries.length === 0 && <p className="v-pro-note">No module installed.</p>}
       {entries.map((entry) => {
         const Editor = moduleSettingsEditors[entry.key];
         return (
-          <div key={entry.key} className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                {moduleIcon(entry.key)}
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">{entry.label}</p>
-                  {entry.description && <p className="mt-0.5 text-xs text-white/35">{entry.description}</p>}
-                </div>
+          <div key={entry.key} className="v-pro-mod">
+            <div className="v-pro-switch-row">
+              <div className="v-pro-switch-text">
+                <span className="v-pro-switch-label">{entry.label}</span>
+                {entry.description && <span className="v-pro-switch-desc">{entry.description}</span>}
               </div>
-              <div className={`shrink-0 transition-opacity ${saving === entry.key ? "opacity-50" : ""}`}>
-                <Toggle enabled={entry.enabled} onChange={(value) => void toggle(entry, value)} />
-              </div>
+              <button
+                type="button"
+                onClick={() => void toggle(entry, !entry.enabled)}
+                className="v-pro-toggle"
+                data-on={entry.enabled}
+                aria-label={`Toggle ${entry.label}`}
+                aria-pressed={entry.enabled}
+                style={saving === entry.key ? { opacity: 0.5 } : undefined}
+              >
+                <span />
+              </button>
             </div>
             {Editor && (
-              <div className="mt-3 border-t border-white/[0.06] pt-3">
+              <div className="v-pro-mod-editor">
                 <Editor settings={entry.settings} onSaved={replace} />
               </div>
             )}
           </div>
         );
       })}
-    </div>
+    </>
   );
 }
