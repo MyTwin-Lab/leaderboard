@@ -5,42 +5,34 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { challengeInvitePath, challengePath, challengeSignInPath } from '@/lib/paths';
 import { ContributorTabs } from '@/components/contributor/ContributorTabs';
-import {
-  ArrowLeft, CheckCircle2, CalendarDays, BrainCircuit,
-  GitBranch, GitPullRequest, Trophy, BarChart2, FlaskConical, Medal, FileText, Info,
-  Database, Cpu, ExternalLink, Users, UserPlus,
-} from 'lucide-react';
+import { ArrowLeft, CalendarDays, FileText, Info, Users, UserPlus } from 'lucide-react';
 import type { TeamMember } from '@/lib/types';
-import { trackOnboardingStep } from '@/lib/onboarding-track';
-import { MLChallengeFlow } from '@/components/challenges/MLChallengeFlow';
-import { ValidationChallengeFlow } from '@/components/challenges/ValidationChallengeFlow';
-import { ScenarioChallengeFlow } from '@/components/challenges/ScenarioChallengeFlow';
-import { ReferenceCaseAuthorPanel } from '@/components/challenges/ReferenceCaseAuthorPanel';
+import { emitUiEvent } from '@/lib/uiEvents';
 import { DocumentsDrawer } from '@/components/challenges/DocumentsDrawer';
+import { isPlaceholderChallenge, showVitrineScreen, type GroupInvite } from '@/lib/challengeBrief';
+import { useIsPhone } from '@/lib/useIsPhone';
+import { ChallengeVitrine } from '@/components/challenges/vitrine/ChallengeVitrine';
 import { GroupInviteModal } from '@/components/challenges/GroupInviteModal';
 import { JoinModal } from '@/components/challenges/JoinModal';
 // groupPolicy et non group : ce dernier instancie un repository, donc un
 // client Postgres, qui n'a rien à faire dans le bundle navigateur.
-import { GROUP_MAX_SIZE } from '../../../../../../packages/services/challenge/groupPolicy';
+import { GROUP_MAX_SIZE } from '../../../../../../packages/database-service/domain/groupPolicy';
 import { RewardRulesDrawer } from '@/components/challenges/RewardRulesDrawer';
-import { type BoardTask } from '@/components/contributor/ContributorTaskBoard';
-import {
-  CodeChallengePanel, type CodeParticipation, type ProjectContribution,
-} from '@/components/challenges/CodeChallengePanel';
-import { MeetingsSection } from '@/components/challenges/MeetingsSection';
+import type { CodeParticipation, ProjectContribution } from '@/components/challenges/CodeChallengePanel';
 import { HeroStats, type HeroStat } from '@/components/challenges/HeroStats';
 import { fetchJson } from '@/lib/fetchJson';
-import { ChallengeActivity } from '@/components/challenges/shared/ChallengeActivity';
-import { ChallengeMetrics } from '@/components/challenges/shared/ChallengeMetrics';
 import { ParticipantsProgress } from '@/components/challenges/shared/ParticipantsProgress';
-import { isPlaceholderChallenge, showVitrineScreen, type GroupInvite } from '@/lib/challengeBrief';
 import { showJoinInHeader } from '@/lib/joinGate';
 import { useJoinChallenge } from '@/lib/useJoinChallenge';
-import { useIsPhone } from '@/lib/useIsPhone';
-import { ChallengeVitrine } from '@/components/challenges/vitrine/ChallengeVitrine';
-
-const ML_REPO_TYPES = ['kaggle_dataset', 'kaggle_model'];
-
+import { flowCatalog } from '@/distribution/mytwin.flows';
+import { flowSlots } from '@/distribution/mytwin.client';
+import { useModuleSlots } from '@/distribution/mytwin.modules';
+import type {
+  BoardContribution,
+  ChallengeRewards,
+  ContributorSlotContext,
+  ContributorTask,
+} from '@/lib/flowSlots';
 
 interface Challenge {
   uuid: string;
@@ -52,42 +44,11 @@ interface Challenge {
   end_date?: string | null;
   contribution_points_reward: number;
   project_id: string;
-  workspace_mode?: string;
+  flow_config?: unknown;
   /** L'en-tête photo de l'écran vitrine — la même image que la carte du listing. */
   cover_image_url?: string | null;
   /** Qui porte le challenge, rendu par l'écran vitrine. */
   host?: string | null;
-}
-
-// A task row from the overview — either a template task (no `user_id`) or
-// an entry on a specific contributor's personal board.
-interface ChallengeTask extends BoardTask {
-  user_id?: string | null;
-}
-
-// Ledger entries (ML/validation/code contributions) — unrelated to the
-// personal task board, but still used for the challenge's stat cards below
-// and (for `type === 'project'`) the code-challenge evaluation status.
-interface BoardContribution {
-  uuid: string;
-  task_id?: string;
-  user_id: string;
-  type?: string;
-  evaluation?: { globalScore?: number } | null;
-  evaluation_status?: string;
-  reward: number;
-  submitted_at: string;
-}
-
-interface SyncMeeting {
-  uuid: string;
-  title: string;
-  description?: string;
-  challenge_id: string;
-  start_time: string;
-  end_time: string;
-  meet_link?: string;
-  status: string;
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -136,6 +97,9 @@ function Skeleton() {
  * pré-rempli le cache (voir `page.tsx`). Inutile d'attendre `/api/contributors/me`
  * pour lui — la réponse ne peut être qu'un 401 — et c'est justement cette
  * attente qui réduisait le HTML serveur à un squelette.
+ *
+ * Ce qui dépend du flow du challenge (onglets, mesure du hero, vue anonyme)
+ * vient de ses slots (`@/distribution/mytwin.client`).
  */
 export default function ChallengeDetailClient({
   challengeId,
@@ -148,17 +112,11 @@ export default function ChallengeDetailClient({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  // Pas une affaire de style : sur un téléphone, l'espace de travail n'a pas
-  // lieu d'être (il demande un éditeur et un terminal). Un membre y reste donc
-  // sur l'écran vitrine, qui le renvoie vers un ordinateur.
-  const isPhone = useIsPhone();
 
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
   const [rulesDrawerOpen, setRulesDrawerOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
-  // Couvre la fenêtre entre la création du groupe et le rechargement de
-  // l'overview, qui est la source de vérité une fois arrivée.
 
   // Declared before overviewQuery so its refetchInterval closure (below) can
   // read meQuery.data without a temporal-dead-zone hazard.
@@ -180,11 +138,11 @@ export default function ChallengeDetailClient({
   // array, which is evaluated on every render, so reading it above would hit
   // its temporal dead zone.
   useEffect(() => {
-    // trackOnboardingStep posts to a protected route — pointless without a session.
-    if (challengeId && !isAnonymous) trackOnboardingStep('clicked_challenge');
+    // `/api/events/ui` n'accepte qu'un compte connecté : inutile sans session.
+    if (challengeId && !isAnonymous) emitUiEvent('ui.challenge_opened', { challengeId });
   }, [challengeId, isAnonymous]);
 
-  // Challenge, team, tasks, meetings, repos and contributions all come from
+  // Challenge, team, tasks, repos and contributions all come from
   // one aggregated request instead of 6 separate ones — see the route for why
   // repo-activity stays its own call. Shared query key + shape with
   // ChallengeManageView, so navigating manage <-> public for the same
@@ -195,7 +153,6 @@ export default function ChallengeDetailClient({
       challenge: Challenge;
       team: any[];
       tasks: any[];
-      meetings: SyncMeeting[];
       repos: any[];
       contributions: BoardContribution[];
       participants: CodeParticipation[];
@@ -232,33 +189,25 @@ export default function ChallengeDetailClient({
     enabled: !!challengeId,
   });
 
-  // Same source as the "beat the leader" timeline inside MLChallengeFlow —
-  // reads the reward ledger (challenge.reward_rules.model.metric), not a live
-  // Kaggle call, so it still has a value with no Kaggle credentials configured.
-  const mlRewardsQuery = useQuery({
-    queryKey: ['challenge-ml-rewards', challengeId],
-    queryFn: () => fetchJson(`/api/challenges/${challengeId}/ml-rewards`) as Promise<{
-      metric: { name: string; baseline: number; points: number[] } | null;
-      bestValue: number | null;
-    }>,
-    enabled: !!challengeId && overviewQuery.data?.challenge?.type === 'ml',
+  const challengeType = overviewQuery.data?.challenge?.type;
+  // L'état du pool et ce que le flow y ajoute (la métrique d'un challenge ML) :
+  // le ledger, pas un appel Kaggle en direct, donc une valeur même sans
+  // credentials Kaggle configurés. Seuls les flows qui l'affichent le chargent.
+  const rewardsQuery = useQuery({
+    queryKey: ['challenge-rewards', challengeId],
+    queryFn: () => fetchJson(`/api/challenges/${challengeId}/rewards`) as Promise<ChallengeRewards>,
+    enabled: !!challengeId && !!challengeType && flowSlots(challengeType).readsRewards === true,
   });
 
-  // Not challenge-specific — shared across every page that needs it.
-  const modulesQuery = useQuery({
-    queryKey: ['modules'],
-    queryFn: () => fetchJson('/api/modules'),
-    staleTime: 5 * 60_000,
-  });
+  // Les slots des modules actifs (la section meetings…). Pré-rempli par la
+  // page serveur : un module désactivé n'apparaît pas, même un instant.
+  const moduleSlots = useModuleSlots();
 
   const challenge = overviewQuery.data?.challenge ?? null;
   const team: TeamMember[] = (overviewQuery.data?.team ?? []).map((m: any) => ({
     id: m.uuid, fullName: m.full_name, avatarUrl: m.avatar_url ?? undefined,
   }));
-  const tasks: ChallengeTask[] = overviewQuery.data?.tasks ?? [];
-  const meetings = overviewQuery.data?.meetings ?? [];
-  const meetingsEnabled = modulesQuery.data?.meetings_enabled !== false;
-  const repoTypes: string[] = (overviewQuery.data?.repos ?? []).map((r: any) => r.repo_type ?? r.type ?? '');
+  const tasks: ContributorTask[] = overviewQuery.data?.tasks ?? [];
   const contributions = overviewQuery.data?.contributions ?? [];
   const repoActivity = repoActivityQuery.data ?? null;
   const currentUserId = meQuery.data?.user?.id ?? null;
@@ -287,12 +236,7 @@ export default function ChallengeDetailClient({
   const myTasks = tasks.filter(t => t.user_id === workspaceOwnerId);
   const templateTasks = tasks.filter(t => !t.user_id);
   const myProjectContribution: ProjectContribution | null =
-    contributions.find(c => c.user_id === workspaceOwnerId && c.type === 'project') ?? null;
-
-  const isML = challenge?.type === 'ml' || repoTypes.some(t => ML_REPO_TYPES.includes(t));
-  const isValidation = challenge?.type === 'validation';
-  // Le mode se lit sur le type du challenge source, publié par /overview.
-  const isScenarioValidation = isValidation && overviewQuery.data?.source_challenge_type === 'code';
+    (contributions.find(c => c.user_id === workspaceOwnerId && c.type === 'project') as ProjectContribution | undefined) ?? null;
 
   // Silent refresh after a board mutation — no skeleton flash.
   const reloadBoard = async () => {
@@ -328,6 +272,10 @@ export default function ChallengeDetailClient({
   // Le brief s'adresse à qui n'a pas encore rejoint, connecté ou non — un
   // membre, lui, le retrouve dans le tiroir Docs. La requête suit : elle part
   // sans session, la route `documents` étant publique en lecture.
+  // Pas une affaire de style : sur un téléphone, l'espace de travail n'a pas
+  // lieu d'être (il demande un éditeur et un terminal). Un membre y reste donc
+  // sur l'écran vitrine, qui le renvoie vers un ordinateur.
+  const isPhone = useIsPhone();
   // Un membre le relit sur téléphone : c'est tout ce que cet écran-là peut
   // lui montrer, faute d'espace de travail.
   // Un challenge repère le demande toujours : sa seule page est l'écran
@@ -347,7 +295,7 @@ export default function ChallengeDetailClient({
   });
 
   // repo-activity is excluded on purpose: it hits external connectors and can
-  // be slow, but TabActivity/TabMLMetrics already render their own inline
+  // be slow, but the panels that read it already render their own inline
   // skeleton while repoActivity is null — no reason to hold up the rest of
   // the page for it.
   // meQuery.isError is the anonymous case, not a failure to wait on.
@@ -358,7 +306,7 @@ export default function ChallengeDetailClient({
   // tout de suite, et le brief s'y pose en arrivant. Le faire attendre ferait
   // clignoter un squelette entre l'espace de travail du premier rendu — où
   // `isPhone` vaut encore false, avant le montage — et l'écran vitrine.
-  const loading = overviewQuery.isLoading || modulesQuery.isLoading
+  const loading = overviewQuery.isLoading || moduleSlots.isLoading
     || (meQuery.isLoading && !meQuery.isError)
     || (briefNeeded && !isMember && briefQuery.isLoading);
 
@@ -372,20 +320,27 @@ export default function ChallengeDetailClient({
     );
   }
 
-  // Completion of the CURRENT USER's personal board, not the whole
-  // challenge's task pool — each contributor has their own board now.
-  const myDoneTasks = myTasks.filter(t => t.status === 'done').length;
-  const myCompletion = myTasks.length === 0 ? 0 : Math.round((myDoneTasks / myTasks.length) * 100);
+  const slots = flowSlots(challenge.type);
+  const slotContext: ContributorSlotContext = {
+    challengeId,
+    challenge,
+    team,
+    tasks,
+    participants,
+    contributions,
+    repoActivity,
+    rewards: rewardsQuery.data ?? null,
+    isMember,
+    myTasks,
+    templateTasks,
+    myParticipation,
+    myProjectContribution,
+    reloadBoard,
+  };
+
   // Actually distributed, not the pool/cap set at creation — reward is already
   // reconciled with the ledger (ML/validation) or the cached column (code).
   const awardedTotal = contributions.reduce((sum, c) => sum + (c.reward ?? 0), 0);
-
-  // Best reported model metric — same source as MLChallengeFlow's "beat the
-  // leader" timeline (the reward ledger), not the live Kaggle connector: that
-  // one needs real Kaggle credentials and returns nothing without them.
-  const mlRewards = mlRewardsQuery.data;
-  const bestMetricValue = mlRewards?.bestValue ?? mlRewards?.metric?.points?.[0] ?? null;
-  const bestMetricLabel = mlRewards?.metric?.name ? mlRewards.metric.name.toUpperCase() : null;
 
   // `Join` prend la place de `Docs` tant que le visiteur n'a pas rejoint. La
   // condition ignore `isAnonymous` volontairement : la page est publique, et le
@@ -411,64 +366,6 @@ export default function ChallengeDetailClient({
     challengeType: challenge.type,
     brief: briefQuery.data,
   });
-
-  const upcomingMeetings = meetings
-    .filter(m => ['scheduled', 'in_progress'].includes(m.status))
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-
-  const pastMeetings = meetings
-    .filter(m => ['completed', 'processed', 'cancelled'].includes(m.status))
-    .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
-
-  // ── KPI ──
-  // Extraits en variables parce que deux dispositions les consomment : la
-  // ligne en tête de page, et la colonne de droite de l'écran brief, qui n'en
-  // prend que deux. Les inliner dans les deux endroits dupliquerait le calcul
-  // du pool et la liste d'avatars.
-  const cpAwardedStat: HeroStat = {
-    key: 'cp-awarded',
-    label: 'CP awarded',
-    value: awardedTotal.toLocaleString('en-US'),
-    unit: 'CP',
-    meta: challenge.contribution_points_reward ? `of a ${challenge.contribution_points_reward.toLocaleString('en-US')} CP pool` : undefined,
-    barWidth: challenge.contribution_points_reward
-      ? `${Math.min(100, Math.round((awardedTotal / challenge.contribution_points_reward) * 100))}%`
-      : undefined,
-  };
-
-  const teamStat: HeroStat = {
-    key: 'team',
-    label: 'Team',
-    value: String(team.length),
-    unit: team.length === 1 ? 'member' : 'members',
-    team,
-  };
-
-  // La mesure du milieu est la seule qui dépende du type et de l'appartenance.
-  const middleStat: HeroStat = isML ? {
-    key: 'metric',
-    label: bestMetricLabel ? `Best ${bestMetricLabel}` : 'Best metric',
-    value: bestMetricValue !== null ? bestMetricValue.toFixed(3) : '-',
-    meta: bestMetricValue !== null ? 'from submitted model versions' : 'no metric yet',
-    barWidth: bestMetricValue !== null ? `${Math.round(bestMetricValue * 100)}%` : undefined,
-  } : isValidation ? {
-    key: 'contributions',
-    label: 'Contributions',
-    value: String(contributions.length),
-    meta: 'submissions & verdicts recorded',
-  } : isMember ? {
-    key: 'tasks',
-    label: 'Tasks',
-    value: `${myCompletion}%`,
-    meta: `${myDoneTasks} of ${myTasks.length} tasks done · your board`,
-    barWidth: `${myCompletion}%`,
-  } : {
-    key: 'tasks',
-    label: 'Tasks',
-    value: String(team.length),
-    unit: team.length === 1 ? 'participant' : 'participants',
-    meta: 'join the challenge to start your board',
-  };
 
   if (showVitrine) {
     return (
@@ -503,6 +400,33 @@ export default function ChallengeDetailClient({
       </>
     );
   }
+
+  // ── KPI ──
+  // Extraits en variables parce que deux dispositions les consomment : la
+  // ligne en tête de page, et la colonne de droite de l'écran brief, qui n'en
+  // prend que deux. Les inliner dans les deux endroits dupliquerait le calcul
+  // du pool et la liste d'avatars.
+  const cpAwardedStat: HeroStat = {
+    key: 'cp-awarded',
+    label: 'CP awarded',
+    value: awardedTotal.toLocaleString('en-US'),
+    unit: 'CP',
+    meta: challenge.contribution_points_reward ? `of a ${challenge.contribution_points_reward.toLocaleString('en-US')} CP pool` : undefined,
+    barWidth: challenge.contribution_points_reward
+      ? `${Math.min(100, Math.round((awardedTotal / challenge.contribution_points_reward) * 100))}%`
+      : undefined,
+  };
+
+  const teamStat: HeroStat = {
+    key: 'team',
+    label: 'Team',
+    value: String(team.length),
+    unit: team.length === 1 ? 'member' : 'members',
+    team,
+  };
+
+  // La mesure du milieu est la seule qui dépende du flow et de l'appartenance.
+  const middleStat = slots.contributorHeroStat(slotContext);
 
   return (
     <>
@@ -540,7 +464,7 @@ export default function ChallengeDetailClient({
             </>
           )}
           <span className="rounded-full bg-brandCP/10 px-3 py-1 text-xs font-semibold text-brandCP">
-            {isML ? 'ML' : isValidation ? 'Validation' : 'Code'}
+            {flowCatalog.resolve(challenge.type).label}
           </span>
         </div>
 
@@ -632,13 +556,13 @@ export default function ChallengeDetailClient({
 
       {/* ── Signed out: one block, no tabs ───────────────── */}
       {/* Every interactive panel below needs an account, so an anonymous
-          visitor gets the single thing worth showing for this challenge type:
-          its dataset and model metrics, or how far each contributor has got.
+          visitor gets the single thing worth showing for this flow — its own
+          view if it declares one, how far each contributor has got otherwise.
           Un challenge code ou ML n'arrive pas jusqu'ici : son visiteur anonyme
           a reçu l'écran vitrine, qui occupe déjà la page. */}
       {isAnonymous && (
-        isML
-          ? <ChallengeMetrics repoActivity={repoActivity} />
+        slots.anonymousView
+          ? slots.anonymousView(slotContext)
           : (
             <ParticipantsProgress
               team={team}
@@ -652,59 +576,16 @@ export default function ChallengeDetailClient({
       {/* ── Tabs ─────────────────────────────────────────── */}
       {!isAnonymous && (
       <ContributorTabs
-        // Membres et admins seulement : l'overview ne sert le lien Meet qu'à
-        // eux, un non-membre verrait des réunions qu'il ne peut pas rejoindre.
-        extra={meetingsEnabled && (isMember || isAdmin) && (
-          <MeetingsSection
-            meetings={meetings}
-            upcomingMeetings={upcomingMeetings}
-            pastMeetings={pastMeetings}
-            onOpen={id => router.push(`/sync-meetings/${id}`)}
-            onJoin={link => { trackOnboardingStep('joined_meeting'); window.open(link, '_blank'); }}
-          />
+        // Les sections des modules actifs, au-dessus de l'onglet affiché.
+        // Chacune décide de ce qu'elle montre à qui (`canSeeInternals`).
+        extra={moduleSlots.slots.some(slot => slot.ChallengeSection) && (
+          <>
+            {moduleSlots.slots.map(({ key, ChallengeSection }) => ChallengeSection && (
+              <ChallengeSection key={key} challengeId={challengeId} canSeeInternals={isMember || isAdmin} />
+            ))}
+          </>
         )}
-        tabs={isValidation ? [
-        {
-          label: isScenarioValidation ? 'Walkthrough' : 'Validate',
-          panel: isScenarioValidation ? (
-            <ScenarioChallengeFlow challengeId={challengeId} />
-          ) : (
-            <div className="space-y-4">
-              <ReferenceCaseAuthorPanel challengeId={challengeId} />
-              <ValidationChallengeFlow challengeId={challengeId} />
-            </div>
-          ),
-        },
-      ] : isML ? [
-        {
-          label: 'Submission',
-          panel: <TabMLSubmission challengeId={challengeId} />,
-        },
-        {
-          label: 'Metrics',
-          panel: <ChallengeMetrics repoActivity={repoActivity} />,
-        },
-      ] : [
-        {
-          label: 'Tasks',
-          panel: (
-            <TabTasks
-              challengeId={challengeId}
-              workspaceMode={(challenge.workspace_mode as 'provided_repo' | 'own_repo' | undefined) ?? 'provided_repo'}
-              myTasks={myTasks}
-              templateTasks={templateTasks}
-              myParticipation={myParticipation}
-              myProjectContribution={myProjectContribution}
-              isMember={isMember}
-              onReload={reloadBoard}
-            />
-          ),
-        },
-        {
-          label: 'Activity',
-          panel: <ChallengeActivity contributions={contributions} team={team} repoActivity={repoActivity} isML={isML} />,
-        },
-      ]} />
+        tabs={slots.contributorTabs(slotContext)} />
       )}
 
       {/* Deuxième appel à l'action, donc réservé aux pages qui n'en ont pas
@@ -761,71 +642,3 @@ export default function ChallengeDetailClient({
     </>
   );
 }
-
-// ─── Tab: Tasks (code) ────────────────────────────────────────────────────
-
-function TabTasks({
-  challengeId, workspaceMode, myTasks, templateTasks, myParticipation, myProjectContribution, isMember, onReload,
-}: {
-  challengeId: string;
-  workspaceMode: 'provided_repo' | 'own_repo';
-  myTasks: ChallengeTask[];
-  templateTasks: ChallengeTask[];
-  myParticipation: CodeParticipation | null;
-  myProjectContribution: ProjectContribution | null;
-  isMember: boolean;
-  onReload: () => Promise<void> | void;
-}) {
-  // "x/y" header reflects the current user's own board now — each
-  // contributor has a separate board, there's no single shared total.
-  const doneTasks = myTasks.filter(t => t.status === 'done').length;
-  const completion = myTasks.length === 0 ? 0 : Math.round((doneTasks / myTasks.length) * 100);
-  return (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-            <CheckCircle2 className="h-3.5 w-3.5 text-primary-100/35" />
-            Tasks
-          </h2>
-          {isMember && (
-            <div className="flex items-center gap-2 ml-auto">
-              <span className="text-xs text-white/30">{doneTasks}/{myTasks.length}</span>
-              {myTasks.length > 0 && (
-                <div className="h-1 w-20 overflow-hidden rounded-full bg-white/8">
-                  <div className="h-full rounded-full bg-brandCP/60 transition-[width] duration-700" style={{ width: `${completion}%` }} />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <CodeChallengePanel
-          challengeId={challengeId}
-          workspaceMode={workspaceMode}
-          myTasks={myTasks}
-          templateTasks={templateTasks}
-          myParticipation={myParticipation}
-          myProjectContribution={myProjectContribution}
-          isMember={isMember}
-          onReload={onReload}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ─── Tab: ML Submission ───────────────────────────────────────────────────
-
-function TabMLSubmission({ challengeId }: { challengeId: string }) {
-  return (
-    <div className="space-y-4">
-      <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/30">
-        <BrainCircuit className="h-3.5 w-3.5 text-primary-100/35" />
-        ML Submission
-      </h2>
-      <MLChallengeFlow challengeId={challengeId} />
-    </div>
-  );
-}
-

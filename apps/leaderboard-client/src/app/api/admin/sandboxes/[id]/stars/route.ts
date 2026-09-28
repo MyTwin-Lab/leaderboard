@@ -5,6 +5,7 @@ import {
 } from "@packages/database-service/repositories";
 import type { SandboxStar } from "@packages/database-service/domain/entities";
 import { fetchContributorSession } from "@/lib/contributor";
+import { moduleNotFoundResponse } from "@/lib/server/modules";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,9 @@ function toAuditRow(star: SandboxStar) {
  * quand même, parce que la suppression se fait par `uuid`.
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const disabled = await moduleNotFoundResponse("sandbox");
+  if (disabled) return disabled;
+
   const session = await fetchContributorSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -123,6 +127,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
  * il n'y a rien à conserver — c'est l'inverse d'un unstar de visiteur.
  */
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const disabled = await moduleNotFoundResponse("sandbox");
+  if (disabled) return disabled;
+
   const session = await fetchContributorSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });

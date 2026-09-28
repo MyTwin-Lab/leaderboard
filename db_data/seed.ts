@@ -24,7 +24,7 @@ import {
   images,
 } from "../packages/database-service/db/drizzle.js";
 import {
-  AppSettingsRepository,
+  ModuleSettingRepository,
   ProjectRepository,
   SandboxRepository,
 } from "../packages/database-service/repositories/index.js";
@@ -1043,7 +1043,6 @@ const DEMO_IP_HASHES = Array.from({ length: 6 }, (_, i) =>
 async function seedDemoSandboxes() {
   const data = read<any[]>("demo-sandboxes.json");
 
-  const appSettingsRepo = new AppSettingsRepository();
   const projectRepo = new ProjectRepository();
   const sandboxRepo = new SandboxRepository();
   const sandboxService = new SandboxService();
@@ -1058,20 +1057,27 @@ async function seedDemoSandboxes() {
   const allUserIds = allUsers.map((u) => u.uuid);
 
   // --- Réglages de l'économie ---
+  // Les paliers vivent dans les réglages du module sandbox (`module_settings`).
   // Écrits seulement si l'admin n'a rien configuré : ce seed ne doit pas
   // écraser des paliers réglés à la main sur une base de travail.
-  const settings = await appSettingsRepo.get();
-  if ((settings.sandbox_star_tiers ?? []).length === 0) {
-    await appSettingsRepo.update({
-      sandbox_star_tiers: STAR_TIERS,
-      sandbox_promotion_bonus_cp: PROMOTION_BONUS_CP,
-    });
+  const moduleSettingRepo = new ModuleSettingRepository();
+  const sandboxModule = await moduleSettingRepo.find("sandbox");
+  const configuredTiers = Array.isArray(sandboxModule?.settings.star_tiers) ? sandboxModule.settings.star_tiers : [];
+  if (configuredTiers.length === 0) {
+    await moduleSettingRepo.save(
+      "sandbox",
+      {
+        enabled: sandboxModule?.enabled ?? true,
+        settings: { ...(sandboxModule?.settings ?? {}), star_tiers: STAR_TIERS, promotion_bonus_cp: PROMOTION_BONUS_CP },
+      },
+      null,
+    );
     console.log(
       `  ✓ Star tiers: ${STAR_TIERS.map((t) => `${t.stars}* -> ${t.cp} CP`).join(", ")} ` +
         `· promotion +${PROMOTION_BONUS_CP} CP`
     );
   } else {
-    console.log(`  = Star tiers already configured (${settings.sandbox_star_tiers.length}) — left as is`);
+    console.log(`  = Star tiers already configured (${configuredTiers.length}) — left as is`);
   }
 
   /**

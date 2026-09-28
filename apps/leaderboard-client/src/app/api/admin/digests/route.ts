@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { DigestRepository } from "@packages/database-service/repositories";
 import { fetchContributorSession } from "@/lib/contributor";
+import { moduleNotFoundResponse } from "@/lib/server/modules";
 
 const digestRepo = new DigestRepository();
 
@@ -16,6 +17,10 @@ function readInt(raw: string | null, fallback: number, max: number): number {
 }
 
 export async function GET(request: Request) {
+  // Module désactivé : les routes du digest n'existent pas.
+  const notFound = await moduleNotFoundResponse("digest");
+  if (notFound) return notFound;
+
   const session = await fetchContributorSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });

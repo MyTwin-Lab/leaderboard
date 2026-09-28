@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleAuthService } from '../../../../../../../packages/services/google-workspace/google-auth.service.js';
+import { GoogleAuthService } from '../../../../../../../packages/capabilities/identity/google-auth.js';
+import { events } from '../../../../../../../packages/capabilities/events.js';
 import { UserRepository } from '../../../../../../../packages/database-service/repositories/index.js';
-import { OnboardingProgressRepository } from '../../../../../../../packages/database-service/repositories/index.js';
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -13,7 +13,6 @@ import { readAnonId } from '@/lib/server/anonVisitor';
 import { SandboxService } from '../../../../../../../packages/services/sandbox/index.js';
 
 const userRepo = new UserRepository();
-const onboardingRepo = new OnboardingProgressRepository();
 
 const STATE_COOKIE = 'g_oauth_state';
 
@@ -100,8 +99,14 @@ export async function GET(request: NextRequest) {
           role: 'contributor',
         });
 
-        // Init onboarding progress for new user
-        await onboardingRepo.initForUser(user.uuid);
+        // Les modules qui attendent un nouveau compte (l'onboarding…) le
+        // reçoivent par l'outbox. Hors transaction (la création n'en ouvre
+        // pas) : un événement perdu ne doit jamais casser une inscription.
+        try {
+          await events.emit('user.created', { userId: user.uuid });
+        } catch (error) {
+          console.warn('[events] user.created not recorded:', error);
+        }
       }
     }
 

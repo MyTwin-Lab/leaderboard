@@ -10,21 +10,21 @@ import {
   sandboxes,
 } from "../../database-service/db/drizzle.js";
 import { toDomainChallenge, toDomainSandbox } from "../../database-service/db/mappers.js";
-import {
-  AppSettingsRepository,
-  ChallengeRepository,
-  SandboxRepository,
-} from "../../database-service/repositories/index.js";
+import { ChallengeRepository, SandboxRepository } from "../../database-service/repositories/index.js";
 import { isSlugUniqueViolation } from "../../database-service/repositories/slugs.js";
 import { SlugTakenError } from "../../database-service/domain/slug.js";
 import type { Challenge, Sandbox } from "../../database-service/domain/entities.js";
-import { buildRepoDefinitions } from "../challenge/challengeRepos.js";
-import { SandboxForbiddenError, SandboxNotFoundError, SandboxNotOpenError } from "./sandbox.service.js";
+import { creationRepos } from "../../capabilities/challenge-hooks.js";
+import { parseFlowRules, prepareFlowConfig } from "../../capabilities/flow-config.js";
+import { legacyChallengeColumns } from "../../database-service/domain/legacyFlowConfig.js";
 import {
-  buildAuthorParticipation,
-  buildPromotedChallengeDraft,
-  type PromotionInput,
-} from "./promotion.js";
+  InvalidRewardRulesError,
+  SandboxForbiddenError,
+  SandboxNotFoundError,
+  SandboxNotOpenError,
+} from "./sandbox.service.js";
+import { readSandboxSettings, type SandboxEconomySettings } from "./settings.js";
+import { buildAuthorParticipation, buildPromotedChallengeDraft, type PromotionInput } from "./promotion.js";
 
 export interface PromoteCommand {
   sandboxId: string;
@@ -42,7 +42,8 @@ export interface PromoteResult {
 export interface SandboxPromotionDeps {
   sandboxRepo: Pick<SandboxRepository, "findById">;
   challengeRepo: Pick<ChallengeRepository, "isSlugTaken" | "availableSlug">;
-  appSettingsRepo: { get(): Promise<{ sandbox_promotion_bonus_cp: number }> };
+  /** Réduit à ce que le service lit : le bonus réglé dans le module sandbox. */
+  settings: () => Promise<Pick<SandboxEconomySettings, "promotion_bonus_cp">>;
 }
 
 /**
@@ -61,6 +62,11 @@ export interface SandboxPromotionDeps {
  * contributions déjà scorées — trois champs qu'un sandbox ne porte plus depuis
  * qu'il est un projet. L'auteur est membre dès la promotion, et soumet depuis
  * le challenge comme tout le monde.
+ *
+ * Le challenge naît comme par la route de création : ses règles de reward
+ * sont lues par le flow choisi (`parseFlowRules`), sa configuration validée et
+ * écrite dans sa version courante (`prepareFlowConfig`), ses repos décidés par
+ * le hook `onCreate` du flow (`creationRepos`).
  */
 export class SandboxPromotionService {
   private deps: SandboxPromotionDeps;
@@ -69,12 +75,12 @@ export class SandboxPromotionService {
     this.deps = {
       sandboxRepo: new SandboxRepository(),
       challengeRepo: new ChallengeRepository(),
-      appSettingsRepo: new AppSettingsRepository(),
+      settings: () => readSandboxSettings(),
       ...deps,
     } as SandboxPromotionDeps;
   }
 
-  async promote({ sandboxId, actor, input }: PromoteCommand): Promise<PromoteResult> {
+  async promote({ sandboxId, actor, input: rawInput }: PromoteCommand): Promise<PromoteResult> {
     if (actor.role !== "admin") {
       throw new SandboxForbiddenError("only an admin can promote a sandbox");
     }
@@ -85,13 +91,21 @@ export class SandboxPromotionService {
     const existing = await this.deps.sandboxRepo.findById(sandboxId);
     if (!existing) throw new SandboxNotFoundError(sandboxId);
 
+    // Mêmes règles qu'à la création d'un challenge, lues par le flow du
+    // challenge à naître — celui que l'admin a choisi : des règles illisibles
+    // seraient stockées telles quelles et le scoring ne trouverait rien.
+    const flowKey = rawInput.type === "ml" ? "ml" : "code";
+    const rewardRules = parseFlowRules(flowKey, rawInput.reward_rules);
+    if (!rewardRules.ok) throw new InvalidRewardRulesError("Invalid reward_rules");
+    const input: PromotionInput = { ...rawInput, reward_rules: rewardRules.rules };
+
     // Vérifié avant d'ouvrir la transaction, pour répondre 409 avec une
     // suggestion sans rien avoir écrit. L'index unique reste l'arbitre d'une
     // création concurrente du même slug : voir le catch plus bas.
     const slug = await this.resolveChallengeSlug(existing, input.slug);
 
-    const settings = await this.deps.appSettingsRepo.get();
-    const bonus = settings?.sandbox_promotion_bonus_cp ?? 0;
+    const settings = await this.deps.settings();
+    const bonus = settings?.promotion_bonus_cp ?? 0;
 
     const challengeId = randomUUID();
 
@@ -121,6 +135,10 @@ export class SandboxPromotionService {
       // 2. Le challenge. Son uuid est généré côté applicatif pour pouvoir le
       //    recoller sur le sandbox sans second aller-retour.
       const draft = buildPromotedChallengeDraft(claimedSandbox, input);
+      // Validée par le flow, écrite dans sa version courante. L'insert est brut
+      // (transaction) : les colonnes historiques sont posées en miroir ici,
+      // comme le fait le repository (jusqu'au lot L7).
+      const flowConfig = prepareFlowConfig(draft.type, draft.flow_config);
       const [challengeRow] = await tx
         .insert(challenges)
         .values({
@@ -138,11 +156,9 @@ export class SandboxPromotionService {
           project_id: draft.project_id,
           reward_rules: draft.reward_rules ?? null,
           cover_image_url: draft.cover_image_url,
-          workspace_mode: draft.workspace_mode,
           source_challenge_id: draft.source_challenge_id,
-          cp_per_validation: draft.cp_per_validation,
-          required_validations: draft.required_validations,
-          compute_enabled: draft.compute_enabled,
+          ...flowConfig,
+          ...legacyChallengeColumns(flowConfig.flow_config),
         })
         .returning();
 
@@ -152,15 +168,12 @@ export class SandboxPromotionService {
         .where(eq(sandboxes.uuid, sandboxId))
         .returning();
 
-      // 3. Repos et liens. Les définitions viennent de `buildRepoDefinitions`,
-      //    la même fonction que la route de création : un challenge promu a les
+      // 3. Repos et liens. Les définitions viennent du hook `onCreate` du
+      //    flow, que lit aussi la route de création : un challenge promu a les
       //    mêmes étapes qu'un challenge créé à la main. Leur `workspace_meta`
       //    part vide — la proposition ne porte ni dépôt ni artefact à recopier.
-      const definitions = buildRepoDefinitions({
-        type: draft.type,
-        title: draft.title,
-        workspaceMode: draft.workspace_mode,
-        apiPackagingEnabled: input.api_packaging_enabled,
+      const definitions = creationRepos(toDomainChallenge(challengeRow), {
+        api_packaging_enabled: input.api_packaging_enabled,
       });
 
       for (const definition of definitions) {

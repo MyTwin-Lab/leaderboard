@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SyncMeetingService } from '../../../../../../../packages/services/sync-meeting/sync-meeting.service.js';
 import { verifyAdmin, getSessionUser } from '@/lib/auth';
+import { moduleNotFoundResponse } from '@/lib/server/modules';
 import { repositories } from '@/lib/db';
 import { loadAccessibleMeeting, toMeetingView } from '../meetingAccess';
 
@@ -9,6 +10,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Module désactivé : la route n'existe pas.
+    const disabled = await moduleNotFoundResponse('meetings');
+    if (disabled) return disabled;
+
     const user = await getSessionUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -35,6 +40,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Module désactivé : la route n'existe pas.
+    const disabled = await moduleNotFoundResponse('meetings');
+    if (disabled) return disabled;
+
     const payload = await verifyAdmin(request);
     if (!payload) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

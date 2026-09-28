@@ -187,6 +187,8 @@ export type SitemapInput = {
   sandboxes: { slug: string; updated_at: Date }[];
   /** `lastModified` : la date de mise à jour de la news, sinon sa publication. */
   news: { slug: string; lastModified: string }[];
+  /** Faux quand le module sandbox est désactivé : `/sandbox` répond alors 404. Vrai par défaut. */
+  sandboxEnabled?: boolean;
 };
 
 /**
@@ -195,13 +197,13 @@ export type SitemapInput = {
  * à faire dans Google), et une URL en `noindex` dans un sitemap dégrade la
  * confiance que Google accorde au fichier entier.
  */
-export function buildSitemap({ baseUrl, challenges, sandboxes, news }: SitemapInput): MetadataRoute.Sitemap {
+export function buildSitemap({ baseUrl, challenges, sandboxes, news, sandboxEnabled = true }: SitemapInput): MetadataRoute.Sitemap {
   const url = (path: string) => `${baseUrl}${path}`;
 
   return [
     { url: url("/"), changeFrequency: "daily", priority: 1 },
     { url: url("/challenges"), changeFrequency: "daily", priority: 0.9 },
-    { url: url("/sandbox"), changeFrequency: "daily", priority: 0.8 },
+    ...(sandboxEnabled ? [{ url: url("/sandbox"), changeFrequency: "daily" as const, priority: 0.8 }] : []),
     { url: url("/leaderboard"), changeFrequency: "daily", priority: 0.6 },
     { url: url(NEWS_PATH), changeFrequency: "weekly", priority: 0.8 },
     { url: url("/vision"), changeFrequency: "monthly", priority: 0.5 },

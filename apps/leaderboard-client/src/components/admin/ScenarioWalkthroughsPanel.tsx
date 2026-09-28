@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Loader2, Stethoscope } from 'lucide-react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { RESULT_META, type ScenarioResult } from '@/components/challenges/scenarioResult';
 
 interface ScenarioStep { id: string; position: number; title: string }
@@ -20,7 +21,9 @@ interface WalkthroughRun {
   endpointUrl: string | null;
   validatorId: string;
   validatorName: string;
-  isMedicalPro: boolean;
+  isExpert: boolean;
+  /** Le libellé de la qualification des avis experts du parcours. */
+  expertLabel: string | null;
   completedAt: string | null;
   globalFeedback: string | null;
   answeredCount: number;
@@ -63,8 +66,8 @@ function RunRow({ run, steps, stepCount }: { run: WalkthroughRun; steps: Map<str
         className="flex w-full flex-wrap items-center gap-2.5 px-4 py-3 text-left transition-colors hover:bg-white/[0.02]"
       >
         <span className="text-sm font-medium" style={{ color: fgAt(0.8) }}>{run.validatorName}</span>
-        {run.isMedicalPro && (
-          <span className="rounded-full bg-brandCP/10 px-2 py-0.5 text-[10px] font-bold text-brandCP">medical_pro</span>
+        {run.isExpert && (
+          <span className="rounded-full bg-brandCP/10 px-2 py-0.5 text-[10px] font-bold text-brandCP">{run.expertLabel ?? 'Expert'}</span>
         )}
         <span className="text-[11px]" style={{ color: fgAt(0.3) }}>
           {completed ? new Date(run.completedAt!).toLocaleDateString() : 'not finished'}
@@ -147,7 +150,7 @@ export function ScenarioWalkthroughsPanel({ challengeId, open }: { challengeId: 
     if (!justOpened) return;
     setLoading(true);
     setError('');
-    fetch(`/api/challenges/${challengeId}/validation-scenario-runs`)
+    fetch(flowActionUrl(challengeId, 'scenario-runs'))
       .then(async res => {
         if (!res.ok) {
           // Avec zéro quorum ce panneau EST le contrôle qualité : un 403/500

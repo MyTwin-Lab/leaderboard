@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const {
   mockGetSessionUser, mockCanAccessChallengeInternals, mockMeetingFindById, mockFindByMeetingId,
@@ -27,7 +27,15 @@ vi.mock('../../../../../../../../packages/database-service/repositories/meetingP
   },
 }));
 
+// Actif par défaut dans ces tests ; le cas désactivé a son describe.
+const { mockModuleNotFoundResponse } = vi.hoisted(() => ({ mockModuleNotFoundResponse: vi.fn() }));
+vi.mock('@/lib/server/modules', () => ({ moduleNotFoundResponse: mockModuleNotFoundResponse }));
+
 import { GET } from './route';
+
+beforeEach(() => {
+  mockModuleNotFoundResponse.mockResolvedValue(null);
+});
 
 const MEETING_ID = 'meeting-1';
 const MEMBER = { id: 'u1', role: 'contributor', fullName: 'Ada', githubUsername: '', email: 'a@b.com' };
@@ -115,5 +123,18 @@ describe('GET /api/sync-meetings/[id]/participants', () => {
     expect(res.status).toBe(500);
     const body = await res.json();
     expect(body.error).toBe('Failed to fetch participants');
+  });
+});
+
+describe('when the meetings module is disabled', () => {
+  beforeEach(() => {
+    mockModuleNotFoundResponse.mockResolvedValue(NextResponse.json({ error: 'Not found' }, { status: 404 }));
+  });
+
+  it('answers 404 before reading the session', async () => {
+    expect((await getParticipants()).status).toBe(404);
+    expect(mockModuleNotFoundResponse).toHaveBeenCalledWith('meetings');
+    expect(mockGetSessionUser).not.toHaveBeenCalled();
+    expect(mockFindByMeetingId).not.toHaveBeenCalled();
   });
 });

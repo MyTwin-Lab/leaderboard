@@ -1,5 +1,4 @@
-import { Octokit } from "octokit";
-import type { GitHubExternalConnector } from "../../connectors/implementation/Github.connector.js";
+import type { ExternalItem } from "../../connectors/interfaces.js";
 
 /**
  * Parsing of arbitrary GitHub URLs pasted by an admin (repo root, branch,
@@ -14,6 +13,16 @@ export interface ParsedGitHubRef {
   ref?: string;
   refType: "branch" | "commit" | "pr" | "default";
   prNumber?: number;
+}
+
+/**
+ * What the resolution needs from the installed GitHub connector: its commits,
+ * and the commits of a pull request. Described here rather than imported, so
+ * this module does not depend on the connector implementation.
+ */
+export interface GitHubCommitSource {
+  fetchItems(options?: { maxCommits?: number }): Promise<ExternalItem[]>;
+  listPullRequestCommits?(prNumber: number, maxCommits: number): Promise<string[]>;
 }
 
 /**
@@ -65,13 +74,12 @@ export function parseGitHubUrl(raw: string): ParsedGitHubRef | null {
  * - commit: the single SHA.
  * - branch/default: up to `maxCommits` commits on the connector's branch
  *   (already configured at construction).
- * - pr: every commit in the pull request — no connector method exists for
- *   this, so it's a direct Octokit call reusing the same token.
+ * - pr: every commit in the pull request, listed by the connector, which was
+ *   built for the same `owner/repo`.
  */
 export async function resolveGitHubCommitShas(
   parsed: ParsedGitHubRef,
-  connector: GitHubExternalConnector,
-  token: string | undefined,
+  connector: GitHubCommitSource,
   maxCommits: number = 20
 ): Promise<string[]> {
   if (parsed.refType === "commit" && parsed.ref) {
@@ -79,23 +87,10 @@ export async function resolveGitHubCommitShas(
   }
 
   if (parsed.refType === "pr" && parsed.prNumber) {
-    const octokit = new Octokit({ auth: token });
-    const shas: string[] = [];
-    let page = 1;
-    while (shas.length < maxCommits) {
-      const { data } = await octokit.rest.pulls.listCommits({
-        owner: parsed.owner,
-        repo: parsed.repo,
-        pull_number: parsed.prNumber,
-        per_page: 100,
-        page,
-      });
-      if (data.length === 0) break;
-      shas.push(...data.map((c) => c.sha));
-      if (data.length < 100) break;
-      page++;
+    if (!connector.listPullRequestCommits) {
+      throw new Error("The installed GitHub connector cannot list pull request commits");
     }
-    return shas.slice(0, maxCommits);
+    return connector.listPullRequestCommits(parsed.prNumber, maxCommits);
   }
 
   const items = await connector.fetchItems({ maxCommits });

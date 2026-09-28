@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { FormField, FormSection, inputClass, selectClass } from '@/components/ui/FormField';
 import { AlertTriangle, Users } from 'lucide-react';
-import { simulateMaxDistribution } from '../../../../../packages/evaluator/ml-reward';
+import { simulateMaxDistribution } from '@/distribution/mytwin.rules';
 import {
   DEFAULT_ML_REWARD_RULES,
   ML_METRIC_NAMES,

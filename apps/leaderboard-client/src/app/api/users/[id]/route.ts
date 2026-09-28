@@ -8,8 +8,7 @@ import { z } from 'zod';
 const userRepo = new UserRepository();
 
 const updateUserSchema = z.object({
-  // Liste fermée : `medical_pro` est une frontière de confiance, une faute de
-  // frappe ne doit pas créer un rôle que le proxy ne connaît pas.
+  // Liste fermée : une faute de frappe ne doit pas créer un rôle que le proxy ne connaît pas.
   role: userRoleSchema,
   // Justification conservée dans role_changes (qualification déclarée, CGU §6).
   note: z.string().trim().max(1000).optional(),
@@ -37,8 +36,8 @@ export async function GET(
 }
 
 // PATCH — admin only. No server-side check existed here before challenge-014;
-// fixed now because granting `medical_pro` (the trust boundary this whole
-// feature relies on) goes through this exact route. Chaque changement effectif
+// fixed then because granting the validation trust boundary went through this
+// route; it is a qualification now (/api/users/[id]/qualifications). Chaque changement effectif
 // est tracé dans role_changes, dans la même transaction que l'UPDATE.
 export async function PATCH(
   request: NextRequest,

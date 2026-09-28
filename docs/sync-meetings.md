@@ -2,6 +2,8 @@
 
 Sync meetings are team synchronization meetings that are **created directly from the leaderboard app** in Google Workspace, then **automatically analyzed by AI** after they conclude.
 
+They are a product **module** (`modules/meetings`), **disabled by default** because they need a Google Workspace service account. An admin turns it on from the Modules tab of `/contributors/me` (see [`admin-settings.md`](./admin-settings.md)).
+
 **Requires:** Google Workspace service account credentials + `OPENAI_API_KEY`
 
 ---
@@ -10,7 +12,7 @@ Sync meetings are team synchronization meetings that are **created directly from
 
 1. An admin, or the manager of the challenge's project, creates a sync meeting from the app — this provisions a Google Calendar event with a Google Meet link for the team.
 2. The team meets using that Google Meet link.
-3. After the meeting, the system (via cron or manual trigger) detects that the meeting has ended and ingests the content.
+3. After the meeting, the module's job (or a manual trigger) detects that the meeting has ended and ingests the content.
 4. The AI analysis agent processes the meeting and produces a structured report.
 
 ---
@@ -25,7 +27,7 @@ Google Meet link provisioned
         ↓
 Team holds the meeting
         ↓
-Cron job: /api/cron/check-meetings
+/api/cron/tick → job meetings.check (every minute)
         ↓
 MeetingPollingService: detect completed meetings
         ↓
@@ -57,14 +59,15 @@ Output is validated with Zod schemas before being stored.
 
 | Service | Responsibility |
 |---------|----------------|
-| `google-calendar.service.ts` | Creates and manages Google Calendar events |
-| `google-meet.service.ts` | Provisions Google Meet links |
-| `google-auth.service.ts` | Manages Google OAuth2 tokens |
-| `sync-meeting.service.ts` | Orchestrates meeting creation (calendar + meet + DB record) |
-| `meeting-polling.service.ts` | Periodically checks which meetings have finished |
-| `meeting-ingestion.service.ts` | Fetches the meeting content after it ends |
-| `meeting-analysis.service.ts` | Calls the sync-meeting-agent and stores results |
-| `cron-check-meetings.ts` | Entry point for the cron job |
+| `google-workspace/google-calendar.service.ts` | Creates and manages Google Calendar events |
+| `google-workspace/google-meet.service.ts` | Provisions Google Meet links |
+| `sync-meeting/sync-meeting.service.ts` | Orchestrates meeting creation (calendar + meet + DB record) |
+| `sync-meeting/meeting-polling.service.ts` | Periodically checks which meetings have finished |
+| `sync-meeting/meeting-ingestion.service.ts` | Fetches the meeting content after it ends |
+| `sync-meeting/meeting-analysis.service.ts` | Calls the sync-meeting-agent and stores results |
+| `sync-meeting/cron-check-meetings.ts` | `checkCompletedMeetings`, run by the `meetings.check` job |
+
+Google sign-in (`GoogleAuthService`) is not part of the module: it belongs to the core identity capability (`packages/capabilities/identity/google-auth.ts`).
 
 ---
 
@@ -78,11 +81,31 @@ Output is validated with Zod schemas before being stored.
 
 ---
 
+## The module
+
+**Disabled** means gone, not hidden:
+
+- `/api/sync-meetings/**` and `GET /api/challenges/[id]/meetings` answer 404;
+- the `/admin/meetings` and `/sync-meetings` pages answer 404 (their layouts call `notFound()`);
+- its UI slots disappear and the tick skips `meetings.check`.
+
+**Routes.** The challenge overview no longer returns meetings. A challenge page and its manage view read `GET /api/challenges/[id]/meetings` — admins, managers and challenge members only.
+
+**UI slots** (`apps/leaderboard-client/src/distribution/modules/meetings.tsx`, listed in `mytwin.modules.tsx`): the meetings section of a challenge page (`ChallengeSection`) and of the manage view (`ManageSection`), the "Meetings" entry of the admin menu, a stat card and a tab on the admin home.
+
+**Proxy** (`distribution/modules/meetings.proxy.ts`): `/api/sync-meetings` is a protected API route, and `POST /api/sync-meetings` is open to non-admins — the handler checks that the caller manages the challenge.
+
+**Onboarding quest.** The module declares the `ui.meeting_link_opened` event, emitted through `POST /api/events/ui` when someone clicks "Join", and the `joined_meeting` quest it completes (see [`onboarding.md`](./onboarding.md)).
+
+---
+
 ## Cron job
 
-`GET /api/cron/check-meetings` is the endpoint that drives the polling. It should be called on a schedule (e.g. every 5–15 minutes) by an external cron scheduler.
+The module declares the job `meetings.check` (every minute). It runs from the single scheduler entry `GET /api/cron/tick`, which runs due jobs one at a time under their `cron_runs` lock.
 
-Secure it with `CRON_SECRET`:
+`GET /api/cron/check-meetings` still exists as a wrapper around the same job; it is removed in challenge 020, L7, once the scheduler calls only the tick.
+
+Secure the tick with `CRON_SECRET`:
 ```env
 CRON_SECRET=your-secret-value
 ```
@@ -91,12 +114,6 @@ The request must include the header:
 ```
 Authorization: Bearer your-secret-value
 ```
-
----
-
-## Hiding the meetings module
-
-An admin can hide the meetings sidebar from challenge pages instance-wide, from the Modules tab in `/contributors/me` — see [`admin-settings.md`](./admin-settings.md). This only affects visibility; meetings can still be created and accessed directly.
 
 ---
 
@@ -126,9 +143,13 @@ CRON_SECRET=...
 
 | File | Purpose |
 |------|---------|
-| `packages/services/sync-meeting/` | All sync meeting services |
+| `modules/meetings/index.ts` | Module definition: default state, event, quest, job |
+| `packages/services/sync-meeting/` | Sync meeting services |
+| `packages/services/google-workspace/` | Google Calendar and Meet |
 | `packages/sync-meeting-agent/meeting-analyzer.ts` | AI analysis agent |
 | `packages/sync-meeting-agent/prompts.ts` | System and user prompts for the agent |
 | `packages/sync-meeting-agent/schemas.ts` | Zod output validation |
 | `apps/leaderboard-client/src/app/api/sync-meetings/` | API routes |
-| `apps/leaderboard-client/src/app/api/cron/check-meetings/` | Cron endpoint |
+| `apps/leaderboard-client/src/app/api/challenges/[id]/meetings/route.ts` | A challenge's meetings |
+| `apps/leaderboard-client/src/distribution/modules/meetings.tsx` | UI slots |
+| `apps/leaderboard-client/src/distribution/modules/meetings.proxy.ts` | Proxy rules |

@@ -1,4 +1,5 @@
-import { computeCodeAward } from "../../evaluator/code-reward.js";
+import { computeCodeAward } from "../../../content/flows/code/reward.js";
+import { CODE_PROJECT_EVALUATION_HANDLER, codeFlowDescriptor } from "../../../content/flows/code/index.js";
 import {
   ChallengeRepository,
   ChallengeRepoRepository,
@@ -6,18 +7,15 @@ import {
   ContributionMemberRepository,
   ContributionRepository,
   RewardEntryRepository,
-  TaskRepository,
 } from "../../database-service/repositories/index.js";
+import { boardProgress, type BoardProgress } from "../../capabilities/board.js";
 import { isEvaluationRunning } from "../../database-service/repositories/contribution.repo.js";
-import { splitShares } from "../../evaluator/share.js";
-import { getGroupContext, type GroupContext } from "./group.js";
+import { splitShares } from "../../database-service/domain/share.js";
+import { getGroupContext, type GroupContext } from "../../capabilities/groups.js";
+import { distributedFromPool, poolCompletion, remainingPool } from "../../capabilities/pool.js";
 import type { Challenge, ChallengeTeam, Contribution } from "../../database-service/domain/entities.js";
 import { parseCodeRewardRules } from "../../database-service/domain/codeRewardRules.js";
-import {
-  ensureDatabaseGridProvider,
-  evaluateGithubRepo,
-  parseGithubRepoUrl,
-} from "./repo-evaluation.js";
+import { evaluateGithubRepo, parseGithubRepoUrl } from "./repo-evaluation.js";
 
 /** Une contribution "projet global" par (challenge, user) — le pendant code de dataset/model/api_packaging. */
 export const PROJECT_CONTRIBUTION_TYPE = "project";
@@ -72,7 +70,8 @@ export interface CodeRewardsDeps {
   /** `findByChallenge` sert la résolution du groupe (voir group.ts). */
   challengeTeamRepo: Pick<ChallengeTeamRepository, "findByChallengeAndUser" | "findByChallenge">;
   challengeRepoRepo: Pick<ChallengeRepoRepository, "findByChallengeWithRepo">;
-  taskRepo: Pick<TaskRepository, "findPersonalTasks">;
+  /** L'avancement du board du porteur : l'évaluation attend un board terminé. */
+  board: { progress(challengeId: string, ownerId: string): Promise<BoardProgress> };
   contributionRepo: Pick<ContributionRepository, "findByChallenge" | "createIfAbsent" | "claimEvaluation" | "update">;
   rewardRepo: Pick<RewardEntryRepository, "findByUserAndChallenge" | "sumByChallenge" | "createManyAndSyncRewards">;
   contributionMemberRepo: Pick<ContributionMemberRepository, "addShares">;
@@ -97,14 +96,11 @@ export class CodeRewardsService {
   private deps: CodeRewardsDeps;
 
   constructor(deps?: Partial<CodeRewardsDeps>) {
-    // Le registre de grilles est statique : l'installer une fois suffit, et
-    // `repo-evaluation.ts` porte le drapeau pour tous ses appelants.
-    ensureDatabaseGridProvider();
     this.deps = {
       challengeRepo: new ChallengeRepository(),
       challengeTeamRepo: new ChallengeTeamRepository(),
       challengeRepoRepo: new ChallengeRepoRepository(),
-      taskRepo: new TaskRepository(),
+      board: { progress: (challengeId, ownerId) => boardProgress(challengeId, ownerId) },
       contributionRepo: new ContributionRepository(),
       rewardRepo: new RewardEntryRepository(),
       contributionMemberRepo: new ContributionMemberRepository(),
@@ -151,9 +147,9 @@ export class CodeRewardsService {
         : participation.workspace_status === "ready";
     if (!workspaceReady) return { ok: false, reason: "workspace_not_ready" };
 
-    const tasks = await this.deps.taskRepo.findPersonalTasks(challengeId, ownerId);
-    if (tasks.length === 0) return { ok: false, reason: "no_tasks" };
-    if (tasks.some(t => t.status !== "done")) return { ok: false, reason: "tasks_not_done" };
+    const board = await this.deps.board.progress(challengeId, ownerId);
+    if (board.total === 0) return { ok: false, reason: "no_tasks" };
+    if (board.done < board.total) return { ok: false, reason: "tasks_not_done" };
 
     const contribution = await this.findContribution(challengeId, ownerId);
     // Même règle que la garde SQL de `claimEvaluation` : un `running` orphelin
@@ -264,7 +260,7 @@ export class CodeRewardsService {
 
       const [existingEntries, distributed] = await Promise.all([
         this.deps.rewardRepo.findByUserAndChallenge(ownerId, challengeId),
-        this.deps.rewardRepo.sumByChallenge(challengeId, { excludeRuleKeys: ["slack_signal"] }),
+        distributedFromPool(this.deps.rewardRepo, challengeId),
       ]);
       const sumFor = (key: string) =>
         existingEntries.filter(e => e.rule_key === key).reduce((s, e) => s + e.points, 0);
@@ -276,7 +272,7 @@ export class CodeRewardsService {
         contributionId: contribution.uuid,
         score: score10,
         alreadyAwarded: { code_fixed: sumFor("code_fixed"), code_quality: sumFor("code_quality") },
-        remainingPool: Math.max(0, challenge.contribution_points_reward - distributed),
+        remainingPool: remainingPool(challenge.contribution_points_reward, distributed),
         groupMultiplier: group.multiplier,
       });
 
@@ -287,10 +283,8 @@ export class CodeRewardsService {
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation_status: "done" });
 
       // Complétion = fraction du pool drainé, comme en ML.
-      const newDistributed = await this.deps.rewardRepo.sumByChallenge(challengeId, { excludeRuleKeys: ["slack_signal"] });
-      const completion = challenge.contribution_points_reward > 0
-        ? Math.min(1, newDistributed / challenge.contribution_points_reward)
-        : 0;
+      const newDistributed = await distributedFromPool(this.deps.rewardRepo, challengeId);
+      const completion = poolCompletion(challenge.contribution_points_reward, newDistributed);
       await this.deps.challengeRepo.update(challenge.uuid, { completion });
 
       const net = drafts.reduce((s, d) => s + d.points, 0);
@@ -403,6 +397,14 @@ export class CodeRewardsService {
         userId: contribution.user_id,
       },
       hasPriorEvaluation: !!contribution.evaluation,
+      // Rejouable par le handler du flow code, au nom du porteur du workspace.
+      origin: {
+        owner: codeFlowDescriptor.key,
+        handler: CODE_PROJECT_EVALUATION_HANDLER,
+        payload: { challengeId: challenge.uuid, userId: contribution.user_id },
+        challengeId: challenge.uuid,
+        contributionId: contribution.uuid,
+      },
     });
   }
 }

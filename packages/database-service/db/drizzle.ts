@@ -1,6 +1,6 @@
 import { config } from "../../config/index.js";
 import "dotenv/config";
-import { pgTable, text, varchar, timestamp, uuid, integer, json, jsonb, date, serial, real, index, uniqueIndex, boolean, customType, primaryKey, check } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, uuid, integer, json, jsonb, date, serial, real, numeric, index, uniqueIndex, boolean, customType, primaryKey, check } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 // Import de type seul : effacé à la compilation, donc aucun cycle d'import à
 // l'exécution entre le schéma et le domaine.
@@ -57,7 +57,12 @@ export const challenges = pgTable("challenges", {
   contribution_points_reward: integer("contribution_points_reward").default(0),
   completion: real("completion").default(0),
   project_id: uuid("project_id").references(() => projects.uuid, { onDelete: "cascade" }),
-  reward_rules: json("reward_rules"), // ML challenges only — see domain/mlRewardRules.ts
+  reward_rules: json("reward_rules"), // forme propre au flow, lue par ses `rules.parse`
+  // Configuration du flow, validée par son schéma et versionnée (capacité
+  // flow-config). Remplace les quatre colonnes ci-dessous, qui restent écrites
+  // en miroir jusqu'au lot L7 du challenge 020 (domain/legacyFlowConfig.ts).
+  flow_config: jsonb("flow_config"),
+  flow_config_version: integer("flow_config_version").notNull().default(1),
   // Validation challenges only: the ML challenge this one validates. 1:1,
   // enforced at the service layer (a source challenge can back at most one).
   source_challenge_id: uuid("source_challenge_id").references((): AnyPgColumn => challenges.uuid, { onDelete: "cascade" }),
@@ -96,6 +101,11 @@ export const challenges = pgTable("challenges", {
   projectIdIdx: index("idx_challenges_project_id").on(table.project_id),
   statusIdx: index("idx_challenges_status").on(table.status),
   slugIdx: uniqueIndex("idx_challenges_slug").on(table.slug),
+  // Un challenge parent ne porte qu'un challenge de chaque flow (une
+  // validation d'endpoints, un parcours de scénario…).
+  sourceTypeIdx: uniqueIndex("idx_challenges_source_type")
+    .on(table.source_challenge_id, table.type)
+    .where(sql`source_challenge_id IS NOT NULL`),
 }));
 
 // --- CHALLENGE_SLUG_REDIRECTS ---
@@ -144,7 +154,7 @@ export const challenge_teams = pgTable("challenge_teams", {
   workspace_status: varchar("workspace_status", { length: 20 }),     // pending | ready | failed
   // NULL = participation solo. Deux rows du même challenge partageant un
   // group_id forment un groupe : elles se partagent le workspace porté par
-  // celle du créateur. Voir services/challenge/group.ts.
+  // celle du créateur. Voir capabilities/groups.ts.
   group_id: uuid("group_id"),
 }, (table) => ({
   challengeIdIdx: index("idx_challenge_teams_challenge_id").on(table.challenge_id),
@@ -174,8 +184,8 @@ export const users = pgTable("users", {
 // --- ROLE_CHANGES ---
 // Journal d'audit des rôles. Une row par changement effectif, écrite dans la
 // même transaction que l'UPDATE de users.role (UserRepository.updateRole) :
-// aucun changement de rôle ne peut exister sans sa trace. `medical_pro` est la
-// frontière de confiance des challenges de validation, d'où l'exigence.
+// aucun changement de rôle ne peut exister sans sa trace. Les qualifications
+// ont leur propre journal (qualification_changes).
 //
 // `old_role` NULL = rôle attribué à la création du compte par un admin.
 // `changed_by` SET NULL : l'auteur peut être supprimé, la trace reste.
@@ -190,6 +200,38 @@ export const role_changes = pgTable("role_changes", {
   created_at: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   userCreatedIdx: index("idx_role_changes_user_created").on(table.user_id, table.created_at),
+}));
+
+// --- USER_QUALIFICATIONS ---
+// Ce qu'on reconnaît à un compte de compétent pour juger (un professionnel de
+// santé…), distinct de son rôle, qui ne porte que des permissions. Les clés
+// sont déclarées par la distribution installée. Chaque octroi et chaque retrait
+// laisse une trace dans qualification_changes, dans la même transaction.
+export const user_qualifications = pgTable("user_qualifications", {
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  key: varchar("key", { length: 64 }).notNull(),
+  granted_by: uuid("granted_by").references(() => users.uuid, { onDelete: "set null" }),
+  granted_at: timestamp("granted_at").defaultNow().notNull(),
+  note: text("note"),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.user_id, table.key] }),
+  keyIdx: index("idx_user_qualifications_key").on(table.key),
+}));
+
+// --- QUALIFICATION_CHANGES ---
+// Journal d'audit des qualifications, sur le modèle de role_changes : une row
+// par octroi ou retrait effectif. `changed_by` NULL : reprise de données, ou
+// auteur supprimé depuis.
+export const qualification_changes = pgTable("qualification_changes", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  key: varchar("key", { length: 64 }).notNull(),
+  action: varchar("action", { length: 16 }).notNull(), // granted | revoked
+  changed_by: uuid("changed_by").references(() => users.uuid, { onDelete: "set null" }),
+  note: text("note"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userCreatedIdx: index("idx_qualification_changes_user_created").on(table.user_id, table.created_at),
 }));
 
 // --- CONTRIBUTIONS ---
@@ -285,7 +327,7 @@ export const validation_targets = pgTable("validation_targets", {
 
 // --- VALIDATION_REFERENCE_CASES ---
 // Ground-truth ("known input -> expected output") cases authored by a
-// medical_pro (see challenges/challenge-014-qualified_validation/SPEC.md).
+// qualified reviewer (see challenges/challenge-014-qualified_validation/SPEC.md).
 // Exactly `required_validations` cases per validation challenge — enforced
 // at the service layer (ReferenceCaseService), not here, since a DB CHECK
 // can't see sibling-row counts. Shared across every target on the challenge:
@@ -331,7 +373,7 @@ export const validation_case_claims = pgTable("validation_case_claims", {
   response_bytes: bytea("response_bytes").notNull(),
   response_content_type: varchar("response_content_type", { length: 255 }).notNull(),
   response_status: integer("response_status").notNull(),
-  // Free-text note on what the medical_pro saw, recorded BEFORE reveal.
+  // Free-text note on what the reviewer saw, recorded BEFORE reveal.
   observation: text("observation"),
   observed_at: timestamp("observed_at"),
   // Set once, server-side, only after observed_at is non-null — the
@@ -350,7 +392,7 @@ export const validation_case_claims = pgTable("validation_case_claims", {
 }));
 
 // --- VALIDATION_ATTEMPTS ---
-// One row per final verdict cast by a medical_pro on a given target. Traces
+// One row per final verdict cast by a qualified reviewer on a given target. Traces
 // back to the claim (and thus the reference case, the live response, and the
 // observation) that produced it via reference_case_claim_id.
 //
@@ -477,7 +519,7 @@ export const validation_step_feedbacks = pgTable("validation_step_feedbacks", {
   result: varchar("result", { length: 10 }).notNull(),
   // The user-experience comment, open to every validator.
   comment: text("comment"),
-  // The clinical reading, writable only by a medical_pro — alongside
+  // The clinical reading, writable only by a holder of the expert qualification — alongside
   // `comment`, never instead of it.
   medical_comment: text("medical_comment"),
   created_at: timestamp("created_at").defaultNow(),
@@ -562,13 +604,14 @@ export const refresh_tokens = pgTable("refresh_tokens", {
 // --- EVALUATION RUN ---
 export const evaluation_runs = pgTable('evaluation_runs', {
   uuid: uuid('id').primaryKey().defaultRandom(),
+  // Nullable : l'évaluation formative d'un sandbox n'a pas de challenge.
   challengeId: uuid('challenge_id')
-    .notNull()
     .references(() => challenges.uuid, { onDelete: 'cascade' }),
-  triggerType: varchar('trigger_type', { length: 50 }).notNull(), // 'manual' | 'sync' | 'github_pr'
-  triggerPayload: json('trigger_payload'), // exemple: { prNumber, mergedBy }
-  windowStart: timestamp('window_start').notNull(),
-  windowEnd: timestamp('window_end').notNull(),
+  triggerType: varchar('trigger_type', { length: 50 }).notNull(), // clé du flow, de l'extension ou du module
+  triggerPayload: json('trigger_payload'), // { handler, payload } : ce que le rejeu rappelle
+  // Fenêtre de l'ancien pipeline de synchronisation, nulle pour les évaluations actuelles.
+  windowStart: timestamp('window_start'),
+  windowEnd: timestamp('window_end'),
   status: varchar('status', { length: 20 }).notNull(), // pending | running | succeeded | failed | canceled
   startedAt: timestamp('started_at').defaultNow(),
   finishedAt: timestamp('finished_at'),
@@ -876,6 +919,19 @@ export const onboarding_progress = pgTable("onboarding_progress", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
+// --- ONBOARDING_QUEST_PROGRESS ---
+// Une quête d'onboarding accomplie par ligne (challenge 020, L6) ; une quête
+// sans ligne n'est pas encore accomplie. Les quêtes sont déclarées par leurs
+// propriétaires et enregistrées par le module onboarding. Remplace les 5
+// booléens d'onboarding_progress, supprimée en L7.
+export const onboarding_quest_progress = pgTable("onboarding_quest_progress", {
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  quest_key: varchar("quest_key", { length: 64 }).notNull(),
+  completed_at: timestamp("completed_at").defaultNow().notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.user_id, table.quest_key] }),
+}));
+
 // --- APP SETTINGS (singleton) ---
 export const app_settings = pgTable("app_settings", {
   id: integer("id").primaryKey().default(1),
@@ -928,6 +984,22 @@ export const app_settings = pgTable("app_settings", {
   // instance existante ne se met donc pas à payer toute seule au déploiement.
   sandbox_star_tiers: jsonb("sandbox_star_tiers").$type<SandboxStarTier[]>().notNull().default([]),
   sandbox_promotion_bonus_cp: integer("sandbox_promotion_bonus_cp").notNull().default(0),
+});
+
+// --- INTEGRATION_CREDENTIALS ---
+// Le store des connexions aux services tiers (challenge 020, L5) : une ligne
+// par intégration (`github`, `kaggle`, `openai`, `slack`, `scaleway`…), déclarée
+// par son connecteur. Le secret est chiffré (capacité `crypto`) ; `meta` porte
+// ce qui s'affiche ou se relit sans lui (l'organisation GitHub, l'équipe Slack,
+// le projet et la zone Scaleway). Remplace les colonnes `*_token_enc`,
+// `*_key_enc`… d'app_settings, supprimées en L7.
+export const integration_credentials = pgTable("integration_credentials", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  secret_enc: text("secret_enc"),
+  secret_iv: varchar("secret_iv", { length: 64 }),
+  meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+  connected_at: timestamp("connected_at"),
+  connected_by: uuid("connected_by").references(() => users.uuid, { onDelete: "set null" }),
 });
 
 // --- DIGESTS ---
@@ -1244,6 +1316,117 @@ export const onboardingProgressRelations = relations(onboarding_progress, ({ one
     references: [users.uuid],
   }),
 }));
+
+// --- CRON_RUNS ---
+// Un job planifié par ligne (challenge 020, L5) : son dernier passage et son
+// verrou. Le tick prend un job dû par un INSERT … ON CONFLICT DO UPDATE
+// conditionnel sur `locked_until` et `last_started_at`, ce qui l'empêche de
+// tourner deux fois (`CronRunRepository.claim`).
+export const cron_runs = pgTable("cron_runs", {
+  job_key: varchar("job_key", { length: 128 }).primaryKey(),
+  last_started_at: timestamp("last_started_at"),
+  last_finished_at: timestamp("last_finished_at"),
+  // 'running' | 'succeeded' | 'failed'
+  last_status: varchar("last_status", { length: 16 }),
+  last_error: text("last_error"),
+  // NULL ou passé : le job est libre.
+  locked_until: timestamp("locked_until"),
+});
+
+// --- MODULE_SETTINGS ---
+// L'état et les réglages de chaque module produit (challenge 020, L6). Un
+// module sans ligne prend l'état par défaut qu'il déclare. `settings` est
+// validé par le schéma du module (`packages/capabilities/modules.ts`).
+// Remplace `modules_*_enabled`, `digest_*` et `sandbox_*` d'app_settings,
+// supprimées en L7.
+export const module_settings = pgTable("module_settings", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+  updated_by: uuid("updated_by").references(() => users.uuid, { onDelete: "set null" }),
+});
+
+// --- PLATFORM_EVENTS ---
+// L'outbox (challenge 020, L6) : un événement écrit dans la transaction de
+// l'action qui l'émet, distribué ensuite par le tick à ses abonnés. Purgé
+// après 30 jours.
+export const platform_events = pgTable("platform_events", {
+  id: serial("id").primaryKey(),
+  type: varchar("type", { length: 128 }).notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  occurred_at: timestamp("occurred_at").defaultNow().notNull(),
+}, (table) => ({
+  typeIdIdx: index("idx_platform_events_type_id").on(table.type, table.id),
+}));
+
+// --- EVENT_DELIVERIES ---
+// Le curseur de chaque abonné : le dernier événement qu'il a traité, et la
+// dernière erreur qui a arrêté sa file.
+export const event_deliveries = pgTable("event_deliveries", {
+  subscriber_key: varchar("subscriber_key", { length: 128 }).primaryKey(),
+  last_event_id: integer("last_event_id").notNull().default(0),
+  last_error: text("last_error"),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// --- RESOURCE_INSTANCES ---
+// Capacité `resources` (challenge 020) : des unités de travail qu'un flow
+// importe et que ses participants réclament. Le core stocke, réclame et
+// compte ; le sens d'un type, d'une charge ou d'un verdict appartient au flow.
+export const resource_instances = pgTable("resource_instances", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  resource_type: varchar("resource_type", { length: 64 }).notNull(),
+  // Validée par le flow à l'écriture.
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  // Un regroupement grossier, filtrable au tirage (`standard`, `sensitive`…).
+  class: varchar("class", { length: 32 }),
+  state: varchar("state", { length: 16 }).notNull().default("open"),
+  verdict: varchar("verdict", { length: 64 }),
+  resolution: jsonb("resolution").$type<Record<string, unknown>>(),
+  created_by: uuid("created_by").references(() => users.uuid, { onDelete: "set null" }),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  closed_at: timestamp("closed_at"),
+}, (table) => ({
+  drawIdx: index("idx_resource_instances_draw").on(table.challenge_id, table.resource_type, table.state, table.class),
+}));
+
+// --- RESOURCE_CLAIMS ---
+// Une réclamation = une unité de travail = un résultat. Active tant qu'elle
+// n'est ni consommée, ni libérée, ni échue ; consommée, elle est définitive.
+// L'index unique partiel est l'invariant « une réclamation vivante par
+// personne et par ressource » ; une réclamation échue est libérée par le
+// tirage suivant de son auteur (`released_at = expires_at`), l'index ne
+// pouvant pas dépendre de l'heure.
+export const resource_claims = pgTable("resource_claims", {
+  uuid: uuid("uuid").primaryKey().defaultRandom(),
+  resource_id: uuid("resource_id").references(() => resource_instances.uuid, { onDelete: "cascade" }).notNull(),
+  challenge_id: uuid("challenge_id").references(() => challenges.uuid, { onDelete: "cascade" }).notNull(),
+  user_id: uuid("user_id").references(() => users.uuid, { onDelete: "cascade" }).notNull(),
+  result: jsonb("result").$type<Record<string, unknown>>(),
+  claimed_at: timestamp("claimed_at").defaultNow().notNull(),
+  expires_at: timestamp("expires_at"),
+  consumed_at: timestamp("consumed_at"),
+  released_at: timestamp("released_at"),
+}, (table) => ({
+  resourceIdx: index("idx_resource_claims_resource_id").on(table.resource_id),
+  userIdx: index("idx_resource_claims_challenge_user").on(table.challenge_id, table.user_id),
+  liveIdx: uniqueIndex("idx_resource_claims_live").on(table.resource_id, table.user_id).where(sql`released_at IS NULL`),
+}));
+
+// --- WATCH_SOURCES ---
+// Module watch : le cache persistant des revues OpenAlex (`/sources/{id}`),
+// dont `summary_stats.2yr_mean_citedness` n'est pas exposé sur `/works`. Une
+// ligne de plus de 30 jours se rafraîchit à la prochaine recherche qui la
+// touche ; rien ne s'y supprime.
+export const watch_sources = pgTable("watch_sources", {
+  // Ex. `S137773608`, sans le préfixe d'URL OpenAlex.
+  source_id: text("source_id").primaryKey(),
+  display_name: text("display_name").notNull(),
+  citedness_2yr: numeric("citedness_2yr", { precision: 8, scale: 3 }),
+  refreshed_at: timestamp("refreshed_at", { withTimezone: true }).defaultNow().notNull(),
+});
 
 // --- DATABASE CLIENT ---
 

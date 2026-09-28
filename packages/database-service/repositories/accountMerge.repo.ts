@@ -18,7 +18,9 @@ import {
   meeting_participants,
   sync_meetings,
   app_settings,
+  integration_credentials,
   onboarding_progress,
+  onboarding_quest_progress,
   sandboxes,
   sandbox_stars,
   sandbox_rewards,
@@ -295,6 +297,7 @@ export class AccountMergeRepository {
       await tx.update(app_settings).set({ openai_connected_by: p }).where(eq(app_settings.openai_connected_by, g));
       await tx.update(app_settings).set({ slack_connected_by: p }).where(eq(app_settings.slack_connected_by, g));
       await tx.update(app_settings).set({ scaleway_connected_by: p }).where(eq(app_settings.scaleway_connected_by, g));
+      await tx.update(integration_credentials).set({ connected_by: p }).where(eq(integration_credentials.connected_by, g));
 
       // notifications — index unique partiel (user_id, type, dedupe_key) :
       // la même invitation reçue par les deux comptes n'en fait plus qu'une.
@@ -383,6 +386,20 @@ export class AccountMergeRepository {
         } else {
           await tx.insert(onboarding_progress).values({ user_id: p, ...merged });
         }
+      }
+
+      // Les quêtes accomplies sous le compte Google rejoignent le placeholder ;
+      // une quête que les deux ont accomplie garde la date du placeholder. Le
+      // DELETE de users plus bas cascade les lignes restantes du compte Google.
+      const googleQuests = await tx
+        .select()
+        .from(onboarding_quest_progress)
+        .where(eq(onboarding_quest_progress.user_id, g));
+      if (googleQuests.length > 0) {
+        await tx
+          .insert(onboarding_quest_progress)
+          .values(googleQuests.map((row) => ({ user_id: p, quest_key: row.quest_key, completed_at: row.completed_at })))
+          .onConflictDoNothing();
       }
 
       // Libère les index uniques (google_user_id, email) avant de les réattribuer

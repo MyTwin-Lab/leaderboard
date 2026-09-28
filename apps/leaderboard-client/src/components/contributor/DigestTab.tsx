@@ -55,11 +55,6 @@ interface DigestPayload {
   }>;
 }
 
-interface Props {
-  enabled: boolean;
-  frequencyDays: number;
-}
-
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit", month: "short", year: "numeric",
 });
@@ -206,9 +201,11 @@ function DigestDetail({ id }: { id: string }) {
   );
 }
 
-export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequency }: Props) {
-  const [enabled, setEnabled] = useState(initialEnabled);
-  const [frequency, setFrequency] = useState(String(initialFrequency));
+/**
+ * Onglet admin « Digest » : l'historique et la génération manuelle. L'activation
+ * et l'intervalle se règlent dans l'écran des modules.
+ */
+export function DigestTab() {
   const [digests, setDigests] = useState<DigestSummary[] | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -228,38 +225,6 @@ export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequ
   }, []);
 
   useEffect(() => { void loadDigests(); }, [loadDigests]);
-
-  const saveSettings = async (patch: Record<string, unknown>, rollback: () => void) => {
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/digest-settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      if (!res.ok) throw new Error((await res.json()).error ?? "Failed to save");
-    } catch (e) {
-      rollback();
-      setError(e instanceof Error ? e.message : "Failed to save");
-    }
-  };
-
-  const toggleEnabled = (value: boolean) => {
-    setEnabled(value);
-    void saveSettings({ digest_enabled: value }, () => setEnabled(!value));
-  };
-
-  const commitFrequency = () => {
-    const days = Number(frequency);
-    if (!Number.isInteger(days) || days < 1 || days > 365) {
-      setFrequency(String(initialFrequency));
-      setError("Frequency must be a whole number of days between 1 and 365");
-      return;
-    }
-    void saveSettings({ digest_frequency_days: days }, () =>
-      setFrequency(String(initialFrequency)),
-    );
-  };
 
   const generateNow = async () => {
     setGenerating(true);
@@ -286,43 +251,6 @@ export function DigestTab({ enabled: initialEnabled, frequencyDays: initialFrequ
     <>
       <span className="v-pro-kicker">Digest</span>
 
-      {/* Les deux réglages : l'automatisme, puis son intervalle. La carte
-          teintée porte le premier — c'est lui qui décide si le reste sert. */}
-      <div className="v-pro-switch-row" data-tone="mint">
-        <div className="v-pro-switch-text">
-          <span className="v-pro-switch-label">Automatic generation</span>
-          <span className="v-pro-switch-desc">
-            A daily check generates a digest once the interval has elapsed.
-          </span>
-        </div>
-        <button
-          onClick={() => toggleEnabled(!enabled)}
-          className="v-pro-toggle"
-          data-on={enabled}
-          aria-label="Toggle automatic digests"
-          aria-pressed={enabled}
-        >
-          <span />
-        </button>
-      </div>
-
-      <div className="v-pro-switch-row">
-        <div className="v-pro-switch-text">
-          <span className="v-pro-switch-label">Interval</span>
-          <span className="v-pro-switch-desc">Days between two automatic digests</span>
-        </div>
-        <div className="v-pro-num" data-fixed="true">
-          <input
-            type="number"
-            min={1}
-            max={365}
-            value={frequency}
-            onChange={(e) => setFrequency(e.target.value)}
-            onBlur={commitFrequency}
-          />
-          <span className="v-pro-num-unit">days</span>
-        </div>
-      </div>
 
       {error && <p className="v-pro-error">{error}</p>}
 

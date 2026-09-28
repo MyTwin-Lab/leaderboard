@@ -16,6 +16,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`architecture.md`](./architecture.md) | Monorepo structure, data flow, how packages connect |
 | [`project-structure.md`](./project-structure.md) | Annotated directory tree — where everything lives |
 | [`packages.md`](./packages.md) | What each package does, its role, and key files |
+| [`writing-a-flow.md`](./writing-a-flow.md) | Writing a challenge flow: its declaration, config, actions, hooks and slots, installed without touching the core |
 | [`database.md`](./database.md) | PostgreSQL schema, tables, migrations, and seeding |
 | [`auth.md`](./auth.md) | Google OAuth login, JWT cookies, roles, and protected routes |
 | [`api.md`](./api.md) | High-level overview of all API routes |
@@ -29,25 +30,29 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`evaluation.md`](./evaluation.md) | AI evaluation pipeline, scoring grids, rewards |
 | [`ml-rewards.md`](./ml-rewards.md) | Reward rules for ML challenges — live scoring, reuse, and the point ledger |
 | [`validation-challenges.md`](./validation-challenges.md) | Checking a source challenge's deliverable actually works — reference cases against an ML API, or a scenario walkthrough of a code app |
+| [`data-annotation.md`](./data-annotation.md) | Labeling campaigns: images claimed under k-redundancy, hidden quality checks weighting pay, agreement, sampled audits — and the core `resources` capability they run on |
 | [`compute-power.md`](./compute-power.md) | Temporary Scaleway GPU instances for ML challenge contributors |
 | [`sync-meetings.md`](./sync-meetings.md) | Creating meetings in Google Workspace + AI analysis |
 | [`slack-signals.md`](./slack-signals.md) | Slack contribution signals — AI-detected rewards from channel discussions |
 | [`onboarding.md`](./onboarding.md) | New contributor onboarding missions |
-| [`admin-settings.md`](./admin-settings.md) | Instance-wide theme, GitHub/Kaggle/Slack connections, and module toggles |
+| [`admin-settings.md`](./admin-settings.md) | Instance-wide theme, integrations (GitHub, Kaggle, OpenAI, Slack, Scaleway), modules and qualifications |
 | [`digest.md`](./digest.md) | Periodic, frozen snapshots of platform activity, browsable by admins |
 | [`sandbox.md`](./sandbox.md) | Contributor-proposed open challenges, community stars, and promotion into official challenges |
 | [`seo.md`](./seo.md) | What search engines may index, the MyTwin Lab entity linked to mytwin.care, the `/` Lab home and legal pages |
 | [`news.md`](./news.md) | MyTwin Lab News: `/news` pages written in TSX, the template, the registry, structured data |
 | [`booking.md`](./booking.md) | `/book`: first name and email on the Lab, then a pre-filled Calendly slot with Rubens — and the TODO for the CRM link |
 | [`news-playbook.md`](./news-playbook.md) | Editorial playbook for the news: what deserves one, anatomy, YMYL wording, links, checklist, decision log |
+| [`watch.md`](./watch.md) | Searching the health literature on OpenAlex: topics, period, open access, journal impact — behind « Open resources » on the home page |
 
 ## Dev & ops
 
 | File | Description |
 |------|-------------|
 | [`getting-started.md`](./getting-started.md) | Local development setup |
-| [`deployment.md`](./deployment.md) | Production deployment with PM2 |
-| [`testing.md`](./testing.md) | Running tests and ad-hoc scripts |
+| [`deployment.md`](./deployment.md) | Production deployment (Scalingo, PM2), postdeploy data takeovers and post-deploy steps |
+| [`testing.md`](./testing.md) | Running the test suites |
+| [`github-setup.md`](./github-setup.md) | GitHub OAuth app, organization and branch provisioning |
+| [`google-setup.md`](./google-setup.md) | Google OAuth login, Calendar and Meet for the meetings module |
 
 ---
 

@@ -1,22 +1,22 @@
+import { flowCatalog } from '@/distribution/mytwin.flows';
+
 /**
  * Which challenges an anonymous visitor may reach.
  *
- * Both lists are allowlists rather than "everything except X": a status or a
- * challenge type added to the product later is private until someone puts it
- * here. The status list must stay in step with fetchProjectsWithChallenges()
+ * Both rules are allowlists rather than "everything except X". The status list
+ * must stay in step with fetchProjectsWithChallenges()
  * (lib/server/publicPages.ts:97-101), which decides what the list shows.
  *
- * Validation challenges are in: their public page is the vitrine screen, like
- * every other brief-gated type — read it, join, and the walkthrough comes
- * after. They were excluded back when the public page was the metrics block or
- * the task board, neither of which a validation challenge has.
- *
- * Placeholders (`none`) are in: a catalogue entry that nobody can see is a
- * catalogue entry that does not exist. Their page is the vitrine screen, which
- * needs neither metrics nor task progress — see `showVitrineScreen`.
+ * The challenge type is decided by its flow (`publiclyVisible`): a flow added
+ * later is private until its descriptor says otherwise, and a type no
+ * installed flow knows is private. Validation challenges are in: their public
+ * page is the vitrine screen, like every other brief-gated type — read it,
+ * join, and the walkthrough comes after. Placeholders (`none`) are in: a
+ * catalogue entry that nobody can see is a catalogue entry that does not
+ * exist. Their page is the vitrine screen, which needs neither metrics nor
+ * task progress — see `showVitrineScreen`.
  */
 const PUBLIC_STATUSES = new Set(['active', 'completed', 'archived']);
-const PUBLIC_TYPES = new Set(['code', 'ml', 'none', 'validation']);
 
 /** Ce qu'on ne propose pas aux moteurs, tout en le laissant lisible. */
 const UNINDEXED_STATUSES = new Set(['archived']);
@@ -27,7 +27,7 @@ export function isPubliclyVisible(challenge: {
 }): boolean {
   return (
     !!challenge.status && PUBLIC_STATUSES.has(challenge.status)
-    && !!challenge.type && PUBLIC_TYPES.has(challenge.type)
+    && flowCatalog.get(challenge.type)?.publiclyVisible === true
   );
 }
 

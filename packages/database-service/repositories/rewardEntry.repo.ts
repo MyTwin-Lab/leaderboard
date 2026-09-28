@@ -2,15 +2,31 @@ import { db } from "../db/drizzle";
 import { reward_entries } from "../db/drizzle";
 import { eq, and, ne, sql, notInArray, gte, lt } from "drizzle-orm";
 import { toDomainRewardEntry } from "../db/mappers";
-import type { RewardEntry } from "../domain/entities";
+import type { RewardEntry, RewardEntryDraft } from "../domain/entities";
 import { rewardEntrySchema } from "../domain/schemas_zod";
+import { PlatformRegistry } from "../../registry/platform";
 
-export type RewardEntryDraft = Omit<RewardEntry, "uuid" | "created_at">;
+export type { RewardEntryDraft } from "../domain/entities";
+
+/**
+ * Une clé qu'aucun flow, extension ou kit installé ne déclare ne s'écrit pas :
+ * sa ligne n'aurait ni libellé ni rapport connu au pool, et tous les calculs
+ * qui la liraient se tromperaient.
+ */
+function assertDeclaredRuleKeys(entries: Array<Pick<RewardEntryDraft, "rule_key">>): void {
+  for (const { rule_key } of entries) {
+    if (!PlatformRegistry.ruleKey(rule_key)) {
+      throw new Error(
+        `[RewardEntryRepository] Rule key "${rule_key}" is not declared by any installed flow, extension or kit`
+      );
+    }
+  }
+}
 
 /**
  * RewardEntryRepository
  * ---------------------
- * Ledger append-only des rewards ML. Aucune méthode d'update : une ligne
+ * Ledger append-only des récompenses. Aucune méthode d'update : une ligne
  * écrite ne bouge plus. Une correction se fait en ajoutant une ligne opposée.
  */
 export class RewardEntryRepository {
@@ -57,9 +73,9 @@ export class RewardEntryRepository {
   }
 
   /**
-   * Somme des points déjà distribués sur un challenge — sert au calcul du reliquat.
-   * `excludeRuleKeys` permet d'ignorer les lignes hors pool (ex: 'slack_signal',
-   * dont la récompense fixe ne consomme pas le pool du challenge).
+   * Somme des points écrits sur un challenge. `excludeRuleKeys` écarte des
+   * clés — celles qui ne consomment pas le pool, pour le calcul du reliquat
+   * (voir `packages/capabilities/pool.ts`).
    */
   async sumByChallenge(
     challengeId: string,
@@ -77,26 +93,27 @@ export class RewardEntryRepository {
   }
 
   /**
-   * Meilleure métrique atteinte sur ce challenge, ou null si aucune.
+   * Plus grande valeur numérique du champ `field` de `meta`, parmi les lignes
+   * d'une clé sur ce challenge, ou null si aucune. Générique : c'est le flow qui
+   * sait quelle clé porte quelle mesure.
    *
-   * `excludeUserId` / `onlyUserId` séparent "le record des autres" de "mon
-   * propre record" : le bonus se déclenche sur une prise de tête, pas sur une
-   * amélioration de son propre score, sinon il se farme par paliers.
+   * `excludeUserId` / `onlyUserId` séparent « le record des autres » de « son
+   * propre record ».
    */
-  async bestMetricValue(
+  async maxMetaNumber(
     challengeId: string,
-    opts?: { excludeUserId?: string; onlyUserId?: string }
+    opts: { ruleKey: string; field: string; excludeUserId?: string; onlyUserId?: string }
   ): Promise<number | null> {
     const filters = [
       eq(reward_entries.challenge_id, challengeId),
-      eq(reward_entries.rule_key, "model_metric"),
+      eq(reward_entries.rule_key, opts.ruleKey),
     ];
-    if (opts?.excludeUserId) filters.push(ne(reward_entries.user_id, opts.excludeUserId));
-    if (opts?.onlyUserId) filters.push(eq(reward_entries.user_id, opts.onlyUserId));
+    if (opts.excludeUserId) filters.push(ne(reward_entries.user_id, opts.excludeUserId));
+    if (opts.onlyUserId) filters.push(eq(reward_entries.user_id, opts.onlyUserId));
 
     const [row] = await db
       .select({
-        best: sql<number | null>`MAX((${reward_entries.meta}->>'metricValue')::float)`,
+        best: sql<number | null>`MAX((${reward_entries.meta}->>${opts.field})::float)`,
       })
       .from(reward_entries)
       .where(and(...filters));
@@ -105,6 +122,7 @@ export class RewardEntryRepository {
 
   async create(entry: RewardEntryDraft): Promise<RewardEntry> {
     const validated = rewardEntrySchema.omit({ uuid: true, created_at: true }).parse(entry);
+    assertDeclaredRuleKeys([validated]);
     const [inserted] = await db
       .insert(reward_entries)
       .values({
@@ -135,6 +153,8 @@ export class RewardEntryRepository {
     const validated = entries.map((e) =>
       rewardEntrySchema.omit({ uuid: true, created_at: true }).parse(e)
     );
+    // Toutes les clés sont vérifiées avant d'écrire la moindre ligne.
+    assertDeclaredRuleKeys(validated);
 
     const inserted = await db
       .insert(reward_entries)

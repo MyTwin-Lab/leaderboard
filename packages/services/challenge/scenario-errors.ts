@@ -37,7 +37,7 @@ export class RunAlreadyCompletedError extends Error {}
 /** Le retour global est obligatoire à la complétion. -> 400 */
 export class GlobalFeedbackRequiredError extends Error {}
 
-/** Un non-medical_pro a envoyé un avis médical. -> 403 */
+/** Un validateur sans la qualification exigée a envoyé un avis médical. -> 403 */
 export class MedicalCommentForbiddenError extends Error {}
 
 /** L'application n'est pas exposée sur ce challenge de validation. -> 400 */
@@ -45,8 +45,8 @@ export class TargetNotExposedError extends Error {}
 
 /**
  * Un `viewer` (rôle assignable, lecture seule partout ailleurs) essaie
- * d'ouvrir une walkthrough. Le reste des rôles connectés — contributor,
- * medical_pro, admin — passe ; seul viewer est exclu, parce qu'un viewer
+ * d'ouvrir une walkthrough. Les rôles que la configuration du parcours déclare
+ * éligibles — contributor et admin par défaut — passent ; viewer est exclu, parce qu'un viewer
  * refusé à tort ne coûte qu'un changement de rôle par un admin, alors que des
  * CP versés à tort à un compte en lecture seule ne se reprennent pas. -> 403
  */

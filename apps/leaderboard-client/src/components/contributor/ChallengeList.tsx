@@ -72,6 +72,7 @@ function ChallengeRow({
   }, [isExpanded, challenge.contributions]);
 
   const sharePercent = Math.round(challenge.contributionShare * 100);
+  const aggregates = (challenge.aggregates ?? []).filter(aggregate => aggregate.chips.length > 0);
 
   return (
     <div className="v-pro-row" data-open={isExpanded}>
@@ -119,27 +120,27 @@ function ChallengeRow({
             ))
           )}
 
-          {/* Slack discussion signals — aggregated chips, not a list */}
-          {challenge.discussion && challenge.discussion.signals.length > 0 && (
-            <>
+          {/* Contributions agrégées (signaux de discussion…) — chips, pas une liste */}
+          {aggregates.map(aggregate => (
+            <div key={aggregate.contributionId}>
               <p className="v-pro-label" style={{ marginTop: "0.35rem" }}>
-                Discussion · <span style={{ color: "var(--v-accent)" }}>{formatCP(challenge.discussion.totalCp)} CP</span>
+                {aggregate.title} · <span style={{ color: "var(--v-accent)" }}>{formatCP(aggregate.totalCp)} CP</span>
               </p>
               <div className="v-pro-signals">
-                {challenge.discussion.signals.map(signal => {
-                  const SignalIcon = getSignalIcon(signal.icon);
+                {aggregate.chips.map(chip => {
+                  const ChipIcon = getSignalIcon(chip.icon);
                   return (
-                    <span key={signal.signalId} className="v-pro-signal">
-                      <SignalIcon />
-                      <span>{signal.label}</span>
-                      {signal.count > 1 && <span className="v-pro-signal-count">×{signal.count}</span>}
-                      <span className="v-pro-signal-cp">{formatCP(signal.totalCp)} CP</span>
+                    <span key={chip.id} className="v-pro-signal">
+                      <ChipIcon />
+                      <span>{chip.label}</span>
+                      {chip.count > 1 && <span className="v-pro-signal-count">×{chip.count}</span>}
+                      <span className="v-pro-signal-cp">{formatCP(chip.totalCp)} CP</span>
                     </span>
                   );
                 })}
               </div>
-            </>
-          )}
+            </div>
+          ))}
         </div>
       </div>
     </div>

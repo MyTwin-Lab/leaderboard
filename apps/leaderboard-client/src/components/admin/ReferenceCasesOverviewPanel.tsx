@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { FileText, Loader2, Trash2 } from 'lucide-react';
 
 interface CaseItem {
@@ -17,10 +18,10 @@ function fgAt(opacity: number) {
 /**
  * Admin/manager oversight of a validation challenge's reference cases —
  * read + moderation-delete only, no authoring here: per the challenge-014
- * SPEC's actor table, only a medical_pro writes cases (see
+ * SPEC's actor table, only a qualified reviewer writes cases (see
  * ReferenceCaseAuthorPanel, mounted on the contributor-facing challenge page
  * instead, since ChallengeManageView — where this panel lives — is only
- * reachable by admins/managers, not by a medical_pro who isn't also one).
+ * reachable by admins/managers, not by a qualified reviewer who isn't also one).
  */
 export function ReferenceCasesOverviewPanel({ challengeId, open }: { challengeId: string; open: boolean }) {
   const [cases, setCases] = useState<CaseItem[]>([]);
@@ -34,7 +35,7 @@ export function ReferenceCasesOverviewPanel({ challengeId, open }: { challengeId
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-reference-cases`);
+      const res = await fetch(flowActionUrl(challengeId, 'reference-cases'));
       if (res.ok) {
         const data = await res.json();
         setCases(data.cases ?? []);
@@ -55,7 +56,7 @@ export function ReferenceCasesOverviewPanel({ challengeId, open }: { challengeId
     setDeletingId(caseId);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-reference-cases/${caseId}`, {
+      const res = await fetch(flowActionUrl(challengeId, `reference-cases/${caseId}`), {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -93,7 +94,7 @@ export function ReferenceCasesOverviewPanel({ challengeId, open }: { challengeId
 
       {cases.length === 0 ? (
         <p className="rounded-[14px] border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
-          No reference case written yet - medical_pro users can write one from the challenge page.
+          No reference case written yet - qualified reviewers can write one from the challenge page.
         </p>
       ) : (
         <div className="space-y-1.5">

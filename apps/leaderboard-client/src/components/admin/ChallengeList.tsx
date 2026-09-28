@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Pencil, Trash2, Users, RefreshCw, Trophy, Code2, BrainCircuit, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Pencil, Trash2, Users, Trophy, ExternalLink } from 'lucide-react';
+import { FlowIcon } from '@/components/ui/FlowIcon';
+import { flowCatalog } from '@/distribution/mytwin.flows';
 import type { Challenge } from '../../../../../packages/database-service/domain/entities';
 
 interface ChallengeListProps {
@@ -12,12 +14,11 @@ interface ChallengeListProps {
   onEdit: (challenge: Challenge) => void;
   onDelete: (id: string) => void;
   onTeam: (challenge: Challenge) => void;
-  onSync: (id: string) => void;
   onClose: (id: string) => void;
   actionLoading?: string | null;
 }
 
-export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, onClose, actionLoading }: ChallengeListProps) {
+export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onClose, actionLoading }: ChallengeListProps) {
   const columns = [
     {
       key: 'title',
@@ -35,18 +36,13 @@ export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, on
       key: 'type',
       header: 'Type',
       render: (challenge: Challenge) => {
-        const type = (challenge as any).type ?? 'code';
-        const badge = {
-          ml: { icon: BrainCircuit, label: 'ML', className: 'border-purple-500/20 bg-purple-500/10 text-purple-400' },
-          validation: { icon: ShieldCheck, label: 'Validation', className: 'border-sky-500/20 bg-sky-500/10 text-sky-400' },
-        }[type as 'ml' | 'validation'] ?? {
-          icon: Code2, label: 'Code', className: 'border-white/10 bg-white/[0.04] text-white/50',
-        };
-        const Icon = badge.icon;
+        // Nom et icône viennent du flow ; un type absent ou inconnu s'affiche
+        // comme le flow par défaut.
+        const { icon, label } = flowCatalog.resolve(challenge.type);
         return (
-          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${badge.className}`}>
-            <Icon className="h-3 w-3" />
-            {badge.label}
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[11px] font-medium text-white/50">
+            <FlowIcon icon={icon} className="h-3 w-3" />
+            {label}
           </span>
         );
       },
@@ -91,15 +87,6 @@ export function ChallengeList({ challenges, onEdit, onDelete, onTeam, onSync, on
           </Link>
           <Button size="sm" variant="secondary" onClick={() => onTeam(challenge)} title="Manage team">
             <Users className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => onSync(challenge.uuid)}
-            disabled={actionLoading === `sync-${challenge.uuid}`}
-            title="Run sync evaluation"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${actionLoading === `sync-${challenge.uuid}` ? 'animate-spin' : ''}`} />
           </Button>
           <Button
             size="sm"

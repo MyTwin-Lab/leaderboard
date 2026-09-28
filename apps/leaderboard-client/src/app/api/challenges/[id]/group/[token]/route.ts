@@ -4,7 +4,7 @@ import {
   ChallengeTeamRepository,
   UserRepository,
 } from '../../../../../../../../../packages/database-service/repositories';
-import { GROUP_MAX_SIZE, pickGroupOwner } from '../../../../../../../../../packages/services/challenge/group';
+import { GROUP_MAX_SIZE, pickGroupOwner } from '../../../../../../../../../packages/capabilities/groups';
 import { verifyRequestToken } from '@/lib/auth';
 
 const challengeRepo = new ChallengeRepository();

@@ -3,78 +3,36 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
-  CheckCircle2, ChevronDown, Plus, Code2, BrainCircuit, Pencil, Lock, ShieldCheck, Cpu, Package,
-  ListTodo, Trash2, FileText, Eye, Rocket, Image as ImageIcon, Building2, Bookmark,
+  CheckCircle2, ChevronDown, Plus, Pencil, FileText, Eye, Rocket, Image as ImageIcon, Building2,
 } from 'lucide-react';
-import { GitHubIcon as Github } from '@/components/ui/GitHubIcon';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
-import { Toggle } from '@/components/ui/Toggle';
-import { MlRewardRulesEditor } from '@/components/admin/MlRewardRulesEditor';
-import { CodeRewardRulesEditor } from '@/components/admin/CodeRewardRulesEditor';
-import { ChallengeTasksEditor } from '@/components/admin/ChallengeTasksEditor';
 import { ChallengeSlackSignalsEditor } from '@/components/admin/ChallengeSlackSignalsEditor';
-import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
-import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
-import { CoverImageField } from '@/components/admin/CoverImageField';
-import { flushTemplateTasks } from './templateTasksFlush';
 import { flushBrief } from './briefFlush';
 import { buildPromotionRequestBody } from './promotionRequestBody';
+import { CoverImageField } from '@/components/admin/CoverImageField';
+import { Field, LockedValue, fgAt } from './challengeFormFields';
 import { buildPromotedDescription } from '../../../../../packages/services/sandbox/promotion';
 import { Markdown } from '@/components/ui/Markdown';
 import { SlugField } from '@/components/ui/SlugField';
 import { useSlugField } from '@/lib/useSlugField';
 import { BRIEF_TEMPLATE, findBrief } from '@/lib/challengeBrief';
-import {
-  DEFAULT_ML_REWARD_RULES,
-  parseMlRewardRules,
-  type MlRewardRules,
-} from '../../../../../packages/database-service/domain/mlRewardRules';
-import {
-  DEFAULT_CODE_REWARD_RULES,
-  parseCodeRewardRules,
-  type CodeRewardRules,
-} from '../../../../../packages/database-service/domain/codeRewardRules';
+import type {
+  EditableChallenge,
+  FlowFormContext,
+  FlowFormMode,
+  PromotableSandbox,
+  SavedChallenge,
+} from '@/lib/flowFormSlots';
+import { creatableFormSections, formSectionByKey, formSectionFor } from '@/distribution/mytwin.forms';
+
+export type { EditableChallenge, PromotableSandbox, SavedChallenge } from '@/lib/flowFormSlots';
+
+/** Les formes qu'une proposition peut prendre : code ou ML (clés de section). */
+const PROMOTABLE_SECTION_KEYS = new Set(['code', 'ml']);
 
 interface Project {
   id: string;
   name: string;
-}
-
-/** An existing challenge being edited, as returned by GET /api/challenges/:id. */
-export interface EditableChallenge {
-  uuid: string;
-  title: string;
-  slug: string;
-  status: string;
-  type: string;
-  start_date?: string | Date | null;
-  end_date?: string | Date | null;
-  description?: string | null;
-  roadmap?: string | null;
-  contribution_points_reward: number;
-  project_id: string;
-  reward_rules?: MlRewardRules | CodeRewardRules | null;
-  source_challenge_id?: string | null;
-  cp_per_validation?: number | null;
-  required_validations?: number | null;
-  compute_enabled?: boolean | null;
-  workspace_mode?: 'provided_repo' | 'own_repo' | null;
-  cover_image_url?: string | null;
-  host?: string | null;
-}
-
-/**
- * La proposition dont ce tiroir fait un challenge. Réduite à ce qui pré-remplit
- * le formulaire — le reste (auteur, stars, dépôt) est déjà décidé côté serveur.
- */
-export interface PromotableSandbox {
-  uuid: string;
-  title: string;
-  /** Proposé tel quel comme slug du challenge : les deux espaces de noms sont séparés. */
-  slug: string;
-  context?: string | null;
-  goals: string[];
-  why?: string | null;
 }
 
 interface CreateChallengeDrawerProps {
@@ -91,17 +49,11 @@ interface CreateChallengeDrawerProps {
   challenge?: EditableChallenge;
   /**
    * Présente = mode promotion, **exclusif** de `challenge`. Le tiroir crée un
-   * challenge depuis une proposition : titre, description, buts et mode de
-   * workspace sont pré-remplis, et le formulaire poste vers
-   * `/api/sandboxes/:id/promote` au lieu de `/api/challenges`. Le type, lui,
-   * se choisit ici : une proposition n'en porte pas.
+   * challenge depuis une proposition : titre, description, type, buts et mode
+   * de workspace sont pré-remplis, le type est verrouillé, et le formulaire
+   * poste vers `/api/sandboxes/:id/promote` au lieu de `/api/challenges`.
    */
   promotion?: PromotableSandbox;
-}
-
-export interface SavedChallenge {
-  uuid: string;
-  slug: string;
 }
 
 /** Date inputs need YYYY-MM-DD; the API hands back ISO strings or Dates. */
@@ -115,20 +67,22 @@ const STATUS_OPTIONS = [
   { value: 'archived',  label: 'Archived',  dot: 'bg-white/10',   ring: 'ring-white/10'     },
 ];
 
-// Helper for muted foreground color at a given opacity (0–1)
-function fgAt(opacity: number) {
-  return `color-mix(in srgb, var(--foreground) ${Math.round(opacity * 100)}%, transparent)`;
-}
-
+/**
+ * Le tiroir de challenge — création, édition et promotion d'un sandbox.
+ *
+ * Il porte les champs communs à tout challenge. Ce qui dépend du flow (sa
+ * configuration, ses règles, ses éditeurs, ce qu'il ajoute au corps envoyé et
+ * ce qu'il enregistre après coup) vient de la section du flow choisi, déclarée
+ * par la distribution (`src/distribution/mytwin.forms.tsx`).
+ */
 export function CreateChallengeDrawer({ open, onClose, projects, onCreated, challenge, promotion }: CreateChallengeDrawerProps) {
   const isEdit = !!challenge;
   const isPromotion = !!promotion;
-  // Le type décide des repos créés, et ils ne le sont qu'une fois : à
-  // l'édition parce qu'ils existent déjà, à la promotion parce qu'il est
-  // hérité de la proposition (elle a fixé les champs saisis et la grille).
-  // Verrouillé en édition seulement. En promotion, c'est ici que la forme du
-  // travail se décide : une proposition est une idée, elle ne porte pas de
-  // type — `code` / `ml` décide des repos à créer et de la grille.
+  const mode: FlowFormMode = isPromotion ? 'promotion' : isEdit ? 'edit' : 'create';
+  // Le type décide des repos créés, et ils ne le sont qu'une fois : verrouillé
+  // en édition parce qu'ils existent déjà. En promotion, c'est ici que la forme
+  // du challenge se choisit — un sandbox est une idée et ne porte pas de type ;
+  // `code` / `ml` décide des repos à créer et de la grille.
   const typeLocked = isEdit;
 
   const [title, setTitle] = useState('');
@@ -137,52 +91,53 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const slugField = useSlugField('challenge', title);
   const [projectId, setProjectId] = useState(projects[0]?.id ?? '');
   const [status, setStatus] = useState('draft');
-  const [type, setType] = useState<'code' | 'ml' | 'validation' | 'none'>('code');
+  const [sectionKey, setSectionKey] = useState(creatableFormSections[0].key);
+  // L'état de chaque section, par entrée : revenir sur une entrée retrouve sa saisie.
+  const [flowStates, setFlowStates] = useState<Record<string, unknown>>({});
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [cp, setCp] = useState(100);
   const [description, setDescription] = useState('');
+  const [roadmap, setRoadmap] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [host, setHost] = useState('');
-  const [roadmap, setRoadmap] = useState('');
   const [showRoadmap, setShowRoadmap] = useState(false);
-  const [githubRepo, setGithubRepo] = useState('');
-  const [workspaceMode, setWorkspaceMode] = useState<'provided_repo' | 'own_repo'>('provided_repo');
-  const [rewardRules, setRewardRules] = useState<MlRewardRules>(DEFAULT_ML_REWARD_RULES);
-  const [codeRules, setCodeRules] = useState<CodeRewardRules>(DEFAULT_CODE_REWARD_RULES);
-  const [computeEnabled, setComputeEnabled] = useState(false);
-  const [apiPackagingEnabled, setApiPackagingEnabled] = useState(true);
-  const [sourceChallengeId, setSourceChallengeId] = useState('');
-  const [cpPerValidation, setCpPerValidation] = useState(5);
-  const [requiredValidations, setRequiredValidations] = useState(3);
-  const [sourceChallenges, setSourceChallenges] = useState<{ id: string; title: string; type: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
-  // Template tasks, buffered locally until the challenge exists (create mode
-  // only — edit mode uses ChallengeTasksEditor, which hits /api/tasks directly).
-  // `id` is a local-only key (never sent to the API) so removing a row doesn't
-  // rely on its position in the array.
-  const [pendingTasks, setPendingTasks] = useState<{ id: string; title: string }[]>([]);
-  const [pendingTaskTitle, setPendingTaskTitle] = useState('');
-  const nextPendingTaskId = useRef(0);
-
   // Brief — le document Markdown affiché à un contributeur connecté qui n'a
-  // pas encore rejoint le challenge. Bufferisé comme les template tasks en
-  // création ; en édition il est chargé depuis les documents du challenge.
-  // `existingBriefId` sert au cas "brief vidé" : il faut alors supprimer le
-  // document, sinon la page continuerait d'afficher l'ancien texte.
+  // pas encore rejoint le challenge. Bufferisé en création ; en édition il est
+  // chargé depuis les documents du challenge. `existingBriefId` sert au cas
+  // "brief vidé" : il faut alors supprimer le document, sinon la page
+  // continuerait d'afficher l'ancien texte.
   const [brief, setBrief] = useState('');
   const [existingBriefId, setExistingBriefId] = useState<string | null>(null);
   const [showBrief, setShowBrief] = useState(false);
   const [briefPreview, setBriefPreview] = useState(false);
 
-  // Set only when the challenge saved but one or more template tasks failed
-  // to flush — the submit button turns into an explicit "Continue" the admin
+  // Set only when the challenge saved but something recorded afterwards
+  // failed — the submit button turns into an explicit "Continue" the admin
   // must click, so the failure banner isn't wiped by an auto-navigate.
   const [pendingChallenge, setPendingChallenge] = useState<SavedChallenge | null>(null);
+
+  const ctx: FlowFormContext = { mode, challenge, promotion, pool: cp, open };
+  const section = formSectionByKey(sectionKey);
+  const flowState = flowStates[section.key] ?? section.initialState(ctx);
+  const patchFlowState = (patch: Record<string, unknown>) =>
+    setFlowStates(prev => ({
+      ...prev,
+      [section.key]: { ...((prev[section.key] ?? section.initialState(ctx)) as object), ...patch },
+    }));
+
+  // L'état d'une section se pose une fois : recalculé à chaque rendu, il
+  // donnerait de nouveaux objets de règles aux éditeurs à chaque frappe.
+  useEffect(() => {
+    if (flowStates[section.key] !== undefined) return;
+    setFlowStates(prev => (prev[section.key] !== undefined ? prev : { ...prev, [section.key]: section.initialState(ctx) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section.key, flowStates]);
 
   // Fires on the false → true transition only. Callers pass a freshly spread
   // `challenge` object, so keying this on its identity would refill the form —
@@ -203,39 +158,27 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       slugField.reset({ title: challenge.title, value: challenge.slug, saved: challenge.slug, excludeId: challenge.uuid });
       setProjectId(challenge.project_id);
       setStatus(challenge.status);
-      setType(
-        challenge.type === 'ml' ? 'ml'
-          : challenge.type === 'validation' ? 'validation'
-            : challenge.type === 'none' ? 'none'
-              : 'code',
-      );
       setStartDate(toDateInput(challenge.start_date));
       setEndDate(toDateInput(challenge.end_date));
       setCp(challenge.contribution_points_reward);
       setDescription(challenge.description ?? '');
+      setRoadmap(challenge.roadmap ?? '');
       setCoverImageUrl(challenge.cover_image_url ?? '');
       setHost(challenge.host ?? '');
-      setRoadmap(challenge.roadmap ?? '');
       setShowRoadmap(!!challenge.roadmap);
-      setWorkspaceMode(challenge.workspace_mode ?? 'provided_repo');
-      const parsedCodeRules = parseCodeRewardRules(challenge.reward_rules);
-      if (parsedCodeRules) {
-        setCodeRules(parsedCodeRules);
-      } else {
-        setRewardRules(parseMlRewardRules(challenge.reward_rules) ?? DEFAULT_ML_REWARD_RULES);
-      }
-      setSourceChallengeId(challenge.source_challenge_id ?? '');
-      setCpPerValidation(challenge.cp_per_validation ?? 5);
-      setRequiredValidations(challenge.required_validations ?? 3);
-      setComputeEnabled(challenge.compute_enabled ?? false);
+      const edited = formSectionFor(challenge.type);
+      setSectionKey(edited.key);
+      setFlowStates({ [edited.key]: edited.initialState({ mode: 'edit', challenge, pool: challenge.contribution_points_reward, open }) });
     } else if (promotion) {
       setTitle(promotion.title);
       // Les espaces de noms sont séparés : `/sandbox/mykine` peut devenir
       // `/challenges/mykine`. La vérification dira s'il est déjà pris.
       slugField.reset({ title: promotion.title, value: promotion.slug });
       // `code` n'est qu'un point de départ, la forme la plus courante : le
-      // sélecteur reste ouvert.
-      setType('code');
+      // sélecteur reste ouvert, et chaque section repart de la proposition.
+      const promoted = creatableFormSections[0];
+      setSectionKey(promoted.key);
+      setFlowStates({ [promoted.key]: promoted.initialState({ mode: 'promotion', promotion, pool: cp, open }) });
       // La description markdown est composée par la même fonction que le
       // serveur, pour que ce que l'admin relit soit exactement ce qui serait
       // écrit s'il n'y touchait pas.
@@ -244,13 +187,6 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         goals: promotion.goals ?? [],
         why: promotion.why ?? null,
       }));
-      // Les buts sont le candidat naturel aux tâches du challenge : ils
-      // arrivent en template tasks, éditables avant l'envoi.
-      setPendingTasks((promotion.goals ?? []).map((title, i) => ({ id: String(i), title })));
-      nextPendingTaskId.current = (promotion.goals ?? []).length;
-      // Un sandbox code devient un challenge `own_repo` : l'auteur arrive avec
-      // son dépôt, il n'y a pas de repo partagé à provisionner.
-      setWorkspaceMode('own_repo');
       // Promouvoir, c'est ouvrir le challenge — pas préparer un brouillon.
       setStatus('active');
       // Le tiroir s'ouvre après le chargement des projets : sans ça, l'état
@@ -278,24 +214,6 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     return () => { cancelled = true; };
   }, [open, challenge]);
 
-  // Only needed to populate the source-challenge picker when creating a new
-  // validation challenge — editing never touches this field (locked).
-  useEffect(() => {
-    // Sert seulement au sélecteur de challenge source d'un challenge de
-    // validation — inaccessible en édition comme en promotion. `ml` et `code`
-    // sont tous deux adossables : le type retenu décide du mode (cas de
-    // référence vs scénario), qui n'est jamais stocké.
-    if (!open || typeLocked || isPromotion) return;
-    fetch('/api/challenges')
-      .then(r => r.ok ? r.json() : [])
-      .then((all: any[]) => setSourceChallenges(
-        (Array.isArray(all) ? all : [])
-          .filter(c => c.type === 'ml' || c.type === 'code')
-          .map(c => ({ id: c.uuid, title: c.title, type: c.type }))
-      ))
-      .catch(() => {});
-  }, [open, typeLocked, isPromotion]);
-
   // Close on Escape
   useEffect(() => {
     if (!open) return;
@@ -309,41 +227,21 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     slugField.reset({ title: '' });
     setProjectId(projects[0]?.id ?? '');
     setStatus('draft');
-    setType('code');
+    setSectionKey(creatableFormSections[0].key);
+    setFlowStates({});
     setStartDate('');
     setEndDate('');
     setCp(100);
     setDescription('');
-    setCoverImageUrl('');
     setRoadmap('');
+    setCoverImageUrl('');
+    setHost('');
     setShowRoadmap(false);
-    setGithubRepo('');
-    setWorkspaceMode('provided_repo');
-    setRewardRules(DEFAULT_ML_REWARD_RULES);
-    setCodeRules(DEFAULT_CODE_REWARD_RULES);
-    setSourceChallengeId('');
-    setCpPerValidation(5);
-    setRequiredValidations(3);
-    setComputeEnabled(false);
-    setApiPackagingEnabled(true);
-    setPendingTasks([]);
-    setPendingTaskTitle('');
     setPendingChallenge(null);
     setBrief('');
     setExistingBriefId(null);
     setShowBrief(false);
     setBriefPreview(false);
-  };
-
-  const addPendingTask = () => {
-    const t = pendingTaskTitle.trim();
-    if (!t) return;
-    setPendingTasks(prev => [...prev, { id: String(nextPendingTaskId.current++), title: t }]);
-    setPendingTaskTitle('');
-  };
-
-  const removePendingTask = (id: string) => {
-    setPendingTasks(prev => prev.filter(t => t.id !== id));
   };
 
   /** Admin has read the partial-failure banner and clicked Continue. */
@@ -365,8 +263,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setError('End date must be after start date.');
       return;
     }
-    if (type === 'validation' && !isEdit && !sourceChallengeId) {
-      setError('Pick the source challenge this validation challenge tests.');
+    const sectionProblem = section.validate?.(flowState, ctx);
+    if (sectionProblem) {
+      setError(sectionProblem);
       return;
     }
     if (!slugField.ready) {
@@ -382,29 +281,23 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       const shared = {
         title: title.trim(),
         status,
-        type,
         start_date: startDate || null,
         end_date: endDate || null,
         description: description.trim() || undefined,
-        // Vide = on efface : `null` est une valeur, l'absence n'en est pas une.
-        cover_image_url: coverImageUrl.trim() || null,
-        // Même règle : vide = effacé, la carte de l'hôte disparaît.
-        host: host.trim() || null,
         roadmap: roadmap.trim() || undefined,
-        // Without rules an ML/code challenge awards nothing — the service has
-        // nothing to score against.
-        reward_rules: type === 'ml' ? rewardRules : type === 'code' ? codeRules : null,
-        compute_enabled: type === 'ml' ? computeEnabled : false,
+        // Vide = effacé : la carte du listing retombe sur la banque locale, et
+        // la carte « Who hosts this challenge » disparaît de la page publique.
+        cover_image_url: coverImageUrl.trim() || null,
+        host: host.trim() || null,
       };
+      // Ce que le flow ajoute : son type à la création, ses champs de
+      // configuration et ses règles.
+      const flowFields = section.body(flowState, ctx);
 
-      // Editing never touches the project, the pool, the repo, or (for
-      // validation challenges) the source challenge / CP rate: they define the
-      // challenge's shape and budget, and contributors/validators are already
-      // racing against them. Omitting them means the API cannot change them.
-      //
-      // La promotion a sa propre route et son propre corps : le type, le mode
-      // de workspace et le repo n'y sont pas envoyés du tout — ils découlent de
-      // la proposition. Voir `promotionRequestBody.ts`.
+      // Editing never touches the project or the pool: they define the
+      // challenge's budget, and contributors are already racing against it.
+      // Omitting them means the API cannot change them. La promotion a sa
+      // propre route et son propre corps (`promotionRequestBody.ts`).
       const res = await fetch(
         isPromotion
           ? `/api/sandboxes/${promotion!.uuid}/promote`
@@ -416,36 +309,31 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
             isPromotion
-              ? buildPromotionRequestBody({
-                  title,
-                  slug: slugField.submitValue,
-                  status,
-                  type: type === 'ml' ? 'ml' : 'code',
-                  startDate,
-                  endDate,
-                  description,
-                  roadmap,
-                  cp,
-                  projectId,
-                  rewardRules,
-                  codeRules,
-                  computeEnabled,
-                  apiPackagingEnabled,
-                })
+              ? buildPromotionRequestBody(
+                  {
+                    title,
+                    slug: slugField.submitValue,
+                    status,
+                    // La section choisie dit la forme du challenge ; seules code et ML se promeuvent.
+                    type: section.key === 'ml' ? 'ml' : 'code',
+                    startDate,
+                    endDate,
+                    description,
+                    roadmap,
+                    cp,
+                    projectId,
+                  },
+                  flowFields,
+                )
               : isEdit
                 // Envoyé seulement s'il a changé : l'ancien devient une redirection.
-                ? { ...shared, ...(slugField.changed ? { slug: slugField.submitValue } : {}) }
+                ? { ...shared, ...flowFields, ...(slugField.changed ? { slug: slugField.submitValue } : {}) }
                 : {
                     ...shared,
                     slug: slugField.submitValue,
                     project_id: projectId,
                     contribution_points_reward: cp,
-                    workspace_mode: type === 'code' ? workspaceMode : undefined,
-                    github_repo: type === 'code' && workspaceMode === 'provided_repo' && githubRepo.trim() ? githubRepo.trim() : undefined,
-                    source_challenge_id: type === 'validation' ? sourceChallengeId : undefined,
-                    cp_per_validation: type === 'validation' ? cpPerValidation : undefined,
-                    required_validations: type === 'validation' && !isScenarioMode ? requiredValidations : undefined,
-                    api_packaging_enabled: type === 'ml' ? apiPackagingEnabled : undefined,
+                    ...flowFields,
                   }
           ),
         }
@@ -455,30 +343,18 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         // Création, promotion et édition renvoient toutes la ligne complète.
         const data = await res.json();
         const saved: SavedChallenge = { uuid: data.uuid, slug: data.slug };
-        const targetId = saved.uuid;
 
-        // Create mode + code challenge: flush the buffered template tasks now
-        // that the challenge exists. Sequential, and non-fatal — the challenge
-        // itself already saved, so a task failure shouldn't block the flow.
-        let failedTasks = 0;
-        if (!isEdit && type === 'code' && targetId && pendingTasks.length > 0) {
-          failedTasks = (await flushTemplateTasks(targetId, pendingTasks)).failed;
-        }
+        // Ce que le flow enregistre une fois le challenge créé (les tâches du
+        // template, par exemple). Non bloquant : le challenge est déjà là.
+        const problems = section.afterSave ? await section.afterSave(saved, flowState, ctx) : [];
 
-        // Le brief est un document : même contrainte que les template tasks
-        // en création (pas d'uuid avant), même traitement de l'échec.
-        let briefFailed = false;
-        if (targetId && (brief.trim() || existingBriefId)) {
-          briefFailed = !(await flushBrief(targetId, brief, existingBriefId)).ok;
+        // Le brief est un document : même contrainte (pas d'uuid avant la
+        // création), même traitement de l'échec.
+        if (saved.uuid && (brief.trim() || existingBriefId)) {
+          if (!(await flushBrief(saved.uuid, brief, existingBriefId)).ok) problems.push('the brief failed to save');
         }
 
         setSuccess(true);
-
-        const problems: string[] = [];
-        if (failedTasks > 0) {
-          problems.push(`${failedTasks} template task${failedTasks > 1 ? 's' : ''} failed to save`);
-        }
-        if (briefFailed) problems.push('the brief failed to save');
 
         if (problems.length > 0) {
           // The challenge saved fine, but silently auto-navigating away (the
@@ -508,17 +384,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   };
 
   const projectOptions = projects.map(p => ({ value: p.id, label: p.name }));
-
-  // En création, le mode se lit sur le type du challenge source sélectionné.
-  // En édition la liste des sources n'est jamais chargée (typeLocked), mais
-  // `required_validations` porte la même information : l'API la force à null
-  // pour une source `code`, où rien ne se résout et où il n'y a pas de quorum.
-  // `== null` couvre aussi `undefined` — un strict `===` manquerait un
-  // challenge dont le champ est simplement absent.
-  const sourceChallenge = sourceChallenges.find(c => c.id === sourceChallengeId);
-  const isScenarioMode = isEdit
-    ? challenge?.required_validations == null
-    : sourceChallenge?.type === 'code';
+  const SectionFields = section.Fields;
+  const SectionDetails = section.Details;
 
   return (
     <>
@@ -602,31 +469,23 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           {/* Locked on edit: the type decides which repos are created, and they
               only get created once, at creation. On promotion it is open: a
               sandbox is an idea and carries no type, so this is where the shape
-              of the work gets decided. */}
+              of the challenge gets decided — among the shapes a proposal can
+              become, code or ML. */}
           <Field label="Type">
-            {/* `flex-wrap` et une base : à quatre options, une seule ligne
-                rognait chaque libellé jusqu'à l'illisible. */}
-            <div className="flex flex-wrap gap-2">
-              {([
-                { value: 'code',       label: 'Code',       icon: Code2,        desc: 'Tasks, Kanban, GitHub' },
-                { value: 'ml',         label: 'ML',         icon: BrainCircuit, desc: 'Dataset, Model, API' },
-                { value: 'validation', label: 'Validation', icon: ShieldCheck,  desc: 'Test a submitted API live' },
-                { value: 'none',       label: 'None',       icon: Bookmark,     desc: 'A placeholder — nothing to join' },
-              ] as const).map(opt => {
+            <div className="flex gap-2">
+              {creatableFormSections.map(opt => {
                 const Icon = opt.icon;
-                const active = type === opt.value;
+                const active = section.key === opt.key;
                 if (typeLocked && !active) return null;
-                // Deux types qu'une promotion ne peut pas produire, et que la
-                // route refuse : un challenge de validation dérive d'un
-                // challenge ML existant, et promouvoir une proposition ouvre
-                // du travail — un repère n'en ouvre aucun.
-                if (isPromotion && (opt.value === 'validation' || opt.value === 'none')) return null;
+                // Une validation dérive d'un challenge existant, une annotation
+                // d'une campagne : aucune ne naît d'une proposition.
+                if (isPromotion && !PROMOTABLE_SECTION_KEYS.has(opt.key)) return null;
                 return (
                   <button
-                    key={opt.value}
-                    onClick={() => !typeLocked && setType(opt.value)}
+                    key={opt.key}
+                    onClick={() => !typeLocked && setSectionKey(opt.key)}
                     disabled={typeLocked}
-                    className={`flex flex-1 basis-40 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
+                    className={`flex flex-1 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
                       active
                         ? 'border-brandCP/40 bg-brandCP/10 ring-1 ring-brandCP/20'
                         : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'
@@ -635,7 +494,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                     <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-brandCP' : ''}`} style={active ? undefined : { color: fgAt(0.3) }} />
                     <div>
                       <p className="text-sm font-semibold" style={{ color: active ? 'var(--foreground)' : fgAt(0.5) }}>{opt.label}</p>
-                      <p className="text-[10px]" style={{ color: fgAt(0.3) }}>{opt.desc}</p>
+                      <p className="text-[10px]" style={{ color: fgAt(0.3) }}>{opt.description}</p>
                     </div>
                   </button>
                 );
@@ -727,184 +586,35 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             </div>
           </Field>
 
-          {/* ── Code: workspace mode ── */}
-          {/* Locked on edit: it decides which repos exist and how contributors
-              submit — it only makes sense to fix at creation. */}
-          {/* Masqué en promotion : un sandbox code devient forcément un
-              challenge `own_repo` sur le dépôt de son auteur — il n'y a pas de
-              choix à offrir, et la route n'accepte pas le champ. */}
-          {type === 'code' && !isPromotion && (
-            <Field label="Workspace mode">
-              {isEdit ? (
-                <LockedValue
-                  text={workspaceMode === 'own_repo'
-                    ? 'Own repo - each contributor submits their repo URL'
-                    : 'Shared repo - one personal branch per contributor'}
-                />
-              ) : (
-                <div className="flex gap-2">
-                  {([
-                    { value: 'provided_repo', label: 'Shared repo', desc: 'One personal branch per contributor' },
-                    { value: 'own_repo',      label: 'Own repo',    desc: 'Each contributor submits their repo URL' },
-                  ] as const).map(opt => {
-                    const active = workspaceMode === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => setWorkspaceMode(opt.value)}
-                        className={`flex flex-1 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
-                          active
-                            ? 'border-brandCP/40 bg-brandCP/10 ring-1 ring-brandCP/20'
-                            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'
-                        }`}
-                      >
-                        <div>
-                          <p className="text-sm font-semibold" style={{ color: active ? 'var(--foreground)' : fgAt(0.5) }}>{opt.label}</p>
-                          <p className="text-[10px]" style={{ color: fgAt(0.3) }}>{opt.desc}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </Field>
-          )}
-
-          {/* ── Code reward rules ── */}
-          {type === 'code' && (
-            <CodeRewardRulesEditor
-              value={codeRules}
-              pool={cp}
-              onChange={setCodeRules}
-            />
-          )}
-
-          {/* ── ML reward rules ── */}
-          {type === 'ml' && (
-            <MlRewardRulesEditor
-              value={rewardRules}
-              pool={cp}
-              onChange={setRewardRules}
-              dense
-            />
-          )}
-
-          {/* ── ML: GPU compute toggle ── */}
-          {type === 'ml' && (
-            <Field icon={<Cpu className="h-3.5 w-3.5" />} label="GPU compute power">
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <p className="text-xs" style={{ color: fgAt(0.4) }}>
-                  Lets contributors request a Scaleway instance on this challenge
-                </p>
-                <Toggle enabled={computeEnabled} onChange={setComputeEnabled} />
-              </div>
-            </Field>
-          )}
-
-          {/* ── ML: API Packaging toggle (creation only — decides whether the repo/step exists) ── */}
-          {type === 'ml' && !isEdit && (
-            <Field icon={<Package className="h-3.5 w-3.5" />} label="API Packaging step">
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <p className="text-xs" style={{ color: fgAt(0.4) }}>
-                  Adds a 3rd API Packaging step on top of Dataset and Model
-                </p>
-                <Toggle enabled={apiPackagingEnabled} onChange={setApiPackagingEnabled} />
-              </div>
-            </Field>
-          )}
-
-          {/* ── Validation: source challenge (creation only, locked after) ── */}
-          {type === 'validation' && (
-            <Field icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Source challenge">
-              {isEdit ? (
-                <LockedValue text={sourceChallenges.find(c => c.id === sourceChallengeId)?.title ?? 'Source challenge'} />
-              ) : (
-                <>
-                  <SelectDropdown
-                    options={sourceChallenges.map(c => ({
-                      value: c.id,
-                      label: `${c.title} · ${c.type === 'ml' ? 'ML' : 'Code'}`,
-                    }))}
-                    value={sourceChallengeId}
-                    onChange={setSourceChallengeId}
-                  />
-                  <p className="text-[11px] mt-1.5" style={{ color: fgAt(0.25) }}>
-                    {isScenarioMode
-                      ? 'A Code challenge: validators walk a scenario through each deployed application.'
-                      : 'An ML challenge: validators test each endpoint against a ground-truth reference case.'}
-                    {' '}Only challenges without a validation challenge yet will actually save - the API rejects duplicates.
-                  </p>
-                </>
-              )}
-            </Field>
-          )}
-
-          {/* ── Validation: CP per validation (locked after creation) ── */}
-          {type === 'validation' && (
-            <Field icon={<Trophy className="h-3.5 w-3.5" />} label="CP per validation">
-              {isEdit ? (
-                <LockedValue text={`${cpPerValidation} CP`} />
-              ) : (
-                <input
-                  type="number"
-                  min={1}
-                  value={cpPerValidation}
-                  onChange={e => setCpPerValidation(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-28 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-                  style={{ color: 'var(--foreground)' }}
-                />
-              )}
-            </Field>
-          )}
-
-          {/* ── Validation: required validations (ML source only — no quorum in scenario mode) ── */}
-          {type === 'validation' && !isScenarioMode && (
-            <Field icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Required validations">
-              {isEdit ? (
-                <LockedValue text={`${requiredValidations} validators must agree`} />
-              ) : (
-                <div className="space-y-1.5">
-                  <input
-                    type="number"
-                    min={1}
-                    step={2}
-                    value={requiredValidations}
-                    onChange={e => {
-                      const n = parseInt(e.target.value) || 1;
-                      setRequiredValidations(n % 2 === 0 ? n + 1 : n);
-                    }}
-                    className="w-28 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-                    style={{ color: 'var(--foreground)' }}
-                  />
-                  <p className="text-[11px]" style={{ color: fgAt(0.25) }}>
-                    Must be odd - majority wins once this many validators have voted.
-                  </p>
-                </div>
-              )}
-            </Field>
-          )}
+          {/* ── Le flow : configuration et règles ── */}
+          {SectionFields && <SectionFields state={flowState} onChange={patchFlowState} ctx={ctx} />}
 
           {/* ── Couverture ──
               L'image que porteront la carte du listing et l'en-tête de la
-              page du challenge. Posée à la création, modifiable ici. ── */}
-          <Field icon={<ImageIcon className="h-3.5 w-3.5" />} label="Cover image">
-            <CoverImageField value={coverImageUrl} onChange={setCoverImageUrl} />
-          </Field>
+              page du challenge. Posée à la création, modifiable ici. À la
+              promotion, la couverture de la proposition suit d'elle-même. ── */}
+          {!isPromotion && (
+            <Field icon={<ImageIcon className="h-3.5 w-3.5" />} label="Cover image">
+              <CoverImageField value={coverImageUrl} onChange={setCoverImageUrl} />
+            </Field>
+          )}
 
           {/* ── Hôte ──
               Qui porte le challenge : le partenaire clinique, l'équipe du Lab.
               Une phrase, rendue telle quelle sur la page publique ; vide, la
               carte « Who hosts this challenge » n'y apparaît pas. ── */}
-          <Field icon={<Building2 className="h-3.5 w-3.5" />} label="Host">
-            <input
-              value={host}
-              onChange={e => setHost(e.target.value)}
-              placeholder="CHU de Montpellier, service de médecine physique et de réadaptation"
-              maxLength={500}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-              style={{ color: 'var(--foreground)' }}
-            />
-          </Field>
+          {!isPromotion && (
+            <Field icon={<Building2 className="h-3.5 w-3.5" />} label="Host">
+              <input
+                value={host}
+                onChange={e => setHost(e.target.value)}
+                placeholder="CHU de Montpellier, service de médecine physique et de réadaptation"
+                maxLength={500}
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
+                style={{ color: 'var(--foreground)' }}
+              />
+            </Field>
+          )}
 
           {/* ── Description ── */}
           <Field icon={<AlignLeft className="h-3.5 w-3.5" />} label="Description">
@@ -921,7 +631,7 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
           {/* ── Brief — Markdown, enregistré comme document `brief.md` ──
               Affiché à un contributeur connecté qui n'a pas encore rejoint le
               challenge, à la place des KPI et de l'espace de travail. En
-              création il est bufferisé ici puis flushé, comme les tasks. ── */}
+              création il est bufferisé ici puis flushé. ── */}
           <div className="space-y-2">
             <button
               onClick={() => setShowBrief(v => !v)}
@@ -982,101 +692,12 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             )}
           </div>
 
-          {/* ── Tasks (code, edit) — independent CRUD via the tasks API ── */}
-          {type === 'code' && isEdit && (
-            <ChallengeTasksEditor challengeId={challenge!.uuid} open={open} />
-          )}
+          {/* ── Le flow : éditeurs autonomes (tâches, cibles, dépôt…) ── */}
+          {SectionDetails && <SectionDetails state={flowState} onChange={patchFlowState} ctx={ctx} />}
 
-          {/* ── Tasks (code, create) — buffered locally, flushed to the tasks
-              API once the challenge exists (no challenge uuid yet to CRUD against) ── */}
-          {type === 'code' && !isEdit && (
-            <div className="space-y-3">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest" style={{ color: fgAt(0.3) }}>
-                <ListTodo className="h-3.5 w-3.5" />
-                Template tasks
-                <span className="ml-1 rounded-full bg-white/8 px-1.5 py-0.5 text-[9px] font-normal" style={{ color: fgAt(0.4) }}>
-                  {pendingTasks.length}
-                </span>
-              </p>
-              <p className="-mt-2 text-xs" style={{ color: fgAt(0.3) }}>
-                Copied to each contributor&apos;s personal board when they join. Saved once the challenge is created.
-              </p>
-
-              {pendingTasks.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
-                  No template task yet. Add the first one below.
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  {pendingTasks.map(task => (
-                    <div key={task.id} className="group flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-                      <span className="min-w-0 flex-1 truncate text-sm" style={{ color: fgAt(0.75) }}>
-                        {task.title}
-                      </span>
-                      <button
-                        onClick={() => removePendingTask(task.id)}
-                        className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
-                        aria-label="Remove task"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-                <input
-                  type="text"
-                  value={pendingTaskTitle}
-                  onChange={e => setPendingTaskTitle(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPendingTask(); } }}
-                  placeholder="New template task title…"
-                  className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-                  style={{ color: 'var(--foreground)' }}
-                />
-                <div className="flex items-center justify-end">
-                  <button
-                    onClick={addPendingTask}
-                    disabled={!pendingTaskTitle.trim()}
-                    className="flex items-center gap-1.5 rounded-lg bg-brandCP/15 px-3 py-1.5 text-xs font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Add
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── Slack discussion signals (edit only, both types) — independent CRUD ── */}
+          {/* ── Slack discussion signals (edit only, every flow) — independent CRUD ── */}
           {isEdit && (
             <ChallengeSlackSignalsEditor challengeId={challenge!.uuid} open={open} />
-          )}
-
-          {/* ── Validation targets (edit only) — independent CRUD ── */}
-          {type === 'validation' && isEdit && (
-            <>
-              <ValidationTargetsEditor challengeId={challenge!.uuid} open={open} />
-              <div className="mt-3">
-                <ValidationRewardsPanel challengeId={challenge!.uuid} open={open} />
-              </div>
-            </>
-          )}
-
-          {/* ── GitHub repo (code only, creation only, provided_repo mode only) ── */}
-          {type === 'code' && !isEdit && !isPromotion && workspaceMode === 'provided_repo' && (
-            <Field icon={<Github className="h-3.5 w-3.5" />} label="GitHub Repository">
-              <input
-                type="url"
-                value={githubRepo}
-                onChange={e => setGithubRepo(e.target.value)}
-                placeholder="https://github.com/owner/repo"
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-                style={{ color: 'var(--foreground)' }}
-              />
-              <p className="text-[11px]" style={{ color: fgAt(0.25) }}>Optional - can be set later</p>
-            </Field>
           )}
 
           {/* ── Roadmap (optional) ── */}
@@ -1142,32 +763,5 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         </div>
       </div>
     </>
-  );
-}
-
-/** A value shown but not editable, styled to read as deliberate, not broken. */
-function LockedValue({ text }: { text: string }) {
-  return (
-    <div
-      className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-sm"
-      style={{ color: fgAt(0.5) }}
-    >
-      <Lock className="h-3 w-3 shrink-0" style={{ color: fgAt(0.25) }} />
-      {text}
-    </div>
-  );
-}
-
-// ── Field wrapper ─────────────────────────────────────────────────────────────
-
-function Field({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--foreground) 30%, transparent)' }}>
-        {icon}
-        {label}
-      </p>
-      {children}
-    </div>
   );
 }

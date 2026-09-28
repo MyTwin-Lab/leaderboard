@@ -1,7 +1,5 @@
-import { OpenAIAgentEvaluator } from "../../evaluator/evaluator.js";
-import { EvaluationGridRegistry } from "../../evaluator/grids/index.js";
-import { computeMlAward, type MlLineage } from "../../evaluator/ml-reward.js";
-import type { EvaluateContext, SnapshotInfo } from "../../evaluator/types.js";
+import { evaluate } from "../../capabilities/evaluation.js";
+import { computeMlAward, type MlLineage } from "../../../content/flows/ml/reward.js";
 import {
   ChallengeRepository,
   ChallengeRepoRepository,
@@ -10,8 +8,9 @@ import {
   ContributionRepository,
   RewardEntryRepository,
 } from "../../database-service/repositories/index.js";
-import { splitShares } from "../../evaluator/share.js";
-import { getGroupContext, type GroupContext } from "./group.js";
+import { splitShares } from "../../database-service/domain/share.js";
+import { getGroupContext, type GroupContext } from "../../capabilities/groups.js";
+import { distributedFromPool, poolCompletion, remainingPool } from "../../capabilities/pool.js";
 import type {
   Challenge,
   ChallengeRepoRole,
@@ -19,9 +18,14 @@ import type {
 } from "../../database-service/domain/entities.js";
 import { parseMlRewardRules, type MlRewardRules } from "../../database-service/domain/mlRewardRules.js";
 import { ConnectorRegistry } from "../../connectors/registry.js";
-import type { KaggleRepoActivity } from "../../connectors/interfaces.js";
-import { SnapshotService } from "./snapshot.service.js";
-import { DatabaseGridProvider } from "../database-grid-provider.js";
+import type { KaggleActivityPayload } from "../../../content/connectors/kaggle/activity.js";
+import {
+  MODEL_METRIC_META_FIELD,
+  MODEL_METRIC_RULE_KEY,
+  ML_SUBMISSION_EVALUATION_HANDLER,
+  mlFlowDescriptor,
+} from "../../../content/flows/ml/index.js";
+import { KAGGLE_ARTIFACT_SOURCE, type KaggleArtifactInput } from "../../../content/bundle-sources/kaggle-artifact/index.js";
 import { extractArtifactRef, normalizeArtifactUrl } from "./artifactUrl.js";
 import { resolveLineage } from "./lineage.js";
 import { ML_ROLE_RULE } from "./mlRoles.js";
@@ -49,7 +53,7 @@ export interface MlRewardsDeps {
   challengeRepo: Pick<ChallengeRepository, 'findById' | 'update'>;
   challengeRepoRepo: Pick<ChallengeRepoRepository, 'findByChallengeAndRepo' | 'findByChallengeAndRole'>;
   contributionRepo: Pick<ContributionRepository, 'findByChallenge' | 'update'>;
-  rewardRepo: Pick<RewardEntryRepository, 'sumByChallenge' | 'bestMetricValue' | 'createManyAndSyncRewards'>;
+  rewardRepo: Pick<RewardEntryRepository, 'sumByChallenge' | 'maxMetaNumber' | 'createManyAndSyncRewards'>;
   contributionMemberRepo: Pick<ContributionMemberRepository, 'addShares'>;
   /** Lue par getGroupContext pour résoudre le porteur du workspace. */
   challengeTeamRepo: Pick<ChallengeTeamRepository, 'findByChallenge'>;
@@ -60,6 +64,8 @@ export interface MlRewardsDeps {
     contribution: Contribution;
     challenge: Challenge;
     gridSlug: string;
+    /** La soumission d'origine : ce que le rejeu du run rappellera. */
+    submission: MlSubmissionEvent;
   }) => Promise<number>;
 }
 
@@ -68,22 +74,13 @@ export interface MlRewardsDeps {
  * ----------------
  * Attribution live des points sur les challenges ML.
  *
- * Séparé de RewardsService (challenges code) : là-bas un pool est distribué
- * proportionnellement au close, ici chaque soumission produit immédiatement des
- * lignes de ledger immuables. Rien n'est recalculé.
+ * Chaque soumission produit immédiatement des lignes de ledger immuables,
+ * clampées au reliquat du pool. Rien n'est recalculé.
  */
 export class MlRewardsService {
   private deps: MlRewardsDeps;
-  private snapshotService = new SnapshotService();
-  private evaluator = new OpenAIAgentEvaluator();
-  private static dbProviderInitialized = false;
 
   constructor(deps?: Partial<MlRewardsDeps>) {
-    if (!MlRewardsService.dbProviderInitialized) {
-      EvaluationGridRegistry.setDatabaseProvider(new DatabaseGridProvider());
-      MlRewardsService.dbProviderInitialized = true;
-    }
-
     this.deps = {
       challengeRepo: new ChallengeRepository(),
       challengeRepoRepo: new ChallengeRepoRepository(),
@@ -160,14 +157,16 @@ export class MlRewardsService {
               contribution,
               challenge,
               gridSlug: config.grid,
+              submission: event,
             }),
           }
         : { metricValue: await this.deps.readMetric(url, rules) };
 
-      const [remainingPool, bestOtherMetricValue, myBestMetricValue] = await Promise.all([
+      const metric = { ruleKey: MODEL_METRIC_RULE_KEY, field: MODEL_METRIC_META_FIELD };
+      const [remaining, bestOtherMetricValue, myBestMetricValue] = await Promise.all([
         this.remainingPool(challenge),
-        this.deps.rewardRepo.bestMetricValue(challengeId, { excludeUserId: ownerId }),
-        this.deps.rewardRepo.bestMetricValue(challengeId, { onlyUserId: ownerId }),
+        this.deps.rewardRepo.maxMetaNumber(challengeId, { ...metric, excludeUserId: ownerId }),
+        this.deps.rewardRepo.maxMetaNumber(challengeId, { ...metric, onlyUserId: ownerId }),
       ]);
 
       const drafts = computeMlAward({
@@ -176,7 +175,7 @@ export class MlRewardsService {
         challengeId,
         userId: ownerId,
         contributionId: contribution.uuid,
-        remainingPool,
+        remainingPool: remaining,
         bestOtherMetricValue,
         myBestMetricValue,
         lineage,
@@ -188,10 +187,10 @@ export class MlRewardsService {
       await this.recordGroupShares(group, contribution.uuid, drafts);
       await this.deps.contributionRepo.update(contribution.uuid, { evaluation_status: 'done' });
 
-      const newRemaining = await this.remainingPool(challenge);
-      const completion = challenge.contribution_points_reward > 0
-        ? 1 - newRemaining / challenge.contribution_points_reward
-        : 0;
+      const completion = poolCompletion(
+        challenge.contribution_points_reward,
+        await distributedFromPool(this.deps.rewardRepo, challenge.uuid)
+      );
       await this.deps.challengeRepo.update(challenge.uuid, { completion });
 
       const net = drafts.filter(d => d.user_id === ownerId).reduce((s, d) => s + d.points, 0);
@@ -240,14 +239,14 @@ export class MlRewardsService {
   }
 
   /**
-   * CP encore à prendre sur le challenge. Les récompenses de signaux Slack
-   * sont hors pool (montant fixe par signal), donc exclues du décompte.
+   * CP encore à prendre sur le challenge : le pool moins ce qu'en ont pris les
+   * clés qui le consomment (les récompenses fixes hors pool n'en font pas partie).
    */
   async remainingPool(challenge: Challenge): Promise<number> {
-    const distributed = await this.deps.rewardRepo.sumByChallenge(challenge.uuid, {
-      excludeRuleKeys: ['slack_signal'],
-    });
-    return Math.max(0, challenge.contribution_points_reward - distributed);
+    return remainingPool(
+      challenge.contribution_points_reward,
+      await distributedFromPool(this.deps.rewardRepo, challenge.uuid)
+    );
   }
 
   private async findContribution(
@@ -281,7 +280,7 @@ export class MlRewardsService {
 
     await connector.connect();
     try {
-      const activity = await connector.fetchRepoActivity() as KaggleRepoActivity;
+      const activity = (await connector.fetchRepoActivity()).payload as KaggleActivityPayload;
       const versions = activity.modelVersions?.flatMap(m => m.versions) ?? [];
       const metricName = rules.model.metric.name;
 
@@ -300,58 +299,46 @@ export class MlRewardsService {
     }
   }
 
-  /** Fait tourner l'agent sur l'artefact soumis et renvoie une note 0..1. */
-  private async runAgentDefault({ role, url, contribution, challenge, gridSlug }: {
+  /**
+   * Fait noter l'artefact soumis par la capacité `evaluate` (source
+   * `kaggle-artifact`) et renvoie une note 0..1. Le run est tracé au nom du
+   * flow ML, rejouable à partir de la soumission.
+   */
+  private async runAgentDefault({ role, url, contribution, challenge, gridSlug, submission }: {
     role: ChallengeRepoRole;
     url: string;
     contribution: Contribution;
     challenge: Challenge;
     gridSlug: string;
+    submission: MlSubmissionEvent;
   }): Promise<number> {
     const ref = extractArtifactRef(url);
     if (!ref) throw new Error(`[MlRewardsService] Cannot extract ref from "${url}"`);
 
-    const repoType = role === 'dataset' ? 'kaggle_dataset' : 'github';
-    const connector = await ConnectorRegistry.createConnector({
-      uuid: '', title: ref, type: repoType, external_repo_id: ref, project_id: '',
+    const input: KaggleArtifactInput = { ref, repoType: role === 'dataset' ? 'kaggle_dataset' : 'github' };
+    const { evaluation } = await evaluate({
+      bundle: { source: KAGGLE_ARTIFACT_SOURCE, input },
+      gridSlug,
+      subject: {
+        title: contribution.title,
+        type: gridSlug,
+        description: contribution.description,
+        ref: challenge.uuid,
+        userId: contribution.user_id,
+      },
+      origin: {
+        owner: mlFlowDescriptor.key,
+        handler: ML_SUBMISSION_EVALUATION_HANDLER,
+        payload: { ...submission },
+        challengeId: challenge.uuid,
+        contributionId: contribution.uuid,
+      },
     });
-    if (!connector) throw new Error(`[MlRewardsService] No connector for ${repoType}`);
 
-    await connector.connect();
-    try {
-      const items = await connector.fetchItems();
-      if (items.length === 0) throw new Error(`[MlRewardsService] Nothing to evaluate at ${ref}`);
+    await this.deps.contributionRepo.update(contribution.uuid, { evaluation });
 
-      const content = await connector.fetchItemContent(items[0].id);
-      const prepared = await this.snapshotService.prepareSnapshot({
-        commitSha: content.commitSha,
-        modifiedFiles: content.modifiedFiles,
-      } as SnapshotInfo);
-
-      // Le workspace contient l'artefact évalué : supprimé quoi qu'il arrive.
-      try {
-        const grid = await EvaluationGridRegistry.getGridAsync(gridSlug);
-        const evalContext: EvaluateContext = { snapshot: prepared, grid };
-
-        const evaluation = await this.evaluator.evaluate(false, {
-          title: contribution.title,
-          type: gridSlug,
-          description: contribution.description,
-          challenge_id: challenge.uuid,
-          userId: contribution.user_id,
-          commitShas: [content.commitSha],
-        }, evalContext);
-
-        await this.deps.contributionRepo.update(contribution.uuid, { evaluation });
-
-        // globalScore est sur 0–9 (scores 0–9 × poids sommant à ~1).
-        return Math.min(1, Math.max(0, evaluation.globalScore / 9));
-      } finally {
-        await this.snapshotService.cleanup(prepared);
-      }
-    } finally {
-      await connector.disconnect?.();
-    }
+    // globalScore est sur 0–9 (scores 0–9 × poids sommant à ~1).
+    return Math.min(1, Math.max(0, evaluation.globalScore / 9));
   }
 
   private async resolveLineage(challenge: Challenge, userId: string): Promise<MlLineage> {

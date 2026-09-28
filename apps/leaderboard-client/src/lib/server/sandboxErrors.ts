@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  InvalidRewardRulesError,
   SandboxForbiddenError,
   SandboxNotFoundError,
   SandboxNotOpenError,
@@ -38,6 +39,10 @@ export function sandboxErrorResponse(error: unknown): NextResponse | null {
   // derrière une IP partagée (campus, entreprise) qui atteindrait le plafond.
   if (error instanceof StarRateLimitedError) {
     return NextResponse.json({ error: error.message }, { status: 429 });
+  }
+  // Promotion : des règles de reward que le flow du challenge ne sait pas lire.
+  if (error instanceof InvalidRewardRulesError) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
   // Création, édition et promotion : un slug pris répond comme sur les challenges.
   return slugTakenResponse(error);

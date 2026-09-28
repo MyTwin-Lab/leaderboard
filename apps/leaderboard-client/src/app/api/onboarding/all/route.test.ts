@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockFindAllWithUsers, mockFetchContributorSession } = vi.hoisted(() => ({
+const { mockFindAllWithUsers, mockFetchContributorSession, mockModuleNotFoundResponse } = vi.hoisted(() => ({
   mockFindAllWithUsers: vi.fn(),
   mockFetchContributorSession: vi.fn(),
+  mockModuleNotFoundResponse: vi.fn(),
 }));
 
 vi.mock('@packages/database-service/repositories', () => ({
@@ -15,10 +16,15 @@ vi.mock('@/lib/contributor', () => ({
   fetchContributorSession: mockFetchContributorSession,
 }));
 
+vi.mock('@/lib/server/modules', () => ({
+  moduleNotFoundResponse: mockModuleNotFoundResponse,
+}));
+
 import { GET } from './route';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockModuleNotFoundResponse.mockResolvedValue(null);
 });
 
 describe('GET /api/onboarding/all', () => {
@@ -38,6 +44,17 @@ describe('GET /api/onboarding/all', () => {
     const res = await GET();
 
     expect(res.status).toBe(403);
+    expect(mockFindAllWithUsers).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 while the onboarding module is disabled', async () => {
+    mockFetchContributorSession.mockResolvedValue({ id: 'admin-1', role: 'admin' });
+    mockModuleNotFoundResponse.mockResolvedValue(Response.json({ error: 'Not found' }, { status: 404 }));
+
+    const res = await GET();
+
+    expect(res.status).toBe(404);
+    expect(mockModuleNotFoundResponse).toHaveBeenCalledWith('onboarding');
     expect(mockFindAllWithUsers).not.toHaveBeenCalled();
   });
 

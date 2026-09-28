@@ -6,14 +6,13 @@ import { NextRequest } from 'next/server';
 // dead zone and throw before any test runs.
 const {
   mockFindById, mockVerifyRequestToken, mockTeamFindByChallenge, mockIsManagerOfChallenge,
-  mockTasks, mockMeetings, mockRepos, mockContributions,
+  mockTasks, mockRepos, mockContributions,
 } = vi.hoisted(() => ({
   mockFindById: vi.fn(),
   mockVerifyRequestToken: vi.fn(),
   mockTeamFindByChallenge: vi.fn(),
   mockIsManagerOfChallenge: vi.fn(),
   mockTasks: vi.fn(),
-  mockMeetings: vi.fn(),
   mockRepos: vi.fn(),
   mockContributions: vi.fn(),
 }));
@@ -30,7 +29,6 @@ vi.mock('../../../../../../../../packages/database-service/repositories', () => 
   ChallengeRepoRepository: class { findByChallengeWithRepo = mockRepos; },
   ContributionRepository: class { findByChallenge = mockContributions; },
   ContributionMemberRepository: class { findByContributions = async () => []; },
-  SyncMeetingRepository: class { findByChallengeId = mockMeetings; },
 }));
 
 vi.mock('@/lib/auth', () => ({ verifyRequestToken: mockVerifyRequestToken }));
@@ -67,7 +65,6 @@ beforeEach(() => {
     { user_id: 'u1', workspace_url: 'https://github.com/org/repo/tree/contrib/3-alix', workspace_status: 'ready' },
   ]);
   mockTasks.mockResolvedValue([]);
-  mockMeetings.mockResolvedValue([]);
   mockRepos.mockResolvedValue([]);
   mockContributions.mockResolvedValue([]);
 });
@@ -84,8 +81,7 @@ describe('GET /api/challenges/[id]/overview', () => {
     expect(JSON.stringify(body)).not.toContain('workspace_url');
     expect(JSON.stringify(body)).not.toContain('contrib/3-alix');
     expect(body.participants).toEqual([{ user_id: 'u1', group_owner_id: null }]);
-    // Ni meetings lus, ni rôle vérifié : rien de tout ça ne sort pour un anonyme.
-    expect(mockMeetings).not.toHaveBeenCalled();
+    // Aucun rôle vérifié pour un anonyme.
     expect(mockIsManagerOfChallenge).not.toHaveBeenCalled();
   });
 
@@ -151,14 +147,14 @@ describe('GET /api/challenges/[id]/overview', () => {
     // Sa page publique est la vitrine, comme pour tout type passant par le
     // brief : on la lit, on rejoint, et le parcours vient après.
     mockVerifyRequestToken.mockResolvedValue(null);
-    mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'validation' });
+    mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'endpoint-validation' });
 
     expect((await get()).status).toBe(200);
   });
 
   it('still serves a validation challenge to a signed-in visitor', async () => {
     mockVerifyRequestToken.mockResolvedValue({ userId: 'u9', role: 'contributor' });
-    mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'validation' });
+    mockFindById.mockResolvedValue({ uuid: 'c1', title: 'A', status: 'active', type: 'endpoint-validation' });
 
     expect((await get()).status).toBe(200);
   });
@@ -178,9 +174,6 @@ describe('what a signed-in visitor sees', () => {
       { uuid: 't1', user_id: 'u1', status: 'done', title: 'Alix board task', description: 'alix notes' },
       { uuid: 't3', user_id: 'u3', status: 'todo', title: 'Dan board task', description: 'dan notes' },
     ]);
-    mockMeetings.mockResolvedValue([
-      { uuid: 'm1', title: 'Sync', status: 'scheduled', meet_link: 'https://meet.google.com/abc', calendar_event_id: 'cal-1', conference_id: 'conf-1', conference_record_id: 'rec-1', created_by: 'admin-1' },
-    ]);
     mockRepos.mockResolvedValue([
       { challenge_id: 'c1', repo_id: 'r1', role: null, repo_type: 'github', repo_title: 'org/repo', workspace_meta: { userUrls: { u1: 'https://x' } } },
     ]);
@@ -196,7 +189,7 @@ describe('what a signed-in visitor sees', () => {
   };
   const byKey = (rows: any[], key: string) => Object.fromEntries(rows.map(r => [r[key], r]));
 
-  it('a non-member gets progress only: no accounts, workspaces, meeting links or evaluations', async () => {
+  it('a non-member gets progress only: no accounts, workspaces or evaluations', async () => {
     const body = await as('u9');
     const serialised = JSON.stringify(body);
 
@@ -204,18 +197,17 @@ describe('what a signed-in visitor sees', () => {
     expect(serialised).not.toContain('google_user_id');
     expect(serialised).not.toContain('workspace_meta');
     expect(serialised).not.toContain('workspace_url');
-    expect(serialised).not.toContain('meet.google.com');
-    expect(serialised).not.toContain('cal-1');
     expect(serialised).not.toContain('Alix board task');
     expect(serialised).not.toContain('Dan board task');
     expect(byKey(body.tasks, 'uuid').t0.title).toBe('Template task');
     expect(byKey(body.tasks, 'uuid').t3).toEqual({ uuid: 't3', user_id: 'u3', status: 'todo', parent_task_id: null });
     expect(body.contributions.every((c: any) => c.evaluation === null)).toBe(true);
-    expect(body.meetings[0]).toMatchObject({ uuid: 'm1', title: 'Sync', status: 'scheduled' });
+    // Les meetings ont leur route, celle du module : l'overview ne les porte plus.
+    expect(body.meetings).toBeUndefined();
     expect(body.repos).toEqual([{ repo_id: 'r1', role: null, repo_type: 'github', repo_title: 'org/repo' }]);
   });
 
-  it('a member sees their own board, branch, evaluation and meeting link — not another contributor\'s', async () => {
+  it('a member sees their own board, branch and evaluation — not another contributor\'s', async () => {
     const body = await as('u3');
     const tasks = byKey(body.tasks, 'uuid');
     const participants = byKey(body.participants, 'user_id');
@@ -227,8 +219,6 @@ describe('what a signed-in visitor sees', () => {
     expect(participants.u1.workspace_url).toBeUndefined();
     expect(contributions.k3.evaluation).toEqual({ globalScore: 40 });
     expect(contributions.k1.evaluation).toBeNull();
-    expect(body.meetings[0].meet_link).toBe('https://meet.google.com/abc');
-    expect(body.meetings[0].calendar_event_id).toBeUndefined();
     expect(JSON.stringify(body)).not.toContain('alix@example.com');
   });
 
@@ -245,14 +235,13 @@ describe('what a signed-in visitor sees', () => {
     expect(participants.u3.workspace_url).toBeUndefined();
   });
 
-  it('a manager keeps tasks, participants and meetings whole, but not accounts or others\' evaluations', async () => {
+  it('a manager keeps tasks and participants whole, but not accounts or others\' evaluations', async () => {
     mockIsManagerOfChallenge.mockResolvedValue(true);
     const body = await as('m1');
 
     expect(mockIsManagerOfChallenge).toHaveBeenCalledWith('m1', CHALLENGE_ID);
     expect(byKey(body.tasks, 'uuid').t3.title).toBe('Dan board task');
     expect(byKey(body.participants, 'user_id').u3.workspace_status).toBe('ready');
-    expect(body.meetings[0].calendar_event_id).toBe('cal-1');
     expect(body.contributions.every((c: any) => c.evaluation === null)).toBe(true);
     expect(JSON.stringify(body)).not.toContain('alix@example.com');
     expect(JSON.stringify(body)).not.toContain('workspace_meta');
@@ -263,7 +252,6 @@ describe('what a signed-in visitor sees', () => {
 
     expect(mockIsManagerOfChallenge).not.toHaveBeenCalled();
     expect(byKey(body.participants, 'user_id').u1.workspace_url).toBe('https://github.com/org/repo/tree/contrib/3-alix');
-    expect(body.meetings[0].meet_link).toBe('https://meet.google.com/abc');
     expect(byKey(body.contributions, 'uuid').k3.evaluation).toEqual({ globalScore: 40 });
     expect(JSON.stringify(body)).not.toContain('google_user_id');
   });
@@ -275,7 +263,7 @@ describe('validation mode derivation', () => {
     // deux coquilles de page, qui lisent déjà cet endpoint.
     mockFindById.mockImplementation(async (id: string) =>
       id === CHALLENGE_ID
-        ? { uuid: CHALLENGE_ID, type: 'validation', status: 'active', source_challenge_id: 'code-ch-1' }
+        ? { uuid: CHALLENGE_ID, type: 'journey-validation', status: 'active', source_challenge_id: 'code-ch-1' }
         : { uuid: 'code-ch-1', type: 'code' }
     );
 

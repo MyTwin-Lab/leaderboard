@@ -2,49 +2,26 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronUp, ChevronDown, MousePointerClick, UserPlus, Star, CheckCircle, Video } from "lucide-react";
+import { ChevronUp, ChevronDown, Sparkles } from "lucide-react";
 import { OnboardingQuestItem } from "./OnboardingQuestItem";
-import { useOnboarding } from "./useOnboarding";
-import type { OnboardingProgress } from "../../../../../packages/database-service/domain/entities";
+import type { OnboardingQuestView } from "@/lib/server/onboarding";
 
 interface OnboardingDrawerProps {
-  initialProgress: OnboardingProgress;
+  /** Les quêtes installées, dans leur ordre, lues par le layout. */
+  quests: OnboardingQuestView[];
 }
 
-const QUESTS = [
-  {
-    key: "clicked_challenge" as const,
-    label: "Explore a challenge",
-    icon: <MousePointerClick className="h-4 w-4" />,
-  },
-  {
-    key: "assigned_task" as const,
-    label: "Assign yourself to a task",
-    icon: <UserPlus className="h-4 w-4" />,
-  },
-  {
-    key: "evaluated_contribution" as const,
-    label: "Evaluate a contribution",
-    icon: <Star className="h-4 w-4" />,
-  },
-  {
-    key: "validated_task" as const,
-    label: "Validate a task",
-    icon: <CheckCircle className="h-4 w-4" />,
-  },
-  {
-    key: "joined_meeting" as const,
-    label: "Join a meeting",
-    icon: <Video className="h-4 w-4" />,
-  },
-];
-
-export function OnboardingDrawer({ initialProgress }: OnboardingDrawerProps) {
+/**
+ * Le tiroir des quêtes d'onboarding. Lecture seule : une quête se valide côté
+ * serveur, par l'événement qui la complète, et apparaît cochée au rendu suivant.
+ */
+export function OnboardingDrawer({ quests }: OnboardingDrawerProps) {
   const [expanded, setExpanded] = useState(false);
-  const { progress, completedCount, totalSteps, isComplete } = useOnboarding(initialProgress);
+  const completedCount = quests.filter((quest) => quest.completed).length;
+  const totalSteps = quests.length;
 
   // Don't render if onboarding is complete
-  if (isComplete) return null;
+  if (totalSteps === 0 || completedCount === totalSteps) return null;
 
   return (
     <div
@@ -129,12 +106,12 @@ export function OnboardingDrawer({ initialProgress }: OnboardingDrawerProps) {
           )}
         >
           <div className="border-t border-white/5 px-2 py-2 space-y-0.5">
-            {QUESTS.map((quest) => (
+            {quests.map((quest) => (
               <OnboardingQuestItem
                 key={quest.key}
                 label={quest.label}
-                completed={progress[quest.key]}
-                icon={quest.icon}
+                completed={quest.completed}
+                icon={<Sparkles className="h-4 w-4" />}
               />
             ))}
           </div>

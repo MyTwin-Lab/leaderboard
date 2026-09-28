@@ -8,6 +8,7 @@ import { formatCP } from "@/lib/formatters";
 import { challengePath } from "@/lib/paths";
 import { coverShot } from "@/lib/coverImage";
 import { isPlaceholderChallenge } from "@/lib/challengeBrief";
+import { flowCatalog } from "@/distribution/mytwin.flows";
 import { VitrineAvatar } from "@/components/vitrine/VitrineAvatar";
 import { ArrowTinyIcon } from "@/components/vitrine/SearchIcon";
 import type { TeamMember } from "@/lib/types";
@@ -38,13 +39,6 @@ interface ChallengeCardProps {
   index?: number;
   onCardClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
-
-// Pas d'entrée pour `none` : un repère ne porte pas de pastille de type.
-const TYPE_LABEL: Record<string, string> = {
-  ml: "ML",
-  validation: "Validation",
-  code: "Code",
-};
 
 /** Les barres d'activité de la maquette : la plus haute en plein, les autres en clair. */
 function sparkBars(values: number[]) {
@@ -81,7 +75,7 @@ export function ChallengeCard({
 }: ChallengeCardProps) {
   const router = useRouter();
 
-  const normalizedType = (challengeType ?? "code").toLowerCase();
+  const normalizedType = (challengeType ?? flowCatalog.defaultKey).toLowerCase();
   const isPlaceholder = isPlaceholderChallenge(normalizedType);
   const done = challengeStatus === "completed";
   const dest = isAdmin ? `/admin/challenges/${challengeId}` : challengePath(challengeSlug);
@@ -129,8 +123,9 @@ export function ChallengeCard({
             {/* Un repère (`none`) n'a pas de type : c'est justement ce qui le
                 définit. Une pastille pour le dire n'apprend rien et occupe la
                 photo. */}
+            {/* Le nom vient du flow ; un repère (`none`) ne porte pas de pastille. */}
             {!isPlaceholder && (
-              <span className="v-card-tag">{TYPE_LABEL[normalizedType] ?? "Code"}</span>
+              <span className="v-card-tag">{flowCatalog.resolve(normalizedType).label}</span>
             )}
             {isMember && <span className="v-card-tag">✓ Joined</span>}
             <span className="v-ch-project-name-on-shot">{projectName}</span>

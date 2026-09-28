@@ -32,7 +32,7 @@ describe('isPublicApiRoute', () => {
   it('opens exactly the five read routes', () => {
     expect(isPublicApiRoute('/api/challenges/abc/overview')).toBe(true);
     expect(isPublicApiRoute('/api/challenges/abc/repo-activity')).toBe(true);
-    expect(isPublicApiRoute('/api/challenges/abc/ml-rewards')).toBe(true);
+    expect(isPublicApiRoute('/api/challenges/abc/rewards')).toBe(true);
     expect(isPublicApiRoute('/api/challenges/abc/brief')).toBe(true);
     expect(isPublicApiRoute('/api/contributions/abc/rewards')).toBe(true);
   });
@@ -56,7 +56,6 @@ describe('isPublicApiRoute', () => {
     for (const route of [
       '/api/challenges/abc/join',
       '/api/challenges/abc/close',
-      '/api/challenges/abc/sync',
       '/api/challenges/abc/workspace',
       '/api/challenges/abc/project-evaluation',
       '/api/challenges/abc/validation-runs',

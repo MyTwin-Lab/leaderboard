@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { SandboxPromotionService } from "../../../../../../../../packages/services/sandbox";
-import { parseMlRewardRules } from "../../../../../../../../packages/database-service/domain/mlRewardRules";
-import { parseCodeRewardRules } from "../../../../../../../../packages/database-service/domain/codeRewardRules";
+import { SANDBOX_MODULE, SandboxPromotionService } from "../../../../../../../../packages/services/sandbox";
 import { getSessionUser } from "@/lib/auth";
+import { moduleNotFoundResponse } from "@/lib/server/modules";
 import { sandboxErrorResponse } from "@/lib/server/sandboxErrors";
 import { slugField } from "@/lib/server/slugs";
 
@@ -23,7 +22,8 @@ const service = new SandboxPromotionService();
  *   peuvent pas naître d'une proposition.
  *
  * Tout le reste (projet, statut, dates, pool, règles de reward, compute, API
- * packaging, brief) reste à la main de l'admin.
+ * packaging, brief) reste à la main de l'admin. Les règles de reward sont lues
+ * par le service, avec le flow du challenge à naître.
  */
 const promoteSchema = z.object({
   /**
@@ -59,6 +59,9 @@ const promoteSchema = z.object({
  * préalable — deux POST concurrents ne peuvent pas produire deux challenges.
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const disabled = await moduleNotFoundResponse(SANDBOX_MODULE);
+  if (disabled) return disabled;
+
   try {
     // Rôle relu en base : le JWT garde l'ancien rôle jusqu'à son expiration.
     const session = await getSessionUser();
@@ -78,20 +81,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // Même validation qu'à la création d'un challenge : des règles illisibles
-    // seraient stockées telles quelles et le scoring ne trouverait rien.
-    const rewardRules =
-      parsed.data.reward_rules == null
-        ? null
-        : parseMlRewardRules(parsed.data.reward_rules) ?? parseCodeRewardRules(parsed.data.reward_rules);
-    if (parsed.data.reward_rules != null && !rewardRules) {
-      return NextResponse.json({ error: "Invalid reward_rules" }, { status: 400 });
-    }
-
     const { challenge } = await service.promote({
       sandboxId: id,
       actor: { userId: session.id, role: session.role },
-      input: { ...parsed.data, reward_rules: rewardRules },
+      input: parsed.data,
     });
 
     // La forme de la réponse est celle de `POST /api/challenges` : le tiroir

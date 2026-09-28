@@ -8,6 +8,8 @@ It turns the leaderboard from a task board — where MyTwin defines the work and
 
 **No self-serve creation from the listing.** The "Create your sandbox" strip at the bottom of `/sandbox`, `/challenges` and `/leaderboard` books a call with the team (`/book?for=project`, see [`booking.md`](./booking.md)) for everyone, signed in or not. `POST /api/sandboxes` and `CreateSandboxModal` are unchanged; the modal is only mounted on a sandbox's detail page, for editing. An admin creation screen is on the booking TODO.
 
+It is a product **module** (`modules/sandbox`), **enabled by default**, that an admin can turn off from the Modules tab of `/contributors/me` (see [`admin-settings.md`](./admin-settings.md)). Its star tiers and promotion bonus are the module's settings.
+
 **Requires:** nothing beyond the database.
 
 **Reference documents:** [`input/spec-sandbox.md`](./input/spec-sandbox.md) (functional spec, its section 0 lists the arbitrated trade-offs and wins on contradiction) and [`input/plan-sandbox.md`](./input/plan-sandbox.md) (implementation plan).
@@ -29,6 +31,14 @@ A sandbox is **not a challenge** and deliberately shares nothing with one:
 A sandbox has **no type**. `code` / `ml` decides which repos get created and which grid scores them — that is a challenge decision, and it is taken by the admin in the promotion drawer, not by the author at deposit time. (`validation` is excluded there too: a validation challenge derives from an existing ML challenge, it cannot be born from a proposal.)
 
 Collaboration is deliberately blocked before promotion. Other contributors cannot join a sandbox; they star it. Collaboration starts once it becomes a challenge.
+
+---
+
+## The module
+
+**Disabled** means gone, not hidden: `/api/sandboxes/**` and the sandbox admin routes answer 404, the `/sandbox` pages call `notFound()`, and the "Sandbox" entry of the public navigation disappears (the `publicNav` slot of `distribution/modules/sandbox.tsx`, rendered by the navbar and the footer). Existing proposals, stars and sandbox CP are kept.
+
+The module declares its settings schema (`modules/sandbox/settings.ts` — the star tiers and the promotion bonus, edited from the Modules tab), its CP source (the `sandbox_rewards` ledger) and the daily job `sandbox.ip-hashes.purge`. No flow declares anything for the sandbox: a proposal is an idea, and the admin chooses the challenge's flow at promotion.
 
 ---
 
@@ -73,10 +83,12 @@ There is **no cached total** — no equivalent of `contributions.reward`. A cont
 
 ### Settings
 
-Two columns on the singleton `app_settings` row, both inert by default so the feature pays nothing until an admin configures it:
+The module's settings live in `module_settings.settings` for the `sandbox` key, validated by `sandboxSettingsSchema`. Both are inert by default so the feature pays nothing until an admin configures it:
 
-- `sandbox_star_tiers` — `jsonb`, ordered list of `{ stars, cp }` with strictly increasing thresholds;
-- `sandbox_promotion_bonus_cp` — integer.
+- `star_tiers` — ordered list of `{ stars, cp }` with strictly increasing thresholds;
+- `promotion_bonus_cp` — integer.
+
+They were copied from the former `app_settings.sandbox_*` columns, which are no longer read and are dropped in challenge 020, L7.
 
 ---
 
@@ -87,7 +99,7 @@ Stars are not decoration — they are the platform's demand signal, and crossing
 The admin defines an ordered list of milestones, as many as they want, plus a promotion bonus:
 
 ```json
-{ "tiers": [ { "stars": 5, "cp": 50 }, { "stars": 15, "cp": 100 }, { "stars": 50, "cp": 300 } ],
+{ "star_tiers": [ { "stars": 5, "cp": 50 }, { "stars": 15, "cp": 100 }, { "stars": 50, "cp": 300 } ],
   "promotion_bonus_cp": 200 }
 ```
 
@@ -128,7 +140,7 @@ A paid milestone is never taken back, so a star → unstar wave has to leave som
 
 The IP is stored as an HMAC — never in clear — and serves **only** to cap the rate (30 anonymous stars per hour). Making it carry uniqueness would have been a mistake: a campus or a company leaves through a single address, so real users would block each other. The 429 message invites signing in, which is the way out for someone genuinely behind a shared IP.
 
-**GDPR:** server-side salt, hashes purged after 30 days by an opportunistic update on every star write — no extra cron. `anon_id` is a random value with no link to a person and is kept. No user agent is stored.
+**GDPR:** server-side salt, hashes purged after 30 days — by an opportunistic update on every star write, and by the module's daily job `sandbox.ip-hashes.purge` (`modules/sandbox/retention.ts`) so that hashes do not outlive the announced period when nobody stars. `anon_id` is a random value with no link to a person and is kept. No user agent is stored.
 
 ### Signing in attaches anonymous stars
 
@@ -151,15 +163,16 @@ What it costs: someone signed out on their own browser sees "not starred" on a s
 Since milestones are never reverted automatically, a fraudulent wave has to be undoable by hand: admin routes list a sandbox's stars grouped by origin, hashed IP and day, delete them by id, by hashed IP or by time window, and delete a reward row — which lowers the leaderboard total immediately, there being no cache.
 
 One thing to know: if the counter is still above a threshold after cleanup, the milestone will be **paid again on the next star**. The unique index prevents duplicates, not re-creation — and at that point the milestone is legitimate.
+
 ---
 
 ## Reading CP back
 
-Sandbox CP count in the ranking, and they get there through **one injection point**: `aggregateUsersByContribution()` in `lib/leaderboard.ts` takes the sandbox ledger as an optional argument and adds it to the totals **without touching the contribution counts** — the treatment already given to `discussion` CP, since a crossed milestone rewards a proposal rather than adding a contribution.
+Sandbox CP count in the ranking as a **CP source**: the module declares `cpSource`, the core reads every installed source (`packages/capabilities/economy.ts`), and `aggregateUsersByContribution()` in `lib/leaderboard.ts` adds them to the totals **without touching the contribution counts** — the treatment already given to `discussion` CP, since a crossed milestone rewards a proposal rather than adding a contribution.
 
 | Path | What it reads |
 |---|---|
-| `fetchLeaderboard` | the whole ledger, injected into the aggregation |
+| `fetchLeaderboard` | every CP source, added to the aggregation |
 | `fetchContributorProfile` | the same for the global rank, plus this user's rows for `totalCP` and the Sandbox block |
 | `fetchHomeOverview` | the same, and the "CP distributed" stat — without it the podium would show more CP than the global figure |
 
@@ -187,7 +200,7 @@ Already-generated digests are immutable, so the tab renders the section only whe
 
 ## UI
 
-**Navigation.** Sandbox replaces About in the main navigation. `/about` is parked (`noindex`, see [`seo.md`](./seo.md)): the home hero and the footer no longer link to it, only the "How MyTwin Lab works" link in the listing header still does — in the "see all" link style, whose arrow lives in `components/home/ArrowIcon.tsx`.
+**Navigation.** Sandbox is in the main navigation as the module's `publicNav` entry — shown only while the module is enabled (`distribution/modules/sandbox.tsx`, rendered by the navbar and the footer through `ModuleNavLinks`). `/about` is gone with the redesign; the Lab's story lives on `/vision`.
 
 **Listing** (`/sandbox`) — search over title, author and context; most-starred first; `Open` / `Promoted` / `Mine` pills with counts; header stats. Chaque carte porte l'image de couverture posée par l'auteur, ou une illustration de repli (`lib/coverImage.ts`). A promoted card's call to action links to the challenge it became, not back to the sandbox. An archived sandbox appears only under `Mine`, and only for its author.
 
@@ -217,7 +230,7 @@ Two traps `globals.css` sets, both of which caught these components before being
 - **An opaque `bg-white` stays white in light mode.** The stylesheet only rewrites the *translucent* whites (`bg-white/<opacity>`) and `text-white*`. A solid white pill therefore disappears on a light page. Use `bg-foreground` / `text-background`, which swap with the theme — that is what `TabPills` does, and its own comment says so.
 - **Light mode sets the colour of every `svg`.** An icon inside a dark-filled button renders dark on dark. An inline `style={{ color: "var(--background)" }}` beats that rule, which carries no `!important`.
 
-**Admin tab.** A "Sandbox" tab on `/contributors/me` holds the tier rows, the promotion bonus, and the star audit — see [`admin-settings.md`](./admin-settings.md).
+**Admin.** The Sandbox card of the Modules tab on `/contributors/me` switches the module on or off and holds the tier rows, the promotion bonus and the star audit (`SandboxSettings`, saved through `PATCH /api/modules/sandbox`) — see [`admin-settings.md`](./admin-settings.md).
 
 ---
 
@@ -233,7 +246,9 @@ What tells an admin a proposal is worth promoting is its stars.
 
 ## Promotion
 
-An admin turns a convincing proposal into an official challenge. **The type is chosen here**, in the drawer: a proposal does not carry one, and `code` / `ml` decides which repos get created and which grid scores them. `validation` is not offered — a validation challenge derives from an existing ML challenge. Everything else (project, pool, reward rules, dates, compute, brief) is the admin's call too, filled in through the usual challenge drawer, pre-filled from the sandbox — the address included: the challenge takes the sandbox's slug when it is free among challenges, so `/sandbox/mykine` becomes `/challenges/mykine`.
+An admin turns a convincing proposal into an official challenge. **The type is chosen here**, in the drawer: a proposal does not carry one, and `code` / `ml` decides which repos get created and which grid scores them. `validation` and `annotation` are not offered — a validation challenge derives from an existing challenge, an annotation challenge from a campaign. Everything else (project, pool, reward rules, dates, compute, brief) is the admin's call too, filled in through the usual challenge drawer, pre-filled from the sandbox — the address included: the challenge takes the sandbox's slug when it is free among challenges, so `/sandbox/mykine` becomes `/challenges/mykine`.
+
+The challenge is born as it would be from the creation route: its reward rules are read by the chosen flow (`parseFlowRules`), its configuration validated and stored in the flow's current version (`prepareFlowConfig` — `own_repo` for a code challenge, the compute extension for an ML one), its repos decided by the flow's `onCreate` hook (`creationRepos`). The promotion bonus comes from the module's settings.
 
 ### One transaction, guarded on the way in
 
@@ -258,7 +273,7 @@ The author is a member of their challenge from the moment it is promoted — no 
 
 **Nothing is carried over any more.** Promotion used to copy the sandbox's repo, dataset and model into already-scored contributions, then run `MlRewardsService.award` on each. Those three fields no longer exist, so the whole path — `buildAuthorContributions`, `seedMlWorkspaceMeta`, `scheduleAuthorWork` and the `contributionRepo` / `awardMl` dependencies — is gone. The author submits from the challenge like everyone else, which also means promotion no longer fires an agent call.
 
-The contribution titles and the artifact flag live in `ML_ROLE_RULE` (`packages/services/challenge/mlRoles.ts`), shared with the workspace route: two paths write these contributions now, and a carried-over one has to be indistinguishable from a submitted one.
+The contribution titles and the artifact flag live in `ML_ROLE_RULE` (`packages/services/challenge/mlRoles.ts`), shared with the workspace action: two paths write these contributions now, and a carried-over one has to be indistinguishable from a submitted one.
 
 ### After promotion
 
@@ -268,7 +283,7 @@ The sandbox is marked `promoted` and linked to the challenge; its card in the li
 
 ## API and visibility
 
-The listing and the detail pages are **public**. Creating, editing, evaluating, archiving and promoting all require an account — see the role table in [`auth.md`](./auth.md) and the routes in [`api.md`](./api.md).
+The listing and the detail pages are **public**. Creating, editing, evaluating, archiving and promoting all require an account — see the role table in [`auth.md`](./auth.md) and the routes in [`api.md`](./api.md). With the module disabled, every one of them answers 404.
 
 `/api/sandboxes/**` sits deliberately **outside the proxy matcher**, like `/api/admin/*`: its writes are open to anonymous visitors, which no proxy exception can express, so each handler authenticates itself. One consequence: no silent token refresh runs there, and an expired session would read as anonymous. The sandbox pages fetch `/api/contributors/me`, which *is* in the matcher, and that is what refreshes the session.
 

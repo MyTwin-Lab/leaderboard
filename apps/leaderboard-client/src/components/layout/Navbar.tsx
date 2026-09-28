@@ -1,6 +1,7 @@
 "use client";
 
 import { ContributorBadge } from "@/components/contributor/ContributorBadge";
+import { useModuleSlots } from "@/distribution/mytwin.modules";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { MyTwinLogo } from "./MyTwinLogo";
@@ -21,11 +22,12 @@ interface NavbarProps {
   } | null;
 }
 
-// Pas de « Home » : c'est le logo, à gauche, qui y mène.
-const NAV_LINKS = [
+// Pas de « Home » : c'est le logo, à gauche, qui y mène. Les entrées des
+// modules actifs (la sandbox) suivent celles du core, et disparaissent avec
+// leur module (`publicNav`, distribution/mytwin.modules.tsx).
+const CORE_NAV_LINKS = [
   { name: "Leaderboard", path: "/leaderboard" },
   { name: "Challenges", path: "/challenges" },
-  { name: "Sandbox", path: "/sandbox" },
 ];
 
 /** Le défilement au-delà duquel la barre se détache en îlot. */
@@ -33,6 +35,11 @@ const SCROLL_THRESHOLD = 8;
 
 export const Navbar = ({ session }: NavbarProps) => {
   const pathname = usePathname();
+  const { slots } = useModuleSlots();
+  const navLinks = [
+    ...CORE_NAV_LINKS,
+    ...slots.flatMap((slot) => slot.publicNav ?? []).map((item) => ({ name: item.label, path: item.href })),
+  ];
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -73,7 +80,7 @@ export const Navbar = ({ session }: NavbarProps) => {
             ne bouge pas — seul le burger devient une croix. */}
         <div id="lab-nav-menu" className="lab-nav-menu" inert={!menuOpen}>
           <ul>
-            {NAV_LINKS.map((link, index) => (
+            {navLinks.map((link, index) => (
               <li key={link.path} style={{ "--i": index } as React.CSSProperties}>
                 <Link
                   href={link.path}
@@ -85,7 +92,7 @@ export const Navbar = ({ session }: NavbarProps) => {
                 </Link>
               </li>
             ))}
-            <li className="lab-nav-menu-account" style={{ "--i": NAV_LINKS.length } as React.CSSProperties}>
+            <li className="lab-nav-menu-account" style={{ "--i": navLinks.length } as React.CSSProperties}>
               <Link
                 href={session ? "/contributors/me" : "/signin?from=/contributors/me"}
                 className="lab-nav-menu-link"
@@ -117,7 +124,7 @@ export const Navbar = ({ session }: NavbarProps) => {
 
             <nav aria-label="Main" className="lab-nav-links">
               <ul>
-                {NAV_LINKS.map((link) => (
+                {navLinks.map((link) => (
                   <li key={link.path}>
                     <Link
                       href={link.path}

@@ -1,4 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const { mockModuleEnabled } = vi.hoisted(() => ({
+  mockModuleEnabled: vi.fn(async (_key: string) => true),
+}));
+
+vi.mock("@packages/capabilities/modules", () => ({
+  modules: { enabled: mockModuleEnabled },
+}));
+
 import { repositories } from "@/lib/db";
 import { challengeJsonLd, challengeMetadata, contributorMetadata, fetchSitemap, sandboxJsonLd, sandboxMetadata } from "./seo";
 
@@ -124,12 +133,13 @@ describe("contributorMetadata", () => {
 describe("fetchSitemap", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    mockModuleEnabled.mockImplementation(async () => true);
   });
 
   it("lists only what an anonymous visitor can open, and no contributor profile", async () => {
     vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([
       challenge({ slug: "public-one" }),
-      challenge({ slug: "public-validation", type: "validation" }),
+      challenge({ slug: "public-validation", type: "endpoint-validation" }),
       challenge({ slug: "hidden-draft", status: "draft" }),
       challenge({ slug: "hidden-archived-challenge", status: "archived" }),
     ] as any);
@@ -142,9 +152,24 @@ describe("fetchSitemap", () => {
 
     expect(urls).toContain("https://mytwinlab.care/challenges/public-one");
     expect(urls).toContain("https://mytwinlab.care/challenges/public-validation");
+    expect(urls).toContain("https://mytwinlab.care/sandbox");
     expect(urls).toContain("https://mytwinlab.care/sandbox/open-one");
     // Les slugs de fixture portent « hidden » : ni brouillon, ni archivé, ni
     // profil ne doit apparaître. Un archivé se lit, mais ne se référence pas.
     expect(urls.some((url) => /hidden|contributors/.test(url))).toBe(false);
+  });
+
+  it("lists no sandbox page while the sandbox module is disabled", async () => {
+    mockModuleEnabled.mockImplementation(async (key) => key !== "sandbox");
+    vi.spyOn(repositories.challenge, "findAll").mockResolvedValue([challenge({ slug: "public-one" })] as any);
+    const findSandboxes = vi.spyOn(repositories.sandbox, "findAll").mockResolvedValue([sandbox({ slug: "open-one" })] as any);
+
+    const urls = (await fetchSitemap()).map((entry) => entry.url);
+
+    expect(urls).toContain("https://mytwinlab.care/challenges/public-one");
+    // Ni la liste, ni une proposition : ces pages répondent 404.
+    expect(urls.some((url) => url.includes("/sandbox"))).toBe(false);
+    expect(findSandboxes).not.toHaveBeenCalled();
+    expect(mockModuleEnabled).toHaveBeenCalledWith("sandbox");
   });
 });

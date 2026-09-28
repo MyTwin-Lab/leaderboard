@@ -3,7 +3,7 @@
 Complete step-by-step guide to configure GitHub for the Leaderboard application. There are two ways to give the app a GitHub token, and you only need one:
 
 - **Static token (`.env`)** — a Fine-Grained Personal Access Token set as `GITHUB_TOKEN`. Simple, works everywhere, but shared by the whole instance and must be rotated manually.
-- **In-app OAuth connection (recommended)** — an admin connects a GitHub organization account from the UI (`/contributors/me` → Appearance tab). The resulting token is encrypted and stored in the database, and can be swapped or disconnected without touching server config. See [`admin-settings.md`](./admin-settings.md) for how it behaves; this guide covers registering the GitHub OAuth App it needs.
+- **In-app OAuth connection (recommended)** — an admin connects a GitHub organization account from the UI (`/contributors/me` → Integrations tab). The resulting token is encrypted and stored in the database, and can be swapped or disconnected without touching server config. See [`admin-settings.md`](./admin-settings.md) for how it behaves; this guide covers registering the GitHub OAuth App it needs.
 
 If both are configured, the app prefers the in-app connection and only falls back to `GITHUB_TOKEN` when nothing is connected.
 
@@ -85,7 +85,9 @@ Use this if you want admins to connect/disconnect GitHub accounts from the UI, w
 | Field | Value |
 |-------|-------|
 | Homepage URL | `http://localhost:3000` (or your production URL) |
-| Authorization callback URL | `http://localhost:3000/api/github-oauth/callback` (or your production URL + the same path) |
+| Authorization callback URL | `http://localhost:3000/api/integrations/github/callback` (or your production URL + the same path) |
+
+   An app registered with the former path, `/api/github-oauth/callback`, keeps working: that route remains as an alias until challenge 020 L7.
 
 3. Click **Register application**
 4. Copy the **Client ID**, then click **Generate a new client secret** and copy it too
@@ -103,7 +105,7 @@ openssl rand -hex 32
 ```env
 GITHUB_CLIENT_ID=Iv1.xxxxxxxxxxxxxxxx
 GITHUB_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/api/github-oauth/callback
+GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/api/integrations/github/callback
 GITHUB_TOKEN_ENCRYPTION_KEY=<output of openssl rand -hex 32>
 ```
 
@@ -111,7 +113,7 @@ Copy to `apps/leaderboard-client/.env.local` as well.
 
 ### Step D: Connect via the UI
 
-Log in as an admin → `/contributors/me` → **Appearance** tab → **Connect GitHub Account**. GitHub will ask you to authorize the app. The account must be an **owner or admin of a GitHub organization** — personal accounts without an org are rejected with a clear error.
+Log in as an admin → `/contributors/me` → **Integrations** tab → **Connect** on the GitHub card. GitHub will ask you to authorize the app. The account must be an **owner or admin of a GitHub organization** — personal accounts without an org are rejected with a clear error.
 
 ---
 
@@ -128,7 +130,7 @@ GITHUB_TOKEN=github_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```env
 GITHUB_CLIENT_ID=Iv1.xxxxxxxxxxxxxxxx
 GITHUB_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/api/github-oauth/callback
+GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/api/integrations/github/callback
 GITHUB_TOKEN_ENCRYPTION_KEY=<64 hex chars>
 ```
 
@@ -147,7 +149,7 @@ Both sets of variables are optional at startup — the app runs fine with neithe
 
 ### Test the OAuth Connection specifically
 
-1. Log in as an admin, go to `/contributors/me` → Appearance
+1. Log in as an admin, go to `/contributors/me` → Integrations
 2. Click **Connect GitHub Account**, authorize on GitHub
 3. You should be redirected back with the connection showing as active (org name, masked token, connected-by)
 4. Click **Disconnect** — connectors should fall back to `GITHUB_TOKEN` (or fail gracefully if that isn't set either)
@@ -208,23 +210,24 @@ Connector Flow:
   Activity fetched         → commits + PRs + PR reviews + branches, merged into a timeline
 
 Branch Provisioner Flow:
-  Task assigned            → git.getRef() on base branch
+  Contributor joins        → git.getRef() on base branch
                             → git.createRef() creates new branch
                             → repos.updateBranchProtection() restricts push access
 
 OAuth Connection Flow:
-  Admin clicks Connect      → GET /api/github-oauth/authorize → GitHub consent screen
-  GitHub authorizes         → GET /api/github-oauth/callback
+  Admin clicks Connect      → GET /api/integrations/github/authorize → GitHub consent screen
+  GitHub authorizes         → GET /api/integrations/github/callback
                             → validates org admin/owner membership
-                            → encrypts token, stores in app_settings
-  Admin clicks Disconnect   → DELETE /api/github-oauth/connection → falls back to .env
+                            → encrypts token, stores it in integration_credentials
+  Admin clicks Disconnect   → DELETE /api/integrations/github/connection → falls back to .env
 ```
 
 **Key files:**
 
-- `packages/connectors/implementation/Github.connector.ts` — commit/activity fetching & file content
-- `packages/provisioner/src/providers/github-branch.provider.ts` — branch creation & protection
+- `content/connectors/github/connector.ts` — commit/activity fetching & file content
+- `content/connectors/github/integration.ts` — the OAuth declaration: authorize URL, code exchange, org check
+- `content/workspace-providers/github-branch/provider.ts` — branch creation & protection, with the token of the GitHub connection read at each call (`GITHUB_TOKEN` as a fallback until challenge 020 L7)
 - `packages/connectors/registry.ts` — connector factory (maps repo type `github` to the connector)
-- `packages/config/githubToken.ts` — token resolution (DB connection, falls back to `.env`)
-- `apps/leaderboard-client/src/app/api/github-oauth/` — OAuth authorize/callback/status/connection routes
+- `packages/config/githubToken.ts` — token resolution (credentials store, falls back to `GITHUB_TOKEN` until challenge 020 L7)
+- `apps/leaderboard-client/src/app/api/integrations/[key]/` — generic authorize/callback/status/connection routes (`/api/github-oauth/callback` kept as an alias)
 - `packages/config/index.ts` — environment variable validation

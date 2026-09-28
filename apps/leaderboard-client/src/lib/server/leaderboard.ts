@@ -3,6 +3,11 @@ import "server-only";
 import { repositories } from "@/lib/db";
 import { aggregateUsersByContribution, buildProjectFilters, rankEntries } from "@/lib/leaderboard";
 import type { ContributorProfile, LeaderboardResponse } from "@/lib/types";
+import {
+  countsAsContribution,
+  listExternalRewards,
+  profileAggregateOf,
+} from "../../../../../packages/capabilities/economy";
 
 export class ProjectNotFoundError extends Error {
   constructor(projectId: string) {
@@ -15,16 +20,17 @@ export async function fetchLeaderboard(
   projectId?: string,
   timePeriod?: "all" | "month" | "week"
 ): Promise<LeaderboardResponse> {
-  const [projects, contributions, challenges, users, contributionMembers, sandboxRewards] =
+  const [projects, contributions, challenges, users, contributionMembers, externalRewards] =
     await Promise.all([
       repositories.project.findAll(),
       repositories.contribution.findAll(),
       repositories.challenge.findAll(),
       repositories.user.findAll(),
       repositories.contributionMember.findAll(),
-      // Ledger sandbox complet : l'agrégation le filtre elle-même par période,
-      // et l'écarte entièrement dès qu'un projet est sélectionné.
-      repositories.sandboxReward.findAll(),
+      // CP gagnés hors challenge (sources déclarées par les modules installés) :
+      // l'agrégation les filtre elle-même par période, et les écarte entièrement
+      // dès qu'un projet est sélectionné.
+      listExternalRewards(),
     ]);
 
   let selectedProjectId: string | null = null;
@@ -41,7 +47,7 @@ export async function fetchLeaderboard(
     challenges,
     users,
     contributionMembers,
-    sandboxRewards,
+    externalRewards,
     projectId: selectedProjectId,
     timePeriod: timePeriod ?? "all",
   });
@@ -64,7 +70,7 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
 
   const [
     ownContributions, challenges, projects, allContributions, allUsers, myShares, allMembers,
-    mySandboxes, mySandboxRewards, allSandboxRewards,
+    mySandboxes, mySandboxRewards, externalRewards,
   ] = await Promise.all([
     repositories.contribution.findByUser(userId),
     repositories.challenge.findAll(),
@@ -77,9 +83,9 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     // garde ses CP, il doit donc rester lisible sur la fiche.
     repositories.sandbox.findByUser(userId),
     repositories.sandboxReward.findByUser(userId),
-    // Le ledger complet, pour que le rang global se calcule sur les mêmes
-    // totaux que le classement lui-même.
-    repositories.sandboxReward.findAll(),
+    // Toutes les sources de CP hors challenge, pour que le total et le rang se
+    // calculent sur les mêmes lignes que le classement lui-même.
+    listExternalRewards(),
   ]);
 
   // `findByUser` ne voit que ce qu'on a soumis : sur une contribution de
@@ -110,9 +116,15 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
   const projectById = new Map(projects.map((project) => [project.uuid, project]));
 
   const aggregatedMap = new Map<string, ContributorProfile["challenges"][number]>();
-  // CP gagnés via les signaux Slack, par challenge. Ils comptent dans le total
-  // du contributeur mais pas dans sa part du pool (ils sont hors pool).
-  const discussionCpByChallenge = new Map<string, number>();
+  // CP des contributions agrégées (signaux de discussion…), par challenge. Ils
+  // comptent dans le total du contributeur mais pas dans sa part du pool.
+  const aggregateCpByChallenge = new Map<string, number>();
+  // Les agrégats à résumer en chips, avec le résumé que leur type déclare.
+  const pendingSummaries: Array<{
+    challengeId: string;
+    target: NonNullable<ContributorProfile["challenges"][number]["aggregates"]>[number];
+    summarize: NonNullable<ReturnType<typeof profileAggregateOf>>["summarize"];
+  }> = [];
 
   for (const contribution of contributions) {
     const challenge = challengeById.get(contribution.challenge_id);
@@ -136,10 +148,15 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
       aggregatedMap.set(challenge.uuid, entry);
     }
 
-    if (contribution.type === "discussion") {
+    if (!countsAsContribution(contribution.type)) {
       // Affichée en chips agrégées, pas dans la liste des contributions.
-      entry.discussion = { contributionId: contribution.uuid, totalCp: reward, signals: [] };
-      discussionCpByChallenge.set(challenge.uuid, reward);
+      aggregateCpByChallenge.set(challenge.uuid, (aggregateCpByChallenge.get(challenge.uuid) ?? 0) + reward);
+      const profileAggregate = profileAggregateOf(contribution.type);
+      if (profileAggregate) {
+        const target = { contributionId: contribution.uuid, title: profileAggregate.title, totalCp: reward, chips: [] };
+        (entry.aggregates ??= []).push(target);
+        pendingSummaries.push({ challengeId: challenge.uuid, target, summarize: profileAggregate.summarize });
+      }
     } else {
       entry.contributions.push({
         id: contribution.uuid,
@@ -155,7 +172,7 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     }
 
     entry.reward += reward;
-    const poolReward = entry.reward - (discussionCpByChallenge.get(challenge.uuid) ?? 0);
+    const poolReward = entry.reward - (aggregateCpByChallenge.get(challenge.uuid) ?? 0);
     entry.contributionShare =
       challenge.contribution_points_reward > 0
         ? poolReward / challenge.contribution_points_reward
@@ -164,40 +181,14 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
 
   const aggregated = Array.from(aggregatedMap.values());
 
-  // Détail des signaux par challenge : agrégat du ledger (count + CP par
-  // signal), libellés depuis les définitions du challenge, avec repli sur le
-  // label historisé dans le ledger si le signal a été supprimé depuis.
+  // Chips de chaque contribution agrégée, produites par le flow ou l'extension
+  // qui en déclare le type.
   await Promise.all(
-    aggregated
-      .filter((entry) => entry.discussion)
-      .map(async (entry) => {
-        const [ledgerEntries, definitions] = await Promise.all([
-          repositories.rewardEntry.findByContribution(entry.discussion!.contributionId),
-          repositories.challengeSignal.findByChallenge(entry.id),
-        ]);
-        const definitionById = new Map(definitions.map((d) => [d.uuid, d]));
-
-        const bySignal = new Map<string, { label: string; icon: string | null; count: number; totalCp: number }>();
-        for (const ledgerEntry of ledgerEntries) {
-          if (ledgerEntry.rule_key !== "slack_signal") continue;
-          const signalId = String(ledgerEntry.meta?.signal_id ?? "unknown");
-          const definition = definitionById.get(signalId);
-          const existing = bySignal.get(signalId) ?? {
-            label: definition?.label ?? String(ledgerEntry.meta?.signal_label ?? "Signal"),
-            icon: definition?.icon ?? null,
-            count: 0,
-            totalCp: 0,
-          };
-          existing.count += 1;
-          existing.totalCp += ledgerEntry.points;
-          bySignal.set(signalId, existing);
-        }
-
-        entry.discussion!.signals = [...bySignal.entries()]
-          .map(([signalId, s]) => ({ signalId, ...s }))
-          .sort((a, b) => b.totalCp - a.totalCp);
-      })
+    pendingSummaries.map(async ({ challengeId, target, summarize }) => {
+      target.chips = await summarize({ challengeId, contributionId: target.contributionId });
+    })
   );
+
   // Ledger sandbox du contributeur, regroupé par sandbox. `contributionShare`
   // n'est pas touché : il reste la part du pool d'un challenge, et un sandbox
   // n'a pas de pool.
@@ -224,11 +215,14 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
   }
   const sandboxes = [...sandboxesMap.values()].sort((a, b) => b.totalCP - a.totalCP);
 
-  // Le total affiché est celui qui classe : challenges **plus** sandbox. Sans
-  // les seconds, la fiche contredirait le rang qu'elle annonce juste à côté.
+  // Le total affiché est celui qui classe : challenges **plus** CP hors
+  // challenge. Sans les seconds, la fiche contredirait le rang qu'elle annonce
+  // juste à côté.
   const challengesCP = aggregated.reduce((acc, item) => acc + item.reward, 0);
-  const sandboxCP = mySandboxRewards.reduce((acc, reward) => acc + reward.points, 0);
-  const totalCP = challengesCP + sandboxCP;
+  const externalCP = externalRewards
+    .filter((reward) => reward.user_id === userId)
+    .reduce((acc, reward) => acc + reward.points, 0);
+  const totalCP = challengesCP + externalCP;
 
   // Calculate global rank
   const globalAggregated = aggregateUsersByContribution({
@@ -236,7 +230,7 @@ export async function fetchContributorProfile(userId: string, viewerId?: string 
     challenges,
     users: allUsers,
     contributionMembers: allMembers,
-    sandboxRewards: allSandboxRewards,
+    externalRewards,
     projectId: null,
     timePeriod: "all",
   });

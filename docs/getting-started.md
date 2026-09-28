@@ -52,18 +52,12 @@ GITHUB_TOKEN=
 # Optional — only needed for the in-app GitHub OAuth connection (see github-setup.md)
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
-GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/api/github-oauth/callback
+GITHUB_OAUTH_REDIRECT_URI=http://localhost:3000/api/integrations/github/callback
 GITHUB_TOKEN_ENCRYPTION_KEY=
 
 # Optional — only needed for Kaggle (ML challenges) if not connected via the UI
 KAGGLE_USERNAME=
 KAGGLE_KEY=
-
-# Optional — only needed for Google Drive connector
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REFRESH_TOKEN=
-GOOGLE_FOLDER_ID=
 
 # Optional — only needed for sync meetings (Google Workspace)
 GOOGLE_WORKSPACE_SERVICE_ACCOUNT_EMAIL=
@@ -152,7 +146,7 @@ The app runs at [http://localhost:3000](http://localhost:3000).
 | `Invalid environment configuration: JWT_SECRET…` | Make sure `JWT_SECRET` is at least 32 characters in your `.env` |
 | Drizzle or seed can't connect | Check that Postgres is running, `DATABASE_URL` is correct, and the DB/user exist |
 | API calls fail but app starts | Make sure you copied `.env` to `apps/leaderboard-client/.env.local` |
-| `next build` fails with missing `OPENAI_API_KEY` | Use `npm run prod:min` for production, or set the key in `.env` |
+| An AI evaluation fails with "OpenAI API key is not configured" | Connect OpenAI in the admin Integrations, or set `OPENAI_API_KEY` in `.env` — the build itself never needs the key |
 
 ---
 

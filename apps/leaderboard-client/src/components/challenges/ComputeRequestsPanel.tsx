@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { extensionActionUrl } from '@/lib/challengeActions';
+
+/** Les demandes passent par les actions de l'extension compute. */
+const COMPUTE = 'compute';
 
 interface ComputeRequestItem {
   id: string;
@@ -50,7 +54,7 @@ function RequestRow({ challengeId, item, onChanged }: { challengeId: string; ite
   async function decide(decision: 'approve' | 'reject' | 'retry') {
     setActing(decision);
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/compute-requests/${item.id}/decision`, {
+      const res = await fetch(extensionActionUrl(challengeId, COMPUTE, `requests/${item.id}/decision`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ decision }),
@@ -119,7 +123,7 @@ export function ComputeRequestsPanel({ challengeId, open }: { challengeId: strin
   const wasOpen = useRef(false);
 
   const load = () => {
-    fetch(`/api/challenges/${challengeId}/compute-requests`)
+    fetch(extensionActionUrl(challengeId, COMPUTE, 'requests'))
       .then(res => (res.ok ? res.json() : { requests: [] }))
       .then(d => setRequests(d.requests ?? []))
       .finally(() => setLoading(false));

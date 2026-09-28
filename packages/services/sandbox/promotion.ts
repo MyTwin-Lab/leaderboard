@@ -64,13 +64,14 @@ export interface PromotedChallengeDraft {
   completion: number;
   project_id: string;
   reward_rules: unknown;
-  compute_enabled: boolean;
+  /**
+   * La configuration candidate du flow (`workspace_mode` d'un code, l'extension
+   * compute d'un ml), validée par le flow à l'écriture (`prepareFlowConfig`).
+   */
+  flow_config: Record<string, unknown>;
   /** La couverture de la proposition, reprise telle quelle. */
   cover_image_url: string | null;
-  workspace_mode: "own_repo" | null;
   source_challenge_id: null;
-  cp_per_validation: null;
-  required_validations: null;
 }
 
 /** '' d'un input date vide vaut « pas de date », comme à la création. */
@@ -110,17 +111,25 @@ export function buildPromotedDescription(
 }
 
 /**
+ * La configuration du flow que décide la promotion.
+ *
+ * `workspace_mode: 'own_repo'` est forcé pour un challenge `code` : l'auteur
+ * déclarera son dépôt comme les autres participants, il n'y a pas de repo
+ * partagé à provisionner ni de branche à lui créer. Un `ml` n'a pas de mode ;
+ * seule l'extension compute s'y règle, et jamais sur un `code`.
+ */
+export function buildPromotedFlowConfig(type: "code" | "ml", input: Pick<PromotionInput, "compute_enabled">): Record<string, unknown> {
+  if (type === "code") return { workspace_mode: "own_repo" };
+  return { extensions: { compute: { enabled: input.compute_enabled ?? false } } };
+}
+
+/**
  * Le challenge que devient la proposition.
  *
  * **Le type est choisi ici, par l'admin.** Une proposition n'en porte plus :
  * `code` / `ml` décide des repos à créer et de la grille d'évaluation, c'est
  * donc une décision de challenge, pas de proposition. `code` par défaut, la
  * forme la plus courante.
- *
- * `workspace_mode: 'own_repo'` est forcé pour un challenge `code` : l'auteur
- * déclarera son dépôt comme les autres participants, il n'y a pas de repo
- * partagé à provisionner ni de branche à lui créer. La colonne reste NULL pour
- * un `ml`, qui n'a pas de mode.
  */
 export function buildPromotedChallengeDraft(
   sandbox: Pick<Sandbox, "title" | "context" | "goals" | "why" | "cover_image_url">,
@@ -141,16 +150,13 @@ export function buildPromotedChallengeDraft(
     completion: 0,
     project_id: input.project_id,
     reward_rules: input.reward_rules ?? null,
-    compute_enabled: type === "ml" ? input.compute_enabled ?? false : false,
+    flow_config: buildPromotedFlowConfig(type, input),
     // La couverture suit la proposition : le challenge s'ouvre avec l'image
     // que la communauté a vue en la starant. L'admin peut la remplacer ensuite.
     cover_image_url: sandbox.cover_image_url ?? null,
-    workspace_mode: type === "code" ? "own_repo" : null,
-    // Un challenge de validation dérive d'un challenge ML existant : il ne peut
-    // pas naître d'une proposition, donc ces trois colonnes restent nulles.
+    // Un challenge de validation dérive d'un challenge existant : il ne peut
+    // pas naître d'une proposition.
     source_challenge_id: null,
-    cp_per_validation: null,
-    required_validations: null,
   };
 }
 

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2, ExternalLink, Loader2, Stethoscope } from 'lucide-react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { RESULT_META, SCENARIO_RESULTS } from './scenarioResult';
 import {
   finishHint,
@@ -50,6 +51,7 @@ export function ScenarioWalkthroughScreen({
   const [globalFeedback, setGlobalFeedback] = useState('');
   const [cpAwarded, setCpAwarded] = useState<number | null>(null);
   const [cpPerValidation, setCpPerValidation] = useState(0);
+  const [expertComment, setExpertComment] = useState<{ allowed: boolean; label: string | null }>({ allowed: false, label: null });
   const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -67,12 +69,12 @@ export function ScenarioWalkthroughScreen({
     (async () => {
       try {
         const [runRes, targetsRes] = await Promise.all([
-          fetch(`/api/challenges/${challengeId}/validation-scenario-runs`, {
+          fetch(flowActionUrl(challengeId, 'scenario-runs'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contribution_id: contributionId }),
           }),
-          fetch(`/api/challenges/${challengeId}/validation-targets`),
+          fetch(flowActionUrl(challengeId, 'targets')),
         ]);
         if (cancelled) return;
 
@@ -88,6 +90,7 @@ export function ScenarioWalkthroughScreen({
         setConfirmedSteps(run.steps ?? []);
         setCompletedAt(run.completedAt ?? null);
         setGlobalFeedback(run.globalFeedback ?? '');
+        setExpertComment(run.expertComment ?? { allowed: false, label: null });
         // Reprendre sur la première étape sans résultat, pas sur l'étape 1.
         setCurrent(firstUnansweredIndex(run.steps ?? []));
 
@@ -137,7 +140,7 @@ export function ScenarioWalkthroughScreen({
     setError('');
     try {
       const res = await fetch(
-        `/api/challenges/${challengeId}/validation-scenario-runs/${runId}/steps/${step.stepId}`,
+        flowActionUrl(challengeId, `scenario-runs/${runId}/steps/${step.stepId}`),
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -183,7 +186,7 @@ export function ScenarioWalkthroughScreen({
     setError('');
     try {
       const res = await fetch(
-        `/api/challenges/${challengeId}/validation-scenario-runs/${runId}/complete`,
+        flowActionUrl(challengeId, `scenario-runs/${runId}/complete`),
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -266,7 +269,7 @@ export function ScenarioWalkthroughScreen({
                 {s.medicalComment && (
                   <div className="space-y-1 rounded-xl bg-brandCP/[0.06] px-3 py-2">
                     <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brandCP">
-                      <Stethoscope className="h-3 w-3" /> Medical opinion
+                      <Stethoscope className="h-3 w-3" /> {expertComment.label ? `${expertComment.label} opinion` : 'Expert opinion'}
                     </p>
                     <p className="text-[13px] leading-relaxed" style={{ color: fgAt(0.55) }}>{s.medicalComment}</p>
                   </div>
@@ -430,9 +433,12 @@ export function ScenarioWalkthroughScreen({
               />
 
               {/* Les deux lentilles coexistent sur la même étape : pas un
-                  onglet, pas un mode. Le champ n'apparaît que pour un
-                  medical_pro, et le serveur le refuse aux autres de toute façon. */}
+                  onglet, pas un mode. Le champ n'apparaît qu'au validateur
+                  qui détient la qualification que le parcours exige, et le
+                  serveur le refuse aux autres de toute façon. */}
               <MedicalCommentField
+                allowed={expertComment.allowed}
+                label={expertComment.label}
                 value={step.medicalComment ?? ''}
                 onChange={v => setSteps(prev => prev.map(s => (s.stepId === step.stepId ? { ...s, medicalComment: v } : s)))}
                 onBlur={() => saveStep({})}
@@ -505,20 +511,11 @@ export function ScenarioWalkthroughScreen({
   );
 }
 
-/** Réservé au rôle medical_pro — la même frontière de qualification que le flux ML trace déjà. */
+/** Réservé au validateur qui détient la qualification exigée par le parcours — l'ouverture de la walkthrough le dit. */
 function MedicalCommentField({
-  value, onChange, onBlur,
-}: { value: string; onChange: (v: string) => void; onBlur: () => void }) {
-  const [isMedicalPro, setIsMedicalPro] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/contributors/me')
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => setIsMedicalPro(d?.user?.role === 'medical_pro'))
-      .catch(() => {});
-  }, []);
-
-  if (!isMedicalPro) return null;
+  allowed, label, value, onChange, onBlur,
+}: { allowed: boolean; label: string | null; value: string; onChange: (v: string) => void; onBlur: () => void }) {
+  if (!allowed) return null;
 
   return (
     <div className="space-y-1.5 rounded-xl border border-dashed border-brandCP/35 bg-brandCP/[0.05] px-3 py-2.5">

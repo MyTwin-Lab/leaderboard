@@ -5,7 +5,7 @@ const { mockGetAuthUrl } = vi.hoisted(() => ({
   mockGetAuthUrl: vi.fn(),
 }));
 
-vi.mock('../../../../../../../packages/services/google-workspace/google-auth.service.js', () => ({
+vi.mock('../../../../../../../packages/capabilities/identity/google-auth.js', () => ({
   GoogleAuthService: class {
     getAuthUrl = mockGetAuthUrl;
   },

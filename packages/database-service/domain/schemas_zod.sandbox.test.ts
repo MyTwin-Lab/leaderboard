@@ -3,7 +3,6 @@ import {
   sandboxCreateSchema,
   sandboxUpdateSchema,
   sandboxStarTiersSchema,
-  sandboxSettingsPatchSchema,
 } from "./schemas_zod.js";
 
 const base = {
@@ -104,17 +103,3 @@ describe("sandboxStarTiersSchema", () => {
   });
 });
 
-describe("sandboxSettingsPatchSchema", () => {
-  it("accepte un patch partiel", () => {
-    expect(sandboxSettingsPatchSchema.parse({ sandbox_promotion_bonus_cp: 200 })).toEqual({
-      sandbox_promotion_bonus_cp: 200,
-    });
-  });
-
-  it("plafonne le bonus de promotion", () => {
-    // Aucune reprise automatique n'existe : une faute de frappe se paie.
-    expect(
-      sandboxSettingsPatchSchema.safeParse({ sandbox_promotion_bonus_cp: 1_000_000 }).success
-    ).toBe(false);
-  });
-});

@@ -42,22 +42,32 @@ export default async function ChallengeDetailPage({
   const challenge = ref.entity;
   const id = challenge.uuid;
 
-  if (!(await isCookielessVisitor())) {
-    return <ChallengeDetailClient challengeId={id} challengeSlug={challenge.slug} />;
+  const queryClient = new QueryClient();
+  const [cookieless, modules] = await Promise.all([
+    isCookielessVisitor(),
+    readPublicRoute(getModules, "/api/modules"),
+  ]);
+  // L'état des modules, pour tout visiteur : les slots d'un module désactivé
+  // (la section meetings…) ne s'affichent pas, pas même le temps d'une requête.
+  if (modules) queryClient.setQueryData(["modules"], modules);
+
+  if (!cookieless) {
+    return (
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <ChallengeDetailClient challengeId={id} challengeSlug={challenge.slug} />
+      </HydrationBoundary>
+    );
   }
 
-  const queryClient = new QueryClient();
-  const [overview, modules, brief] = await Promise.all([
+  const [overview, brief] = await Promise.all([
     readPublicRoute(getOverview, `/api/challenges/${id}/overview`, { id }),
-    readPublicRoute(getModules, "/api/modules"),
     readPublicRoute<{ content: string | null }, { id: string }>(getBrief, `/api/challenges/${id}/brief`, { id }),
   ]);
 
-  // Un challenge non public ne pré-remplit rien : le client refait la requête,
-  // prend le 404, et affiche son propre « not found ».
+  // Un challenge non public ne pré-remplit rien d'autre : le client refait la
+  // requête, prend le 404, et affiche son propre « not found ».
   if (overview) {
     queryClient.setQueryData(["challenge-overview", id], overview);
-    if (modules) queryClient.setQueryData(["modules"], modules);
     if (brief) queryClient.setQueryData(["challenge-brief", id], brief.content);
   }
 

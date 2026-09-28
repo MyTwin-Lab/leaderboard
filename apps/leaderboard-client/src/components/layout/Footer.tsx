@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { MYTWIN } from "@/lib/seo";
 import { MyTwinLogo } from "./MyTwinLogo";
+import { ModuleNavLinks } from "./ModuleNavLinks";
 
 const EXPLORE_LINKS = [
   { href: "/news", label: "MyTwin Lab News" },
   { href: "/challenges", label: "Challenges" },
-  { href: "/sandbox", label: "Sandbox" },
   { href: "/leaderboard", label: "Leaderboard" },
 ];
 
@@ -37,11 +37,14 @@ function LinkColumn({
   title,
   links,
   external = false,
+  children,
 }: {
   id: string;
   title: string;
   links: { href: string; label: string }[];
   external?: boolean;
+  /** Des `<li>` de plus, après les liens fixes (les modules actifs). */
+  children?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-2.5">
@@ -62,6 +65,7 @@ function LinkColumn({
             )}
           </li>
         ))}
+        {children}
       </ul>
     </div>
   );
@@ -82,7 +86,10 @@ export function Footer() {
           </div>
 
           <nav aria-label="Footer" className="grid grid-cols-2 gap-x-10 gap-y-8 sm:grid-cols-3">
-            <LinkColumn id="footer-explore" title="Explore" links={EXPLORE_LINKS} />
+            <LinkColumn id="footer-explore" title="Explore" links={EXPLORE_LINKS}>
+              {/* Les modules actifs (la sandbox) : masqués quand ils sont désactivés. */}
+              <ModuleNavLinks className={linkClass} listItems />
+            </LinkColumn>
             <LinkColumn id="footer-mytwin" title="MyTwin" links={MYTWIN_LINKS} external />
             <LinkColumn id="footer-legal" title="Legal" links={LEGAL_LINKS} />
           </nav>

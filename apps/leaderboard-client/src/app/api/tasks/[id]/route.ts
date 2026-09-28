@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskRepository, ChallengeRepository, ChallengeTeamRepository } from '../../../../../../../packages/database-service/repositories';
 import { repositories } from '@/lib/db';
-import { resolveWorkspaceOwner } from '../../../../../../../packages/services/challenge/group';
+import { resolveWorkspaceOwner } from '../../../../../../../packages/capabilities/groups';
 import { verifyRequestToken } from '@/lib/auth';
 import { canReadTask } from '../taskAccess';
 import { z } from 'zod';

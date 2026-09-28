@@ -27,7 +27,7 @@ describe('showJoinInHeader', () => {
   // Join, puis le parcours. C'est l'allowlist partagée avec `challengeBrief`
   // qui le dit — les deux portes ne peuvent pas diverger.
   it('offers Join on a validation challenge', () => {
-    expect(showJoinInHeader({ ...OPEN, challengeType: 'validation' })).toBe(true);
+    expect(showJoinInHeader({ ...OPEN, challengeType: 'endpoint-validation' })).toBe(true);
   });
 
   it('hides Join on a placeholder challenge', () => {

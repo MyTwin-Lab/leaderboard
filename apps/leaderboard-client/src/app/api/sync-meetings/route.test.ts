@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const {
   mockVerifyRequestToken, mockGetSessionUser, mockIsManagerOfChallenge, mockCanAccessChallengeInternals,
@@ -35,7 +35,15 @@ vi.mock('../../../../../../packages/services/sync-meeting/sync-meeting.service.j
   },
 }));
 
+// Actif par défaut dans ces tests ; le cas désactivé a son describe.
+const { mockModuleNotFoundResponse } = vi.hoisted(() => ({ mockModuleNotFoundResponse: vi.fn() }));
+vi.mock('@/lib/server/modules', () => ({ moduleNotFoundResponse: mockModuleNotFoundResponse }));
+
 import { GET, POST } from './route';
+
+beforeEach(() => {
+  mockModuleNotFoundResponse.mockResolvedValue(null);
+});
 
 const CHALLENGE_ID = '11111111-1111-4111-8111-111111111111';
 const CONTRIBUTOR = { id: 'u1', role: 'contributor', fullName: 'Ada', githubUsername: '', email: 'a@b.com' };
@@ -227,5 +235,19 @@ describe('POST /api/sync-meetings', () => {
     expect(res.status).toBe(500);
     const body = await res.json();
     expect(body.error).toBe('Failed to create meeting');
+  });
+});
+
+describe('when the meetings module is disabled', () => {
+  beforeEach(() => {
+    mockModuleNotFoundResponse.mockResolvedValue(NextResponse.json({ error: 'Not found' }, { status: 404 }));
+  });
+
+  it('answers 404 to GET and POST, before reading the session', async () => {
+    expect((await getMeetings(CHALLENGE_ID)).status).toBe(404);
+    expect((await postMeeting(validBody())).status).toBe(404);
+    expect(mockModuleNotFoundResponse).toHaveBeenCalledWith('meetings');
+    expect(mockGetSessionUser).not.toHaveBeenCalled();
+    expect(mockCreateMeeting).not.toHaveBeenCalled();
   });
 });

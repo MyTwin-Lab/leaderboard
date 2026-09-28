@@ -1,23 +1,12 @@
 import { Check, X } from "lucide-react";
 import { VitrineAvatar } from "@/components/vitrine/VitrineAvatar";
+import { PlatformRegistry } from "@packages/registry/platform";
 import type { OnboardingProgressWithUser } from "@packages/database-service/domain/entities";
-
-const QUESTS: {
-  key: keyof Pick<
-    OnboardingProgressWithUser,
-    "clicked_challenge" | "assigned_task" | "evaluated_contribution" | "validated_task" | "joined_meeting"
-  >;
-  label: string;
-}[] = [
-  { key: "clicked_challenge", label: "Explore" },
-  { key: "assigned_task", label: "Assign" },
-  { key: "evaluated_contribution", label: "Evaluate" },
-  { key: "validated_task", label: "Validate" },
-  { key: "joined_meeting", label: "Meeting" },
-];
 
 interface Props {
   rows: OnboardingProgressWithUser[];
+  /** Les colonnes : les quêtes installées, dans leur ordre, par défaut. */
+  quests?: { key: string; label: string }[];
 }
 
 /**
@@ -25,10 +14,15 @@ interface Props {
  * `Profile Vitrine.dc.html` : une carte blanche, un en-tête gris, un filet par
  * ligne.
  *
- * La maquette montre trois colonnes de dates ; ici ce sont les cinq quêtes
- * réelles, cochées ou non — c'est ce que la base porte.
+ * La maquette montre trois colonnes de dates ; ici ce sont les quêtes
+ * installées, cochées ou non — c'est ce que la base porte.
  */
-export function OnboardingProgressTable({ rows }: Props) {
+function installedQuests(): { key: string; label: string }[] {
+  if (!PlatformRegistry.isInstalled()) return [];
+  return PlatformRegistry.quests().map((quest) => ({ key: quest.key, label: quest.label }));
+}
+
+export function OnboardingProgressTable({ rows, quests = installedQuests() }: Props) {
   if (rows.length === 0) {
     return <p className="v-pro-note">No contributors yet.</p>;
   }
@@ -39,7 +33,7 @@ export function OnboardingProgressTable({ rows }: Props) {
         <thead className="v-pro-thead-row">
           <tr>
             <th style={{ textAlign: "left" }}>Contributor</th>
-            {QUESTS.map((q) => (
+            {quests.map((q) => (
               <th key={q.key} style={{ textAlign: "center" }}>
                 {q.label}
               </th>
@@ -49,8 +43,9 @@ export function OnboardingProgressTable({ rows }: Props) {
         </thead>
         <tbody className="v-pro-tbody">
           {rows.map((row) => {
-            const completedCount = QUESTS.filter((q) => row[q.key]).length;
-            const isDone = !!row.completed_at;
+            const done = new Set(row.completed.map((completion) => completion.quest_key));
+            const completedCount = quests.filter((q) => done.has(q.key)).length;
+            const isDone = quests.length > 0 && completedCount === quests.length;
             return (
               <tr key={row.user_id} style={isDone ? { opacity: 0.7 } : undefined}>
                 <td>
@@ -64,9 +59,9 @@ export function OnboardingProgressTable({ rows }: Props) {
                     <span>{row.full_name}</span>
                   </span>
                 </td>
-                {QUESTS.map((q) => (
+                {quests.map((q) => (
                   <td key={q.key} style={{ textAlign: "center" }}>
-                    {row[q.key] ? (
+                    {done.has(q.key) ? (
                       <Check className="v-pro-quest-done" />
                     ) : (
                       <X className="v-pro-quest-todo" />
@@ -77,7 +72,7 @@ export function OnboardingProgressTable({ rows }: Props) {
                   {isDone ? (
                     <span className="v-pro-score">Done</span>
                   ) : (
-                    <span className="v-pro-digest-weak">{completedCount}/5</span>
+                    <span className="v-pro-digest-weak">{completedCount}/{quests.length}</span>
                   )}
                 </td>
               </tr>

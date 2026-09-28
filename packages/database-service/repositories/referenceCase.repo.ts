@@ -150,7 +150,7 @@ export class ReferenceCaseRepository {
   /**
    * Cases on this challenge, not authored by excludeAuthorId, not already
    * claimed on this specific target — the "pick a case" list for a
-   * medical_pro opening a target. The same case can still appear here for a
+   * qualified reviewer opening a target. The same case can still appear here for a
    * *different* target even after being claimed on this one, since claim
    * exclusivity is per-target, not per-case.
    */
@@ -195,7 +195,8 @@ export function closedValidationChallengeIds(closedBefore: Date) {
     .from(challenges)
     .where(
       and(
-        eq(challenges.type, "validation"),
+        // Seuls les flows de validation ont un challenge parent.
+        isNotNull(challenges.source_challenge_id),
         isNotNull(challenges.closed_at),
         lt(challenges.closed_at, closedBefore)
       )

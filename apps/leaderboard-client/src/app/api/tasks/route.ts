@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskRepository, ChallengeRepository, ChallengeTeamRepository } from '../../../../../../packages/database-service/repositories';
 import { repositories } from '@/lib/db';
-import { resolveWorkspaceOwner } from '../../../../../../packages/services/challenge/group';
+import { resolveWorkspaceOwner } from '../../../../../../packages/capabilities/groups';
+import { usesBoard } from '../../../../../../packages/capabilities/board';
+import { events } from '../../../../../../packages/capabilities/events';
 import { verifyRequestToken } from '@/lib/auth';
 import { canAccessChallengeInternals } from '@/lib/server/managerAuth';
 import { z } from 'zod';
@@ -78,8 +80,8 @@ export async function POST(request: NextRequest) {
 
     const challenge = await challengeRepo.findById(validated.challenge_id);
     if (!challenge) return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
-    if (challenge.type !== 'code') {
-      return NextResponse.json({ error: 'Only code challenges have tasks' }, { status: 400 });
+    if (!usesBoard(challenge.type)) {
+      return NextResponse.json({ error: 'This challenge has no board' }, { status: 400 });
     }
 
     // Board de travail de l'appelant : le sien en solo, celui du porteur en
@@ -127,6 +129,18 @@ export async function POST(request: NextRequest) {
       description: validated.description,
       status: 'todo',
     });
+    // Hors transaction (le repository n'en ouvre pas) : un événement perdu
+    // coûte une quête, jamais la tâche.
+    try {
+      await events.emit('task.created', {
+        taskId: task.uuid,
+        challengeId: validated.challenge_id,
+        userId: session.userId,
+        boardOwnerId,
+      });
+    } catch (error) {
+      console.warn('[events] task.created not recorded:', error);
+    }
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

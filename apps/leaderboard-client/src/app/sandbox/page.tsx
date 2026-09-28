@@ -1,4 +1,6 @@
+import { notFound } from "next/navigation";
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
+import { modules } from "@packages/capabilities/modules";
 import { GET as getSandboxes } from "@/app/api/sandboxes/route";
 import { SandboxExplorer } from "@/components/sandbox/SandboxExplorer";
 import { isCookielessVisitor, readPublicRoute } from "@/lib/server/publicSsr";
@@ -24,6 +26,9 @@ export const metadata = pageMetadata({
  * le HTML avec les liens vers chaque proposition (voir `lib/server/publicSsr.ts`).
  */
 export default async function SandboxPage() {
+  // Le module désactivé, la page n'existe pas.
+  if (!(await modules.enabled("sandbox"))) notFound();
+
   if (!(await isCookielessVisitor())) return <SandboxExplorer />;
 
   const queryClient = new QueryClient();

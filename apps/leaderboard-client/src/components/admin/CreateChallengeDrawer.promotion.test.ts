@@ -12,10 +12,6 @@ const base: PromotionFormState = {
   roadmap: '',
   cp: 500,
   projectId: '11111111-1111-4111-8111-111111111111',
-  rewardRules: { kind: 'ml' },
-  codeRules: { kind: 'code' },
-  computeEnabled: true,
-  apiPackagingEnabled: false,
 };
 
 describe('buildPromotionRequestBody', () => {
@@ -24,12 +20,19 @@ describe('buildPromotionRequestBody', () => {
     expect(buildPromotionRequestBody({ ...base, type: 'ml' }).type).toBe('ml');
   });
 
-  it("n'envoie ni le mode de workspace ni le repo", () => {
+  it("n'envoie ni le mode de workspace ni le repo, même si la section du flow les propose", () => {
     // Ils découlent du type : un challenge `code` issu d'une promotion est
-    // forcément un `own_repo`, et la route n'accepte pas ces champs.
-    const body = buildPromotionRequestBody(base);
+    // forcément un `own_repo`, et la route n'accepte pas ces champs. Le type
+    // de la section est ignoré aussi : c'est l'état du tiroir qui le porte.
+    const body = buildPromotionRequestBody(base, { type: 'ml', workspace_mode: 'provided_repo', github_repo: 'acme/app' });
+    expect(body.type).toBe('code');
     expect(body).not.toHaveProperty('workspace_mode');
     expect(body).not.toHaveProperty('github_repo');
+  });
+
+  it('relaie les champs du flow — règles, compute, étape API', () => {
+    const body = buildPromotionRequestBody(base, { reward_rules: { kind: 'ml' }, compute_enabled: true, api_packaging_enabled: false });
+    expect(body).toMatchObject({ reward_rules: { kind: 'ml' }, compute_enabled: true, api_packaging_enabled: false });
   });
 
   it("n'envoie aucun champ propre aux challenges de validation", () => {
@@ -39,38 +42,18 @@ describe('buildPromotionRequestBody', () => {
     expect(body).not.toHaveProperty('required_validations');
   });
 
-  it('envoie le projet, le pool, le statut et les dates que l’admin a saisis', () => {
-    expect(buildPromotionRequestBody(base)).toMatchObject({
+  it('nettoie le titre, garde le slug, et traduit les dates et les champs vides', () => {
+    const body = buildPromotionRequestBody(base);
+    expect(body).toMatchObject({
       title: 'Triage assistant',
-      // Le slug choisi dans le tiroir, celui de la proposition par défaut.
       slug: 'triage-assistant',
       status: 'active',
-      project_id: base.projectId,
-      contribution_points_reward: 500,
-      // Une date vide vaut « pas de date », pas la chaîne vide.
       start_date: null,
       end_date: '2026-06-01',
       description: '## Context\n\nEmergency triage is slow.',
+      contribution_points_reward: 500,
+      project_id: '11111111-1111-4111-8111-111111111111',
     });
-  });
-
-  it('omet description et roadmap quand elles sont vides', () => {
-    const body = buildPromotionRequestBody({ ...base, description: '   ', roadmap: '' });
-    expect(body.description).toBeUndefined();
     expect(body.roadmap).toBeUndefined();
-  });
-
-  it('envoie les règles code et coupe compute/API packaging pour un sandbox code', () => {
-    const body = buildPromotionRequestBody(base);
-    expect(body.reward_rules).toEqual({ kind: 'code' });
-    expect(body.compute_enabled).toBe(false);
-    expect(body.api_packaging_enabled).toBeUndefined();
-  });
-
-  it('envoie les règles ML, le compute et le réglage API packaging pour un sandbox ml', () => {
-    const body = buildPromotionRequestBody({ ...base, type: 'ml' });
-    expect(body.reward_rules).toEqual({ kind: 'ml' });
-    expect(body.compute_enabled).toBe(true);
-    expect(body.api_packaging_enabled).toBe(false);
   });
 });

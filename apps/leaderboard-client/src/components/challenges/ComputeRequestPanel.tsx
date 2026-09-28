@@ -1,5 +1,7 @@
 'use client';
 
+import { flowConfigView } from '@/lib/flowConfig';
+import { extensionActionUrl } from '@/lib/challengeActions';
 import { useEffect, useRef, useState } from 'react';
 import { Cpu, Loader2, ExternalLink, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
@@ -35,6 +37,9 @@ const STATUS_VARIANT: Record<ComputeRequestData['status'], 'success' | 'warning'
   failed: 'danger',
 };
 
+/** Les demandes passent par les actions de l'extension compute. */
+const COMPUTE = 'compute';
+
 const NON_TERMINAL: ComputeRequestData['status'][] = ['pending', 'approved', 'provisioning'];
 
 function formatRemaining(expiresAt: string): string {
@@ -59,7 +64,7 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
   const [, forceTick] = useState(0);
 
   const load = () => {
-    fetch(`/api/challenges/${challengeId}/compute-request`)
+    fetch(extensionActionUrl(challengeId, COMPUTE, 'request'))
       .then(res => (res.ok ? res.json() : { request: null }))
       .then(d => setRequest(d.request ?? null));
   };
@@ -67,12 +72,12 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      fetch('/api/scaleway/status').then(r => (r.ok ? r.json() : { connected: false })),
-      fetch(`/api/challenges/${challengeId}`).then(r => (r.ok ? r.json() : { compute_enabled: false })),
+      fetch('/api/integrations/scaleway/status').then(r => (r.ok ? r.json() : { connected: false })),
+      fetch(`/api/challenges/${challengeId}`).then(r => (r.ok ? r.json() : null)),
     ])
       .then(([status, challenge]) => {
         setScalewayConnected(!!status.connected);
-        setComputeEnabled(!!challenge.compute_enabled);
+        setComputeEnabled(flowConfigView(challenge).compute_enabled);
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,7 +108,7 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
     setRequesting(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/compute-request`, { method: 'POST' });
+      const res = await fetch(extensionActionUrl(challengeId, COMPUTE, 'request'), { method: 'POST' });
       if (res.ok) {
         setConfirming(false);
         load();
@@ -122,7 +127,7 @@ export function ComputeRequestPanel({ challengeId }: { challengeId: string }) {
     setOpening(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/compute-request/reveal-token`, { method: 'POST' });
+      const res = await fetch(extensionActionUrl(challengeId, COMPUTE, 'request/reveal-token'), { method: 'POST' });
       const d = await res.json();
       if (!res.ok) {
         setError(d.error ?? 'Unable to retrieve the access token');

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 import { fetchContributorSession } from "@/lib/contributor";
+import { moduleNotFoundResponse } from "@/lib/server/modules";
 import { DigestService } from "../../../../../../../../packages/services/digest/digest.service.js";
 
 /** `2026-09-01` — ce qu'envoie un `<input type="date">`. */
@@ -25,6 +26,10 @@ function parsePeriodStart(raw: unknown): Date | null | "invalid" {
 }
 
 export async function POST(request: Request) {
+  // Module désactivé : les routes du digest n'existent pas.
+  const notFound = await moduleNotFoundResponse("digest");
+  if (notFound) return notFound;
+
   const session = await fetchContributorSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -44,8 +49,8 @@ export async function POST(request: Request) {
     // de fréquence. `period_end` vaut toujours `now`, donc le prochain digest
     // automatique repart d'ici même quand une borne basse a été imposée.
     //
-    // `digest_enabled` n'est volontairement pas consulté — le réglage gouverne
-    // le cron, pas ce bouton (spec §8).
+    // La fréquence n'est pas consultée. Le module doit en revanche être
+    // activé : désactivé, cette route répond 404 comme les autres.
     const digest = await new DigestService().generate(
       "manual",
       periodStart ? { periodStart } : {},

@@ -13,6 +13,11 @@ vi.mock('@packages/database-service/repositories', () => ({
   },
 }));
 
+const { mockModuleNotFound } = vi.hoisted(() => ({ mockModuleNotFound: vi.fn() }));
+
+// Le module digest est actif, sauf dans le test qui le désactive.
+vi.mock('@/lib/server/modules', () => ({ moduleNotFoundResponse: mockModuleNotFound }));
+
 vi.mock('@/lib/contributor', () => ({
   fetchContributorSession: mockFetchContributorSession,
 }));
@@ -41,6 +46,7 @@ const DIGEST = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockModuleNotFound.mockResolvedValue(null);
   mockCount.mockResolvedValue(1);
   mockList.mockResolvedValue([DIGEST]);
 });
@@ -109,5 +115,18 @@ describe('GET /api/admin/digests', () => {
 
     await get('http://localhost/api/admin/digests?limit=abc');
     expect(mockList).toHaveBeenCalledWith(20, 0);
+  });
+});
+
+describe('GET /api/admin/digests — module disabled', () => {
+  it('answers 404 without reading anything', async () => {
+    mockModuleNotFound.mockResolvedValue(Response.json({ error: 'Not found' }, { status: 404 }));
+    mockFetchContributorSession.mockResolvedValue({ id: 'u1', role: 'admin' });
+
+    const res = await get();
+
+    expect(res.status).toBe(404);
+    expect(mockModuleNotFound).toHaveBeenCalledWith('digest');
+    expect(mockList).not.toHaveBeenCalled();
   });
 });

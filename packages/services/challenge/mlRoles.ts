@@ -1,4 +1,4 @@
-import type { MlAwardRule } from "../../evaluator/ml-reward.js";
+import type { MlAwardRule } from "../../../content/flows/ml/reward.js";
 import type { ChallengeRepoRole } from "../../database-service/domain/entities.js";
 
 /**

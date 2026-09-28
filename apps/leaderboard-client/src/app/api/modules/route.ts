@@ -1,38 +1,14 @@
 import { NextResponse } from "next/server";
+import { modules } from "@packages/capabilities/modules";
 
 export const dynamic = "force-dynamic";
-import { AppSettingsRepository } from "@packages/database-service/repositories";
-import { fetchContributorSession } from "@/lib/contributor";
 
-const appSettingsRepo = new AppSettingsRepository();
-
+// GET /api/modules — les modules installés et leur état, pour masquer les
+// slots d'un module désactivé. Public : il ne dit rien que l'interface ne
+// montre déjà. Les réglages passent par /api/modules/[key], réservé à l'admin.
 export async function GET() {
-  const settings = await appSettingsRepo.get();
+  const states = await modules.all();
   return NextResponse.json({
-    meetings_enabled: settings.modules_meetings_enabled,
-    onboarding_enabled: settings.modules_onboarding_enabled,
-  });
-}
-
-export async function PATCH(request: Request) {
-  const session = await fetchContributorSession();
-  if (!session || session.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const body = await request.json();
-  const patch: { modules_meetings_enabled?: boolean; modules_onboarding_enabled?: boolean } = {};
-
-  if (typeof body.meetings_enabled === "boolean") {
-    patch.modules_meetings_enabled = body.meetings_enabled;
-  }
-  if (typeof body.onboarding_enabled === "boolean") {
-    patch.modules_onboarding_enabled = body.onboarding_enabled;
-  }
-
-  const updated = await appSettingsRepo.update(patch, session.id);
-  return NextResponse.json({
-    meetings_enabled: updated.modules_meetings_enabled,
-    onboarding_enabled: updated.modules_onboarding_enabled,
+    modules: states.map(({ key, label, description, enabled }) => ({ key, label, description, enabled })),
   });
 }

@@ -1,21 +1,19 @@
-import { decryptToken, encryptToken } from './githubToken.js';
+import { encryptToken } from './githubToken.js';
 import { config } from './index.js';
 
 export { encryptToken };
 
+/** La connexion Kaggle (store des credentials, compte dans `meta.username`), sinon l'environnement. */
 export async function getKaggleCredentials(): Promise<{ username: string; apiKey: string } | null> {
   try {
-    const { db, app_settings } = await import('../database-service/db/drizzle.js');
-    const { eq } = await import('drizzle-orm');
-    const [row] = await db.select().from(app_settings).where(eq(app_settings.id, 1));
-    if (row?.kaggle_key_enc && row?.kaggle_key_iv && row?.kaggle_username) {
-      return {
-        username: row.kaggle_username,
-        apiKey: decryptToken(row.kaggle_key_enc, row.kaggle_key_iv),
-      };
+    const { credentials } = await import('../capabilities/credentials.js');
+    const stored = await credentials.get('kaggle');
+    const username = stored?.meta.username;
+    if (stored?.secret && typeof username === 'string' && username) {
+      return { username, apiKey: stored.secret };
     }
   } catch {
-    // DB unavailable or no credentials stored — fall through to .env
+    // Base indisponible ou secret illisible : repli sur l'environnement.
   }
 
   if (config.kaggle.username && config.kaggle.apiKey) {

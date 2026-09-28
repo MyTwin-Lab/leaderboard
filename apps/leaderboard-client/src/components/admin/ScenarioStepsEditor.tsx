@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, ListOrdered, Loader2, Lock, Plus, Trash2 } from 'lucide-react';
+import { flowActionUrl } from '@/lib/challengeActions';
 
 interface StepItem {
   id: string;
@@ -45,7 +46,7 @@ export function ScenarioStepsEditor({ challengeId, open }: { challengeId: string
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-scenario-steps`);
+      const res = await fetch(flowActionUrl(challengeId, 'scenario-steps'));
       if (res.ok) {
         const d = await res.json();
         setSteps(d.steps ?? []);
@@ -64,7 +65,7 @@ export function ScenarioStepsEditor({ challengeId, open }: { challengeId: string
     setAdding(true);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-scenario-steps`, {
+      const res = await fetch(flowActionUrl(challengeId, 'scenario-steps'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, instructions: draftInstructions.trim() || null }),
@@ -85,7 +86,7 @@ export function ScenarioStepsEditor({ challengeId, open }: { challengeId: string
     setBusyId(id);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-scenario-steps/${id}`, {
+      const res = await fetch(flowActionUrl(challengeId, `scenario-steps/${id}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -100,7 +101,7 @@ export function ScenarioStepsEditor({ challengeId, open }: { challengeId: string
     setBusyId(id);
     setError('');
     try {
-      const res = await fetch(`/api/challenges/${challengeId}/validation-scenario-steps/${id}`, { method: 'DELETE' });
+      const res = await fetch(flowActionUrl(challengeId, `scenario-steps/${id}`), { method: 'DELETE' });
       if (res.ok) await fetchSteps();
       else { const d = await res.json().catch(() => ({})); setError(d.error || 'Failed to delete the step'); }
     } catch { setError('Network error'); }

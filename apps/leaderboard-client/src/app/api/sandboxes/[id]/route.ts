@@ -3,14 +3,18 @@ import {
   ChallengeRepository,
   SandboxRepository,
   SandboxRewardRepository,
-  AppSettingsRepository,
   SandboxStarRepository,
   UserRepository,
 } from "../../../../../../../packages/database-service/repositories";
-import { SandboxService } from "../../../../../../../packages/services/sandbox";
+import {
+  SANDBOX_MODULE,
+  SandboxService,
+  readSandboxSettings,
+} from "../../../../../../../packages/services/sandbox";
 import { sandboxUpdateSchema } from "../../../../../../../packages/database-service/domain/schemas_zod";
 import { verifyRequestToken } from "@/lib/auth";
 import { readAnonId } from "@/lib/server/anonVisitor";
+import { moduleNotFoundResponse } from "@/lib/server/modules";
 import { canSeeSandbox, isAuthorOrAdmin, sandboxViewer, starIdentity } from "@/lib/server/sandboxAuth";
 import { sandboxErrorResponse } from "@/lib/server/sandboxErrors";
 import { toSandboxView } from "@/lib/public/sandbox";
@@ -21,7 +25,6 @@ const sandboxRepo = new SandboxRepository();
 const challengeRepo = new ChallengeRepository();
 const starRepo = new SandboxStarRepository();
 const rewardRepo = new SandboxRewardRepository();
-const appSettingsRepo = new AppSettingsRepository();
 const userRepo = new UserRepository();
 const sandboxService = new SandboxService();
 
@@ -33,6 +36,9 @@ const sandboxService = new SandboxService();
  * l'existence d'une proposition retirée.
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const disabled = await moduleNotFoundResponse(SANDBOX_MODULE);
+  if (disabled) return disabled;
+
   try {
     const { id } = await params;
 
@@ -64,7 +70,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       isAuthorOrAdmin(sandbox, viewer) ? rewardRepo.findBySandbox(id) : Promise.resolve(undefined),
       // Les paliers et le bonus voyagent avec le détail : sans eux la page
       // devrait charger le listing complet pour afficher deux réglages.
-      appSettingsRepo.get(),
+      readSandboxSettings(),
       promotedSlug(sandbox.promoted_challenge_id),
     ]);
 
@@ -79,8 +85,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         rewards,
         promotedChallengeSlug,
       }),
-      tiers: settings?.sandbox_star_tiers ?? [],
-      promotion_bonus_cp: settings?.sandbox_promotion_bonus_cp ?? 0,
+      tiers: settings.star_tiers,
+      promotion_bonus_cp: settings.promotion_bonus_cp,
     });
   } catch (error) {
     console.error("[sandbox] detail failed", error);
@@ -94,10 +100,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  * Deux gestes sur le même verbe parce qu'ils portent sur la même ressource,
  * mais avec deux droits distincts (§1.6) : éditer est réservé à l'auteur,
  * archiver est ouvert à l'auteur pour le sien et à l'admin pour n'importe
- * lequel. `{ status: 'archived' }` bascule sur le second chemin ; `type` n'est
- * dans aucun des deux — il est figé à la création.
+ * lequel. `{ status: 'archived' }` bascule sur le second chemin. Une clé
+ * absente n'est pas écrite, un `null` vide le champ.
  */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const disabled = await moduleNotFoundResponse(SANDBOX_MODULE);
+  if (disabled) return disabled;
+
   const { id } = await params;
 
   const session = await verifyRequestToken(request);

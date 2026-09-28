@@ -4,7 +4,9 @@ import { NextRequest } from 'next/server';
 const {
   mockVerifyRequestToken, mockChallengeFindAll, mockChallengeFindById, mockChallengeCreate,
   mockRepoCreate, mockChallengeRepoCreate, mockProjectFindByManagerId, mockProjectFindById,
+  MockParentFlowTakenError,
 } = vi.hoisted(() => ({
+  MockParentFlowTakenError: class MockParentFlowTakenError extends Error {},
   mockVerifyRequestToken: vi.fn(),
   mockChallengeFindAll: vi.fn(),
   mockChallengeFindById: vi.fn(),
@@ -23,6 +25,7 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 vi.mock('../../../../../../packages/database-service/repositories', () => ({
+  ParentFlowTakenError: MockParentFlowTakenError,
   ChallengeRepository: class {
     findAll = mockChallengeFindAll;
     findById = mockChallengeFindById;
@@ -251,7 +254,7 @@ describe('POST /api/challenges', () => {
     expect(roles.sort()).toEqual(['dataset', 'model', 'model_code']);
   });
 
-  describe('validation challenge business rules', () => {
+  describe('validation challenge business rules (the legacy `validation` type included)', () => {
     const mlSourceId = '22222222-2222-4222-8222-222222222222';
 
     beforeEach(() => {
@@ -309,7 +312,11 @@ describe('POST /api/challenges', () => {
       // il n'a aucun sens sans quorum, et une valeur non nulle en base
       // laisserait croire qu'un target peut se résoudre.
       expect(mockChallengeCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ required_validations: null })
+        expect.objectContaining({
+          type: 'journey-validation',
+          // La distribution pose la qualification des avis experts quand la création ne la précise pas.
+          flow_config: { cp_per_validation: 5, eligible_roles: ['contributor', 'admin'], expert_comment_qualification: 'medical_pro' },
+        })
       );
     });
 
@@ -338,9 +345,8 @@ describe('POST /api/challenges', () => {
     });
 
     it('returns 409 when the ML challenge already has a linked validation challenge', async () => {
-      mockChallengeFindAll.mockResolvedValue([
-        { uuid: 'existing-validation', type: 'validation', source_challenge_id: mlSourceId },
-      ]);
+      // L'index unique partiel (source, flow) refuse le second challenge.
+      mockChallengeCreate.mockRejectedValueOnce(new MockParentFlowTakenError('taken'));
 
       const res = await postChallenge(validationBody(), 'valid-token');
 
@@ -349,13 +355,21 @@ describe('POST /api/challenges', () => {
 
     it('returns 409 when the code challenge already has a linked validation challenge', async () => {
       mockChallengeFindById.mockResolvedValue({ uuid: mlSourceId, type: 'code' });
-      mockChallengeFindAll.mockResolvedValue([
-        { uuid: 'existing-validation', type: 'validation', source_challenge_id: mlSourceId },
-      ]);
+      // L'index unique partiel (source, flow) refuse le second challenge.
+      mockChallengeCreate.mockRejectedValueOnce(new MockParentFlowTakenError('taken'));
 
       const res = await postChallenge(validationBody({ required_validations: undefined }), 'valid-token');
 
       expect(res.status).toBe(409);
+    });
+
+    it('accepts the resolved flow the forms send, and still checks it against the source', async () => {
+      const accepted = await postChallenge(validationBody({ type: 'endpoint-validation' }), 'valid-token');
+      mockChallengeFindById.mockResolvedValue({ uuid: mlSourceId, type: 'code' });
+      const refused = await postChallenge(validationBody({ type: 'endpoint-validation' }), 'valid-token');
+
+      expect(accepted.status).toBe(201);
+      expect(refused.status).toBe(400);
     });
 
     it('creates the validation challenge on success, with no repos', async () => {
@@ -367,8 +381,8 @@ describe('POST /api/challenges', () => {
       expect(mockChallengeCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           source_challenge_id: mlSourceId,
-          cp_per_validation: 5,
-          required_validations: 3,
+          type: 'endpoint-validation',
+          flow_config: { cp_per_validation: 5, required_validations: 3, reviewer_qualification: 'medical_pro' },
         })
       );
     });
@@ -390,9 +404,9 @@ describe('POST /api/challenges', () => {
       expect(res.status).toBe(201);
       expect(mockRepoCreate).not.toHaveBeenCalled();
       expect(mockChallengeCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ workspace_mode: 'own_repo' })
+        expect.objectContaining({ flow_config: { workspace_mode: 'own_repo' } })
       );
-      expect(body.workspace_mode).toBe('own_repo');
+      expect(body.flow_config?.workspace_mode).toBe('own_repo');
     });
 
     it('creates the GitHub repo for a "code" challenge without workspace_mode (historical behavior), defaulting to provided_repo', async () => {
@@ -402,9 +416,9 @@ describe('POST /api/challenges', () => {
       expect(res.status).toBe(201);
       expect(mockRepoCreate).toHaveBeenCalledTimes(1);
       expect(mockChallengeCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ workspace_mode: 'provided_repo' })
+        expect.objectContaining({ flow_config: { workspace_mode: 'provided_repo' } })
       );
-      expect(body.workspace_mode).toBe('provided_repo');
+      expect(body.flow_config?.workspace_mode).toBe('provided_repo');
     });
 
     it('accepts code reward_rules on a "code" challenge', async () => {
@@ -423,6 +437,54 @@ describe('POST /api/challenges', () => {
       expect(res.status).toBe(400);
       expect(body.error).toBe('Invalid reward_rules');
       expect(mockChallengeCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('flow_config', () => {
+    const annotation = {
+      ...validBody,
+      type: 'data-annotation',
+      reward_rules: { per_unit_cp: 4 },
+      flow_config: {
+        k: 5,
+        label_schema: { kind: 'single_choice', options: [{ key: 'yes', label: 'Yes' }, { key: 'no', label: 'No' }] },
+      },
+    };
+
+    it('passes the configuration of a flow the route does not know, validated by its schema', async () => {
+      const res = await postChallenge(annotation, 'valid-token');
+
+      expect(res.status).toBe(201);
+      expect(mockChallengeCreate).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'data-annotation',
+        reward_rules: { per_unit_cp: 4, gold_rate: 0.1, audit_rate: 0.1 },
+        flow_config: {
+          k: 5,
+          ttl_hours: 48,
+          label_schema: annotation.flow_config.label_schema,
+          sensitive_clearance: { min_seen: 5, min_accuracy: 0.8 },
+        },
+      }));
+      expect(mockRepoCreate).not.toHaveBeenCalled();
+    });
+
+    it('refuses a configuration the flow schema rejects', async () => {
+      const res = await postChallenge({ ...annotation, flow_config: { ...annotation.flow_config, k: 4 } }, 'valid-token');
+
+      expect(res.status).toBe(400);
+      expect(mockChallengeCreate).not.toHaveBeenCalled();
+    });
+
+    it('lets the flat fields of the first flows win over flow_config', async () => {
+      const res = await postChallenge(
+        { ...validBody, workspace_mode: 'own_repo', flow_config: { workspace_mode: 'provided_repo' } },
+        'valid-token'
+      );
+
+      expect(res.status).toBe(201);
+      expect(mockChallengeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ flow_config: { workspace_mode: 'own_repo' } })
+      );
     });
   });
 

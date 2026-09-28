@@ -30,15 +30,16 @@ export interface PromotionFormState {
   roadmap: string;
   cp: number;
   projectId: string;
-  rewardRules: unknown;
-  codeRules: unknown;
-  computeEnabled: boolean;
-  apiPackagingEnabled: boolean;
 }
 
-export function buildPromotionRequestBody(state: PromotionFormState): Record<string, unknown> {
-  const isMl = state.type === "ml";
+/** Ce que la route de promotion fixe elle-même, et qu'une section ne peut pas lui imposer. */
+const INHERITED_FIELDS = ['type', 'workspace_mode', 'github_repo'];
 
+export function buildPromotionRequestBody(
+  state: PromotionFormState,
+  flowFields: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const fields = Object.fromEntries(Object.entries(flowFields).filter(([key]) => !INHERITED_FIELDS.includes(key)));
   return {
     title: state.title.trim(),
     slug: state.slug,
@@ -51,10 +52,6 @@ export function buildPromotionRequestBody(state: PromotionFormState): Record<str
     roadmap: state.roadmap.trim() || undefined,
     contribution_points_reward: state.cp,
     project_id: state.projectId,
-    // Sans règles, le service n'a rien contre quoi scorer la reprise du travail
-    // de l'auteur — c'est ce qui rendrait la promotion muette côté CP.
-    reward_rules: isMl ? state.rewardRules : state.codeRules,
-    compute_enabled: isMl ? state.computeEnabled : false,
-    api_packaging_enabled: isMl ? state.apiPackagingEnabled : undefined,
+    ...fields,
   };
 }

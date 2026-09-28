@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { CheckCircle2, ChevronDown, Download, Loader2, XCircle } from 'lucide-react';
 import { ValidationOutputViewer } from '@/components/challenges/ValidationOutputViewer';
 
@@ -48,7 +49,7 @@ function RunFile({ challengeId, run }: { challengeId: string; run: RunItem }) {
     let cancelled = false;
     setLoading(true);
     setError(false);
-    fetch(`/api/challenges/${challengeId}/validation-runs/${run.id}/file`)
+    fetch(flowActionUrl(challengeId, `runs/${run.id}/file`))
       .then(res => (res.ok ? res.blob() : Promise.reject()))
       .then(b => { if (!cancelled) setBlob(b); })
       .catch(() => { if (!cancelled) setError(true); })
@@ -92,7 +93,7 @@ function RunResponse({ challengeId, run }: { challengeId: string; run: RunItem }
   useEffect(() => {
     let cancelled = false;
     setError(false);
-    fetch(`/api/challenges/${challengeId}/validation-runs/${run.id}/response`)
+    fetch(flowActionUrl(challengeId, `runs/${run.id}/response`))
       .then(res => (res.ok ? res.blob() : Promise.reject()))
       .then(b => { if (!cancelled) setBlob(b); })
       .catch(() => { if (!cancelled) setError(true); });
@@ -165,7 +166,7 @@ export function ValidationRunsPanel({ challengeId, open }: { challengeId: string
     wasOpen.current = open;
     if (!justOpened) return;
     setLoading(true);
-    fetch(`/api/challenges/${challengeId}/validation-runs`)
+    fetch(flowActionUrl(challengeId, 'runs'))
       .then(res => (res.ok ? res.json() : { runs: [] }))
       .then(d => setRuns(d.runs ?? []))
       .finally(() => setLoading(false));

@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 
 import { Providers } from "./providers";
+import { GET as getModules } from "@/app/api/modules/route";
 import { LabShell } from "@/components/layout/LabShell";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { OnboardingDrawer } from "@/components/onboarding/OnboardingDrawer";
 import { SessionGuard } from "@/components/layout/SessionGuard";
 import { fetchContributorSession } from "@/lib/contributor";
-import { fetchOnboardingProgress } from "@/lib/server/onboarding";
+import type { ModulesResponse } from "@/lib/moduleSlots";
+import { fetchOnboardingQuests } from "@/lib/server/onboarding";
+import { readPublicRoute } from "@/lib/server/publicSsr";
+import { modules } from "@packages/capabilities/modules";
 import { AppSettingsRepository } from "@packages/database-service/repositories";
 import { THEMES, DEFAULT_THEME_KEY, isValidThemeKey } from "@/lib/themes";
 import { resolveTheme } from "@/lib/color-utils";
@@ -62,11 +67,23 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [session, settings] = await Promise.all([
+  const [session, settings, moduleStates] = await Promise.all([
     fetchContributorSession(),
     appSettingsRepo.get(),
+    readPublicRoute<ModulesResponse>(getModules, "/api/modules"),
   ]);
-  const onboarding = session ? await fetchOnboardingProgress(session.id) : null;
+  // Le tiroir d'onboarding : module actif, et au moins une quête à accomplir.
+  const onboardingQuests = session && (await modules.enabled("onboarding"))
+    ? await fetchOnboardingQuests(session.id)
+    : [];
+  const showOnboarding = onboardingQuests.some((quest) => !quest.completed);
+
+  // L'état des modules dans le cache dès le rendu serveur : les entrées de
+  // navigation des modules actifs (la sandbox) sont dans le HTML initial —
+  // lues par les crawlers, sans apparaître après coup — et celles d'un module
+  // désactivé n'y sont jamais.
+  const queryClient = new QueryClient();
+  if (moduleStates) queryClient.setQueryData(["modules"], moduleStates);
 
   const themeKey = isValidThemeKey(settings.theme_key) ? settings.theme_key : DEFAULT_THEME_KEY;
   const palette = THEMES[themeKey];
@@ -96,20 +113,20 @@ export default async function RootLayout({
       <head />
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Providers>
-          <LabShell
-            navbar={<Navbar session={session} />}
-            footer={<Footer />}
-            overlays={
-              <>
-                {session && onboarding && !onboarding.completed_at && settings.modules_onboarding_enabled && (
-                  <OnboardingDrawer initialProgress={onboarding} />
-                )}
-                {session && <SessionGuard />}
-              </>
-            }
-          >
-            {children}
-          </LabShell>
+          <HydrationBoundary state={dehydrate(queryClient)}>
+            <LabShell
+              navbar={<Navbar session={session} />}
+              footer={<Footer />}
+              overlays={
+                <>
+                  {showOnboarding && <OnboardingDrawer quests={onboardingQuests} />}
+                  {session && <SessionGuard />}
+                </>
+              }
+            >
+              {children}
+            </LabShell>
+          </HydrationBoundary>
         </Providers>
       </body>
     </html>

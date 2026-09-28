@@ -1,11 +1,11 @@
 import {
-  AppSettingsRepository,
   SandboxRepository,
   SandboxRewardRepository,
   SandboxStarRepository,
 } from "../../database-service/repositories/index.js";
 import type { SandboxDraft, SandboxPatch } from "../../database-service/repositories/sandbox.repo.js";
-import type { Sandbox, SandboxStarTier } from "../../database-service/domain/entities.js";
+import type { Sandbox } from "../../database-service/domain/entities.js";
+import { readSandboxSettings, type SandboxEconomySettings } from "./settings.js";
 import { tiersToPay } from "./starTiers.js";
 import { planAnonAttach } from "./starAttach.js";
 import { ipHashRetentionCutoff, isRateLimited, rateLimitWindowStart } from "./starPolicy.js";
@@ -20,6 +20,8 @@ export class SelfStarError extends Error {}
 export class SandboxNotOpenError extends Error {}
 /** Plafond horaire des stars anonymes atteint pour cette IP hachée. → 429 */
 export class StarRateLimitedError extends Error {}
+/** Les règles de reward d'une promotion ne se lisent pas avec le flow du challenge. → 400 */
+export class InvalidRewardRulesError extends Error {}
 
 /**
  * Qui star. Deux formes exclusives, jamais mélangées : une star faite en étant
@@ -59,8 +61,8 @@ export interface SandboxServiceDeps {
     | "purgeIpHashesOlderThan"
   >;
   rewardRepo: Pick<SandboxRewardRepository, "paidTierThresholdsBySandboxIds" | "insertTierIfAbsent">;
-  /** Réduit à ce que le service lit : les paliers configurés par l'admin. */
-  appSettingsRepo: { get(): Promise<{ sandbox_star_tiers: SandboxStarTier[] }> };
+  /** Réduit à ce que le service lit : les paliers réglés dans le module sandbox. */
+  settings: () => Promise<Pick<SandboxEconomySettings, "star_tiers">>;
   /** Injectable pour que les fenêtres de débit et de purge soient testables. */
   now: () => Date;
 }
@@ -71,10 +73,10 @@ export interface SandboxServiceDeps {
  * Cycle de vie d'une proposition et économie de ses stars. Voir docs/sandbox.md.
  *
  * Ce que ce service ne fait pas, volontairement : aucun contrôle de rôle à la
- * création (§1.6 — c'est la route qui connaît le rôle de l'appelant), aucune
- * validation de forme (les schémas Zod du palier 1 la portent), et aucune
- * écriture dans `reward_entries` ni dans `contributions` — le ledger sandbox
- * est séparé, par construction.
+ * création (§1.6 — c'est la route qui connaît le rôle de l'appelant), et
+ * aucune écriture dans `reward_entries` ni dans `contributions` — le ledger
+ * sandbox est séparé, par construction. Ses paliers viennent des réglages du
+ * module sandbox (`readSandboxSettings`).
  */
 export class SandboxService {
   private deps: SandboxServiceDeps;
@@ -84,7 +86,7 @@ export class SandboxService {
       sandboxRepo: new SandboxRepository(),
       starRepo: new SandboxStarRepository(),
       rewardRepo: new SandboxRewardRepository(),
-      appSettingsRepo: new AppSettingsRepository(),
+      settings: () => readSandboxSettings(),
       now: () => new Date(),
       ...deps,
     } as SandboxServiceDeps;
@@ -255,12 +257,12 @@ export class SandboxService {
   ): Promise<{ starCount: number; paidTierThresholds: number[] }> {
     const [starCount, settings, paidMap] = await Promise.all([
       this.deps.starRepo.countActive(sandbox.uuid),
-      this.deps.appSettingsRepo.get(),
+      this.deps.settings(),
       this.deps.rewardRepo.paidTierThresholdsBySandboxIds([sandbox.uuid]),
     ]);
 
     const alreadyPaid = paidMap.get(sandbox.uuid) ?? [];
-    const due = tiersToPay(starCount, settings.sandbox_star_tiers ?? [], alreadyPaid);
+    const due = tiersToPay(starCount, settings.star_tiers ?? [], alreadyPaid);
 
     for (const tier of due) {
       await this.deps.rewardRepo.insertTierIfAbsent({

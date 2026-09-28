@@ -79,6 +79,12 @@ export interface WorkspaceProvider {
   readonly name: string;
 
   /**
+   * Le provider peut servir maintenant : ses credentials sont lus dans le
+   * store au moment de l'appel. Absent, il est toujours disponible.
+   */
+  isAvailable?(): Promise<boolean>;
+
+  /**
    * Provisionne un nouveau workspace
    */
   provision(request: ProvisionRequest): Promise<ProvisionResult>;

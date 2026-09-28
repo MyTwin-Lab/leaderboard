@@ -200,19 +200,18 @@ function makeDeps(
     ),
   };
 
-  const appSettingsRepo = {
-    get: vi.fn(async () => ({ sandbox_star_tiers: opts.tiers ?? TIERS })),
-  };
+  // Les paliers viennent des réglages du module sandbox (`readSandboxSettings`).
+  const settings = vi.fn(async () => ({ star_tiers: opts.tiers ?? TIERS }));
 
   const deps: SandboxServiceDeps = {
     sandboxRepo,
     starRepo,
     rewardRepo,
-    appSettingsRepo,
+    settings,
     now: () => NOW,
   };
 
-  return { deps, stars, rewards, sandboxRepo, starRepo, rewardRepo, appSettingsRepo };
+  return { deps, stars, rewards, sandboxRepo, starRepo, rewardRepo, settings };
 }
 
 describe("SandboxService.star", () => {

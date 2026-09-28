@@ -1,3 +1,5 @@
+import { flowCatalog } from '@/distribution/mytwin.flows';
+
 /**
  * Le brief d'un challenge est un document comme les autres — il vit dans
  * `challenge_documents` et reste consultable dans le tiroir Docs une fois le
@@ -50,23 +52,6 @@ export interface GroupInvite {
 }
 
 /**
- * Types de challenge dont l'accès passe par le brief.
- *
- * Les challenges de validation y sont, comme les autres : on lit d'abord la
- * vitrine, on rejoint si on veut y participer, et l'espace de travail — ici le
- * parcours de validation — vient après. Un validateur qui tombe d'un lien sur
- * un mur de cas de référence sans savoir ce qu'on lui demande n'est pas mieux
- * servi qu'un contributeur devant un board vide.
- *
- * La porte est d'affichage, et seulement ça : aucune route de validation ne
- * vérifie l'appartenance à l'équipe, et rejoindre n'y provisionne rien — le
- * `isCode` de `api/challenges/[id]/join` ne crée un workspace que pour un
- * challenge `code`. Rejoindre pose donc une ligne dans `challenge_teams`, rien
- * de plus, et l'accès reste possible à qui appelle les routes directement.
- */
-export const BRIEF_GATED_TYPES = ['code', 'ml', 'validation'];
-
-/**
  * Le type d'un challenge **repère** : il n'ouvre aucun travail.
  *
  * « Community Management », « Design system », « Documentation » — des entrées
@@ -77,12 +62,27 @@ export const BRIEF_GATED_TYPES = ['code', 'ml', 'validation'];
  *
  * Une valeur dans `challenges.type`, pas un `null` : `null` est l'absence de
  * réponse d'une row écrite avant que le type existe, et le code la rabat sur
- * `code` un peu partout. `'none'` est une réponse.
+ * `code` un peu partout. `'none'` est une réponse — et le flow `none` de la
+ * distribution, qui ne déclare aucun travail.
  */
 export const PLACEHOLDER_TYPE = 'none';
 
 export function isPlaceholderChallenge(type: string | null | undefined): boolean {
   return type === PLACEHOLDER_TYPE;
+}
+
+/**
+ * L'accès à ce challenge passe-t-il par le brief ?
+ *
+ * C'est son flow qui le dit (`briefRequired`). Les challenges de validation y
+ * sont, comme les autres : on lit d'abord la vitrine, on rejoint si on veut y
+ * participer, et l'espace de travail — ici le parcours de validation — vient
+ * après. La porte est d'affichage, et seulement ça : aucune route de
+ * validation ne vérifie l'appartenance à l'équipe. Un type inconnu n'y passe
+ * pas.
+ */
+export function isBriefGated(challengeType: string | null | undefined): boolean {
+  return flowCatalog.get(challengeType)?.briefRequired === true;
 }
 
 /**
@@ -103,7 +103,7 @@ export function shouldShowBrief({ isMember, challengeType, brief }: {
 }): boolean {
   if (isMember) return false;
   if (!brief || !brief.trim()) return false;
-  return BRIEF_GATED_TYPES.includes(challengeType ?? '');
+  return isBriefGated(challengeType);
 }
 
 /**
@@ -127,6 +127,6 @@ export function showVitrineScreen({ isMember, isPhone, challengeType, brief }: {
   brief: string | null | undefined;
 }): boolean {
   if (isPlaceholderChallenge(challengeType)) return true;
-  if (!BRIEF_GATED_TYPES.includes(challengeType ?? '')) return false;
+  if (!isBriefGated(challengeType)) return false;
   return isMember ? isPhone : shouldShowBrief({ isMember, challengeType, brief });
 }

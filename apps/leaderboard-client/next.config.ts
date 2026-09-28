@@ -37,6 +37,7 @@ const nextConfig: NextConfig = {
         "/challenges/:id/manage",
         "/tasks/:path*",
         "/sync-meetings/:path*",
+        "/watch/:path*",
       ].map((source) => ({ source, headers: noindex })),
     ];
   },

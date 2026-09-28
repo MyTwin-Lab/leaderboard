@@ -1,5 +1,5 @@
-import { BRIEF_GATED_TYPES } from './challengeBrief';
-import { GROUP_MAX_SIZE } from '../../../../packages/services/challenge/groupPolicy';
+import { isBriefGated } from './challengeBrief';
+import { GROUP_MAX_SIZE } from '../../../../packages/database-service/domain/groupPolicy';
 
 /**
  * Règles du parcours « rejoindre » — pures, sans React.
@@ -9,7 +9,7 @@ import { GROUP_MAX_SIZE } from '../../../../packages/services/challenge/groupPol
  * ferait diverger.
  *
  * `groupPolicy` est la moitié pure du module de groupes, la seule qu'un
- * composant client puisse importer : `group.ts` instancie un repository, donc
+ * composant client puisse importer : `capabilities/groups.ts` instancie un repository, donc
  * un client Postgres, qui n'a rien à faire dans un bundle navigateur.
  */
 
@@ -42,7 +42,7 @@ export function showJoinInHeader({
 }): boolean {
   if (isMember) return false;
   if (!isOpen(challengeStatus)) return false;
-  return BRIEF_GATED_TYPES.includes(challengeType ?? '');
+  return isBriefGated(challengeType);
 }
 
 /**

@@ -44,7 +44,7 @@ export interface ChallengeTeam {
    * Groupe de travail sur ce challenge. `undefined` = participation solo,
    * comportement inchangé. Les rows d'un même challenge qui le partagent
    * travaillent sur le workspace du créateur du groupe — celui dont la row
-   * porte le `workspace_ref`. Voir services/challenge/group.ts.
+   * porte le `workspace_ref`. Voir capabilities/groups.ts.
    */
   group_id?: string;
 }
@@ -66,16 +66,20 @@ export interface Challenge {
   contribution_points_reward: number;
   completion: number;
   project_id: string; // FK -> projects.uuid
-  reward_rules?: MlRewardRules | CodeRewardRules | null;
+  /** Règles de récompense, éditables. Leur forme appartient au flow, qui les lit (`rules.parse`). */
+  reward_rules?: unknown;
   /** L'image de couverture, posée à la création et modifiable à l'édition. */
   cover_image_url?: string | null;
   /** Qui porte le challenge, en une phrase. NULL = la page n'en dit rien. */
   host?: string | null;
-  workspace_mode?: ChallengeWorkspaceMode | null; // Code challenges uniquement
-  source_challenge_id?: string | null; // Validation uniquement — le challenge ML validé
-  cp_per_validation?: number | null;   // Validation uniquement — CP fixe par validation
-  required_validations?: number | null; // Validation uniquement — nb de verdicts requis avant résolution (impair)
-  compute_enabled?: boolean; // ML uniquement — active la demande de puissance de calcul Scaleway sur ce challenge
+  source_challenge_id?: string | null; // Lien générique vers un challenge parent (validation aujourd'hui)
+  /**
+   * Configuration du flow, fixée à la création (sections d'extensions mises à
+   * part). Lue par la capacité `flow-config`, qui la monte à la version courante.
+   */
+  flow_config?: Record<string, unknown> | null;
+  /** Version sous laquelle `flow_config` a été écrite. */
+  flow_config_version?: number;
   created_at: Date;
   closed_at?: Date | null; // Posée à la bascule vers 'completed' (jamais 'archived')
 }
@@ -140,20 +144,14 @@ export interface Contribution {
   created_at: Date;
 }
 
-// --- REWARD ENTRIES (ledger ML) ---
+// --- REWARD ENTRIES (ledger) ---
 
-export type RewardRuleKey =
-  | 'dataset'
-  | 'model_metric'
-  | 'model_code'
-  | 'beat_best'
-  | 'api_packaging'
-  | 'reuse_dataset'
-  | 'reuse_model'
-  | 'slack_signal'
-  | 'validation'
-  | 'code_fixed'
-  | 'code_quality';
+/**
+ * Clé d'une ligne de ledger. Les clés ne sont pas une liste fermée : chaque
+ * flow, extension ou kit installé déclare les siennes, et l'écriture refuse une
+ * clé que rien ne déclare (`packages/registry/platform.ts`).
+ */
+export type RewardRuleKey = string;
 
 export interface RewardEntryMeta {
   metricValue?: number;
@@ -175,6 +173,9 @@ export interface RewardEntry {
   meta?: RewardEntryMeta;
   created_at: Date;
 }
+
+/** Une ligne de ledger à écrire, sans les champs générés par la base. */
+export type RewardEntryDraft = Omit<RewardEntry, "uuid" | "created_at">;
 
 /**
  * Part de CP d'un membre de groupe sur une contribution.
@@ -205,13 +206,13 @@ export interface ValidationTarget {
 
 /**
  * Un cas de vérité terrain (entrée connue -> sortie attendue), écrit par un
- * medical_pro. Partagé par tout le challenge de validation — voir
+ * relecteur qualifié. Partagé par tout le challenge de validation — voir
  * challenges/challenge-014-qualified_validation/SPEC.md section 4.3.
  */
 export interface ValidationReferenceCase {
   uuid: string;
   validation_challenge_id: string; // FK -> challenges.uuid
-  author_user_id: string | null;   // FK -> users.uuid (le medical_pro auteur)
+  author_user_id: string | null;   // FK -> users.uuid (le relecteur auteur)
   input_bytes: Buffer;
   input_filename: string;
   input_content_type: string;
@@ -223,7 +224,7 @@ export interface ValidationReferenceCase {
 }
 
 /**
- * La réclamation d'un cas de référence par un medical_pro sur un target
+ * La réclamation d'un cas de référence par un relecteur qualifié sur un target
  * donné : réponse réelle capturée à la réclamation (un seul geste atomique),
  * puis observation, puis révélation — dans cet ordre, appliqué côté service.
  */
@@ -242,7 +243,7 @@ export interface ValidationCaseClaim {
   purged_at?: Date | null;         // non-null une fois response_bytes purgé
 }
 
-/** Un verdict (works/broken) rendu par un medical_pro sur une cible donnée. */
+/** Un verdict (works/broken) rendu par un relecteur qualifié sur une cible donnée. */
 export interface ValidationAttempt {
   uuid: string;
   validation_challenge_id: string; // FK -> challenges.uuid
@@ -289,7 +290,7 @@ export interface ValidationScenarioRun {
   created_at: Date;
 }
 
-/** Le retour d'un validateur sur une étape : un résultat, un commentaire UX, et un avis médical réservé aux medical_pro. */
+/** Le retour d'un validateur sur une étape : un résultat, un commentaire UX, et un avis médical réservé à la qualification exigée. */
 export interface ValidationStepFeedback {
   uuid: string;
   run_id: string;  // FK -> validation_scenario_runs.uuid
@@ -330,12 +331,36 @@ export interface ComputeRequest {
 }
 
 /**
- * Les rôles réellement utilisés (proxy.ts, components/admin/UserList.tsx,
- * seeds). La colonne reste un varchar : cette liste borne ce que l'API
- * accepte en écriture, elle ne réinterprète pas les rows existantes.
+ * Les rôles : des permissions, rien d'autre (proxy.ts,
+ * components/admin/UserList.tsx, seeds). Ce qu'on reconnaît à quelqu'un de
+ * compétent pour juger est une qualification (`user_qualifications`). La
+ * colonne reste un varchar : cette liste borne ce que l'API accepte en
+ * écriture, elle ne réinterprète pas les rows existantes.
  */
-export const USER_ROLES = ['admin', 'contributor', 'viewer', 'medical_pro'] as const;
+export const USER_ROLES = ['admin', 'contributor', 'viewer'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
+
+/** Une qualification détenue par un compte — voir la table user_qualifications. */
+export interface UserQualification {
+  user_id: string;
+  key: string;
+  granted_by: string | null;
+  granted_at: Date;
+  note: string | null;
+}
+
+export type QualificationAction = 'granted' | 'revoked';
+
+/** Trace d'un octroi ou d'un retrait de qualification — voir la table qualification_changes. */
+export interface QualificationChange {
+  uuid: string;
+  user_id: string;
+  key: string;
+  action: QualificationAction;
+  changed_by: string | null;
+  note: string | null;
+  created_at: Date;
+}
 
 /** Trace d'un changement de rôle — voir la table role_changes. */
 export interface RoleChange {
@@ -397,7 +422,8 @@ export interface WorkspaceMeta {
 
 // --- EVALUATION RUNS ---
 
-export type EvaluationRunTriggerType = 'manual' | 'sync' | 'github_pr';
+/** La clé du flow, de l'extension ou du module qui a lancé l'évaluation (`code`, `ml`, `sandbox`…). */
+export type EvaluationRunTriggerType = string;
 export type EvaluationRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'canceled';
 
 export interface EvaluationRunMeta {
@@ -405,23 +431,31 @@ export interface EvaluationRunMeta {
   durationMs?: number;
   evaluatorVersion?: string;
   gridVersion?: number;
+  gridSlug?: string;
+  bundleSource?: string;
+  /** Note brute sur 0–9. */
+  globalScore?: number;
+  /** Le sujet évalué, quand aucune contribution ne le porte (évaluation formative d'un sandbox). */
+  subject?: { title: string; type: string; ref: string };
   [key: string]: unknown;
 }
 
 export interface EvaluationRun {
   uuid: string;
-  challenge_id: string;
+  /** Absent pour une évaluation sans challenge (sandbox). */
+  challenge_id?: string;
   trigger_type: EvaluationRunTriggerType;
+  /** `{ handler, payload }` : ce que le rejeu rappelle. */
   trigger_payload?: Record<string, unknown>;
-  window_start: Date;
-  window_end: Date;
+  /** Fenêtre de l'ancien pipeline de synchronisation ; les évaluations actuelles n'en ont pas. */
+  window_start?: Date;
+  window_end?: Date;
   status: EvaluationRunStatus;
   started_at?: Date;
   finished_at?: Date;
   error_code?: string;
   error_message?: string;
   created_by?: string;
-  retry_of_run_id?: string;
   meta?: EvaluationRunMeta;
 }
 
@@ -557,34 +591,18 @@ export interface AppSettings {
   background_color?: string | null;
   theme_mode: string; // "dark" | "light"
   updated_at?: Date;
-  github_org?: string | null;
-  github_connected_at?: Date | null;
-  github_connected_by?: string | null;
-  github_is_connected: boolean; // derived: !!github_token_enc in DB
-  kaggle_username?: string | null;
-  kaggle_connected_at?: Date | null;
-  kaggle_connected_by?: string | null;
-  kaggle_is_connected: boolean; // derived: !!kaggle_key_enc in DB
-  openai_connected_at?: Date | null;
-  openai_connected_by?: string | null;
-  openai_is_connected: boolean; // derived: !!openai_key_enc in DB
-  slack_team_name?: string | null;
-  slack_connected_at?: Date | null;
-  slack_connected_by?: string | null;
-  slack_is_connected: boolean; // derived: !!slack_token_enc in DB
-  modules_meetings_enabled: boolean;
-  modules_onboarding_enabled: boolean;
-  scaleway_project_id?: string | null;
-  scaleway_zone?: string | null;
-  scaleway_connected_at?: Date | null;
-  scaleway_connected_by?: string | null;
-  scaleway_is_connected: boolean; // derived: !!scaleway_secret_key_enc && !scaleway_disconnect_requested_at
-  scaleway_disconnect_requested_at?: Date | null;
-  digest_enabled: boolean;
-  digest_frequency_days: number;
-  /** Vide = l'économie des stars ne paie rien. Voir SandboxStarTier. */
-  sandbox_star_tiers: SandboxStarTier[];
-  sandbox_promotion_bonus_cp: number;
+}
+
+// --- INTEGRATION CREDENTIALS ---
+/** Une connexion à un service tiers, secret chiffré. Lue par la capacité `credentials`. */
+export interface IntegrationCredential {
+  key: string;
+  secret_enc: string | null;
+  secret_iv: string | null;
+  /** Ce qui se lit sans le secret : organisation, équipe, projet… */
+  meta: Record<string, unknown>;
+  connected_at: Date | null;
+  connected_by: string | null;
 }
 
 // --- SANDBOX ---
@@ -753,33 +771,21 @@ export interface Digest {
   payload: DigestPayload;
 }
 
-// --- ONBOARDING PROGRESS WITH USER ---
+// --- ONBOARDING QUESTS ---
+// Les quêtes elles-mêmes sont déclarées au registre (`PlatformRegistry.quests()`).
+
+/** Une quête d'onboarding accomplie (`onboarding_quest_progress`). */
+export interface OnboardingQuestCompletion {
+  quest_key: string;
+  completed_at: Date;
+}
+
+/** Un compte et les quêtes qu'il a accomplies, pour le suivi de l'admin. */
 export interface OnboardingProgressWithUser {
   user_id: string;
   full_name: string;
   avatar_url: string | null;
-  clicked_challenge: boolean;
-  assigned_task: boolean;
-  evaluated_contribution: boolean;
-  validated_task: boolean;
-  joined_meeting: boolean;
-  completed_at?: Date;
-}
-
-// --- ONBOARDING PROGRESS ---
-
-export type OnboardingStep = 'clicked_challenge' | 'assigned_task' | 'evaluated_contribution' | 'validated_task' | 'joined_meeting';
-
-export interface OnboardingProgress {
-  user_id: string;
-  clicked_challenge: boolean;
-  assigned_task: boolean;
-  evaluated_contribution: boolean;
-  validated_task: boolean;
-  joined_meeting: boolean;
-  completed_at?: Date;
-  created_at: Date;
-  updated_at: Date;
+  completed: OnboardingQuestCompletion[];
 }
 
 // --- NOTIFICATIONS ---

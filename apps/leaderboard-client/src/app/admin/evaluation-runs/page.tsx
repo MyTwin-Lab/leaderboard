@@ -71,7 +71,7 @@ export default function EvaluationRunsPage() {
   const handleRetry = async (run: EvaluationRunWithChallenge) => {
     const ok = await confirm({
       title: 'Re-run Evaluation',
-      message: `Re-launch the sync evaluation for "${run.challengeTitle ?? 'this challenge'}"?`,
+      message: `Replay this ${run.trigger_type} evaluation for "${run.challengeTitle ?? run.meta?.subject?.title ?? 'this subject'}"? It runs in the background and shows up as a new run.`,
       confirmLabel: 'Re-run',
     });
     if (!ok) return;
@@ -81,7 +81,7 @@ export default function EvaluationRunsPage() {
       const res = await fetch(`/api/evaluation-runs/${run.uuid}/retry`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        toast(`Evaluation re-launched - ${data.count} contributions processed`, 'success');
+        toast('Evaluation re-launched', 'success');
         await fetchRuns();
       } else {
         toast(data.error ?? 'Failed to re-run evaluation', 'error');

@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import fs from 'fs/promises';
 import { verifyAdmin } from '@/lib/auth';
 import { EvaluationGridsRepository } from '../../../../../../../../packages/database-service/repositories/evaluationGrids.repo.js';
 import { convertGridToEvaluatorFormat } from '../../../../../../../../packages/services/database-grid-provider.js';
-import { SnapshotService } from '../../../../../../../../packages/services/challenge/snapshot.service.js';
+import { aggregateItems, prepareBundle, releaseBundle } from '../../../../../../../../packages/capabilities/bundle.js';
 import { parseGitHubUrl, resolveGitHubCommitShas } from '../../../../../../../../packages/services/challenge/githubUrl.js';
 import { extractArtifactRef } from '../../../../../../../../packages/services/challenge/artifactUrl.js';
-import { GitHubExternalConnector } from '../../../../../../../../packages/connectors/implementation/Github.connector.js';
-import { KaggleConnector } from '../../../../../../../../packages/connectors/implementation/Kaggle.connector.js';
+import { ConnectorRegistry } from '../../../../../../../../packages/connectors/registry.js';
 import { getGithubToken } from '../../../../../../../../packages/config/githubToken.js';
-import { getKaggleCredentials } from '../../../../../../../../packages/config/kaggleCredentials.js';
 import { OpenAIAgentEvaluator } from '../../../../../../../../packages/evaluator/evaluator.js';
 import type { EvaluateContext, SnapshotInfo, Contribution as EvalContribution, Evaluation } from '../../../../../../../../packages/evaluator/types.js';
 
@@ -23,7 +20,6 @@ const testRunSchema = z.object({
 });
 
 const gridRepo = new EvaluationGridsRepository();
-const snapshotService = new SnapshotService();
 
 /** Fixed by design: the point of this sandbox is measuring how consistent
  * the grid's scoring is across repeated runs on the same content. */
@@ -31,6 +27,13 @@ const RUN_COUNT = 5;
 /** Plafonné (la vraie pipeline task va jusqu'à 100) pour garder ce test rapide. */
 const MAX_GITHUB_COMMITS = 20;
 
+// POST /api/evaluation-grids/[id]/test-run
+//
+// Essai à blanc d'une grille, brouillon compris : l'agent est appelé
+// directement, sans passer par la capacité `evaluate`. Celle-ci charge une
+// grille publiée par son slug et trace un run ; un essai répété cinq fois sur
+// une grille en cours d'édition n'est ni l'un ni l'autre. Le bundle, lui,
+// passe par la capacité du core (agrégation, écriture et nettoyage).
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -81,15 +84,22 @@ export async function POST(
       const token = await getGithubToken();
       if (!token) unauthenticatedGithub = true;
       const branch = branchOverride?.trim() || (parsedUrl.refType === 'branch' ? parsedUrl.ref : undefined);
-      const connector = new GitHubExternalConnector({ token: token ?? undefined, owner: parsedUrl.owner, repo: parsedUrl.repo, branch });
+      const slug = `${parsedUrl.owner}/${parsedUrl.repo}`;
+      const connector = await ConnectorRegistry.createConnector(
+        { title: slug, type: 'github', external_repo_id: slug },
+        { branch, allowAnonymous: true }
+      );
+      if (!connector) {
+        return NextResponse.json({ error: 'No GitHub connector is available on this platform.' }, { status: 400 });
+      }
 
       try {
         await connector.connect();
-        const commitShas = await resolveGitHubCommitShas(parsedUrl, connector, token ?? undefined, MAX_GITHUB_COMMITS);
+        const commitShas = await resolveGitHubCommitShas(parsedUrl, connector, MAX_GITHUB_COMMITS);
         if (commitShas.length === 0) {
           return NextResponse.json({ error: 'No commits found for this GitHub reference.' }, { status: 400 });
         }
-        snapshotInfo = await snapshotService.buildAggregatedSnapshot(() => connector, commitShas);
+        snapshotInfo = await aggregateItems(() => connector, commitShas);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to fetch this GitHub repo';
         return NextResponse.json(
@@ -101,20 +111,20 @@ export async function POST(
           { status: 400 }
         );
       }
-      derivedTitle = derivedTitle || `${parsedUrl.owner}/${parsedUrl.repo}`;
+      derivedTitle = derivedTitle || slug;
     } else {
       const ref = extractArtifactRef(sourceUrl);
       if (!ref) {
         return NextResponse.json({ error: 'Could not parse this as a Kaggle dataset/model URL.' }, { status: 400 });
       }
-      const credentials = await getKaggleCredentials();
-      if (!credentials) {
+      // Le connecteur Kaggle n'est pas construit sans credentials.
+      const connector = await ConnectorRegistry.createConnector({ title: ref, type: sourceType, external_repo_id: ref });
+      if (!connector) {
         return NextResponse.json(
           { error: 'No Kaggle credentials configured - connect a Kaggle account in Integrations.' },
           { status: 400 }
         );
       }
-      const connector = new KaggleConnector({ ...credentials, ref, subtype: sourceType });
 
       try {
         await connector.connect();
@@ -137,7 +147,7 @@ export async function POST(
       return NextResponse.json({ error: 'Could not build a snapshot from this source.' }, { status: 400 });
     }
 
-    const prepared = await snapshotService.prepareSnapshot(snapshotInfo);
+    const prepared = await prepareBundle(snapshotInfo);
 
     const contribution: EvalContribution = {
       title: derivedTitle || 'Test run',
@@ -153,13 +163,10 @@ export async function POST(
 
     const settled = await Promise.allSettled(
       Array.from({ length: RUN_COUNT }, () => evaluator.evaluate(false, contribution, evalContext))
-    );
-
-    // Best-effort cleanup: unlike a real (one-off) task evaluation, this
-    // sandbox is meant to be rerun repeatedly while iterating on a grid.
-    if (prepared.workspacePath) {
-      fs.rm(prepared.workspacePath, { recursive: true, force: true }).catch(() => {});
-    }
+    ).finally(() => {
+      // Pas d'attente : la réponse ne dépend pas du nettoyage, jamais fatal.
+      void releaseBundle(prepared);
+    });
 
     const runs = settled
       .filter((r): r is PromiseFulfilledResult<Evaluation> => r.status === 'fulfilled')

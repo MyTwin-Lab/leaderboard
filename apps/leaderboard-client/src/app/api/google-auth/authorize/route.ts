@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { GoogleAuthService } from '../../../../../../../packages/services/google-workspace/google-auth.service.js';
+import { GoogleAuthService } from '../../../../../../../packages/capabilities/identity/google-auth.js';
 import { getBaseUrl, safeInternalPath } from '@/lib/url';
 import { oauthStateCookieOptions } from '@/lib/sessionCookie';
 

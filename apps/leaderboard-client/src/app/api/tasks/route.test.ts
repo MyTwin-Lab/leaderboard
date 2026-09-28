@@ -9,6 +9,7 @@ const {
   mockTeamFindByChallenge,
   mockProjectFindById,
   mockCanAccessChallengeInternals,
+  mockEmit,
 } = vi.hoisted(() => ({
   mockVerifyRequestToken: vi.fn(),
   mockFindPersonalTasks: vi.fn(),
@@ -21,6 +22,11 @@ const {
   mockTeamFindByChallenge: vi.fn(),
   mockProjectFindById: vi.fn(),
   mockCanAccessChallengeInternals: vi.fn(),
+  mockEmit: vi.fn(),
+}));
+
+vi.mock('../../../../../../packages/capabilities/events', () => ({
+  events: { emit: mockEmit },
 }));
 
 vi.mock('@/lib/server/managerAuth', () => ({
@@ -50,6 +56,10 @@ vi.mock('../../../../../../packages/database-service/repositories', () => ({
     // Lue par resolveWorkspaceOwner : vide = personne en groupe.
     findByChallenge = mockTeamFindByChallenge;
   },
+}));
+
+vi.mock('../../../../../../packages/capabilities/board', () => ({
+  usesBoard: (type: string) => type === 'code',
 }));
 
 vi.mock('@/lib/db', () => ({
@@ -101,6 +111,7 @@ beforeEach(() => {
   mockVerifyRequestToken.mockResolvedValue({ userId: 'alice', role: 'contributor' });
   mockTeamFindByChallenge.mockResolvedValue([]); // personne en groupe
   mockCanAccessChallengeInternals.mockResolvedValue(false);
+  mockEmit.mockResolvedValue(1);
 });
 
 describe('GET /api/tasks?scope=all — personal boards', () => {
@@ -172,6 +183,36 @@ describe('GET /api/tasks', () => {
 });
 
 describe('POST /api/tasks', () => {
+  it('announces a personal task to the platform, on behalf of the caller', async () => {
+    const res = await postTask(validBody, 'token');
+
+    expect(res.status).toBe(201);
+    expect(mockEmit).toHaveBeenCalledWith('task.created', {
+      taskId: 'new-task',
+      challengeId: CHALLENGE_ID,
+      userId: 'alice',
+      boardOwnerId: 'alice',
+    });
+  });
+
+  it('announces no template task', async () => {
+    mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin' });
+
+    const res = await postTask({ ...validBody, template: true }, 'token');
+
+    expect(res.status).toBe(201);
+    expect(mockEmit).not.toHaveBeenCalled();
+  });
+
+  it('still creates the task when the event cannot be written', async () => {
+    mockEmit.mockRejectedValue(new Error('outbox down'));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const res = await postTask(validBody, 'token');
+
+    expect(res.status).toBe(201);
+  });
+
   it('returns 401 without a session', async () => {
     const res = await postTask(validBody);
 
@@ -242,7 +283,7 @@ describe('POST /api/tasks', () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('returns 400 for a challenge of type "ml"', async () => {
+  it('returns 400 for a challenge whose flow has no board', async () => {
     mockChallengeFindById.mockResolvedValue({ uuid: CHALLENGE_ID, type: 'ml', project_id: 'project-1' });
 
     const res = await postTask(validBody, 'valid-token');

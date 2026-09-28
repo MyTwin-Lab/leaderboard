@@ -7,8 +7,17 @@ export {
   SelfStarError,
   SandboxNotOpenError,
   StarRateLimitedError,
+  InvalidRewardRulesError,
 } from "./sandbox.service.js";
-export type { SandboxServiceDeps, StarIdentity, StarState } from "./sandbox.service.js";
+export type {
+  SandboxServiceDeps,
+  StarIdentity,
+  StarState,
+} from "./sandbox.service.js";
+
+// Réglages du module sandbox : l'économie des étoiles.
+export { SANDBOX_MODULE, readSandboxSettings } from "./settings.js";
+export type { SandboxEconomySettings } from "./settings.js";
 
 // Paliers — purs, réutilisés par l'UI pour la progression.
 export { sortTiers, tiersToPay, nextTier, tierProgress } from "./starTiers.js";

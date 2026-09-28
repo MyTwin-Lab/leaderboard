@@ -1,16 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindWithChallenge, mockVerifyRequestToken, mockRunSyncEvaluation } = vi.hoisted(() => ({
+const { mockFindWithChallenge, mockVerifyRequestToken, mockRetryEvaluationRun } = vi.hoisted(() => ({
   mockFindWithChallenge: vi.fn(),
   mockVerifyRequestToken: vi.fn(),
-  mockRunSyncEvaluation: vi.fn(),
+  mockRetryEvaluationRun: vi.fn(),
 }));
 
 vi.mock('../../../../../../../../packages/database-service/repositories', () => ({
   EvaluationRunsRepository: class {
     findWithChallenge = mockFindWithChallenge;
   },
+}));
+
+vi.mock('../../../../../../../../packages/capabilities/evaluation', () => ({
+  retryEvaluationRun: mockRetryEvaluationRun,
 }));
 
 // Comme le vrai helper : `null` sans cookie access_token ; la doublure décide du reste
@@ -20,15 +24,16 @@ vi.mock('@/lib/auth', () => ({
     req.cookies.get('access_token') ? mockVerifyRequestToken(req) : Promise.resolve(null),
 }));
 
-vi.mock('../../../../../../../../packages/services/challenge/challenge.service', () => ({
-  ChallengeService: class {
-    runSyncEvaluation = mockRunSyncEvaluation;
-  },
-}));
-
 import { POST } from './route';
 
 const RUN_ID = 'run-1';
+const FAILED_RUN = {
+  uuid: RUN_ID,
+  challenge_id: 'challenge-1',
+  status: 'failed',
+  trigger_type: 'code',
+  trigger_payload: { handler: 'project', payload: { challengeId: 'challenge-1', userId: 'u1' } },
+};
 
 function postRetry(withCookie = true) {
   const req = new NextRequest(`http://localhost/api/evaluation-runs/${RUN_ID}/retry`, {
@@ -41,6 +46,8 @@ function postRetry(withCookie = true) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockVerifyRequestToken.mockResolvedValue({ userId: 'admin-1', role: 'admin' });
+  mockFindWithChallenge.mockResolvedValue({ run: FAILED_RUN, challenge: { uuid: 'challenge-1' } });
+  mockRetryEvaluationRun.mockResolvedValue({ ok: true });
 });
 
 describe('POST /api/evaluation-runs/[id]/retry', () => {
@@ -69,19 +76,33 @@ describe('POST /api/evaluation-runs/[id]/retry', () => {
     mockFindWithChallenge.mockResolvedValue(null);
     const res = await postRetry();
     expect(res.status).toBe(404);
-    expect(mockRunSyncEvaluation).not.toHaveBeenCalled();
+    expect(mockRetryEvaluationRun).not.toHaveBeenCalled();
   });
 
-  it('re-runs the sync evaluation for the run\'s challenge and returns the count', async () => {
-    mockFindWithChallenge.mockResolvedValue({ run: { uuid: RUN_ID, challenge_id: 'challenge-1' }, challenge: { uuid: 'challenge-1' } });
-    mockRunSyncEvaluation.mockResolvedValue([{ id: 'e1' }, { id: 'e2' }]);
+  it('replays the handler declared for the run and answers 202', async () => {
+    const res = await postRetry();
+
+    expect(res.status).toBe(202);
+    expect(mockRetryEvaluationRun).toHaveBeenCalledWith(FAILED_RUN);
+  });
+
+  it('returns 409 with a readable reason when the run cannot be replayed', async () => {
+    mockRetryEvaluationRun.mockResolvedValue({ ok: false, reason: 'not_failed' });
 
     const res = await postRetry();
 
-    expect(res.status).toBe(200);
-    expect(mockRunSyncEvaluation).toHaveBeenCalledWith('challenge-1');
+    expect(res.status).toBe(409);
     const body = await res.json();
-    expect(body).toEqual({ success: true, count: 2, challengeId: 'challenge-1' });
+    expect(body).toEqual({ error: 'Only a failed evaluation run can be retried', reason: 'not_failed' });
+  });
+
+  it('passes through a refusal of the handler it has no message for', async () => {
+    mockRetryEvaluationRun.mockResolvedValue({ ok: false, reason: 'workspace_not_ready' });
+
+    const res = await postRetry();
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/workspace_not_ready/);
   });
 
   it('returns 500 when the repository throws unexpectedly', async () => {

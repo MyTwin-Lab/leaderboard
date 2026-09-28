@@ -1,10 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import {
-  evaluateGithubRepo,
-  parseGithubRepoUrl,
-  toScore10,
-  type RepoEvaluationDeps,
-} from "./repo-evaluation.js";
+import { evaluateGithubRepo, parseGithubRepoUrl, toScore10 } from "./repo-evaluation.js";
 
 describe("toScore10", () => {
   it("ramène 0-9 sur 0-10", () => {
@@ -47,40 +42,7 @@ describe("parseGithubRepoUrl", () => {
   });
 });
 
-/** Un connecteur minimal : `fetchItems` rend `count` commits numérotés. */
-function makeConnector(count: number) {
-  return {
-    connect: vi.fn(async () => {}),
-    disconnect: vi.fn(async () => {}),
-    fetchItems: vi.fn(async () =>
-      Array.from({ length: count }, (_, i) => ({ id: `sha-${i}` })),
-    ),
-  };
-}
-
-function makeDeps(opts: { commits?: number; evaluation?: any } = {}) {
-  const connector = makeConnector(opts.commits ?? 3);
-  const evaluate = vi.fn(async () => opts.evaluation ?? { globalScore: 9, scores: [{ criterion: "c" }] });
-  const buildAggregatedSnapshot = vi.fn(async (_resolve: any, shas: string[]) => ({
-    snapshotId: shas.join("_"),
-    commitSha: shas[shas.length - 1],
-    commitShas: shas,
-    modifiedFiles: [],
-  }));
-  const prepareSnapshot = vi.fn(async (s: any) => ({ ...s, workspacePath: "/tmp/eval_agent-test" }));
-  const cleanup = vi.fn(async (_s: any) => {});
-  const loadGrid = vi.fn(async (slug: string) => ({ type: slug, criteriaTemplate: [], instructions: "" }));
-  const createConnector = vi.fn(async () => connector);
-
-  const deps = {
-    createConnector,
-    snapshotService: { buildAggregatedSnapshot, prepareSnapshot, cleanup },
-    loadGrid,
-    evaluator: { evaluate },
-  } as unknown as RepoEvaluationDeps;
-
-  return { deps, connector, evaluate, loadGrid, buildAggregatedSnapshot, createConnector, cleanup };
-}
+const ORIGIN = { owner: "sandbox", handler: "formative", payload: { sandboxId: "sb-1", userId: "alice" }, challengeId: null };
 
 const INPUT = {
   slug: "acme/widget",
@@ -88,85 +50,52 @@ const INPUT = {
   gridSlug: "code",
   subject: { title: "Widget", type: "code", description: "ctx", challengeId: "sb-1", userId: "alice" },
   hasPriorEvaluation: false,
+  origin: ORIGIN,
 };
+
+function fakeEvaluate(globalScore = 4.5) {
+  return vi.fn(async () => ({ runId: "run-1", refs: ["sha-1"], evaluation: { globalScore, scores: [] } }));
+}
 
 describe("evaluateGithubRepo", () => {
   it("rend le score sur 10 et le détail des critères", async () => {
-    const { deps, evaluate } = makeDeps({ evaluation: { globalScore: 4.5, scores: ["a", "b"] } });
+    const evaluate = fakeEvaluate(4.5);
 
-    const result = await evaluateGithubRepo(INPUT, deps);
+    const result = await evaluateGithubRepo(INPUT, { evaluate });
 
-    expect(result.score10).toBe(5);
-    expect(result.evaluation).toEqual({ globalScore: 4.5, scores: ["a", "b"] });
-    // Le sujet part tel quel à l'agent, commits compris.
+    expect(result).toEqual({ score10: 5, evaluation: { globalScore: 4.5, scores: [] } });
+  });
+
+  it("évalue un snapshot GitHub du repo et de sa branche, avec la grille demandée", async () => {
+    const evaluate = fakeEvaluate();
+
+    await evaluateGithubRepo({ ...INPUT, maxCommits: 5 }, { evaluate });
+
     expect(evaluate).toHaveBeenCalledWith(
-      false,
-      expect.objectContaining({ title: "Widget", challenge_id: "sb-1", userId: "alice", description: "ctx" }),
-      expect.objectContaining({ grid: expect.anything() }),
+      expect.objectContaining({
+        bundle: { source: "github-snapshot", input: { slug: "acme/widget", branch: "main", maxCommits: 5 } },
+        gridSlug: "code",
+        hasPriorEvaluation: false,
+      }),
     );
   });
 
-  it("échoue quand le repo n'a aucun commit", async () => {
-    const { deps, connector } = makeDeps({ commits: 0 });
+  it("passe le sujet à l'agent et le run au nom de l'appelant", async () => {
+    const evaluate = fakeEvaluate();
 
-    await expect(evaluateGithubRepo(INPUT, deps)).rejects.toThrow(/No commits found/);
-    // Le connecteur est refermé quand même — c'est le `finally`.
-    expect(connector.disconnect).toHaveBeenCalled();
+    await evaluateGithubRepo(INPUT, { evaluate });
+
+    expect(evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: { title: "Widget", type: "code", description: "ctx", ref: "sb-1", userId: "alice" },
+        origin: ORIGIN,
+      }),
+    );
   });
 
-  it("plafonne le snapshot à 100 commits", async () => {
-    const { deps, buildAggregatedSnapshot } = makeDeps({ commits: 250 });
+  it("laisse passer l'échec de l'évaluation", async () => {
+    const evaluate = vi.fn(async () => { throw new Error("boom"); });
 
-    await evaluateGithubRepo(INPUT, deps);
-
-    expect(buildAggregatedSnapshot.mock.calls[0][1]).toHaveLength(100);
-  });
-
-  it("respecte un maxCommits explicite", async () => {
-    const { deps, buildAggregatedSnapshot } = makeDeps({ commits: 250 });
-
-    await evaluateGithubRepo({ ...INPUT, maxCommits: 5 }, deps);
-
-    expect(buildAggregatedSnapshot.mock.calls[0][1]).toHaveLength(5);
-  });
-
-  it("charge la grille par son slug", async () => {
-    const { deps, loadGrid } = makeDeps();
-
-    await evaluateGithubRepo({ ...INPUT, gridSlug: "dataset" }, deps);
-
-    expect(loadGrid).toHaveBeenCalledWith("dataset");
-  });
-
-  it("ferme le connecteur même quand l'agent lève", async () => {
-    const { deps, connector } = makeDeps();
-    (deps.evaluator.evaluate as any).mockRejectedValueOnce(new Error("boom"));
-
-    await expect(evaluateGithubRepo(INPUT, deps)).rejects.toThrow("boom");
-    expect(connector.disconnect).toHaveBeenCalledTimes(1);
-  });
-
-  it("supprime le workspace du snapshot après l'évaluation", async () => {
-    const { deps, cleanup } = makeDeps();
-
-    await evaluateGithubRepo(INPUT, deps);
-
-    expect(cleanup).toHaveBeenCalledTimes(1);
-    expect(cleanup.mock.calls[0][0]).toMatchObject({ workspacePath: "/tmp/eval_agent-test" });
-  });
-
-  it("supprime le workspace même quand l'agent lève", async () => {
-    const { deps, cleanup } = makeDeps();
-    (deps.evaluator.evaluate as any).mockRejectedValueOnce(new Error("boom"));
-
-    await expect(evaluateGithubRepo(INPUT, deps)).rejects.toThrow("boom");
-    expect(cleanup).toHaveBeenCalledTimes(1);
-  });
-
-  it("échoue quand aucun connecteur ne peut être créé", async () => {
-    const { deps } = makeDeps();
-    (deps.createConnector as any).mockResolvedValueOnce(null);
-
-    await expect(evaluateGithubRepo(INPUT, deps)).rejects.toThrow(/No GitHub connector/);
+    await expect(evaluateGithubRepo(INPUT, { evaluate })).rejects.toThrow("boom");
   });
 });

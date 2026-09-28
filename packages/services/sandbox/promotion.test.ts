@@ -57,12 +57,12 @@ describe("buildPromotedChallengeDraft", () => {
         ...baseInput,
         type: "code",
         workspace_mode: "provided_repo",
-      }).workspace_mode,
-    ).toBe("own_repo");
+      }).flow_config,
+    ).toEqual({ workspace_mode: "own_repo" });
 
     expect(
-      buildPromotedChallengeDraft(sandbox(), { ...baseInput, type: "ml" }).workspace_mode,
-    ).toBeNull();
+      buildPromotedChallengeDraft(sandbox(), { ...baseInput, type: "ml" }).flow_config,
+    ).not.toHaveProperty("workspace_mode");
   });
 
   it("reprend le titre de la proposition quand l'admin n'en saisit pas", () => {
@@ -85,17 +85,15 @@ describe("buildPromotedChallengeDraft", () => {
       type: "ml",
       compute_enabled: true,
     });
-    expect(ml.compute_enabled).toBe(true);
+    expect(ml.flow_config).toEqual({ extensions: { compute: { enabled: true } } });
 
     const code = buildPromotedChallengeDraft(sandbox(), {
       ...baseInput,
       type: "code",
       compute_enabled: true,
     });
-    expect(code.compute_enabled).toBe(false);
+    expect(code.flow_config).toEqual({ workspace_mode: "own_repo" });
     expect(code.source_challenge_id).toBeNull();
-    expect(code.cp_per_validation).toBeNull();
-    expect(code.required_validations).toBeNull();
     expect(code.completion).toBe(0);
   });
 

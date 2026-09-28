@@ -752,6 +752,403 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
       EXECUTE FUNCTION sync_contribution_reward()`,
   },
 
+  // --- Runs d'évaluation écrits par la capacité evaluate (challenge 020, L2) ---
+  // Chaque évaluation trace un run : celle d'un sandbox n'a pas de challenge,
+  // et aucune n'a la fenêtre temporelle de l'ancien pipeline de synchro.
+  // DROP NOT NULL sur une colonne déjà nullable est un no-op, sans erreur.
+  {
+    label: "evaluation_runs.challenge_id, window_start, window_end (drop NOT NULL)",
+    sql: `
+      ALTER TABLE evaluation_runs
+        ALTER COLUMN challenge_id DROP NOT NULL,
+        ALTER COLUMN window_start DROP NOT NULL,
+        ALTER COLUMN window_end DROP NOT NULL`,
+  },
+
+  // --- Configuration des flows (challenge 020, L3) ---
+  // `flow_config` reprend workspace_mode (code), compute_enabled (extension
+  // compute du flow ML) et cp_per_validation / required_validations
+  // (validation), en version 1. Les quatre colonnes restent en place et
+  // écrites en miroir jusqu'au lot L7. Idempotent : seules les lignes sans
+  // configuration sont reprises. Même correspondance que
+  // packages/database-service/domain/legacyFlowConfig.ts.
+  {
+    label: "challenges.flow_config",
+    sql: `ALTER TABLE challenges ADD COLUMN IF NOT EXISTS flow_config jsonb`,
+  },
+  {
+    label: "challenges.flow_config_version",
+    sql: `ALTER TABLE challenges ADD COLUMN IF NOT EXISTS flow_config_version integer NOT NULL DEFAULT 1`,
+  },
+  {
+    label: "challenges.flow_config (reprise des colonnes historiques)",
+    sql: `
+      UPDATE challenges SET
+        flow_config = CASE COALESCE(type, 'code')
+          WHEN 'code' THEN jsonb_build_object('workspace_mode', COALESCE(workspace_mode, 'provided_repo'))
+          WHEN 'ml' THEN jsonb_build_object('extensions',
+            jsonb_build_object('compute', jsonb_build_object('enabled', COALESCE(compute_enabled, false))))
+          WHEN 'validation' THEN jsonb_strip_nulls(jsonb_build_object('cp_per_validation', cp_per_validation))
+            || jsonb_build_object('required_validations', required_validations)
+          ELSE '{}'::jsonb
+        END,
+        flow_config_version = 1
+      WHERE flow_config IS NULL`,
+  },
+
+  // --- Scission de la validation (challenge 020, L3) ---
+  // `validation` devient `endpoint-validation` (source ML : cas de référence)
+  // ou `journey-validation` (source code : parcours de scénario), et un
+  // parcours perd le quorum qu'il n'a jamais eu. Sans source lisible, le type
+  // se déduit des tables filles ; si aucune ne tranche (ni l'une ni l'autre, ou
+  // les deux), la reprise s'arrête et liste les challenges à décider à la main.
+  // Idempotent : plus aucune ligne `validation` au second passage.
+  {
+    label: "challenges.type (validation → endpoint-validation / journey-validation)",
+    run: async () => {
+      const decided = sql`CASE
+        WHEN (SELECT s.type FROM challenges s WHERE s.uuid = c.source_challenge_id) = 'ml' THEN 'endpoint-validation'
+        WHEN (SELECT s.type FROM challenges s WHERE s.uuid = c.source_challenge_id) = 'code' THEN 'journey-validation'
+        WHEN EXISTS (SELECT 1 FROM validation_reference_cases r WHERE r.validation_challenge_id = c.uuid)
+          AND NOT EXISTS (SELECT 1 FROM validation_scenario_steps st WHERE st.validation_challenge_id = c.uuid)
+          THEN 'endpoint-validation'
+        WHEN EXISTS (SELECT 1 FROM validation_scenario_steps st WHERE st.validation_challenge_id = c.uuid)
+          AND NOT EXISTS (SELECT 1 FROM validation_reference_cases r WHERE r.validation_challenge_id = c.uuid)
+          THEN 'journey-validation'
+      END`;
+
+      const { rows: undecidable } = await db.execute(sql`
+        SELECT c.uuid, c.title FROM challenges c
+        WHERE c.type = 'validation' AND (${decided}) IS NULL`);
+      if (undecidable.length > 0) {
+        const list = undecidable.map((row) => `${row.uuid} (${row.title})`).join(", ");
+        throw new Error(`Validation challenges whose flow cannot be decided, to settle by hand: ${list}`);
+      }
+
+      await db.execute(sql`
+        UPDATE challenges c SET
+          flow_config = CASE WHEN (${decided}) = 'journey-validation'
+            THEN COALESCE(c.flow_config, '{}'::jsonb) - 'required_validations'
+            ELSE c.flow_config END,
+          type = (${decided})
+        WHERE c.type = 'validation'`);
+    },
+  },
+  // Remplace la vérification applicative « un challenge de validation par
+  // source » : un parent ne porte qu'un challenge de chaque flow. Les doublons
+  // éventuels arrêtent la reprise avec leur liste plutôt qu'un échec d'index.
+  {
+    label: "idx_challenges_source_type (un challenge de chaque flow par parent)",
+    run: async () => {
+      const { rows: duplicates } = await db.execute(sql`
+        SELECT source_challenge_id, type, count(*)::int AS count FROM challenges
+        WHERE source_challenge_id IS NOT NULL
+        GROUP BY source_challenge_id, type
+        HAVING count(*) > 1`);
+      if (duplicates.length > 0) {
+        const list = duplicates.map((row) => `${row.source_challenge_id} × ${row.type} (${row.count})`).join(", ");
+        throw new Error(`Several challenges of the same flow share a parent, to settle by hand: ${list}`);
+      }
+      await db.execute(sql.raw(
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_challenges_source_type ON challenges (source_challenge_id, type) WHERE source_challenge_id IS NOT NULL`
+      ));
+    },
+  },
+
+  // --- Qualifications (challenge 020, L3) ---
+  // Le rôle ne porte plus que des permissions ; ce qu'on reconnaît à un compte
+  // de compétent pour juger devient une qualification, auditée comme un rôle.
+  {
+    label: "user_qualifications",
+    sql: `
+      CREATE TABLE IF NOT EXISTS user_qualifications (
+        user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        key varchar(64) NOT NULL,
+        granted_by uuid REFERENCES users(uuid) ON DELETE SET NULL,
+        granted_at timestamp NOT NULL DEFAULT now(),
+        note text,
+        PRIMARY KEY (user_id, key)
+      )`,
+  },
+  {
+    label: "idx_user_qualifications_key",
+    sql: `CREATE INDEX IF NOT EXISTS idx_user_qualifications_key ON user_qualifications (key)`,
+  },
+  {
+    label: "qualification_changes",
+    sql: `
+      CREATE TABLE IF NOT EXISTS qualification_changes (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        key varchar(64) NOT NULL,
+        action varchar(16) NOT NULL,
+        changed_by uuid REFERENCES users(uuid) ON DELETE SET NULL,
+        note text,
+        created_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+  {
+    label: "idx_qualification_changes_user_created",
+    sql: `CREATE INDEX IF NOT EXISTS idx_qualification_changes_user_created ON qualification_changes (user_id, created_at)`,
+  },
+  // Reprise : chaque compte `medical_pro` devient `contributor` et reçoit la
+  // qualification `medical_pro`, tracée dans les deux journaux. Une seule
+  // transaction : un compte ne peut pas perdre son rôle sans avoir reçu sa
+  // qualification. Idempotent : plus aucun `medical_pro` au second passage.
+  {
+    label: "users.role medical_pro → contributor + qualification medical_pro",
+    run: async () => {
+      await db.transaction(async (tx) => {
+        const { rows } = await tx.execute(sql`SELECT uuid FROM users WHERE role = 'medical_pro' FOR UPDATE`);
+        if (rows.length === 0) return;
+
+        const note = "Reprise du rôle medical_pro (challenge 020, L3)";
+        await tx.execute(sql`
+          INSERT INTO user_qualifications (user_id, key, note)
+          SELECT uuid, 'medical_pro', ${note} FROM users WHERE role = 'medical_pro'
+          ON CONFLICT DO NOTHING`);
+        await tx.execute(sql`
+          INSERT INTO qualification_changes (user_id, key, action, note)
+          SELECT uuid, 'medical_pro', 'granted', ${note} FROM users WHERE role = 'medical_pro'`);
+        await tx.execute(sql`
+          INSERT INTO role_changes (user_id, old_role, new_role, note)
+          SELECT uuid, 'medical_pro', 'contributor', ${note} FROM users WHERE role = 'medical_pro'`);
+        await tx.execute(sql`UPDATE users SET role = 'contributor' WHERE role = 'medical_pro'`);
+        console.log(`    ${rows.length} compte(s) medical_pro repris`);
+      });
+    },
+  },
+  // Les flows de validation lisent la qualification exigée dans leur
+  // configuration : les challenges existants gardent `medical_pro`, et le
+  // parcours garde ses rôles éligibles (les medical_pro étant désormais des
+  // contributeurs). Idempotent : seules les configurations sans la clé.
+  {
+    label: "challenges.flow_config (paramètres de qualification des validations)",
+    sql: `
+      UPDATE challenges
+      SET flow_config = jsonb_build_object('reviewer_qualification', 'medical_pro') || COALESCE(flow_config, '{}'::jsonb)
+      WHERE type = 'endpoint-validation' AND NOT (COALESCE(flow_config, '{}'::jsonb) ? 'reviewer_qualification')`,
+  },
+  {
+    label: "challenges.flow_config (paramètres de qualification des parcours)",
+    sql: `
+      UPDATE challenges
+      SET flow_config = jsonb_build_object(
+          'eligible_roles', '["contributor", "admin"]'::jsonb,
+          'expert_comment_qualification', 'medical_pro'
+        ) || COALESCE(flow_config, '{}'::jsonb)
+      WHERE type = 'journey-validation' AND NOT (COALESCE(flow_config, '{}'::jsonb) ? 'expert_comment_qualification')`,
+  },
+
+  // --- Store des connexions (challenge 020, L5) ---
+  //
+  // `integration_credentials` reprend les colonnes de connexion d'app_settings,
+  // qui ne sont plus lues et partent en L7. Idempotent : une connexion n'est
+  // recopiée que si elle est plus récente que celle du store, ce qui rattrape
+  // une reconnexion faite par l'ancien code pendant le déploiement sans jamais
+  // écraser ce que le nouveau code a écrit. Une déconnexion faite par l'ancien
+  // code dans cette fenêtre n'est pas recopiée : elle se refait à la main.
+  {
+    label: "integration_credentials",
+    sql: `
+      CREATE TABLE IF NOT EXISTS integration_credentials (
+        key varchar(64) PRIMARY KEY,
+        secret_enc text,
+        secret_iv varchar(64),
+        meta jsonb NOT NULL DEFAULT '{}'::jsonb,
+        connected_at timestamp,
+        connected_by uuid REFERENCES users(uuid) ON DELETE SET NULL
+      )`,
+  },
+  {
+    label: "integration_credentials (reprise d'app_settings)",
+    sql: `
+      INSERT INTO integration_credentials (key, secret_enc, secret_iv, meta, connected_at, connected_by)
+      SELECT v.key, v.secret_enc, v.secret_iv, v.meta, v.connected_at, v.connected_by
+      FROM app_settings s
+      CROSS JOIN LATERAL (VALUES
+        ('github', s.github_token_enc, s.github_token_iv,
+          jsonb_build_object('org', s.github_org), s.github_connected_at, s.github_connected_by),
+        ('kaggle', s.kaggle_key_enc, s.kaggle_key_iv,
+          jsonb_build_object('username', s.kaggle_username), s.kaggle_connected_at, s.kaggle_connected_by),
+        ('openai', s.openai_key_enc, s.openai_key_iv,
+          '{}'::jsonb, s.openai_connected_at, s.openai_connected_by),
+        ('slack', s.slack_token_enc, s.slack_token_iv,
+          jsonb_build_object('team_name', s.slack_team_name), s.slack_connected_at, s.slack_connected_by),
+        ('scaleway', s.scaleway_secret_key_enc, s.scaleway_secret_key_iv,
+          jsonb_build_object('project_id', s.scaleway_project_id, 'zone', s.scaleway_zone,
+            'disconnect_requested_at', s.scaleway_disconnect_requested_at),
+          s.scaleway_connected_at, s.scaleway_connected_by)
+      ) AS v(key, secret_enc, secret_iv, meta, connected_at, connected_by)
+      WHERE s.id = 1 AND v.secret_enc IS NOT NULL
+      ON CONFLICT (key) DO UPDATE SET
+        secret_enc = excluded.secret_enc,
+        secret_iv = excluded.secret_iv,
+        meta = excluded.meta,
+        connected_at = excluded.connected_at,
+        connected_by = excluded.connected_by
+      WHERE excluded.connected_at > COALESCE(integration_credentials.connected_at, 'epoch'::timestamp)`,
+  },
+
+  // --- Crons (challenge 020, L5) ---
+  //
+  // Le dernier passage et le verrou de chaque job planifié, lus par
+  // /api/cron/tick. Les lignes se créent au premier passage de chaque job.
+  {
+    label: "cron_runs",
+    sql: `
+      CREATE TABLE IF NOT EXISTS cron_runs (
+        job_key varchar(128) PRIMARY KEY,
+        last_started_at timestamp,
+        last_finished_at timestamp,
+        last_status varchar(16),
+        last_error text,
+        locked_until timestamp
+      )`,
+  },
+
+  // --- Modules et outbox (challenge 020, L6) ---
+  //
+  // `module_settings` reprend les drapeaux et réglages de modules
+  // d'app_settings, qui ne sont plus lus et partent en L7. La reprise ne
+  // touche jamais une ligne existante : un réglage modifié par l'ancien code
+  // pendant le déploiement ne sera pas recopié. La sandbox, toujours active
+  // jusqu'ici, arrive activée.
+  {
+    label: "module_settings",
+    sql: `
+      CREATE TABLE IF NOT EXISTS module_settings (
+        key varchar(64) PRIMARY KEY,
+        enabled boolean NOT NULL DEFAULT false,
+        settings jsonb NOT NULL DEFAULT '{}'::jsonb,
+        updated_at timestamp NOT NULL DEFAULT now(),
+        updated_by uuid REFERENCES users(uuid) ON DELETE SET NULL
+      )`,
+  },
+  {
+    label: "module_settings (reprise d'app_settings)",
+    sql: `
+      INSERT INTO module_settings (key, enabled, settings)
+      SELECT v.key, v.enabled, v.settings
+      FROM app_settings s
+      CROSS JOIN LATERAL (VALUES
+        ('meetings', s.modules_meetings_enabled, '{}'::jsonb),
+        ('onboarding', s.modules_onboarding_enabled, '{}'::jsonb),
+        ('digest', s.digest_enabled, jsonb_build_object('frequency_days', s.digest_frequency_days)),
+        ('sandbox', true, jsonb_build_object(
+          'star_tiers', s.sandbox_star_tiers,
+          'promotion_bonus_cp', s.sandbox_promotion_bonus_cp
+        ))
+      ) AS v(key, enabled, settings)
+      WHERE s.id = 1
+      ON CONFLICT (key) DO NOTHING`,
+  },
+  // Les quêtes d'onboarding (challenge 020, L6), une ligne par quête
+  // accomplie. La reprise recopie les 5 booléens d'onboarding_progress, datés
+  // du jour de la reprise faute d'historique. Rejouée, elle n'ajoute que ce
+  // que l'ancien code a validé entre-temps : ON CONFLICT ne touche pas une
+  // quête déjà reprise.
+  {
+    label: "onboarding_quest_progress",
+    sql: `
+      CREATE TABLE IF NOT EXISTS onboarding_quest_progress (
+        user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        quest_key varchar(64) NOT NULL,
+        completed_at timestamp NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, quest_key)
+      )`,
+  },
+  {
+    label: "onboarding_quest_progress (reprise d'onboarding_progress)",
+    sql: `
+      INSERT INTO onboarding_quest_progress (user_id, quest_key, completed_at)
+      SELECT p.user_id, v.quest_key, now()
+      FROM onboarding_progress p
+      CROSS JOIN LATERAL (VALUES
+        ('clicked_challenge', p.clicked_challenge),
+        ('assigned_task', p.assigned_task),
+        ('evaluated_contribution', p.evaluated_contribution),
+        ('validated_task', p.validated_task),
+        ('joined_meeting', p.joined_meeting)
+      ) AS v(quest_key, done)
+      WHERE v.done
+      ON CONFLICT (user_id, quest_key) DO NOTHING`,
+  },
+  {
+    label: "platform_events",
+    sql: `
+      CREATE TABLE IF NOT EXISTS platform_events (
+        id serial PRIMARY KEY,
+        type varchar(128) NOT NULL,
+        payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+        occurred_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+  {
+    label: "platform_events (type, id)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_platform_events_type_id ON platform_events (type, id)`,
+  },
+  {
+    label: "event_deliveries",
+    sql: `
+      CREATE TABLE IF NOT EXISTS event_deliveries (
+        subscriber_key varchar(128) PRIMARY KEY,
+        last_event_id integer NOT NULL DEFAULT 0,
+        last_error text,
+        updated_at timestamp NOT NULL DEFAULT now()
+      )`,
+  },
+
+  // --- Capacité resources (challenge 020, M1) ---
+  {
+    label: "resource_instances",
+    sql: `
+      CREATE TABLE IF NOT EXISTS resource_instances (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        challenge_id uuid NOT NULL REFERENCES challenges(uuid) ON DELETE CASCADE,
+        resource_type varchar(64) NOT NULL,
+        payload jsonb NOT NULL,
+        class varchar(32),
+        state varchar(16) NOT NULL DEFAULT 'open',
+        verdict varchar(64),
+        resolution jsonb,
+        created_by uuid REFERENCES users(uuid) ON DELETE SET NULL,
+        created_at timestamp NOT NULL DEFAULT now(),
+        closed_at timestamp
+      )`,
+  },
+  {
+    label: "resource_instances (challenge_id, resource_type, state, class)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_resource_instances_draw ON resource_instances (challenge_id, resource_type, state, class)`,
+  },
+  {
+    label: "resource_claims",
+    sql: `
+      CREATE TABLE IF NOT EXISTS resource_claims (
+        uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        resource_id uuid NOT NULL REFERENCES resource_instances(uuid) ON DELETE CASCADE,
+        challenge_id uuid NOT NULL REFERENCES challenges(uuid) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+        result jsonb,
+        claimed_at timestamp NOT NULL DEFAULT now(),
+        expires_at timestamp,
+        consumed_at timestamp,
+        released_at timestamp
+      )`,
+  },
+  {
+    label: "resource_claims.resource_id (index)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_resource_claims_resource_id ON resource_claims (resource_id)`,
+  },
+  {
+    label: "resource_claims (challenge_id, user_id)",
+    sql: `CREATE INDEX IF NOT EXISTS idx_resource_claims_challenge_user ON resource_claims (challenge_id, user_id)`,
+  },
+  {
+    label: "resource_claims (resource_id, user_id) unique, vivantes",
+    sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_resource_claims_live ON resource_claims (resource_id, user_id) WHERE released_at IS NULL`,
+  },
+
   // --- Slugs des URLs publiques (docs/superpowers/plans/2026-09-15-slug-urls.md) ---
   //
   // En toute fin de tableau, volontairement : le SET NOT NULL rend la colonne
@@ -800,6 +1197,7 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
     sql: `ALTER TABLE sandboxes ADD COLUMN IF NOT EXISTS slug varchar(80)`,
   },
   slugStatement("sandboxes", "sandbox_slug_redirects"),
+
   // ── Images de couverture ────────────────────────────────────────────
   // Les fichiers déposés depuis l'app, faute de stockage objet. Réduits par
   // l'interface avant l'envoi, et plafonnés côté API.
@@ -847,6 +1245,9 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
   // base déjà à jour, et sur une base neuve, que le CREATE TABLE ci-dessus
   // crée déjà dans la bonne forme.
   //
+  // `proposal_fields` : les champs de proposition du challenge 020, jamais
+  // arrivés en production, sans objet depuis qu'une proposition est une idée.
+  //
   // En dernier dans la liste : les statements s'exécutent dans l'ordre, et ces
   // ALTER supposent la table créée.
   ...([
@@ -857,10 +1258,23 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
     "evaluation",
     "evaluation_status",
     "evaluated_at",
+    "proposal_fields",
   ].map((column) => ({
     label: `sandboxes.${column} (suppression — migration 0025)`,
     sql: `ALTER TABLE sandboxes DROP COLUMN IF EXISTS ${column}`,
   }))),
+
+  // --- Module watch ---
+  {
+    label: "watch_sources",
+    sql: `
+      CREATE TABLE IF NOT EXISTS watch_sources (
+        source_id text PRIMARY KEY,
+        display_name text NOT NULL,
+        citedness_2yr numeric(8,3),
+        refreshed_at timestamptz NOT NULL DEFAULT now()
+      )`,
+  },
 ];
 
 async function main() {

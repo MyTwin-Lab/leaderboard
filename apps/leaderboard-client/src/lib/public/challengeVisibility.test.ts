@@ -37,8 +37,8 @@ describe('isPubliclyVisible', () => {
   // Leur page publique est la vitrine, comme pour tout type passant par le
   // brief : on la lit, on rejoint, le parcours vient après.
   it('publishes a validation challenge', () => {
-    expect(isPubliclyVisible({ status: 'active', type: 'validation' })).toBe(true);
-    expect(isPubliclyVisible({ status: 'completed', type: 'validation' })).toBe(true);
+    expect(isPubliclyVisible({ status: 'active', type: 'endpoint-validation' })).toBe(true);
+    expect(isPubliclyVisible({ status: 'completed', type: 'journey-validation' })).toBe(true);
   });
 
   it('hides a type it does not recognise', () => {

@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 const {
   mockGetTokensFromCode, mockGetUserInfo,
   mockFindByGoogleUserId, mockFindByEmail, mockFindById, mockUpdate, mockCreate,
-  mockInitForUser,
+  mockEmit,
   mockGenerateAccessToken, mockGenerateRefreshToken, mockStoreRefreshToken,
 } = vi.hoisted(() => ({
   mockGetTokensFromCode: vi.fn(),
@@ -14,13 +14,13 @@ const {
   mockFindById: vi.fn(),
   mockUpdate: vi.fn(),
   mockCreate: vi.fn(),
-  mockInitForUser: vi.fn(),
+  mockEmit: vi.fn(),
   mockGenerateAccessToken: vi.fn(),
   mockGenerateRefreshToken: vi.fn(),
   mockStoreRefreshToken: vi.fn(),
 }));
 
-vi.mock('../../../../../../../packages/services/google-workspace/google-auth.service.js', () => ({
+vi.mock('../../../../../../../packages/capabilities/identity/google-auth.js', () => ({
   GoogleAuthService: class {
     getTokensFromCode = mockGetTokensFromCode;
     getUserInfo = mockGetUserInfo;
@@ -35,9 +35,10 @@ vi.mock('../../../../../../../packages/database-service/repositories/index.js', 
     update = mockUpdate;
     create = mockCreate;
   },
-  OnboardingProgressRepository: class {
-    initForUser = mockInitForUser;
-  },
+}));
+
+vi.mock('../../../../../../../packages/capabilities/events.js', () => ({
+  events: { emit: mockEmit },
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -170,7 +171,7 @@ describe('GET /api/google-auth/callback', () => {
     });
     expect(mockFindById).toHaveBeenCalledWith('user-1');
     expect(mockCreate).not.toHaveBeenCalled();
-    expect(mockInitForUser).not.toHaveBeenCalled();
+    expect(mockEmit).not.toHaveBeenCalled();
   });
 
   it('never overwrites a different google_user_id already linked to the email', async () => {
@@ -211,7 +212,7 @@ describe('GET /api/google-auth/callback', () => {
     expect(res.headers.get('location')).toBe('http://localhost:3000/');
   });
 
-  it('registers a brand-new user and initializes onboarding progress', async () => {
+  it('registers a brand-new user and announces the new account', async () => {
     mockFindByGoogleUserId.mockResolvedValue(null);
     mockFindByEmail.mockResolvedValue(null);
     mockCreate.mockResolvedValue(USER);
@@ -225,7 +226,7 @@ describe('GET /api/google-auth/callback', () => {
       google_user_id: 'g-123',
       role: 'contributor',
     });
-    expect(mockInitForUser).toHaveBeenCalledWith('user-1');
+    expect(mockEmit).toHaveBeenCalledWith('user.created', { userId: 'user-1' });
   });
 
   it('redirects to /?error=user_creation_failed when the linked account cannot be re-fetched', async () => {

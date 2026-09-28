@@ -34,6 +34,8 @@ function makeSteps(): ValidationScenarioStep[] {
 }
 
 interface Opts {
+  /** Le flow du challenge parcouru. Défaut : un parcours de scénario. */
+  challengeType?: string;
   sourceType?: string | null;
   steps?: ValidationScenarioStep[];
   targets?: Array<{ uuid: string; contribution_id: string }>;
@@ -44,6 +46,8 @@ interface Opts {
   appHolder?: string;
   appMembers?: string[];
   validatorRole?: string;
+  /** Le validateur détient la qualification des avis experts. Défaut : non. */
+  expert?: boolean;
   pool?: number;
   distributed?: number;
   cpPerValidation?: number;
@@ -61,11 +65,14 @@ function makeDeps(opts: Opts = {}) {
   let stored: ValidationScenarioRun | null = opts.existingRun ?? null;
 
   const challenge: Challenge = {
-    uuid: VCH, title: "Usability walkthrough", slug: "usability-walkthrough", status: "active", type: "validation",
+    uuid: VCH, title: "Usability walkthrough", slug: "usability-walkthrough", status: "active", type: opts.challengeType ?? "journey-validation",
     contribution_points_reward: opts.pool ?? 12000, completion: 0, project_id: "proj-1",
     source_challenge_id: opts.sourceType === null ? null : CODE_SOURCE,
-    cp_per_validation: opts.cpPerValidation ?? 200,
-    required_validations: null, compute_enabled: false,
+    flow_config: {
+      cp_per_validation: opts.cpPerValidation ?? 200,
+      eligible_roles: ["contributor", "admin"],
+      expert_comment_qualification: "medical_pro",
+    },
   };
 
   const app: Contribution = {
@@ -121,6 +128,7 @@ function makeDeps(opts: Opts = {}) {
     userRepo: {
       findById: vi.fn(async () => ({ uuid: VALIDATOR, full_name: "Bob", role: opts.validatorRole ?? "contributor", created_at: new Date() } as User)),
     },
+    qualificationRepo: { has: vi.fn(async (_userId: string, key: string) => key === "medical_pro" && (opts.expert ?? false)) },
     rewardRepo: {
       sumByChallenge: vi.fn(async () => opts.distributed ?? 0),
       createManyAndSyncRewards: vi.fn(async (entries: any[]) => { rewardBatches.push(entries); return entries; }),
@@ -237,8 +245,8 @@ describe("openWalkthrough", () => {
     await expect(open(deps)).rejects.toThrow(EmptyScenarioError);
   });
 
-  it("refuses a validation challenge whose source is an ML challenge", async () => {
-    const { deps } = makeDeps({ sourceType: "ml" });
+  it("refuses an endpoint validation challenge, which has no scenario to walk", async () => {
+    const { deps } = makeDeps({ challengeType: "endpoint-validation" });
 
     await expect(open(deps)).rejects.toThrow(ScenarioModeError);
   });
@@ -246,13 +254,16 @@ describe("openWalkthrough", () => {
   it("lets a contributor open a walkthrough", async () => {
     const { deps } = makeDeps({ validatorRole: "contributor" });
 
-    await expect(open(deps)).resolves.toMatchObject({ runId: "run-new" });
+    await expect(open(deps)).resolves.toMatchObject({ runId: "run-new", expertComment: { allowed: false, label: "Health professional" } });
   });
 
-  it("lets a medical_pro open a walkthrough", async () => {
-    const { deps } = makeDeps({ validatorRole: "medical_pro" });
+  it("lets a qualified expert open a walkthrough, with the expert opinion open", async () => {
+    const { deps } = makeDeps({ expert: true });
 
-    await expect(open(deps)).resolves.toMatchObject({ runId: "run-new" });
+    await expect(open(deps)).resolves.toMatchObject({
+      runId: "run-new",
+      expertComment: { allowed: true, label: "Health professional" },
+    });
   });
 
   it("lets an admin open a walkthrough", async () => {
@@ -296,10 +307,10 @@ describe("saveStepFeedback", () => {
     expect(state.steps).toHaveLength(2);
   });
 
-  it("lets a medical_pro record a medical comment alongside the user-experience one", async () => {
+  it("lets a qualified expert record a medical comment alongside the user-experience one", async () => {
     // Les deux lentilles coexistent sur la même étape : ce n'est pas un
     // onglet, pas un mode, pas un remplacement.
-    const { deps, upserts } = makeDeps({ existingRun: DRAFT, validatorRole: "medical_pro" });
+    const { deps, upserts } = makeDeps({ existingRun: DRAFT, expert: true });
 
     await save(deps, {
       result: "failed",
@@ -313,14 +324,14 @@ describe("saveStepFeedback", () => {
     });
   });
 
-  it("refuses a medical comment from a validator who is not a medical_pro", async () => {
+  it("refuses a medical comment from a validator without the expert qualification", async () => {
     const { deps, upserts } = makeDeps({ existingRun: DRAFT, validatorRole: "contributor" });
 
     await expect(save(deps, { medicalComment: "Clinically unsafe." })).rejects.toThrow(MedicalCommentForbiddenError);
     expect(upserts).toEqual([]);
   });
 
-  it("accepts an empty-string medical comment from a non-medical_pro as no comment at all", async () => {
+  it("accepts an empty-string medical comment from a non-expert as no comment at all", async () => {
     // Le champ n'existe pas dans leur interface ; un client qui envoie une
     // chaîne vide ne doit pas être traité comme une tentative d'écriture.
     const { deps, upserts } = makeDeps({ existingRun: DRAFT, validatorRole: "contributor" });

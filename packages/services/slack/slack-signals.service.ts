@@ -8,10 +8,20 @@ import {
   RewardEntryRepository,
 } from '../../database-service/repositories/index.js';
 import type { RewardEntryDraft } from '../../database-service/repositories/index.js';
-import { getSlackToken } from '../../config/slackCredentials.js';
-import { SlackConnector } from '../../connectors/implementation/Slack.connector.js';
+import { ConnectorRegistry } from '../../connectors/registry.js';
+import type { ExternalConnector, ExternalItem } from '../../connectors/interfaces.js';
 import { runDetectAgent } from '../../slack-signal-agent/index.js';
 import type { SlackSignalContext, SlackSignalMessage } from '../../slack-signal-agent/index.js';
+
+/**
+ * Ce que le service attend du connecteur Slack installé : l'historique d'un
+ * canal et le profil d'un auteur. Décrit ici plutôt qu'importé, pour ne pas
+ * dépendre de l'implémentation.
+ */
+type SlackHistoryConnector = ExternalConnector & {
+  fetchItems(options?: { oldest?: string; maxMessages?: number }): Promise<ExternalItem[]>;
+  resolveUserProfile(slackUserId: string): Promise<{ email: string | null; name: string | null }>;
+};
 
 /**
  * Nombre maximum de messages envoyés au LLM par run. Au-delà, les messages
@@ -63,15 +73,17 @@ export class SlackSignalsService {
       return { challengeId, status: 'skipped', reason: 'no signals defined' };
     }
 
-    const token = await getSlackToken();
-    if (!token) {
+    // Le connecteur Slack n'est pas construit tant que Slack n'est pas connecté.
+    const connector = (await ConnectorRegistry.createConnector({
+      type: 'slack',
+      external_repo_id: config.channel_id,
+    })) as SlackHistoryConnector | null;
+    if (!connector) {
       console.warn(`[SlackSignals] Challenge ${challengeId}: Slack is not connected, skipping`);
       return { challengeId, status: 'skipped', reason: 'slack not connected' };
     }
 
     try {
-      const connector = new SlackConnector({ token, channelId: config.channel_id });
-
       const items = await connector.fetchItems({
         oldest: config.last_ts ?? undefined,
         maxMessages: MAX_MESSAGES_PER_RUN,

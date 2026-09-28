@@ -4,6 +4,7 @@ import { eq, and, gte, inArray, lt, isNotNull } from "drizzle-orm";
 import { toDomainChallenge, toDomainRepo, toDomainContribution, toDbChallenge } from "../db/mappers";
 import type { Challenge, Repo, Contribution } from "../domain/entities";
 import { challengeSchema } from "../domain/schemas_zod";
+import { legacyChallengeColumns } from "../domain/legacyFlowConfig";
 import { SLUG_FALLBACK, SlugTakenError } from "../domain/slug";
 import { availableSlug, claimSlug, isSlugTaken, isSlugUniqueViolation, type SlugOwners } from "./slugs";
 
@@ -12,6 +13,16 @@ export type ChallengeDraft = Omit<Challenge, "uuid" | "created_at" | "slug"> & {
 
 /** Les contraintes qu'une écriture de slug peut heurter sous concurrence. */
 const SLUG_CONSTRAINTS = ["idx_challenges_slug", "challenge_slug_redirects_pkey"] as const;
+
+/** Un challenge parent ne porte qu'un challenge de chaque flow (index unique partiel). */
+const PARENT_FLOW_CONSTRAINT = "idx_challenges_source_type";
+
+/** Le challenge parent a déjà un challenge de ce flow. */
+export class ParentFlowTakenError extends Error {
+  constructor(readonly sourceChallengeId: string, readonly flowKey: string) {
+    super(`Challenge ${sourceChallengeId} already has a ${flowKey} challenge`);
+  }
+}
 
 /**
  * Décide si un update doit toucher `closed_at`.
@@ -150,6 +161,9 @@ export class ChallengeRepository {
       if (isSlugUniqueViolation(error, SLUG_CONSTRAINTS)) {
         throw new SlugTakenError(slug, await this.availableSlug(slug));
       }
+      if (isSlugUniqueViolation(error, [PARENT_FLOW_CONSTRAINT])) {
+        throw new ParentFlowTakenError(entity.source_challenge_id ?? "", entity.type);
+      }
       throw error;
     }
   }
@@ -168,10 +182,14 @@ export class ChallengeRepository {
     if (validated.type !== undefined) dbData.type = validated.type;
     if (validated.project_id) dbData.project_id = validated.project_id;
     if (validated.reward_rules !== undefined) dbData.reward_rules = validated.reward_rules ?? null;
-    if (validated.compute_enabled !== undefined) dbData.compute_enabled = validated.compute_enabled;
     if (validated.cover_image_url !== undefined) dbData.cover_image_url = validated.cover_image_url ?? null;
     // Vide = effacé : la carte de l'hôte disparaît de la page publique.
     if (validated.host !== undefined) dbData.host = validated.host || null;
+    if (validated.flow_config !== undefined) {
+      dbData.flow_config = validated.flow_config ?? null;
+      dbData.flow_config_version = validated.flow_config_version;
+      Object.assign(dbData, legacyChallengeColumns(validated.flow_config));
+    }
     // Without this, MlRewardsService.award() writing { completion } here was a
     // silent no-op — the field passed Zod validation but never made it into
     // dbData, so challenges.completion stayed 0 no matter how much CP was

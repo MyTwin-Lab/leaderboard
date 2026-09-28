@@ -21,7 +21,9 @@ describe("GET /api/leaderboard", () => {
   // ledger ajouté demain ne cassera pas les trois tests d'un coup.
   beforeEach(() => {
     vi.spyOn(repositories.contributionMember, "findAll").mockResolvedValue([]);
-    vi.spyOn(repositories.sandboxReward, "findAll").mockResolvedValue([]);
+    // La source de CP du module sandbox construit son propre repository : on
+    // espionne donc la classe, pas l'instance partagée.
+    vi.spyOn(Object.getPrototypeOf(repositories.sandboxReward), "findAll").mockResolvedValue([]);
   });
 
   afterEach(() => {

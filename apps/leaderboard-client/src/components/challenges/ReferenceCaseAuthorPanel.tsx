@@ -1,6 +1,8 @@
 'use client';
 
+import { flowConfigView } from '@/lib/flowConfig';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flowActionUrl } from '@/lib/challengeActions';
 import { FilePlus2, Loader2, AlertCircle, FileText, Upload, X } from 'lucide-react';
 
 interface CaseSummary {
@@ -49,13 +51,14 @@ function FilePicker({
 }
 
 /**
- * Contributor-facing, self-gated on role === 'medical_pro' — a medical_pro
+ * Contributor-facing, self-gated on the reviewer qualification the challenge
+ * requires — a qualified reviewer
  * writes exactly `requiredValidations` ground-truth reference cases for a
  * validation challenge. Renders nothing for anyone else, same as
  * ValidationTargetsEditor renders nothing for a non-manager.
  */
 export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string }) {
-  const [role, setRole] = useState<string | null>(null);
+  const [isReviewer, setIsReviewer] = useState(false);
   const [requiredValidations, setRequiredValidations] = useState(0);
   const [myCases, setMyCases] = useState<CaseSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,15 +79,16 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
       const [meRes, challengeRes, casesRes] = await Promise.all([
         fetch('/api/contributors/me'),
         fetch(`/api/challenges/${challengeId}`),
-        fetch(`/api/challenges/${challengeId}/validation-reference-cases`),
+        fetch(flowActionUrl(challengeId, 'reference-cases')),
       ]);
-      if (meRes.ok) {
-        const me = await meRes.json();
-        setRole(me.user?.role ?? null);
-      }
+      const me = meRes.ok ? await meRes.json() : null;
       if (challengeRes.ok) {
         const challenge = await challengeRes.json();
-        setRequiredValidations(challenge.required_validations ?? 0);
+        const config = flowConfigView(challenge);
+        setRequiredValidations(config.required_validations ?? 0);
+        // Écrire des cas exige la qualification que le challenge pose.
+        const held: string[] = Array.isArray(me?.qualifications) ? me.qualifications : [];
+        setIsReviewer(!!config.reviewer_qualification && held.includes(config.reviewer_qualification));
       }
       if (casesRes.ok) {
         const data = await casesRes.json();
@@ -97,7 +101,7 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  if (loading || role !== 'medical_pro') return null;
+  if (loading || !isReviewer) return null;
 
   const quotaReached = myCases.length >= requiredValidations && requiredValidations > 0;
 
@@ -127,7 +131,7 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
         form.append('expected_output', new Blob([expectedText], { type: 'text/plain' }), 'expected_output.txt');
       }
 
-      const res = await fetch(`/api/challenges/${challengeId}/validation-reference-cases`, {
+      const res = await fetch(flowActionUrl(challengeId, 'reference-cases'), {
         method: 'POST',
         body: form,
       });

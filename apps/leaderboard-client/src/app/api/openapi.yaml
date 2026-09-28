@@ -729,22 +729,24 @@ components:
                     type: string
 
     # ── Onboarding ──
-    OnboardingProgress:
+    OnboardingQuests:
       type: object
       properties:
-        user_id:
-          type: string
-          format: uuid
-        clicked_challenge:
-          type: boolean
-        assigned_task:
-          type: boolean
-        evaluated_contribution:
-          type: boolean
-        validated_task:
-          type: boolean
-        joined_meeting:
-          type: boolean
+        quests:
+          type: array
+          description: Les quêtes installées dont le propriétaire est actif, dans leur ordre
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              label:
+                type: string
+              description:
+                type: string
+                nullable: true
+              completed:
+                type: boolean
 
     # ── Session ──
     SessionUser:
@@ -2394,60 +2396,17 @@ paths:
         - cookieAuth: []
       responses:
         '200':
-          description: Progression (auto-initialisée si absente)
+          description: Les quêtes et leur état ; 404 quand le module onboarding est désactivé. Une quête se valide côté serveur, par l'événement qui la complète.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OnboardingProgress'
+                $ref: '#/components/schemas/OnboardingQuests'
         '401':
           description: Non authentifié
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-    patch:
-      tags: [Onboarding]
-      summary: Marquer une étape comme complétée
-      security:
-        - cookieAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [step]
-              properties:
-                step:
-                  type: string
-                  description: Nom de l'étape d'onboarding
-                  enum: [clicked_challenge, assigned_task, evaluated_contribution, validated_task, joined_meeting]
-      responses:
-        '200':
-          description: Progression mise à jour
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OnboardingProgress'
-        '400':
-          description: Erreur de validation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationError'
-        '401':
-          description: Non authentifié
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Progression non trouvée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
   # ── Cron ──────────────────────────────────────────────────
   /cron/check-meetings:
     get:
