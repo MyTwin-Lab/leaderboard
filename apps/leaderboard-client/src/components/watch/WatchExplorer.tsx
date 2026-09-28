@@ -208,10 +208,7 @@ export function WatchExplorer({ highImpactThreshold, spotlight, knownAnonymous }
           <div className="v-head-text">
             <BackToLab />
             <h1 className="v-title">Watch</h1>
-            <p className="v-lede">
-              Search the health literature on OpenAlex. Filter by topic, period, open access and journal impact; every
-              result links to PubMed when it has a PMID.
-            </p>
+            <p className="v-lede">The health literature, searched and sorted.</p>
           </div>
         </div>
 
