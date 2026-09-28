@@ -20,10 +20,12 @@ export function IntegrationsPanel({ errors = {} }: { errors?: Record<string, str
 
   useEffect(() => { load(); }, [load]);
 
+  // Pas de grille ici : c'est la page qui pose `.v-pro-cards` autour, et les
+  // cartes comme les squelettes s'y rangent directement.
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
+    <>
       {integrations === null
-        ? [0, 1].map(i => <div key={i} className="h-32 rounded-xl border border-white/[0.07] bg-white/[0.02] animate-pulse" />)
+        ? [0, 1, 2].map(i => <div key={i} className="v-pro-skeleton" aria-hidden />)
         : integrations.map(integration => (
             <IntegrationCard
               key={integration.key}
@@ -32,6 +34,6 @@ export function IntegrationsPanel({ errors = {} }: { errors?: Record<string, str
               onChanged={load}
             />
           ))}
-    </div>
+    </>
   );
 }
