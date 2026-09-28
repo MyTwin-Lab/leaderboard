@@ -6,6 +6,7 @@ import { HomePodcast } from "@/components/home/HomePodcast";
 import { HomeCreateTwin } from "@/components/home/HomeCreateTwin";
 import { HomeCommunity } from "@/components/home/HomeCommunity";
 import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
+import { HomeOpenResources } from "@/components/home/HomeOpenResources";
 import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
 import { HomeGate } from "@/components/home/HomeGate";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -49,6 +50,9 @@ export default async function HomePage() {
   // l'explique, puis ce que le Lab produit — news, podcast — avant d'appeler à
   // rejoindre, et de montrer qui contribue et sur quoi.
   //
+  // « Open resources » s'intercale entre les deux : les outils se donnent avant
+  // le travail auquel ils servent, pas après.
+  //
   // « Create your twin » fait exception et ferme la page. La maquette le posait
   // au milieu ; c'est le seul appel à prendre rendez-vous de l'accueil, et il
   // se lit mieux une fois le Lab montré — on réserve après avoir vu, pas avant.
@@ -68,6 +72,7 @@ export default async function HomePage() {
           <HomePodcast />
           <HomeCommunity />
           <HomeLeaderboardPreview podium={overview.podium} />
+          <HomeOpenResources />
           <HomeChallengesPreview challenges={overview.trendingChallenges} />
           <HomeCreateTwin />
         </div>
