@@ -29,7 +29,9 @@ Every filter lives in the URL (`lib/watch.ts`: `parseWatchFilters` / `serializeW
 
 A result card shows the title (linked to PubMed when a PMID exists, else the DOI, else OpenAlex), the journal and its score badge (tinted at or above the threshold), the date, the citation count, an `OA` badge, the first three authors (`+N`), the primary topic, and the abstract folded on two lines. Publishers that do not give OpenAlex an abstract are shown `No abstract available` — that is normal, not an error.
 
-An OpenAlex failure (timeout, rate limit, 5xx) does not empty the list: the last answer stays, a toast says what happened, and a Retry button asks again.
+An OpenAlex failure (timeout, rate limit, 5xx) does not empty the list: the last answer stays, a line above it says what happened, and a Retry button asks again.
+
+The page follows the vitrine design system of the redesign (`components/vitrine/vitrine.css` for the header, the search capsule and the pills; `components/watch/watch-vitrine.css` for the filter column, the result cards and the pagination). `/watch` is a vitrine route of `LabShell`.
 
 ---
 

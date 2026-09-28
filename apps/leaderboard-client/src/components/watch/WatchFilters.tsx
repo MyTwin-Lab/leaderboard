@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SelectDropdown } from "@/components/ui/SelectDropdown";
-import { Toggle } from "@/components/ui/Toggle";
 import {
   VISIBLE_TOPIC_FACETS,
   WATCH_PERIODS,
@@ -10,13 +8,15 @@ import {
   WATCH_SORTS,
   type WatchFacet,
   type WatchFilters as Filters,
-  type WatchSort,
 } from "@/lib/watch";
 
 /**
- * Le panneau des filtres de `/watch`. Il ne garde aucun état de filtre : tout
- * remonte à l'explorateur, qui l'écrit dans l'URL. Seul le champ « Min.
- * citations » a un brouillon local, validé à la sortie ou sur Entrée.
+ * La colonne des filtres de `/watch`, à la matière des vitrines : des pills
+ * pour les choix exclusifs (où chercher, période, tri) comme pour les topics,
+ * des interrupteurs pour l'accès ouvert et l'impact, un champ pour les
+ * citations. Elle ne garde aucun état de filtre : tout remonte à
+ * l'explorateur, qui l'écrit dans l'URL. Seul « Min. citations » a un
+ * brouillon local, validé à la sortie ou sur Entrée.
  */
 
 export interface WatchFiltersProps {
@@ -29,38 +29,60 @@ export interface WatchFiltersProps {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-white/30">{title}</p>
+    <div className="v-watch-section">
+      <span className="v-eyebrow">{title}</span>
       {children}
     </div>
   );
 }
 
-function Chip({
-  active,
+function Pill({
+  on,
   onClick,
   children,
   title,
 }: {
-  active: boolean;
+  on: boolean;
   onClick(): void;
   children: React.ReactNode;
   title?: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      aria-pressed={active}
-      className={`max-w-full truncate rounded-full border px-2.5 py-1 text-xs transition-colors ${
-        active
-          ? "border-brandCP/40 bg-brandCP/15 text-brandCP"
-          : "border-white/10 bg-white/[0.03] text-white/60 hover:bg-white/[0.07] hover:text-white"
-      }`}
-    >
+    <button type="button" className="v-pill" data-on={on ? "true" : "false"} onClick={onClick} title={title} aria-pressed={on}>
       {children}
     </button>
+  );
+}
+
+function Switch({
+  on,
+  label,
+  sub,
+  onChange,
+}: {
+  on: boolean;
+  label: string;
+  sub?: string;
+  onChange(value: boolean): void;
+}) {
+  return (
+    <label className="v-watch-switch">
+      <span className="v-watch-switch-text">
+        <span>{label}</span>
+        {sub && <span className="v-watch-switch-sub">{sub}</span>}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
+        className="v-watch-toggle"
+        data-on={on ? "true" : "false"}
+        onClick={() => onChange(!on)}
+      >
+        <span />
+      </button>
+    </label>
   );
 }
 
@@ -109,56 +131,45 @@ export function WatchFilters({ filters, facets, highImpactThreshold, onChange, o
     filters.sort !== "relevance";
 
   return (
-    <div className="space-y-5">
+    <>
       <Section title="Search in">
-        <div className="flex flex-col gap-1.5">
+        <div className="v-pills">
           {WATCH_SCOPES.map((scope) => (
-            <label key={scope.key} className="flex cursor-pointer items-center gap-2 text-sm text-white/70">
-              <input
-                type="radio"
-                name="watch-scope"
-                value={scope.key}
-                checked={filters.scope === scope.key}
-                onChange={() => onChange({ scope: scope.key })}
-                className="accent-brandCP"
-              />
+            <Pill key={scope.key} on={filters.scope === scope.key} onClick={() => onChange({ scope: scope.key })}>
               {scope.label}
-            </label>
+            </Pill>
           ))}
         </div>
       </Section>
 
       <Section title="Period">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="v-pills">
           {WATCH_PERIODS.map((period) => (
-            <Chip key={period.key} active={filters.period === period.key} onClick={() => onChange({ period: period.key })}>
+            <Pill key={period.key} on={filters.period === period.key} onClick={() => onChange({ period: period.key })}>
               {period.label}
-            </Chip>
+            </Pill>
           ))}
         </div>
       </Section>
 
       <Section title="Topics">
         {facets.length === 0 && orphanTopics.length === 0 ? (
-          <p className="text-xs text-white/30">Topics appear once a search runs.</p>
+          <span className="v-watch-switch-sub">Topics appear once a search runs.</span>
         ) : (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="v-pills">
             {orphanTopics.map((id) => (
-              <Chip key={id} active onClick={() => toggleTopic(id)} title="Selected topic, not among the current facets">
-                #{id}
-              </Chip>
+              <Pill key={id} on onClick={() => toggleTopic(id)} title="Selected topic, not among the current facets">
+                <span>#{id}</span>
+              </Pill>
             ))}
             {visibleFacets.map((facet) => (
-              <Chip key={facet.id} active={filters.topics.includes(facet.id)} onClick={() => toggleTopic(facet.id)} title={facet.name}>
-                {facet.name} <span className="opacity-60">{facet.count.toLocaleString("en-US")}</span>
-              </Chip>
+              <Pill key={facet.id} on={filters.topics.includes(facet.id)} onClick={() => toggleTopic(facet.id)} title={facet.name}>
+                <span>{facet.name}</span>
+                <span className="v-pill-count">{facet.count.toLocaleString("en-US")}</span>
+              </Pill>
             ))}
             {facets.length > VISIBLE_TOPIC_FACETS && (
-              <button
-                type="button"
-                onClick={() => setShowAllTopics((value) => !value)}
-                className="px-1 text-xs font-semibold text-brandCP hover:underline"
-              >
+              <button type="button" className="v-watch-more" onClick={() => setShowAllTopics((value) => !value)}>
                 {showAllTopics ? "less" : `more (${facets.length - VISIBLE_TOPIC_FACETS})`}
               </button>
             )}
@@ -167,52 +178,50 @@ export function WatchFilters({ filters, facets, highImpactThreshold, onChange, o
       </Section>
 
       <Section title="Access & impact">
-        <div className="space-y-3">
-          <label className="flex items-center justify-between gap-3 text-sm text-white/70">
-            <span>Open access only</span>
-            <Toggle enabled={filters.oa} onChange={(value) => onChange({ oa: value })} />
-          </label>
-          <label className="flex items-center justify-between gap-3 text-sm text-white/70">
-            <span>
-              High-impact journals only
-              <span className="block text-xs text-white/35">journals with 2yr citedness ≥ {formatThreshold(highImpactThreshold)}</span>
-            </span>
-            <Toggle enabled={filters.highImpact} onChange={(value) => onChange({ highImpact: value })} />
-          </label>
-          <label className="flex items-center justify-between gap-3 text-sm text-white/70">
+        <Switch on={filters.oa} label="Open access only" onChange={(value) => onChange({ oa: value })} />
+        <Switch
+          on={filters.highImpact}
+          label="High-impact journals only"
+          sub={`journals with 2yr citedness ≥ ${formatThreshold(highImpactThreshold)}`}
+          onChange={(value) => onChange({ highImpact: value })}
+        />
+        <label className="v-watch-switch">
+          <span className="v-watch-switch-text">
             <span>Min. citations</span>
-            <input
-              type="number"
-              min={0}
-              value={minCited}
-              placeholder="any"
-              onChange={(e) => setMinCited(e.target.value)}
-              onBlur={commitMinCited}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitMinCited();
-              }}
-              className="w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-right text-sm text-white focus:border-brandCP/40 focus:outline-none"
-            />
-          </label>
-        </div>
+          </span>
+          <input
+            type="number"
+            min={0}
+            value={minCited}
+            placeholder="any"
+            onChange={(e) => setMinCited(e.target.value)}
+            onBlur={commitMinCited}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitMinCited();
+            }}
+            className="v-watch-num"
+          />
+        </label>
       </Section>
 
       <Section title="Sort">
-        <SelectDropdown
-          options={WATCH_SORTS.map((sort) => ({ value: sort.key, label: sort.label }))}
-          value={filters.sort}
-          onChange={(value) => onChange({ sort: value as WatchSort })}
-        />
+        <div className="v-pills">
+          {WATCH_SORTS.map((sort) => (
+            <Pill key={sort.key} on={filters.sort === sort.key} onClick={() => onChange({ sort: sort.key })}>
+              {sort.label}
+            </Pill>
+          ))}
+        </div>
         {filters.sort === "relevance" && !filters.q.trim() && (
-          <p className="mt-1.5 text-xs text-white/35">Without a query, results are sorted by date.</p>
+          <span className="v-watch-switch-sub">Without a query, results are sorted by date.</span>
         )}
       </Section>
 
       {hasActiveFilter && (
-        <button type="button" onClick={onClear} className="text-xs font-semibold text-white/50 hover:text-white">
+        <button type="button" className="v-watch-reset" onClick={onClear}>
           Reset filters
         </button>
       )}
-    </div>
+    </>
   );
 }

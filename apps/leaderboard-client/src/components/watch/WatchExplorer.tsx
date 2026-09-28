@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { RefreshCw, Search, SlidersHorizontal, X } from "lucide-react";
-import { ToastProvider, useToast } from "@/components/ui/Toast";
+import { RefreshCw, SlidersHorizontal, X } from "lucide-react";
+import { BackToLab } from "@/components/vitrine/BackToLab";
+import { SearchIcon } from "@/components/vitrine/SearchIcon";
+import { vitrineFontVars } from "@/components/vitrine/fonts";
 import {
   DEFAULT_WATCH_FILTERS,
   MAX_WATCH_PAGE,
@@ -21,8 +23,13 @@ import { WatchFilters } from "./WatchFilters";
 import { WatchPagination } from "./WatchPagination";
 import { WatchResultCard } from "./WatchResultCard";
 
+import "@/components/vitrine/vitrine.css";
+import "./watch-vitrine.css";
+
 /**
- * L'explorateur de publications (`/watch`).
+ * L'explorateur de publications (`/watch`), à la matière des vitrines : le
+ * même en-tête et la même gélule de recherche que `/challenges`, les filtres
+ * en colonne à gauche (un tiroir sur téléphone), les résultats à droite.
  *
  * L'URL porte les filtres (`lib/watch.ts`) : chaque changement la réécrit, et
  * la requête suit. Le champ de recherche attend 400 ms après la dernière
@@ -30,7 +37,7 @@ import { WatchResultCard } from "./WatchResultCard";
  * exemples au lieu de chercher.
  *
  * Une erreur OpenAlex ne vide pas la liste : la dernière réponse reste
- * affichée, un toast le dit, et un bouton relance.
+ * affichée, une ligne le dit, et un bouton relance.
  */
 
 const DEBOUNCE_MS = 400;
@@ -66,24 +73,32 @@ async function fetchSearch(query: string): Promise<WatchSearchResponse> {
 
 function Skeletons() {
   return (
-    <div className="space-y-3 animate-pulse" aria-hidden>
+    <div className="v-watch-list" aria-hidden>
       {[...Array(5)].map((_, index) => (
-        <div key={index} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
-          <div className="h-4 w-3/4 rounded bg-white/10" />
-          <div className="mt-3 h-3 w-1/2 rounded bg-white/8" />
-          <div className="mt-3 h-3 w-full rounded bg-white/5" />
-          <div className="mt-1.5 h-3 w-5/6 rounded bg-white/5" />
+        <div key={index} className="v-watch-skeleton">
+          <span style={{ width: "72%" }} />
+          <span style={{ width: "48%" }} />
+          <span style={{ width: "100%" }} />
+          <span style={{ width: "86%" }} />
         </div>
       ))}
     </div>
   );
 }
 
-function Explorer({ highImpactThreshold }: WatchExplorerProps) {
+function RetryButton({ onClick }: { onClick(): void }) {
+  return (
+    <button type="button" className="v-watch-retry" onClick={onClick}>
+      <RefreshCw />
+      Retry
+    </button>
+  );
+}
+
+export function WatchExplorer({ highImpactThreshold }: WatchExplorerProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const toast = useToast();
 
   const filters = useMemo(() => parseWatchFilters(new URLSearchParams(searchParams.toString())), [searchParams]);
   const initial = isInitialState(filters);
@@ -145,18 +160,14 @@ function Explorer({ highImpactThreshold }: WatchExplorerProps) {
     retry: false,
   });
 
-  const lastError = useRef<unknown>(null);
-  useEffect(() => {
-    if (query.error && query.error !== lastError.current) {
-      lastError.current = query.error;
-      toast(query.error instanceof Error ? query.error.message : "Search failed", "error");
-    }
-  }, [query.error, toast]);
-
   const data = query.data;
   const facets = data?.facets.topics ?? [];
   const totalPages = data ? Math.min(MAX_WATCH_PAGE, Math.max(1, Math.ceil(data.total / data.page_size))) : 1;
+  const errorMessage = query.error instanceof Error ? query.error.message : query.error ? "Search failed" : null;
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Une navigation referme le tiroir des filtres.
+  useEffect(() => setFiltersOpen(false), [searchParams]);
 
   const filtersPanel = (
     <WatchFilters
@@ -169,168 +180,146 @@ function Explorer({ highImpactThreshold }: WatchExplorerProps) {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="animate-fade-up">
-        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Watch</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/55">
-          Search the health literature on OpenAlex. Filter by topic, period, open access and journal impact; every
-          result links to PubMed when it has a PMID.
-        </p>
-      </div>
+    <div className={`vitrine v-watch ${vitrineFontVars}`}>
+      <div className="v-main v-watch-main">
+        <div className="v-head">
+          <div className="v-head-text">
+            <BackToLab />
+            <h1 className="v-title">Watch</h1>
+            <p className="v-lede">
+              Search the health literature on OpenAlex. Filter by topic, period, open access and journal impact; every
+              result links to PubMed when it has a PMID.
+            </p>
+          </div>
+        </div>
 
-      {/* Barre de recherche */}
-      <form
-        className="relative"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit(text);
-        }}
-      >
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
-        <input
-          type="search"
-          value={text}
-          onChange={(e) => onTextChange(e.target.value)}
-          placeholder="Search health publications…"
-          aria-label="Search health publications"
-          autoFocus
-          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3 pl-11 pr-24 text-sm text-white placeholder:text-white/30 focus:border-brandCP/40 focus:outline-none"
-        />
-        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
-          {text && (
-            <button
-              type="button"
-              onClick={() => {
-                setText("");
-                submit("");
-              }}
-              aria-label="Clear search"
-              className="rounded-full p-1.5 text-white/40 hover:bg-white/10 hover:text-white"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setFiltersOpen(true)}
-            className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-1.5 text-xs font-semibold text-white/70 hover:bg-white/10 lg:hidden"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
+        <form
+          className="v-watch-search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit(text);
+          }}
+        >
+          <div className="v-search">
+            <span className="v-search-icon">
+              <SearchIcon />
+            </span>
+            <input
+              type="search"
+              value={text}
+              onChange={(e) => onTextChange(e.target.value)}
+              placeholder="Search health publications…"
+              aria-label="Search health publications"
+              autoFocus
+            />
+            {text && (
+              <button
+                type="button"
+                className="v-watch-clear"
+                aria-label="Clear search"
+                onClick={() => {
+                  setText("");
+                  submit("");
+                }}
+              >
+                <X />
+              </button>
+            )}
+          </div>
+          <button type="button" className="v-pill v-watch-filters-btn" onClick={() => setFiltersOpen(true)}>
+            <SlidersHorizontal style={{ width: 14, height: 14 }} />
             Filters
           </button>
-        </div>
-      </form>
+        </form>
 
-      <div className="flex items-start gap-8">
-        {/* Panneau des filtres : colonne à gauche, tiroir sur mobile. */}
-        <aside className="hidden w-64 shrink-0 lg:block">{filtersPanel}</aside>
-        {filtersOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <button type="button" aria-label="Close filters" onClick={() => setFiltersOpen(false)} className="absolute inset-0 bg-black/60" />
-            <div className="absolute inset-y-0 left-0 w-80 max-w-[85vw] overflow-y-auto border-r border-white/10 bg-[var(--background)] p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm font-semibold text-white">Filters</p>
-                <button type="button" onClick={() => setFiltersOpen(false)} aria-label="Close" className="rounded-full p-1.5 text-white/50 hover:bg-white/10">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              {filtersPanel}
+        <div className="v-watch-body">
+          {/* Colonne à gauche ; sur téléphone, un tiroir sous un voile. */}
+          {filtersOpen && <button type="button" className="v-watch-scrim" aria-label="Close filters" onClick={() => setFiltersOpen(false)} />}
+          <aside className="v-watch-aside" data-open={filtersOpen ? "true" : "false"}>
+            <div className="v-watch-aside-head">
+              <span>Filters</span>
+              <button type="button" aria-label="Close" onClick={() => setFiltersOpen(false)}>
+                <X />
+              </button>
             </div>
-          </div>
-        )}
+            {filtersPanel}
+          </aside>
 
-        <section className="min-w-0 flex-1 space-y-4">
-          {initial ? (
-            <div className="rounded-2xl border border-dashed border-white/10 px-6 py-10 text-center">
-              <p className="text-sm text-white/60">Type a query, or start from an example.</p>
-              <p className="mt-1 text-xs text-white/35">
-                Results cover journal articles in English from the Health Sciences domain, most recent first.
-              </p>
-              <div className="mt-5 flex flex-wrap justify-center gap-2">
-                {WATCH_EXAMPLE_QUERIES.map((example) => (
-                  <button
-                    key={example}
-                    type="button"
-                    onClick={() => {
-                      setText(example);
-                      apply({ q: example });
-                    }}
-                    className="rounded-full border border-brandCP/30 bg-brandCP/10 px-3 py-1.5 text-xs font-semibold text-brandCP transition-colors hover:bg-brandCP/20"
-                  >
-                    {example}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : !data ? (
-            query.isError ? (
-              <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.05] px-6 py-8 text-center">
-                <p className="text-sm text-red-300">{query.error instanceof Error ? query.error.message : "Search failed"}</p>
-                <button
-                  type="button"
-                  onClick={() => void query.refetch()}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Retry
-                </button>
-              </div>
-            ) : (
-              <Skeletons />
-            )
-          ) : data ? (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/40">
-                <span>
-                  {data.total.toLocaleString("en-US")} result{data.total === 1 ? "" : "s"}
-                  {query.isFetching && <span className="ml-2 text-white/25">updating…</span>}
+          <section className="v-watch-results">
+            {initial ? (
+              <div className="v-empty">
+                <span className="v-empty-title">Type a query, or start from an example</span>
+                <span className="v-empty-sub">
+                  Results cover journal articles in English from the Health Sciences domain, most recent first.
                 </span>
-                {query.isError && (
-                  <button
-                    type="button"
-                    onClick={() => void query.refetch()}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 px-2.5 py-1 font-semibold text-red-300 hover:bg-red-500/10"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    Retry
-                  </button>
-                )}
-              </div>
-
-              {data.high_impact_truncated && (
-                <div className="rounded-xl border border-brandCP/20 bg-brandCP/[0.06] px-4 py-2.5 text-xs text-brandCP">
-                  Showing the first {data.results.length} high-impact results — narrow your search to see more
-                </div>
-              )}
-
-              {data.results.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/10 px-6 py-10 text-center">
-                  <p className="text-sm text-white/60">No publication matches this search.</p>
-                  <p className="mt-1 text-xs text-white/35">Try a broader period, fewer topics, or turn off a toggle.</p>
-                </div>
-              ) : (
-                <div className={`space-y-3 ${query.isFetching ? "opacity-70 transition-opacity" : ""}`}>
-                  {data.results.map((result) => (
-                    <WatchResultCard key={result.id} result={result} highImpactThreshold={highImpactThreshold} />
+                <div className="v-watch-examples">
+                  {WATCH_EXAMPLE_QUERIES.map((example) => (
+                    <button
+                      key={example}
+                      type="button"
+                      className="v-chip"
+                      onClick={() => {
+                        setText(example);
+                        apply({ q: example });
+                      }}
+                    >
+                      {example}
+                    </button>
                   ))}
                 </div>
-              )}
+              </div>
+            ) : !data ? (
+              query.isError ? (
+                <div className="v-watch-alert">
+                  <span>{errorMessage}</span>
+                  <RetryButton onClick={() => void query.refetch()} />
+                </div>
+              ) : (
+                <Skeletons />
+              )
+            ) : (
+              <>
+                <div className="v-watch-count">
+                  <span>
+                    {data.total.toLocaleString("en-US")} result{data.total === 1 ? "" : "s"}
+                    {query.isFetching && " · updating…"}
+                  </span>
+                </div>
 
-              {!filters.highImpact && (
-                <WatchPagination page={data.page} totalPages={totalPages} onChange={(page) => apply({ page })} />
-              )}
-            </>
-          ) : null}
-        </section>
+                {query.isError && (
+                  <div className="v-watch-alert">
+                    <span>{errorMessage} — showing the last results.</span>
+                    <RetryButton onClick={() => void query.refetch()} />
+                  </div>
+                )}
+
+                {data.high_impact_truncated && (
+                  <div className="v-watch-strip">
+                    <strong>Showing the first {data.results.length} high-impact results</strong> — narrow your search to see more
+                  </div>
+                )}
+
+                {data.results.length === 0 ? (
+                  <div className="v-empty">
+                    <span className="v-empty-title">No publication matches this search</span>
+                    <span className="v-empty-sub">Try a broader period, fewer topics, or turn off a toggle.</span>
+                  </div>
+                ) : (
+                  <div className="v-watch-list" data-busy={query.isFetching ? "true" : "false"}>
+                    {data.results.map((result) => (
+                      <WatchResultCard key={result.id} result={result} highImpactThreshold={highImpactThreshold} />
+                    ))}
+                  </div>
+                )}
+
+                {!filters.highImpact && (
+                  <WatchPagination page={data.page} totalPages={totalPages} onChange={(page) => apply({ page })} />
+                )}
+              </>
+            )}
+          </section>
+        </div>
       </div>
     </div>
-  );
-}
-
-export function WatchExplorer(props: WatchExplorerProps) {
-  return (
-    <ToastProvider>
-      <Explorer {...props} />
-    </ToastProvider>
   );
 }

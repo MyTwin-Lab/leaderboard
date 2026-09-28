@@ -33,6 +33,7 @@ const VITRINE_BACKGROUNDS: Record<string, string> = {
   "/sandbox": "#fcfcfc",
   "/vision": "#fcfcfc",
   "/news": "#fcfcfc",
+  "/watch": "#fcfcfc",
 };
 
 /**
