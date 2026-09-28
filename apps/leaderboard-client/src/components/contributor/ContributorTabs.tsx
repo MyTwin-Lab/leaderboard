@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { TabPills } from "@/components/ui/TabPills";
+import { vitrineFontVars } from "@/components/vitrine/fonts";
+
+import "@/components/vitrine/vitrine.css";
 
 interface TabItem {
   label: string;
@@ -48,12 +51,18 @@ export function ContributorTabs({ tabs, initialTab, extra }: { tabs: TabItem[]; 
 
   return (
     <>
-      <TabPills
-        variant="vitrine"
-        tabs={tabs.map(({ label, count }) => ({ label, count }))}
-        active={active}
-        onChange={setActive}
-      />
+      {/* `.vitrine-embed` : les jetons des gélules (`--v-surface`, `--v-ink`…)
+          ne sont définis que sous `.vitrine`. Sur une page hors vitrine — le
+          challenge, sa vue de pilotage —, sans eux la gélule n'a pas de fond
+          et l'onglet actif s'écrit en blanc sur blanc en mode clair. */}
+      <div className={`vitrine-embed ${vitrineFontVars}`}>
+        <TabPills
+          variant="vitrine"
+          tabs={tabs.map(({ label, count }) => ({ label, count }))}
+          active={active}
+          onChange={setActive}
+        />
+      </div>
 
       {/* Content shared across every tab — meetings, in the redesign */}
       {extra && <div>{extra}</div>}
