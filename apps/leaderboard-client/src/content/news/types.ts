@@ -127,7 +127,7 @@ export type NewsVideoCaptions = {
 /**
  * Une vidéo dont la news rend compte (une intervention, une conférence),
  * servie par le site : l'article la pose en tête comme illustration
- * (`kind: "video"`) ou dans son texte avec `NewsVideoEmbed`, et la page la
+ * (`kind: "video"`) ou dans son texte avec `NewsVideoPlayer`, et la page la
  * déclare en `video` dans le JSON-LD.
  */
 export type NewsVideo = {

@@ -21,7 +21,7 @@ const LEAD_EPISODE: PodcastEpisodeKey = "voice";
 /**
  * Les épisodes MyTwin Inside : un en vedette, les trois autres en rang.
  *
- * Forme de la maquette, comportement de `PodcastVideos` — lancer un épisode
+ * Forme de la maquette ; côté comportement, lancer un épisode
  * met en pause celui qui jouait, et une vidéo déjà lancée garde son iframe
  * plutôt que d'être démontée, pour reprendre au timecode exact.
  *

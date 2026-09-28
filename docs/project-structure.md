@@ -74,7 +74,7 @@ leaderboard/
 │       │   │   ├── moduleProxy.ts  uiEvents.ts  flowConfig.ts  integrations.ts
 │       │   │   ├── challengeBrief.ts  # brief filename convention + gate logic
 │       │   │   ├── useJoinChallenge.ts  joinGate.ts
-│       │   │   ├── leaderboard.ts  contributor.ts  medals.ts  taskProgress.ts
+│       │   │   ├── leaderboard.ts  contributor.ts  taskProgress.ts
 │       │   │   ├── themes.ts  color-utils.ts  formatters.ts  utils.ts  url.ts
 │       │   │   ├── signin.ts  routeVisibility.ts  fetchJson.ts  types.ts  validation.ts  otel.ts
 │       │   │   ├── public/            # payload allowlists for anonymous visitors
