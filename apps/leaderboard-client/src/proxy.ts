@@ -391,8 +391,7 @@ export const config = {
     // refuse une valeur calculée depuis distribution/mytwin.proxy.ts, qui
     // vérifie en test que chacune de ses routes figure ici.
     '/api/sync-meetings/:path*',
-    // Module watch : sa page et sa route, réservées aux comptes connectés.
-    '/watch/:path*',
+    // Module watch : sa route de recherche, réservée aux comptes connectés.
     '/api/watch/:path*',
   ],
 };

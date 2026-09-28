@@ -1,44 +1,43 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { modules } from "@packages/capabilities/modules";
 import { WatchExplorer } from "@/components/watch/WatchExplorer";
-import { fetchContributorSession } from "@/lib/contributor";
+import { isCookielessVisitor } from "@/lib/server/publicSsr";
 import { readWatchSettings, WATCH_MODULE } from "@/lib/server/watch/settings";
 import { fetchWatchSpotlight } from "@/lib/server/watch/spotlight";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Watch",
-  description: "Search the health literature: topics, period, open access and journal impact, from OpenAlex.",
-  robots: { index: false, follow: false },
-};
+export const metadata = pageMetadata({
+  title: "Watch: Latest Health Research",
+  description:
+    "The most cited health publications of the month, and a search over the health literature: topics, period, open access and journal impact, from OpenAlex.",
+  path: "/watch",
+});
 
 /**
- * `/watch` — l'explorateur de publications santé.
- *
- * Réservé aux comptes connectés, tous rôles : le proxy (matcher `/watch`)
- * rafraîchit un jeton expiré et renvoie l'anonyme vers `/signin` ; la page
- * revérifie. Module désactivé : la page n'existe pas.
+ * `/watch` — l'explorateur de publications santé. **Page publique.**
  *
  * Avant toute recherche, la page montre une sélection rendue côté serveur —
  * les publications santé les plus citées du mois (`fetchWatchSpotlight`) —
- * pour ne pas s'ouvrir vide. Le reste se lit côté client, depuis
- * `/api/watch/search` : les filtres vivent dans l'URL, et chaque changement
- * est une nouvelle requête.
+ * que tout le monde lit, crawlers compris : elle est dans le HTML initial.
+ *
+ * La recherche, elle, demande un compte : `/api/watch/search` est derrière le
+ * proxy, et l'explorateur propose la connexion à l'anonyme qui cherche. Comme
+ * sur la sandbox, seul un visiteur sans aucun cookie est tenu pour anonyme dès
+ * le serveur ; pour les autres, c'est le `meQuery` du client qui tranche, et
+ * rafraîchit au passage un jeton expiré. Module désactivé : la page n'existe pas.
  */
 export default async function WatchPage() {
   if (!(await modules.enabled(WATCH_MODULE))) notFound();
 
-  const session = await fetchContributorSession();
-  if (!session) redirect("/signin?from=/watch");
-
-  const settings = await readWatchSettings();
+  const [settings, knownAnonymous] = await Promise.all([readWatchSettings(), isCookielessVisitor()]);
   const spotlight = await fetchWatchSpotlight(settings);
   return (
     // `useSearchParams` dans l'explorateur : Next exige une frontière Suspense.
     <Suspense fallback={null}>
-      <WatchExplorer highImpactThreshold={settings.highImpactThreshold} spotlight={spotlight} />
+      <WatchExplorer highImpactThreshold={settings.highImpactThreshold} spotlight={spotlight} knownAnonymous={knownAnonymous} />
     </Suspense>
   );
 }

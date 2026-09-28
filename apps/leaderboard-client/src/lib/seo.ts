@@ -189,6 +189,8 @@ export type SitemapInput = {
   news: { slug: string; lastModified: string }[];
   /** Faux quand le module sandbox est désactivé : `/sandbox` répond alors 404. Vrai par défaut. */
   sandboxEnabled?: boolean;
+  /** Faux quand le module watch est désactivé : `/watch` répond alors 404. Vrai par défaut. */
+  watchEnabled?: boolean;
 };
 
 /**
@@ -197,7 +199,7 @@ export type SitemapInput = {
  * à faire dans Google), et une URL en `noindex` dans un sitemap dégrade la
  * confiance que Google accorde au fichier entier.
  */
-export function buildSitemap({ baseUrl, challenges, sandboxes, news, sandboxEnabled = true }: SitemapInput): MetadataRoute.Sitemap {
+export function buildSitemap({ baseUrl, challenges, sandboxes, news, sandboxEnabled = true, watchEnabled = true }: SitemapInput): MetadataRoute.Sitemap {
   const url = (path: string) => `${baseUrl}${path}`;
 
   return [
@@ -205,6 +207,8 @@ export function buildSitemap({ baseUrl, challenges, sandboxes, news, sandboxEnab
     { url: url("/challenges"), changeFrequency: "daily", priority: 0.9 },
     ...(sandboxEnabled ? [{ url: url("/sandbox"), changeFrequency: "daily" as const, priority: 0.8 }] : []),
     { url: url("/leaderboard"), changeFrequency: "daily", priority: 0.6 },
+    // La sélection de publications se lit sans compte ; la recherche, non.
+    ...(watchEnabled ? [{ url: url("/watch"), changeFrequency: "daily" as const, priority: 0.6 }] : []),
     { url: url(NEWS_PATH), changeFrequency: "weekly", priority: 0.8 },
     { url: url("/vision"), changeFrequency: "monthly", priority: 0.5 },
     { url: url("/terms-of-use"), changeFrequency: "yearly", priority: 0.2 },

@@ -10,7 +10,9 @@ describe('module routes in the proxy', () => {
   });
 
   it('keeps every protected module page in the static matcher', () => {
-    expect(moduleProtectedPages).toContain('/watch');
+    // La page /watch est publique (sa sélection se lit sans compte) : seule sa route l'est.
+    expect(moduleProtectedPages).not.toContain('/watch');
+    expect(moduleProtectedApiRoutes).toContain('/api/watch');
     for (const prefix of moduleProtectedPages) {
       expect(config.matcher).toContain(`${prefix}/:path*`);
     }

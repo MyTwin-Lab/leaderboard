@@ -117,6 +117,7 @@ describe("buildSitemap", () => {
       "https://lab.example.com/challenges",
       "https://lab.example.com/sandbox",
       "https://lab.example.com/leaderboard",
+      "https://lab.example.com/watch",
       "https://lab.example.com/news",
       "https://lab.example.com/vision",
       "https://lab.example.com/terms-of-use",

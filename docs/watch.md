@@ -12,7 +12,7 @@ It is a product **module** (`modules/watch`), **enabled by default**, that an ad
 
 ## What the page does
 
-`/watch` is reserved to signed-in accounts, every role. The proxy (`/watch` is in its matcher, declared by `distribution/modules/watch.proxy.ts`) refreshes an expired token and sends anonymous visitors to `/signin`; the page then answers 404 while the module is disabled.
+`/watch` is public: anyone reads the spotlight, and the page is indexable and in the sitemap while the module is enabled. Searching needs an account — `/api/watch/search` is in the proxy matcher (`distribution/modules/watch.proxy.ts`), and an anonymous visitor who types a query or picks an example is offered to sign in (`/signin?from=/watch…`), the query kept in the URL. The page answers 404 while the module is disabled.
 
 | Element | Behaviour |
 |---|---|
@@ -57,7 +57,7 @@ The admin editor (`components/watch/WatchSettings.tsx`, wired in `distribution/m
 
 ### `GET /api/watch/search`
 
-Signed-in sessions only (`/api/watch` is in the proxy matcher, and the handler re-checks). `404` while the module is disabled, `401` without a session, `400` with `details` on an unreadable parameter.
+Signed-in sessions only (`/api/watch` is in the proxy matcher, and the handler re-checks) — the page is public, the search is not. `404` while the module is disabled, `401` without a session, `400` with `details` on an unreadable parameter.
 
 | Param | Type | Notes |
 |---|---|---|

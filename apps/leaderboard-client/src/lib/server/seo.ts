@@ -128,9 +128,10 @@ export async function contributorMetadata(userId: string): Promise<Metadata> {
 
 export async function fetchSitemap(): Promise<MetadataRoute.Sitemap> {
   // Module sandbox désactivé : ses pages répondent 404, aucune n'est listée.
-  const [challenges, sandboxEnabled] = await Promise.all([
+  const [challenges, sandboxEnabled, watchEnabled] = await Promise.all([
     repositories.challenge.findAll(),
     modules.enabled("sandbox"),
+    modules.enabled("watch"),
   ]);
   const sandboxes = sandboxEnabled ? await repositories.sandbox.findAll() : [];
 
@@ -138,6 +139,7 @@ export async function fetchSitemap(): Promise<MetadataRoute.Sitemap> {
     baseUrl: SITE_URL,
     challenges: challenges.filter(isIndexable),
     sandboxEnabled,
+    watchEnabled,
     sandboxes: sandboxes.filter((sandbox) => canSeeSandbox(sandbox, ANONYMOUS)),
     news: NEWS_ARTICLES.map((article) => ({
       slug: article.slug,

@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { RefreshCw, SlidersHorizontal, X } from "lucide-react";
+import { LogIn, RefreshCw, SlidersHorizontal, X } from "lucide-react";
+import { fetchJson } from "@/lib/fetchJson";
 import { BackToLab } from "@/components/vitrine/BackToLab";
 import { SearchIcon } from "@/components/vitrine/SearchIcon";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
@@ -47,6 +49,8 @@ interface WatchExplorerProps {
   highImpactThreshold: number;
   /** La sélection rendue côté serveur avant toute recherche : les plus citées du mois. */
   spotlight: WatchResult[];
+  /** Vrai pour un visiteur sans aucun cookie : anonyme dès le serveur, sans `meQuery`. */
+  knownAnonymous: boolean;
 }
 
 /** Une réponse d'erreur de la route, ou le statut seul. */
@@ -98,7 +102,7 @@ function RetryButton({ onClick }: { onClick(): void }) {
   );
 }
 
-export function WatchExplorer({ highImpactThreshold, spotlight }: WatchExplorerProps) {
+export function WatchExplorer({ highImpactThreshold, spotlight, knownAnonymous }: WatchExplorerProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -107,6 +111,21 @@ export function WatchExplorer({ highImpactThreshold, spotlight }: WatchExplorerP
   const initial = isInitialState(filters);
   // La date du jour, fixée au montage : la clé de la requête ne bouge pas à chaque rendu.
   const today = useMemo(() => new Date(), []);
+
+  /**
+   * La session, comme sur la sandbox : `/api/contributors/me` est dans le
+   * matcher du proxy, c'est ce fetch qui rafraîchit un jeton expiré. Un 401
+   * est un état normal (visiteur sans compte), pas une panne à réessayer.
+   */
+  const meQuery = useQuery({
+    queryKey: ["me"],
+    queryFn: () => fetchJson("/api/contributors/me"),
+    staleTime: 5 * 60_000,
+    retry: false,
+    enabled: !knownAnonymous,
+  });
+  const sessionKnown = knownAnonymous || !meQuery.isPending;
+  const signedIn = !knownAnonymous && meQuery.isSuccess;
 
   const navigate = useCallback(
     (next: Filters, mode: "push" | "replace") => {
@@ -157,7 +176,7 @@ export function WatchExplorer({ highImpactThreshold, spotlight }: WatchExplorerP
   const query = useQuery({
     queryKey: ["watch-search", apiQuery],
     queryFn: () => fetchSearch(apiQuery),
-    enabled: !initial,
+    enabled: !initial && signedIn,
     placeholderData: keepPreviousData,
     staleTime: 60_000,
     retry: false,
@@ -291,6 +310,24 @@ export function WatchExplorer({ highImpactThreshold, spotlight }: WatchExplorerP
                 </div>
               </div>
               </>
+            ) : sessionKnown && !signedIn ? (
+              /* La recherche demande un compte : la requête est gardée dans
+                 l'URL, la connexion y ramène. */
+              <div className="v-empty">
+                <span className="v-empty-title">Sign in to search the literature</span>
+                <span className="v-empty-sub">
+                  Reading the monthly selection is open to everyone; searching by topic, period and impact needs an account.
+                </span>
+                <Link
+                  href={`/signin?from=${encodeURIComponent(`${pathname}?${serializeWatchFilters(filters).toString()}`)}`}
+                  className="v-pill"
+                  data-on="true"
+                  style={{ marginTop: "0.75rem" }}
+                >
+                  <LogIn style={{ width: 14, height: 14 }} />
+                  Sign in
+                </Link>
+              </div>
             ) : !data ? (
               query.isError ? (
                 <div className="v-watch-alert">

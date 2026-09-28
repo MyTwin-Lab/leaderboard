@@ -154,6 +154,7 @@ describe("fetchSitemap", () => {
     expect(urls).toContain("https://mytwinlab.care/challenges/public-validation");
     expect(urls).toContain("https://mytwinlab.care/sandbox");
     expect(urls).toContain("https://mytwinlab.care/sandbox/open-one");
+    expect(urls).toContain("https://mytwinlab.care/watch");
     // Les slugs de fixture portent « hidden » : ni brouillon, ni archivé, ni
     // profil ne doit apparaître. Un archivé se lit, mais ne se référence pas.
     expect(urls.some((url) => /hidden|contributors/.test(url))).toBe(false);
