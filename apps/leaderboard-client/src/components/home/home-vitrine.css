@@ -135,11 +135,17 @@
   text-wrap: balance;
 }
 
-/* La seconde phrase repart à la ligne, un souffle à peine plus bas que
-   l'interligne du titre. */
+/* La seconde phrase repart à la ligne et passe au second plan : la mission
+   d'abord, sa visée ensuite. Un cran plus petite, en graisse normale et dans
+   le gris des textes courants — l'approche serrée du titre se relâche d'autant.
+   La marge compense la taille réduite pour garder le même souffle. */
 .v-home-mission-aim {
   display: block;
-  margin-top: 0.3em;
+  margin-top: 0.45em;
+  font-size: 0.75em;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--v-muted);
 }
 
 /* « human digital twin » reste un `<em>` — l'emphase est dans le sens de la
