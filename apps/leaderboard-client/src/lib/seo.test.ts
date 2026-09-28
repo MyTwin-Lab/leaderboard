@@ -127,12 +127,12 @@ describe("buildSitemap", () => {
       "https://lab.example.com/sandbox/sleep-tracker",
       "https://lab.example.com/news/mykine",
     ]);
-    // Les index suivent la liste ci-dessus : huit pages fixes, puis les
+    // Les index suivent la liste ci-dessus : neuf pages fixes, puis les
     // entités dans l'ordre où elles sont passées.
-    expect(sitemap[8].lastModified).toBe(created);
-    expect(sitemap[9].lastModified).toBe(closed);
-    expect(sitemap[10].lastModified).toBe(updated);
-    expect(sitemap[11].lastModified).toBe("2026-09-16");
+    expect(sitemap[9].lastModified).toBe(created);
+    expect(sitemap[10].lastModified).toBe(closed);
+    expect(sitemap[11].lastModified).toBe(updated);
+    expect(sitemap[12].lastModified).toBe("2026-09-16");
   });
 });
 
