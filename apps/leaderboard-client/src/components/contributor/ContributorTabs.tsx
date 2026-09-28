@@ -6,6 +6,7 @@ import { TabPills } from "@/components/ui/TabPills";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
 
 import "@/components/vitrine/vitrine.css";
+import "@/components/contributor/vitrine/profile-vitrine.css";
 
 interface TabItem {
   label: string;
@@ -50,7 +51,10 @@ export function ContributorTabs({ tabs, initialTab, extra }: { tabs: TabItem[]; 
   }, [tabParam, labels]);
 
   return (
-    <>
+    // `.v-pro-panels` porte l'écart entre les gélules et le panneau : le profil
+    // le posait autour du composant, la page d'un challenge non. Imbriqué dans
+    // celui du profil, il ne compte pas double — un enfant unique n'a pas d'écart.
+    <div className="v-pro-panels">
       {/* `.vitrine-embed` : les jetons des gélules (`--v-surface`, `--v-ink`…)
           ne sont définis que sous `.vitrine`. Sur une page hors vitrine — le
           challenge, sa vue de pilotage —, sans eux la gélule n'a pas de fond
@@ -70,6 +74,6 @@ export function ContributorTabs({ tabs, initialTab, extra }: { tabs: TabItem[]; 
       <div key={active} className="v-pro-panel">
         {tabs[active].panel}
       </div>
-    </>
+    </div>
   );
 }
