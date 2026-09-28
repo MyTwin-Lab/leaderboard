@@ -72,9 +72,9 @@ export default async function HomePage() {
           <HomePodcast />
           <HomeCommunity />
           <HomeLeaderboardPreview podium={overview.podium} />
-          <HomeOpenResources />
           <HomeChallengesPreview challenges={overview.trendingChallenges} />
           <HomeCreateTwin />
+          <HomeOpenResources />
         </div>
       </div>
     </>

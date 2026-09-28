@@ -27,7 +27,7 @@ export function HomeOpenResources() {
       />
 
       <a
-        href="https://lnkd.in/p/gJ5e_bEq"
+        href="https://github.com/alaur/PubMed-OpenAlex"
         target="_blank"
         rel="noopener noreferrer"
         className="v-home-feature"
