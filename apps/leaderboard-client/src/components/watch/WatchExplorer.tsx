@@ -16,6 +16,7 @@ import {
   serializeWatchFilters,
   toWatchApiQuery,
   type WatchFilters as Filters,
+  type WatchResult,
   type WatchSearchError,
   type WatchSearchResponse,
 } from "@/lib/watch";
@@ -44,6 +45,8 @@ const DEBOUNCE_MS = 400;
 
 interface WatchExplorerProps {
   highImpactThreshold: number;
+  /** La sélection rendue côté serveur avant toute recherche : les plus citées du mois. */
+  spotlight: WatchResult[];
 }
 
 /** Une réponse d'erreur de la route, ou le statut seul. */
@@ -95,7 +98,7 @@ function RetryButton({ onClick }: { onClick(): void }) {
   );
 }
 
-export function WatchExplorer({ highImpactThreshold }: WatchExplorerProps) {
+export function WatchExplorer({ highImpactThreshold, spotlight }: WatchExplorerProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -247,6 +250,25 @@ export function WatchExplorer({ highImpactThreshold }: WatchExplorerProps) {
 
           <section className="v-watch-results">
             {initial ? (
+              <>
+                {/* La sélection du serveur : la page ne s'ouvre pas vide, et
+                    ces trois cartes sont dans le HTML initial. */}
+                {spotlight.length > 0 && (
+                  <div className="v-watch-spotlight">
+                    <div className="v-watch-spotlight-head">
+                      <span className="v-eyebrow">
+                        <span className="v-eyebrow-dot" />
+                        Latest in health research
+                      </span>
+                      <span className="v-watch-spotlight-sub">The most cited publications of the last 30 days</span>
+                    </div>
+                    <div className="v-watch-list">
+                      {spotlight.map((result) => (
+                        <WatchResultCard key={result.id} result={result} highImpactThreshold={highImpactThreshold} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               <div className="v-empty">
                 <span className="v-empty-title">Type a query, or start from an example</span>
                 <span className="v-empty-sub">
@@ -268,6 +290,7 @@ export function WatchExplorer({ highImpactThreshold }: WatchExplorerProps) {
                   ))}
                 </div>
               </div>
+              </>
             ) : !data ? (
               query.isError ? (
                 <div className="v-watch-alert">

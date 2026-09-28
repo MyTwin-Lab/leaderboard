@@ -16,7 +16,7 @@ It is a product **module** (`modules/watch`), **enabled by default**, that an ad
 
 | Element | Behaviour |
 |---|---|
-| Search box | Debounced 400 ms, or Enter. Empty query with no restrictive filter → a help state with clickable example queries, and no request. |
+| Search box | Debounced 400 ms, or Enter. Empty query with no restrictive filter → the **spotlight** (three publications rendered on the server: the most cited of the last 30 days in the default domains, `lib/server/watch/spotlight.ts`, through the same cached search) above a help state with clickable example queries, and no client request. |
 | Search in | `Title + abstract` (OpenAlex `search=`) or `Title only` (`title.search:` filter). |
 | Period | 30 days / 6 months / 1 year (default) / 5 years / Any — turned into a `from` date on the client. |
 | Topics | Multi-select chips fed by the facets of the current search (OpenAlex subfields, with their count). 10 visible, « more » for the rest. |

@@ -417,6 +417,28 @@
   height: 12px;
 }
 
+/* La sélection du serveur, avant toute recherche : un surtitre à pastille,
+   une ligne de contexte, puis trois cartes ordinaires. */
+.v-watch-spotlight {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.v-watch-spotlight-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.v-watch-spotlight-sub {
+  font-size: 12.5px;
+  color: var(--v-subtle);
+}
+
 /* L'état initial : les exemples, en pills accent. */
 .v-watch-examples {
   display: flex;
