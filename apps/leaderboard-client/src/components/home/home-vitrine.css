@@ -761,6 +761,120 @@
   flex: none;
 }
 
+/* ── Le témoignage du fondateur ─────────────────────────────────────────── */
+
+/* `isolation` garde le guillemet derrière le texte sans le faire passer sous
+   le fond de la page. */
+.v-home-quote-section {
+  isolation: isolate;
+}
+
+/* La citation, centrée dans la colonne et sur elle-même. */
+.v-home-quote {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 1.5rem;
+  max-width: 46rem;
+  margin-inline: auto;
+  text-align: center;
+}
+
+/* Le guillemet en filigrane : un glyphe d'Instrument Serif, très grand, à
+   l'accent et presque effacé. Le glyphe vient du CSS et le `span` est caché
+   aux lecteurs d'écran.
+
+   Sur écran, comme sur la landing patient de MyTwin Health : l'ouvrant en haut
+   à gauche de la citation, qu'il déborde et dont il passe derrière le début.
+   Son haut reste sous le filet de la section, et son débord dans la
+   gouttière, quelle que soit la largeur.
+
+   Mesures du « “ », en em, avec `line-height: 1` : le dessin fait 0.26 de
+   large, commence à -0.016 du bord de la boîte et à 0.047 de son haut. */
+.v-home-quote-mark {
+  --q-w: 7.5rem;
+  position: absolute;
+  z-index: -1;
+  /* 2.75rem au-dessus du texte, sans remonter à moins de 0.75rem du filet :
+     le padding de la section est plus court sur les petits écrans. */
+  top: calc(-1 * min(2.75rem, clamp(2.25rem, 4.5vw, 3.75rem) - 0.75rem) - 0.047em);
+  /* 4.5rem à gauche du texte, sans sortir de l'écran : la place disponible
+     est la gouttière, plus la marge que laisse la citation centrée. */
+  --q-room: calc(
+    var(--v-gutter) - 0.5rem +
+      max(0px, (min(100vw, var(--v-max)) - 2 * var(--v-gutter) - 46rem) / 2)
+  );
+  left: calc(0.016em - min(4.5rem, var(--q-room)));
+  width: 0.3em;
+  height: 0.3em;
+  font-family: var(--v-font-d);
+  font-size: calc(var(--q-w) / 0.26);
+  line-height: 1;
+  color: var(--v-accent);
+  opacity: 0.08;
+  pointer-events: none;
+  user-select: none;
+}
+
+.v-home-quote-mark::before {
+  content: "\201C";
+}
+
+/* L'accroche des sections, à l'encre : c'est le contenu, pas une légende. */
+.v-home-quote blockquote p {
+  max-width: 46rem;
+  font-family: var(--v-font-h);
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+  line-height: 1.4;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+  text-wrap: pretty;
+}
+
+/* L'auteur : le visage cerclé comme ceux de la communauté, nom et rôle comme
+   une ligne du classement. */
+.v-home-quote-author {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  text-align: left;
+}
+
+.v-home-quote-photo {
+  flex: none;
+  overflow: hidden;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: #ececec;
+  box-shadow: 0 0 0 1px rgb(11 122 100 / 0.3), 0 0 0 4px var(--v-bg);
+}
+
+/* Le fichier montre le buste entier : on resserre sur le visage. */
+.v-home-quote-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.5);
+  transform-origin: 50% 32%;
+}
+
+.v-home-quote-who {
+  display: grid;
+}
+
+.v-home-quote-who cite {
+  font-size: 1rem;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.v-home-quote-who span {
+  font-size: 0.8125rem;
+  color: var(--v-muted);
+}
+
 /* ── Top contributors ───────────────────────────────────────────────────── */
 
 .v-home-rank {
@@ -1319,6 +1433,38 @@
     height: 3rem;
     padding-inline: 0;
     font-size: 0.9375rem;
+  }
+
+  /* Le témoignage, resserré. */
+  .v-home-quote {
+    gap: 1.25rem;
+  }
+
+  /* Sur téléphone, le même ouvrant en plus petit, toujours en haut à gauche :
+     il déborde d'un demi-rem dans la gouttière. */
+  .v-home-quote-mark {
+    --q-w: 4.5rem;
+    top: calc(-1rem - 0.047em);
+    left: calc(0.016em - 0.5rem);
+  }
+
+  .v-home-quote blockquote p {
+    font-size: 1.0625rem;
+    line-height: 1.45;
+  }
+
+  .v-home-quote-photo {
+    width: 2.5rem;
+    height: 2.5rem;
+    box-shadow: 0 0 0 1px rgb(11 122 100 / 0.3), 0 0 0 3px var(--v-bg);
+  }
+
+  .v-home-quote-who cite {
+    font-size: 0.9375rem;
+  }
+
+  .v-home-quote-who span {
+    font-size: 0.75rem;
   }
 
   /* Les lignes du classement, resserrées. */

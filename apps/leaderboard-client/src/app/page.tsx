@@ -1,6 +1,7 @@
 import { fetchHomeOverview } from "@/lib/server/home";
 import { HomeHero } from "@/components/home/HomeHero";
 import { HomeVision } from "@/components/home/HomeVision";
+import { HomeTestimonial } from "@/components/home/HomeTestimonial";
 import { HomeLatestNews } from "@/components/home/HomeLatestNews";
 import { HomePodcast } from "@/components/home/HomePodcast";
 import { HomeCreateTwin } from "@/components/home/HomeCreateTwin";
@@ -47,8 +48,9 @@ export default async function HomePage() {
   const overview = await fetchHomeOverview();
 
   // L'ordre est celui de `Home Redesign.dc.html` : la mission, la vision qui
-  // l'explique, puis ce que le Lab produit — news, podcast — avant d'appeler à
-  // rejoindre, et de montrer qui contribue et sur quoi.
+  // l'explique, la parole du fondateur qui en donne l'échelle, puis ce que le
+  // Lab produit — news, podcast — avant d'appeler à rejoindre, et de montrer
+  // qui contribue et sur quoi.
   //
   // « Open resources » s'intercale entre les deux : les outils se donnent avant
   // le travail auquel ils servent, pas après.
@@ -68,6 +70,7 @@ export default async function HomePage() {
         <div className="v-home-main">
           <HomeHero />
           <HomeVision />
+          <HomeTestimonial />
           <HomeLatestNews />
           <HomePodcast />
           <HomeCommunity />
