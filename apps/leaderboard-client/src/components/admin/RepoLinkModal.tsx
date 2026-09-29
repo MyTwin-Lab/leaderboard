@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/Button';
+import { Link2 } from 'lucide-react';
+import { Modal } from '@/components/vitrine/Modal';
 import type { Challenge } from '../../../../../packages/database-service/domain/entities';
+
+import './admin-forms-vitrine.css';
 
 interface RepoLinkModalProps {
   repoId: string;
@@ -10,6 +13,7 @@ interface RepoLinkModalProps {
   onClose: () => void;
 }
 
+/** Les challenges liés à un dépôt, et le lien vers un de plus. Sur la modale vitrine. */
 export function RepoLinkModal({ repoId, repoTitle, onClose }: RepoLinkModalProps) {
   const [linkedChallenges, setLinkedChallenges] = useState<Challenge[]>([]);
   const [availableChallenges, setAvailableChallenges] = useState<Challenge[]>([]);
@@ -79,83 +83,64 @@ export function RepoLinkModal({ repoId, repoTitle, onClose }: RepoLinkModalProps
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl bg-background border border-white/10 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-white">
-            🔗 Link Repo: {repoTitle}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-white/60 hover:text-white transition-colors"
-          >
-            ✕
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="text-white/60">Loading...</div>
-        ) : (
-          <div className="space-y-6">
-            {/* Linked challenges */}
-            <div>
-              <h3 className="text-sm font-medium text-white/80 mb-3">Linked Challenges</h3>
-              {linkedChallenges.length === 0 ? (
-                <p className="text-sm text-white/50">No challenges linked yet</p>
-              ) : (
-                <div className="space-y-2">
-                  {linkedChallenges.map((challenge, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10"
-                    >
-                      <div>
-                        <div className="font-medium text-white">{challenge.title}</div>
-                        {(challenge.start_date || challenge.end_date) && (
-                          <div className="text-sm text-white/60">
-                            {challenge.start_date ? new Date(challenge.start_date).toLocaleDateString() : '-'} - {challenge.end_date ? new Date(challenge.end_date).toLocaleDateString() : '-'}
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => handleUnlink(challenge.uuid)}
-                      >
-                        Unlink
-                      </Button>
+    <Modal open onClose={onClose} title={`Link Repo: ${repoTitle}`} icon={<Link2 />} size="lg">
+      {loading ? (
+        <p className="v-quiet">Loading...</p>
+      ) : (
+        <>
+          {/* Linked challenges */}
+          <div className="v-section">
+            <p className="v-section-title">Linked Challenges</p>
+            {linkedChallenges.length === 0 ? (
+              <p className="v-help">No challenges linked yet</p>
+            ) : (
+              <div className="v-rows">
+                {linkedChallenges.map((challenge, index) => (
+                  <div key={index} className="v-row">
+                    <div className="v-row-text">
+                      <span className="v-row-title">{challenge.title}</span>
+                      {(challenge.start_date || challenge.end_date) && (
+                        <span className="v-row-meta">
+                          {challenge.start_date ? new Date(challenge.start_date).toLocaleDateString() : '-'} - {challenge.end_date ? new Date(challenge.end_date).toLocaleDateString() : '-'}
+                        </span>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Link new challenge */}
-            <div>
-              <h3 className="text-sm font-medium text-white/80 mb-3">Link to Challenge</h3>
-              <div className="flex gap-3">
-                <select
-                  value={selectedChallengeId}
-                  onChange={(e) => setSelectedChallengeId(e.target.value)}
-                  className="flex-1 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
-                >
-                  <option value="">Select a challenge</option>
-                  {availableChallenges
-                    .filter(c => !linkedChallenges.some(lc => lc.uuid === c.uuid))
-                    .map((challenge) => (
-                      <option key={challenge.uuid} value={challenge.uuid}>
-                        {challenge.title} ({challenge.status})
-                      </option>
-                    ))}
-                </select>
-                <Button onClick={handleLink} disabled={!selectedChallengeId}>
-                  Link
-                </Button>
+                    <div className="v-row-actions">
+                      <button type="button" className="v-btn-danger v-btn-sm" onClick={() => handleUnlink(challenge.uuid)}>
+                        Unlink
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
+            )}
+          </div>
+
+          {/* Link new challenge */}
+          <div className="v-section">
+            <p className="v-section-title">Link to Challenge</p>
+            <div className="v-af-add">
+              <select
+                value={selectedChallengeId}
+                onChange={(e) => setSelectedChallengeId(e.target.value)}
+                className="v-select"
+              >
+                <option value="">Select a challenge</option>
+                {availableChallenges
+                  .filter(c => !linkedChallenges.some(lc => lc.uuid === c.uuid))
+                  .map((challenge) => (
+                    <option key={challenge.uuid} value={challenge.uuid}>
+                      {challenge.title} ({challenge.status})
+                    </option>
+                  ))}
+              </select>
+              <button type="button" className="v-btn" onClick={handleLink} disabled={!selectedChallengeId}>
+                Link
+              </button>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+        </>
+      )}
+    </Modal>
   );
 }

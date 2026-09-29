@@ -43,6 +43,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`booking.md`](./booking.md) | `/book`: first name and email on the Lab, then a pre-filled Calendly slot with Rubens — and the TODO for the CRM link |
 | [`news-playbook.md`](./news-playbook.md) | Editorial playbook for the news: what deserves one, anatomy, YMYL wording, links, checklist, decision log |
 | [`watch.md`](./watch.md) | Searching the health literature on OpenAlex: topics, period, open access, journal impact — behind « Open resources » on the home page |
+| [`design-system.md`](./design-system.md) | The vitrine design system: tokens, roots, the shared vocabulary of drawers, modals and forms, and the rule against Tailwind colour utilities |
 
 ## Dev & ops
 

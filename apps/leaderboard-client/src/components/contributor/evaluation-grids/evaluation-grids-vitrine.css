@@ -1,0 +1,353 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Les grilles d'évaluation — ce qui leur est propre, au-delà du vocabulaire
+   commun des tiroirs et formulaires (`components/vitrine/forms-vitrine.css`).
+   Préfixe `v-eg-`, jetons `--v-*`. L'éditeur et le banc d'essai vivent sous
+   la racine vitrine du profil ; les tiroirs, portés vers body, sous la leur.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Le grand titre saisi en tête d'un tiroir : nu, souligné d'un filet qui
+   prend l'accent au focus. */
+.v-eg-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.v-eg-title input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: var(--v-font-h);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+  outline: none;
+}
+
+.v-eg-title-line {
+  height: 1px;
+  background: var(--v-line);
+  transition: background-color 0.2s var(--v-ease);
+}
+
+.v-eg-title:focus-within .v-eg-title-line {
+  background: rgb(63 161 170 / 0.55);
+}
+
+/* Le curseur du poids d'une catégorie. */
+.v-eg-range {
+  flex: 1;
+  accent-color: var(--v-accent);
+}
+
+/* La grille du guide de notation : quatre petits champs. */
+.v-eg-scoring {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.v-eg-scoring-label {
+  font-size: 0.6875rem;
+  color: var(--v-muted);
+}
+
+/* L'en-tête de l'éditeur : nom, slug, statut, description, actions. */
+.v-eg-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.v-eg-head-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.v-eg-head-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.v-eg-name {
+  font-family: var(--v-font-h);
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+}
+
+.v-eg-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* La jauge de la répartition des poids : verte quand ça fait 100 %. */
+.v-eg-weight {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.v-eg-weight-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--v-muted);
+}
+
+.v-eg-weight-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #8a5a00;
+}
+
+.v-eg-weight-value[data-ok="true"] {
+  color: var(--v-accent-dark);
+}
+
+.v-eg-weight .v-bar-fill {
+  background: #d19a00;
+}
+
+.v-eg-weight[data-ok="true"] .v-bar-fill {
+  background: var(--v-accent);
+}
+
+/* L'accordéon d'une catégorie. */
+.v-eg-cat {
+  overflow: hidden;
+  border: 1px solid var(--v-line);
+  border-radius: 1rem;
+  background: var(--v-surface);
+}
+
+.v-eg-cat-head {
+  display: flex;
+  width: 100%;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  transition: background-color 0.2s var(--v-ease);
+}
+
+.v-eg-cat-head:hover {
+  background: rgb(17 22 26 / 0.03);
+}
+
+.v-eg-cat-head:focus-visible {
+  outline: 2px solid rgb(63 161 170 / 0.4);
+  outline-offset: -2px;
+}
+
+.v-eg-cat-main {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.v-eg-cat-main > svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: none;
+  color: var(--v-subtle);
+}
+
+.v-eg-cat-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--v-ink);
+}
+
+.v-eg-cat-meta {
+  font-size: 0.75rem;
+  color: var(--v-subtle);
+  white-space: nowrap;
+}
+
+.v-eg-cat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--v-line);
+  padding: 0.75rem;
+}
+
+/* La carte d'un critère. */
+.v-eg-sub {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 12px;
+  background: rgb(17 22 26 / 0.025);
+  padding: 0.65rem 0.8rem;
+}
+
+.v-eg-sub-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.v-eg-sub-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--v-ink);
+}
+
+.v-eg-sub-weight {
+  font-size: 0.75rem;
+  color: var(--v-subtle);
+}
+
+.v-eg-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.v-eg-tag {
+  border-radius: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.v-eg-tag[data-kind="metric"] {
+  background: rgb(37 99 235 / 0.1);
+  color: #1d4ed8;
+}
+
+.v-eg-tag[data-kind="indicator"] {
+  background: rgb(10 107 88 / 0.12);
+  color: var(--v-accent-dark);
+}
+
+.v-eg-sub-scoring {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.15rem 1rem;
+  font-size: 0.6875rem;
+  color: var(--v-muted);
+}
+
+@media (min-width: 640px) {
+  .v-eg-sub-scoring {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Le squelette de chargement de l'éditeur. */
+.v-eg-skeleton {
+  border-radius: 1rem;
+  background: rgb(17 22 26 / 0.05);
+  animation: v-eg-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes v-eg-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Le banc d'essai : son en-tête et la carte du score de déterminisme. */
+.v-eg-test-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.v-eg-det {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--v-det-line, var(--v-line));
+  border-radius: 1rem;
+  background: var(--v-det-bg, var(--v-surface));
+  padding: 1.25rem;
+  color: var(--v-det-ink, var(--v-ink));
+}
+
+.v-eg-det[data-tone="good"] {
+  --v-det-line: rgb(10 107 88 / 0.3);
+  --v-det-bg: rgb(10 107 88 / 0.06);
+  --v-det-ink: var(--v-accent-dark);
+}
+
+.v-eg-det[data-tone="medium"] {
+  --v-det-line: rgb(180 120 0 / 0.3);
+  --v-det-bg: rgb(180 120 0 / 0.07);
+  --v-det-ink: #8a5a00;
+}
+
+.v-eg-det[data-tone="poor"] {
+  --v-det-line: rgb(185 28 28 / 0.25);
+  --v-det-bg: rgb(185 28 28 / 0.06);
+  --v-det-ink: #b91c1c;
+}
+
+.v-eg-det-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.v-eg-det-score {
+  font-family: var(--v-font-h);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.v-eg-det-side {
+  font-size: 0.75rem;
+  text-align: right;
+  opacity: 0.8;
+}
+
+.v-eg-run {
+  border-radius: 10px;
+  background: rgb(17 22 26 / 0.04);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--v-muted);
+}
+
+.v-eg-run strong {
+  color: var(--v-ink);
+}

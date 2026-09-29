@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/Button';
+import { Users } from 'lucide-react';
+import { Modal } from '@/components/vitrine/Modal';
 import type { MeetingParticipant } from '../../../../../packages/database-service/domain/entities';
+
+import './admin-forms-vitrine.css';
 
 interface ParticipantsModalProps {
   meetingId: string;
@@ -10,6 +13,7 @@ interface ParticipantsModalProps {
   onClose: () => void;
 }
 
+/** Les participants d'une réunion, en lecture. Sur la modale vitrine. */
 export function ParticipantsModal({ meetingId, meetingTitle, onClose }: ParticipantsModalProps) {
   const [participants, setParticipants] = useState<MeetingParticipant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,41 +35,37 @@ export function ParticipantsModal({ meetingId, meetingTitle, onClose }: Particip
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-xl border border-white/10 bg-background p-6 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">
-            Participants - {meetingTitle}
-          </h3>
-          <button onClick={onClose} className="text-white/50 hover:text-white">✕</button>
-        </div>
-
-        {loading ? (
-          <p className="py-4 text-center text-sm text-white/40">Loading...</p>
-        ) : participants.length === 0 ? (
-          <p className="py-4 text-center text-sm text-white/40">No participants yet</p>
-        ) : (
-          <div className="max-h-64 divide-y divide-white/5 overflow-y-auto">
-            {participants.map((p) => (
-              <div key={p.uuid} className="flex items-center gap-3 py-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brandCP/10 text-xs font-bold text-brandCP">
-                  {p.display_name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-white">{p.display_name}</div>
-                  <div className="text-xs text-white/40">{p.google_user_id}</div>
-                </div>
+    <Modal
+      open
+      onClose={onClose}
+      title="Participants"
+      subtitle={meetingTitle}
+      icon={<Users />}
+      size="sm"
+      center
+      actions={
+        <button type="button" className="v-btn-quiet" onClick={onClose}>
+          Close
+        </button>
+      }
+    >
+      {loading ? (
+        <p className="v-quiet">Loading...</p>
+      ) : participants.length === 0 ? (
+        <p className="v-quiet">No participants yet</p>
+      ) : (
+        <div className="v-rows v-af-scroll">
+          {participants.map((p) => (
+            <div key={p.uuid} className="v-row" data-quiet="true">
+              <div className="v-af-avatar">{p.display_name.charAt(0).toUpperCase()}</div>
+              <div className="v-row-text">
+                <span className="v-row-title">{p.display_name}</span>
+                <span className="v-row-meta">{p.google_user_id}</span>
               </div>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-4 flex justify-end">
-          <Button variant="secondary" size="sm" onClick={onClose}>
-            Close
-          </Button>
+            </div>
+          ))}
         </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 }

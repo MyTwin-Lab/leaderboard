@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
+import { VitrineEmbed } from '@/components/vitrine/VitrineEmbed';
 import { Button } from '@/components/ui/Button';
 import { ContributionList } from '@/components/admin/ContributionList';
 import { ContributionForm } from '@/components/admin/ContributionForm';
@@ -180,14 +181,14 @@ export default function ContributionsPage() {
       </Card>
 
       {showForm && (
-        <Card title="New Contribution">
+        <VitrineEmbed card title="New Contribution">
           <ContributionForm
             users={users}
             challenges={challenges}
             onSubmit={handleCreateContribution}
             onCancel={() => setShowForm(false)}
           />
-        </Card>
+        </VitrineEmbed>
       )}
 
       {editingContribution && (

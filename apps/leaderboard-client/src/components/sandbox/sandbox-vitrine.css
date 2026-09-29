@@ -239,135 +239,14 @@
   animation: v-live 2.4s var(--v-ease) infinite;
 }
 
+
 /* ─────────────────────────────────────────────────────────────────────────
    La modale « New sandbox ».
+   Sa coque (`.v-modal*`), ses champs (`.v-field*`), son adresse (`.v-slug*`)
+   et son pied (`.v-modal-actions`…) sont le vocabulaire commun de toutes les
+   surfaces flottantes : `components/vitrine/forms-vitrine.css`. Ne reste ici
+   que ce qui est propre à une proposition.
    ───────────────────────────────────────────────────────────────────────── */
-.v-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  overflow-y: auto;
-  padding: clamp(1rem, 4vh, 3.5rem) 1.25rem;
-}
-
-.v-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgb(13 19 22 / 0.5);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-
-.v-modal-card {
-  position: relative;
-  display: flex;
-  width: 100%;
-  max-width: 32rem;
-  flex-direction: column;
-  gap: 1rem;
-  border-radius: 1.5rem;
-  border: 1px solid var(--v-line);
-  background: var(--v-surface);
-  padding: 1.5rem;
-  box-shadow: 0 40px 80px -30px rgb(17 22 26 / 0.45);
-  will-change: transform, opacity;
-}
-
-.v-modal-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.v-modal-head-text {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.v-modal-title {
-  font-family: var(--v-font-h);
-  font-weight: 700;
-  font-size: 1.125rem;
-  letter-spacing: -0.02em;
-}
-
-.v-modal-sub {
-  font-size: 0.8125rem;
-  line-height: 1.6;
-  color: var(--v-muted);
-}
-
-.v-modal-close {
-  display: flex;
-  cursor: pointer;
-  margin-left: auto;
-  flex-shrink: 0;
-  border-radius: 0.6rem;
-  padding: 0.35rem;
-  color: var(--v-subtle);
-  transition: background-color 0.2s var(--v-ease), color 0.2s var(--v-ease);
-}
-
-.v-modal-close:hover {
-  background: rgb(17 22 26 / 0.05);
-  color: var(--v-ink);
-}
-
-.v-modal-close svg {
-  width: 0.95rem;
-  height: 0.95rem;
-}
-
-.v-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.v-field-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--v-ink);
-}
-
-.v-field-hint {
-  font-weight: 400;
-  color: var(--v-subtle);
-}
-
-.v-field input[type="text"],
-.v-field input[type="url"],
-.v-field textarea {
-  width: 100%;
-  border-radius: 12px;
-  border: 1px solid var(--v-line);
-  background: var(--v-surface);
-  padding: 0.6rem 0.75rem;
-  font-size: 0.875rem;
-  line-height: 1.6;
-  color: var(--v-ink);
-  outline: none;
-  transition: border-color 0.2s var(--v-ease);
-}
-
-.v-field textarea {
-  resize: vertical;
-}
-
-.v-field input:focus,
-.v-field textarea:focus {
-  border-color: rgb(11 122 100 / 0.5) !important;
-}
-
-.v-field-error {
-  font-size: 0.6875rem;
-  color: #b42318;
-}
 
 /* Le choix du type. */
 .v-types {
@@ -447,57 +326,6 @@
   color: var(--v-muted);
 }
 
-/* L'adresse : le préfixe et la saisie dans une seule boîte. */
-.v-slug {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  border-radius: 12px;
-  border: 1px solid var(--v-line);
-  background: var(--v-surface);
-  padding: 0 0.75rem;
-}
-
-.v-slug-prefix {
-  flex-shrink: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.8125rem;
-  color: var(--v-subtle);
-}
-
-.v-slug input {
-  min-width: 0;
-  flex: 1;
-  border: none;
-  background: transparent;
-  padding: 0.6rem 0.25rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.8125rem;
-  color: var(--v-ink);
-  outline: none;
-}
-
-.v-slug-state {
-  flex-shrink: 0;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: var(--v-subtle);
-}
-
-.v-slug-state[data-ok="true"] {
-  color: var(--v-accent);
-}
-
-.v-slug-use {
-  flex-shrink: 0;
-  cursor: pointer;
-  border-radius: 999px;
-  background: rgb(11 122 100 / 0.1);
-  padding: 0.15rem 0.5rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: var(--v-accent);
-}
 
 /* Le point de départ : dépôt, dataset, modèle. */
 .v-start {
@@ -643,51 +471,6 @@
   border-color: rgb(17 22 26 / 0.25);
 }
 
-/* Le pied de la modale. */
-.v-modal-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.v-modal-submit {
-  display: inline-flex;
-  cursor: pointer;
-  align-items: center;
-  gap: 0.5rem;
-  border-radius: 999px;
-  background: var(--v-ink);
-  padding: 0.65rem 1.25rem;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #ffffff;
-  transition: opacity 0.2s var(--v-ease);
-}
-
-.v-modal-submit[data-valid="false"] {
-  cursor: not-allowed;
-  background: rgb(17 22 26 / 0.06);
-  color: var(--v-subtle);
-}
-
-.v-modal-cancel {
-  cursor: pointer;
-  padding: 0.65rem 0.5rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--v-muted);
-  transition: color 0.2s var(--v-ease);
-}
-
-.v-modal-cancel:hover {
-  color: var(--v-ink);
-}
-
-.v-modal-hint {
-  font-size: 0.75rem;
-  color: var(--v-muted);
-}
 
 /* ─────────────────────────────────────────────────────────────────────────
    Téléphone — la vue du cadre iOS de la maquette.

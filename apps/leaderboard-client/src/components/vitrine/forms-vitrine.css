@@ -1,0 +1,1543 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Tiroirs, modales et formulaires — le vocabulaire commun du design vitrine.
+
+   Tout ce qui crée ou édite quelque chose dans l'app passe par ici : le
+   tiroir de challenge et ses sections par flow, les tiroirs de grilles, les
+   modales de la page challenge, les formulaires d'administration, les
+   confirmations et les toasts. Même matière que les pages vitrine (jetons
+   `--v-*` de `vitrine.css`), même typographie, mêmes rayons.
+
+   Une surface flottante se pose n'importe où dans l'app — souvent sur une
+   page qui n'est pas une vitrine. Elle porte donc sa propre racine
+   `.vitrine-embed` (les jetons et le réarmement, sans la mise en page pleine
+   hauteur), via `components/vitrine/Drawer.tsx` et `Modal.tsx`.
+
+   Aucun utilitaire Tailwind `text-white` / `border-white` / `bg-white/…`
+   là-dedans : `globals.css` les réécrit en mode clair, et une surface vitrine
+   est claire dans les deux modes — ils seraient invisibles.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Le tiroir ──────────────────────────────────────────────────────────
+   Un panneau qui glisse depuis la droite. `data-open` pilote l'ouverture :
+   le composant reste monté, la transition fait le mouvement. */
+.v-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.v-drawer[data-open="true"] {
+  pointer-events: auto;
+}
+
+.v-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(13 19 22 / 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.3s var(--v-ease);
+}
+
+.v-drawer[data-open="true"] .v-drawer-backdrop {
+  opacity: 1;
+}
+
+.v-drawer-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  max-width: 32rem;
+  flex-direction: column;
+  border-left: 1px solid var(--v-line);
+  background: var(--v-bg);
+  color: var(--v-ink);
+  box-shadow: 0 30px 80px -30px rgb(17 22 26 / 0.5);
+  transform: translateX(100%);
+  transition: transform 0.35s var(--v-ease);
+}
+
+.v-drawer-panel[data-size="sm"] {
+  max-width: 28rem;
+}
+
+.v-drawer-panel[data-size="lg"] {
+  max-width: 40rem;
+}
+
+.v-drawer[data-open="true"] .v-drawer-panel {
+  transform: none;
+}
+
+.v-drawer-head {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--v-line);
+  background: var(--v-surface);
+  padding: 1rem 1.5rem;
+}
+
+.v-drawer-icon {
+  display: flex;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: rgb(63 161 170 / 0.12);
+  color: var(--v-accent);
+}
+
+.v-drawer-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.v-drawer-head-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.v-drawer-title {
+  font-family: var(--v-font-h);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+}
+
+.v-drawer-sub {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--v-muted);
+}
+
+.v-drawer-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.v-drawer-foot {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  border-top: 1px solid var(--v-line);
+  background: var(--v-surface);
+  padding: 1rem 1.5rem;
+}
+
+@media (max-width: 767px) {
+  .v-drawer-panel,
+  .v-drawer-panel[data-size="sm"],
+  .v-drawer-panel[data-size="lg"] {
+    max-width: none;
+  }
+
+  .v-drawer-body {
+    padding: 1.25rem var(--v-gutter);
+  }
+
+  .v-drawer-head,
+  .v-drawer-foot {
+    padding-inline: var(--v-gutter);
+  }
+}
+
+/* ── La modale ──────────────────────────────────────────────────────────
+   D'abord écrite pour « New sandbox » (`Sandbox Redesign Vitrine.dc.html`),
+   reprise telle quelle pour toutes les autres. */
+.v-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: clamp(1rem, 4vh, 3.5rem) 1.25rem;
+}
+
+.v-modal[data-center="true"] {
+  align-items: center;
+}
+
+.v-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(13 19 22 / 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.v-modal-card {
+  position: relative;
+  display: flex;
+  width: 100%;
+  max-width: 32rem;
+  flex-direction: column;
+  gap: 1rem;
+  border-radius: 1.5rem;
+  border: 1px solid var(--v-line);
+  background: var(--v-surface);
+  color: var(--v-ink);
+  padding: 1.5rem;
+  box-shadow: 0 40px 80px -30px rgb(17 22 26 / 0.45);
+  will-change: transform, opacity;
+}
+
+.v-modal-card[data-size="sm"] {
+  max-width: 24rem;
+}
+
+.v-modal-card[data-size="lg"] {
+  max-width: 40rem;
+}
+
+/* L'arrivée par défaut : un léger pop. La modale du sandbox joue son propre
+   trajet depuis le bouton, et le pose par-dessus. */
+@keyframes v-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.v-modal-card[data-anim="pop"] {
+  animation: v-modal-in 0.22s var(--v-ease) both;
+}
+
+.v-modal-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.v-modal-head-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.v-modal-title {
+  font-family: var(--v-font-h);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+}
+
+.v-modal-sub {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--v-muted);
+}
+
+.v-modal-close,
+.v-drawer-close {
+  display: flex;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+  border-radius: 0.6rem;
+  padding: 0.35rem;
+  color: var(--v-subtle);
+  transition: background-color 0.2s var(--v-ease), color 0.2s var(--v-ease);
+}
+
+.v-modal-close:hover,
+.v-drawer-close:hover {
+  background: rgb(17 22 26 / 0.05);
+  color: var(--v-ink);
+}
+
+.v-modal-close svg,
+.v-drawer-close svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+/* L'icône de tête d'une modale : la même pastille que le tiroir, en rouge
+   pour une confirmation destructive. */
+.v-modal-icon {
+  display: flex;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgb(63 161 170 / 0.12);
+  color: var(--v-accent);
+}
+
+.v-modal-icon[data-tone="danger"] {
+  background: rgb(185 28 28 / 0.08);
+  color: #b91c1c;
+}
+
+.v-modal-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.v-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.v-modal-actions[data-align="end"] {
+  justify-content: flex-end;
+}
+
+.v-modal-submit {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  background: var(--v-ink);
+  padding: 0.65rem 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #ffffff;
+  transition: opacity 0.2s var(--v-ease);
+}
+
+.v-modal-submit[data-valid="false"],
+.v-modal-submit:disabled {
+  cursor: not-allowed;
+  background: rgb(17 22 26 / 0.06);
+  color: var(--v-subtle);
+}
+
+.v-modal-cancel {
+  cursor: pointer;
+  padding: 0.65rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--v-muted);
+  transition: color 0.2s var(--v-ease);
+}
+
+.v-modal-cancel:hover {
+  color: var(--v-ink);
+}
+
+.v-modal-hint {
+  font-size: 0.75rem;
+  color: var(--v-muted);
+}
+
+/* Le pied d'un formulaire en ligne : un filet, puis les actions à droite. */
+.v-form-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  border-top: 1px solid var(--v-line);
+  padding-top: 1rem;
+}
+
+/* La carte d'un fragment vitrine posé dans une page sombre (`VitrineEmbed card`). */
+.v-embed-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  border: 1px solid var(--v-line);
+  border-radius: 1.5rem;
+  background: var(--v-surface);
+  color: var(--v-ink);
+  padding: 1.5rem;
+}
+
+.v-embed-title {
+  font-family: var(--v-font-h);
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+}
+
+/* Un formulaire : ses champs à la file. */
+.v-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Les champs ─────────────────────────────────────────────────────────
+   `.v-field` habille ce qu'il contient : un input, un textarea, un select.
+   `.v-input` / `.v-textarea` / `.v-select` posent la même boîte sur un
+   élément isolé. */
+.v-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.v-field-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--v-ink);
+}
+
+.v-field-hint {
+  font-weight: 400;
+  color: var(--v-subtle);
+}
+
+.v-field-error {
+  font-size: 0.6875rem;
+  color: #b42318;
+}
+
+/* Le libellé en petites capitales des tiroirs — avec, souvent, une icône. */
+.v-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+.v-label svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex: none;
+}
+
+.v-label-required {
+  color: var(--v-accent);
+}
+
+.v-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not(.v-bare),
+.v-field textarea,
+.v-field select,
+.v-input,
+.v-textarea,
+.v-select {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--v-line);
+  background: var(--v-surface);
+  padding: 0.6rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--v-ink);
+  outline: none;
+  transition: border-color 0.2s var(--v-ease);
+}
+
+.v-field textarea,
+.v-textarea {
+  resize: vertical;
+}
+
+.v-field input:focus,
+.v-field textarea:focus,
+.v-field select:focus,
+.v-input:focus,
+.v-textarea:focus,
+.v-select:focus {
+  border-color: rgb(63 161 170 / 0.55) !important;
+}
+
+.v-field input:disabled,
+.v-field textarea:disabled,
+.v-input:disabled,
+.v-textarea:disabled,
+.v-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.v-input[data-mono="true"],
+.v-textarea[data-mono="true"] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+}
+
+.v-field select,
+.v-select {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b9196' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+}
+
+/* Un champ court : le nombre et son unité dans une boîte étroite. */
+.v-num {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  padding: 0.4rem 0.65rem;
+}
+
+.v-num input {
+  width: 4.5rem;
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--v-ink);
+  outline: none;
+}
+
+.v-num-unit {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--v-subtle);
+}
+
+.v-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+}
+
+.v-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.v-help {
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-help[data-size="xs"] {
+  font-size: 0.6875rem;
+}
+
+.v-help code,
+.v-code {
+  border-radius: 0.35rem;
+  background: rgb(17 22 26 / 0.06);
+  padding: 0.05rem 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75em;
+  color: var(--v-ink);
+}
+
+/* Une valeur montrée mais figée : elle doit se lire comme voulue, pas cassée. */
+.v-locked {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: rgb(17 22 26 / 0.03);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--v-muted);
+}
+
+.v-locked svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: none;
+  color: var(--v-subtle);
+}
+
+/* L'adresse : le préfixe et la saisie dans une seule boîte. */
+.v-slug {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0;
+  border-radius: 12px;
+  border: 1px solid var(--v-line);
+  background: var(--v-surface);
+  padding: 0 0.75rem;
+  transition: border-color 0.2s var(--v-ease);
+}
+
+.v-slug:focus-within {
+  border-color: rgb(63 161 170 / 0.55);
+}
+
+.v-slug-prefix {
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  color: var(--v-subtle);
+}
+
+.v-slug input {
+  min-width: 0;
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.6rem 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  color: var(--v-ink);
+  outline: none;
+}
+
+.v-slug-state {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--v-subtle);
+}
+
+.v-slug-state[data-ok="true"] {
+  color: var(--v-accent);
+}
+
+.v-slug-use {
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  background: rgb(63 161 170 / 0.12);
+  padding: 0.15rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--v-accent);
+}
+
+/* La ligne d'état sous le champ, pour le composant `SlugField` du tiroir. */
+.v-slug-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: var(--v-subtle);
+}
+
+.v-slug-status[data-tone="ok"] {
+  color: var(--v-accent);
+}
+
+.v-slug-status[data-tone="error"] {
+  color: #b42318;
+}
+
+.v-slug-status svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: none;
+}
+
+/* ── Les boutons ──────────────────────────────────────────────────────── */
+.v-btn {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  background: var(--v-ink);
+  padding: 0.55rem 1.1rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  transition: background-color 0.3s var(--v-ease), opacity 0.2s var(--v-ease), transform 0.3s var(--v-ease);
+}
+
+.v-btn:hover {
+  background: #2a3238;
+}
+
+.v-btn[data-tone="accent"] {
+  background: var(--v-accent);
+}
+
+.v-btn[data-tone="accent"]:hover {
+  background: #368f97;
+}
+
+.v-btn[data-tone="success"] {
+  background: rgb(10 107 88 / 0.12);
+  color: var(--v-accent-dark);
+}
+
+.v-btn:disabled,
+.v-btn[data-valid="false"] {
+  cursor: not-allowed;
+  background: rgb(17 22 26 / 0.06);
+  color: var(--v-subtle);
+}
+
+.v-btn svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: none;
+}
+
+.v-btn-quiet {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid var(--v-line);
+  border-radius: 999px;
+  background: var(--v-surface);
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--v-ink);
+  white-space: nowrap;
+  transition: border-color 0.3s var(--v-ease), color 0.3s var(--v-ease), background-color 0.3s var(--v-ease);
+}
+
+.v-btn-quiet:hover {
+  border-color: rgb(17 22 26 / 0.3);
+}
+
+.v-btn-quiet[data-on="true"] {
+  border-color: rgb(63 161 170 / 0.5);
+  background: rgb(63 161 170 / 0.08);
+  color: var(--v-accent-dark);
+}
+
+.v-btn-quiet:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.v-btn-quiet svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex: none;
+}
+
+.v-btn-text {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.25rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--v-muted);
+  transition: color 0.3s var(--v-ease);
+}
+
+.v-btn-text:hover {
+  color: var(--v-ink);
+}
+
+.v-btn-text[data-tone="accent"] {
+  color: var(--v-accent);
+}
+
+.v-btn-text[data-tone="danger"] {
+  color: #b91c1c;
+}
+
+.v-btn-text:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.v-btn-text svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex: none;
+}
+
+.v-btn-danger {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid rgb(185 28 28 / 0.25);
+  border-radius: 999px;
+  background: rgb(185 28 28 / 0.06);
+  padding: 0.45rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #b91c1c;
+  white-space: nowrap;
+  transition: background-color 0.2s var(--v-ease);
+}
+
+.v-btn-danger:hover {
+  background: rgb(185 28 28 / 0.12);
+}
+
+.v-btn-danger:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.v-btn-danger svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex: none;
+}
+
+.v-btn-sm,
+.v-btn.v-btn-sm,
+.v-btn-quiet.v-btn-sm,
+.v-btn-danger.v-btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+/* Un bouton carré qui ne porte qu'une icône : fermer, retirer, monter. */
+.v-btn-icon {
+  display: inline-flex;
+  cursor: pointer;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.6rem;
+  color: var(--v-subtle);
+  transition: background-color 0.2s var(--v-ease), color 0.2s var(--v-ease);
+}
+
+.v-btn-icon:hover {
+  background: rgb(17 22 26 / 0.05);
+  color: var(--v-ink);
+}
+
+.v-btn-icon[data-tone="danger"]:hover {
+  background: rgb(185 28 28 / 0.08);
+  color: #b91c1c;
+}
+
+.v-btn-icon:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.v-btn-icon svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+/* L'animation d'attente d'un bouton qui enregistre. */
+@keyframes v-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.v-spin {
+  animation: v-spin 0.8s linear infinite;
+}
+
+/* ── L'interrupteur ────────────────────────────────────────────────────── */
+.v-toggle {
+  display: flex;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-items: center;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: rgb(17 22 26 / 0.14);
+  padding: 0.15rem;
+  transition: background-color 0.2s var(--v-ease);
+}
+
+.v-toggle[data-on="true"] {
+  background: var(--v-accent);
+}
+
+.v-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.v-toggle-knob {
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(17 22 26 / 0.25);
+  transition: transform 0.2s var(--v-ease);
+}
+
+.v-toggle[data-on="true"] .v-toggle-knob {
+  transform: translateX(1.25rem);
+}
+
+/* Une ligne « libellé + interrupteur », dans une boîte. */
+.v-switch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  padding: 0.875rem 1.125rem;
+}
+
+.v-switch-text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.v-switch-label {
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.v-switch-desc {
+  font-size: 0.75rem;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+/* ── Le choix entre quelques cartes (type, statut, mode) ─────────────── */
+.v-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.v-choice {
+  display: flex;
+  cursor: pointer;
+  min-width: 0;
+  flex: 1 1 10rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--v-line);
+  background: rgb(17 22 26 / 0.02);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  transition: border-color 0.2s var(--v-ease), background-color 0.2s var(--v-ease);
+}
+
+.v-choice:hover {
+  border-color: rgb(17 22 26 / 0.25);
+}
+
+.v-choice[data-on="true"] {
+  border-color: rgb(63 161 170 / 0.45);
+  background: rgb(63 161 170 / 0.08);
+}
+
+.v-choice[data-locked="true"] {
+  cursor: default;
+}
+
+.v-choice:disabled:not([data-on="true"]) {
+  opacity: 0.5;
+}
+
+.v-choice > svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--v-subtle);
+}
+
+.v-choice[data-on="true"] > svg {
+  color: var(--v-accent);
+}
+
+.v-choice-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.v-choice-name {
+  font-family: var(--v-font-h);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--v-muted);
+}
+
+.v-choice[data-on="true"] .v-choice-name {
+  color: var(--v-ink);
+}
+
+.v-choice-hint {
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: var(--v-muted);
+}
+
+/* Les pastilles de statut : la même gélule que les pills des listings, avec
+   un point de couleur (`--v-dot`). */
+.v-status {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--v-line);
+  border-radius: 999px;
+  background: var(--v-surface);
+  padding: 0.35rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--v-muted);
+  transition: border-color 0.2s var(--v-ease), background-color 0.2s var(--v-ease), color 0.2s var(--v-ease);
+}
+
+.v-status[data-on="true"] {
+  border-color: var(--v-ink);
+  background: var(--v-ink);
+  color: #ffffff;
+}
+
+.v-status-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  flex: none;
+  border-radius: 999px;
+  background: var(--v-dot, var(--v-subtle));
+}
+
+/* ── Le menu déroulant (`ui/SelectDropdown`) ─────────────────────────── */
+.v-dd {
+  position: relative;
+}
+
+.v-dd-trigger {
+  display: flex;
+  width: 100%;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  padding: 0.6rem 0.6rem 0.6rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--v-ink);
+  transition: border-color 0.2s var(--v-ease);
+}
+
+.v-dd-trigger:hover {
+  border-color: rgb(17 22 26 / 0.25);
+}
+
+.v-dd-trigger[data-open="true"] {
+  border-color: rgb(63 161 170 / 0.55);
+}
+
+.v-dd-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.v-dd-trigger[data-empty="true"] {
+  color: var(--v-subtle);
+}
+
+.v-dd-trigger svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: none;
+  color: var(--v-subtle);
+  transition: transform 0.15s var(--v-ease);
+}
+
+.v-dd-trigger[data-open="true"] svg {
+  transform: rotate(180deg);
+}
+
+.v-dd-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 50;
+  max-height: 16rem;
+  overflow-y: auto;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  padding: 0.25rem;
+  box-shadow: 0 20px 40px -20px rgb(17 22 26 / 0.4);
+  animation: v-dd-in 0.15s var(--v-ease) both;
+}
+
+.v-dd-option {
+  display: flex;
+  width: 100%;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.875rem;
+  color: var(--v-ink);
+  transition: background-color 0.1s var(--v-ease);
+}
+
+.v-dd-option:hover {
+  background: rgb(17 22 26 / 0.05);
+}
+
+.v-dd-option[data-on="true"] {
+  color: var(--v-accent-dark);
+  font-weight: 600;
+}
+
+.v-dd-option svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: none;
+  color: var(--v-accent);
+}
+
+/* ── Les groupes et les encarts ─────────────────────────────────────── */
+/* Un groupe de champs dans une boîte : les réglages d'un flow, une étape. */
+.v-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border: 1px solid var(--v-line);
+  border-radius: 1rem;
+  background: rgb(17 22 26 / 0.02);
+  padding: 1rem;
+}
+
+.v-section-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+}
+
+.v-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.v-divider {
+  height: 1px;
+  background: var(--v-line);
+}
+
+/* Le pli : « Add roadmap (optional) », « Edit brief ». */
+.v-disclose {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--v-muted);
+  transition: color 0.2s var(--v-ease);
+}
+
+.v-disclose:hover {
+  color: var(--v-ink);
+}
+
+.v-disclose svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex: none;
+}
+
+.v-disclose svg:last-child {
+  width: 0.7rem;
+  height: 0.7rem;
+  transition: transform 0.2s var(--v-ease);
+}
+
+.v-disclose[data-open="true"] svg:last-child {
+  transform: rotate(180deg);
+}
+
+/* L'encart qui explique ce que va faire l'action, avant qu'on la valide. */
+.v-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid rgb(63 161 170 / 0.3);
+  border-radius: 1rem;
+  background: rgb(63 161 170 / 0.06);
+  padding: 0.875rem 1rem;
+}
+
+.v-note-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--v-accent-dark);
+}
+
+.v-note-title svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: none;
+}
+
+.v-note ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--v-muted);
+}
+
+.v-note li::before {
+  content: "• ";
+}
+
+.v-note strong {
+  color: var(--v-ink);
+}
+
+.v-note p {
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--v-muted);
+}
+
+/* L'erreur ou l'avertissement, en bas du formulaire. */
+.v-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border: 1px solid rgb(185 28 28 / 0.2);
+  border-radius: 10px;
+  background: rgb(185 28 28 / 0.06);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #b91c1c;
+}
+
+.v-alert[data-tone="warning"] {
+  border-color: rgb(180 120 0 / 0.3);
+  background: rgb(180 120 0 / 0.07);
+  color: #8a5a00;
+}
+
+.v-alert[data-tone="success"] {
+  border-color: rgb(10 107 88 / 0.3);
+  background: rgb(10 107 88 / 0.07);
+  color: var(--v-accent-dark);
+}
+
+.v-alert[data-tone="info"] {
+  border-color: var(--v-line);
+  background: rgb(17 22 26 / 0.03);
+  color: var(--v-muted);
+}
+
+.v-alert svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: none;
+  margin-top: 0.1rem;
+}
+
+/* ── Les rangées d'une liste éditable (tâches, cibles, signaux) ────────── */
+.v-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.v-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  padding: 0.65rem 0.9rem;
+}
+
+.v-row[data-quiet="true"] {
+  background: rgb(17 22 26 / 0.02);
+}
+
+.v-row-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.v-row-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--v-ink);
+}
+
+.v-row-meta {
+  font-size: 0.6875rem;
+  color: var(--v-subtle);
+}
+
+.v-row-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* L'étiquette de statut ou de type, en lecture. */
+.v-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  background: rgb(17 22 26 / 0.06);
+  padding: 0.15rem 0.6rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--v-muted);
+}
+
+.v-badge[data-tone="accent"] {
+  background: rgb(63 161 170 / 0.12);
+  color: var(--v-accent-dark);
+}
+
+.v-badge[data-tone="success"] {
+  background: rgb(10 107 88 / 0.12);
+  color: var(--v-accent-dark);
+}
+
+.v-badge[data-tone="warning"] {
+  background: rgb(180 120 0 / 0.12);
+  color: #8a5a00;
+}
+
+.v-badge[data-tone="danger"] {
+  background: rgb(185 28 28 / 0.1);
+  color: #b91c1c;
+}
+
+.v-badge[data-tone="info"] {
+  background: rgb(37 99 235 / 0.1);
+  color: #1d4ed8;
+}
+
+.v-badge[data-tone="night"] {
+  background: var(--v-ink);
+  color: #ffffff;
+}
+
+/* La barre de progression d'un champ (complétion, pool). */
+.v-bar {
+  height: 0.375rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(17 22 26 / 0.06);
+}
+
+.v-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--v-accent);
+  transition: width 0.3s var(--v-ease);
+}
+
+/* Le gros chiffre d'un champ numérique (le pool en CP). */
+.v-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.v-figure-value {
+  font-family: var(--v-font-h);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  color: var(--v-ink);
+}
+
+.v-figure-unit {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--v-accent);
+}
+
+/* Une grille de définitions, pour une lecture (détail d'un dépôt, d'un run). */
+.v-dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1rem;
+  font-size: 0.8125rem;
+}
+
+.v-dl dt {
+  color: var(--v-subtle);
+}
+
+.v-dl dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--v-ink);
+}
+
+/* Le bloc monospace d'une lecture (payload, erreur). */
+.v-pre {
+  overflow-x: auto;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: rgb(17 22 26 / 0.03);
+  padding: 0.75rem 0.9rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--v-ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* L'état vide ou le chargement, dans un tiroir. */
+.v-quiet {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--v-subtle);
+}
+
+.v-quiet[data-busy="true"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.v-quiet svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* ── Les toasts (`ui/Toast`) ────────────────────────────────────────── */
+.v-toasts {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.v-toast {
+  display: flex;
+  min-width: 17rem;
+  max-width: 24rem;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--v-line);
+  border-left: 3px solid var(--v-toast-tone, var(--v-accent));
+  border-radius: 12px;
+  background: var(--v-surface);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--v-ink);
+  box-shadow: 0 20px 40px -20px rgb(17 22 26 / 0.45);
+  pointer-events: auto;
+  animation: v-modal-in 0.2s var(--v-ease) both;
+}
+
+.v-toast[data-tone="success"] {
+  --v-toast-tone: #0a6b58;
+}
+
+.v-toast[data-tone="error"] {
+  --v-toast-tone: #b91c1c;
+}
+
+.v-toast[data-tone="info"] {
+  --v-toast-tone: var(--v-accent);
+}
+
+.v-toast > svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  color: var(--v-toast-tone, var(--v-accent));
+}
+
+.v-toast-text {
+  flex: 1;
+}
+
+@media (max-width: 767px) {
+  .v-toasts {
+    left: var(--v-gutter);
+    right: var(--v-gutter);
+    bottom: 1rem;
+  }
+
+  .v-toast {
+    min-width: 0;
+    max-width: none;
+  }
+}

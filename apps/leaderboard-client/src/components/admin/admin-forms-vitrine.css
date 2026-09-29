@@ -1,0 +1,86 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Les tiroirs, modales et formulaires de l'administration — ce qui manque au
+   vocabulaire commun (`components/vitrine/forms-vitrine.css`). Préfixe
+   `v-af-`, jetons `--v-*`.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Le titre saisi en grand, sans boîte, souligné d'un filet : la première
+   ligne d'un tiroir de création. */
+.v-af-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.v-af-title input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: var(--v-font-h);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+  outline: none;
+}
+
+.v-af-title-line {
+  height: 1px;
+  background: var(--v-line);
+  transition: background-color 0.2s var(--v-ease);
+}
+
+.v-af-title:focus-within .v-af-title-line {
+  background: rgb(63 161 170 / 0.55);
+}
+
+/* Deux champs côte à côte, séparés d'une flèche : début → fin. */
+.v-af-range {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.v-af-range > .v-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.v-af-range-arrow {
+  padding-bottom: 0.7rem;
+  font-size: 0.875rem;
+  color: var(--v-subtle);
+}
+
+/* La pastille d'initiale d'un participant. */
+.v-af-avatar {
+  display: flex;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgb(63 161 170 / 0.12);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--v-accent-dark);
+}
+
+/* Une liste qui défile dans une modale. */
+.v-af-scroll {
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+/* Le libellé de la ligne « Add member » : le menu et son bouton. */
+.v-af-add {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.v-af-add .v-select {
+  flex: 1;
+  min-width: 0;
+}

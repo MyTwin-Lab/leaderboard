@@ -16,6 +16,7 @@ interface MeetingFormProps {
   onCancel: () => void;
 }
 
+/** Le formulaire de réunion des pages admin — une carte vitrine posée dans la page sombre. */
 export function MeetingForm({ challenges, onSubmit, onCancel }: MeetingFormProps) {
   const [formData, setFormData] = useState({
     title: '',
@@ -41,7 +42,7 @@ export function MeetingForm({ challenges, onSubmit, onCancel }: MeetingFormProps
       setFormData((p) => ({ ...p, [field]: e.target.value }));
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-4">
+    <form onSubmit={handleSubmit} className="v-form">
       <FormSection title="General">
         <FormField label="Title" required>
           <input

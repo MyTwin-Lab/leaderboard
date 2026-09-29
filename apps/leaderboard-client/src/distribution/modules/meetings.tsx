@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
+
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, Plus, Video } from 'lucide-react';
@@ -99,18 +99,15 @@ function ManageMeetings({ challengeId }: { challengeId: string }) {
         onOpen={id => router.push(`/sync-meetings/${id}`)}
         onJoin={meetLink => window.open(meetLink, '_blank')}
       />
-      {/* Dans document.body : la vue de pilotage anime son contenu avec un
-          transform, qui crée un bloc conteneur et casse le position:fixed du
-          drawer. Ouvert seulement après un clic, donc toujours côté client. */}
-      {drawerOpen && createPortal(
-        <CreateMeetingDrawer
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          challengeId={challengeId}
-          onCreated={() => queryClient.invalidateQueries({ queryKey: challengeMeetingsKey(challengeId) })}
-        />,
-        document.body,
-      )}
+      {/* Monté en permanence : le tiroir vitrine porte son propre portail vers
+          document.body (la vue de pilotage anime son contenu avec un transform,
+          qui casserait un position:fixed) et glisse depuis `open`. */}
+      <CreateMeetingDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        challengeId={challengeId}
+        onCreated={() => queryClient.invalidateQueries({ queryKey: challengeMeetingsKey(challengeId) })}
+      />
     </div>
   );
 }

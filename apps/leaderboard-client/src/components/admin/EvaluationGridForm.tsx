@@ -17,6 +17,7 @@ interface EvaluationGridFormProps {
   onCancel: () => void;
 }
 
+/** Le formulaire de grille des pages admin — une carte vitrine posée dans la page sombre. */
 export function EvaluationGridForm({ grid, onSubmit, onCancel }: EvaluationGridFormProps) {
   const [formData, setFormData] = useState({
     name: grid?.name ?? '',
@@ -41,7 +42,7 @@ export function EvaluationGridForm({ grid, onSubmit, onCancel }: EvaluationGridF
       setFormData((p) => ({ ...p, [field]: field === 'version' ? Number(e.target.value) : e.target.value }));
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-4">
+    <form onSubmit={handleSubmit} className="v-form">
       <FormSection title="Identity">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField label="Name" required>

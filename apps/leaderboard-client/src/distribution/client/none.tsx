@@ -12,8 +12,9 @@ export const noneSlots: FlowUiSlots = {
   contributorHeroStat: () => emptyStat,
   manageTabs: () => [],
   manageHeroStat: () => emptyStat,
+  // Lu dans le tiroir « Reward rules », qui est une surface vitrine.
   rulesView: () => (
-    <p className="py-6 text-sm" style={{ color: 'color-mix(in srgb, var(--foreground) 45%, transparent)' }}>
+    <p className="v-quiet">
       A placeholder challenge has no reward rules: there is nothing to contribute to.
     </p>
   ),

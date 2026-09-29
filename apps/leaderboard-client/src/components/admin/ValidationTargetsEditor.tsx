@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { flowActionUrl } from '@/lib/challengeActions';
 import { Plus, Trash2, Loader2, ShieldCheck } from 'lucide-react';
+import { vitrineFontVars } from '@/components/vitrine/fonts';
+
+import '@/components/vitrine/vitrine.css';
+import '@/components/vitrine/forms-vitrine.css';
 
 interface EligibleSubmission {
   contributionId: string;
@@ -23,15 +27,18 @@ interface TargetItem {
   walkthroughCount?: number;
 }
 
-function fgAt(opacity: number) {
-  return `color-mix(in srgb, var(--foreground) ${Math.round(opacity * 100)}%, transparent)`;
-}
-
 /**
  * Which api_packaging submissions from the linked ML challenge are exposed on
  * this validation challenge. Like tasks and Slack signals, this is
  * independent CRUD — each add/remove hits the API immediately, not on the
  * challenge's "Save changes".
+ *
+ * Rendu dans le tiroir de challenge, mais aussi dans la vue de pilotage
+ * (`distribution/client/*-validation.tsx`), qui n'est pas une vitrine : la
+ * racine porte donc sa propre `.vitrine-embed`, pour avoir les jetons `--v-*`
+ * partout où elle s'affiche, et les polices de la maquette avec (`next/font`
+ * est doublé sous Vitest par `test/setup.ts`). Imbriquée dans un tiroir, elle
+ * ne change rien.
  */
 export function ValidationTargetsEditor({ challengeId, open }: { challengeId: string; open: boolean }) {
   const [targets, setTargets] = useState<TargetItem[]>([]);
@@ -111,34 +118,30 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
   };
 
   return (
-    <div className="space-y-3">
-      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest" style={{ color: fgAt(0.3) }}>
-        <ShieldCheck className="h-3.5 w-3.5" />
+    <div className={`vitrine-embed ${vitrineFontVars} v-field`}>
+      <p className="v-label">
+        <ShieldCheck />
         Exposed submissions
-        {targets.length > 0 && (
-          <span className="ml-1 rounded-full bg-white/8 px-1.5 py-0.5 text-[9px] font-normal" style={{ color: fgAt(0.4) }}>
-            {targets.length}
-          </span>
-        )}
+        {targets.length > 0 && <span className="v-badge">{targets.length}</span>}
       </p>
 
       {loading ? (
-        <div className="flex items-center gap-2 py-2 text-xs" style={{ color: fgAt(0.35) }}>
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
+        <div className="v-quiet" data-busy="true">
+          <Loader2 className="v-spin" /> Loading…
         </div>
       ) : (
         <>
           {targets.length === 0 ? (
-            <p className="rounded-[14px] border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
+            <p className="v-alert" data-tone="info">
               No submission exposed yet. Add one below.
             </p>
           ) : (
-            <div className="space-y-1.5">
+            <div className="v-rows">
               {targets.map(t => (
-                <div key={t.id} className="group flex items-center gap-2.5 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-                  <div className="min-w-0 flex-1">
-                    <span className="block truncate text-sm" style={{ color: fgAt(0.75) }}>{t.submitterName}</span>
-                    <span className="block text-[10px]" style={{ color: fgAt(0.35) }}>
+                <div key={t.id} className="v-row">
+                  <div className="v-row-text">
+                    <span className="v-row-title">{t.submitterName}</span>
+                    <span className="v-row-meta">
                       {t.outcome === 'pending'
                         ? (t.worksCount !== undefined
                             ? `${t.verdictCount} votes (${t.worksCount} Works, ${t.brokenCount} Broken)`
@@ -146,64 +149,73 @@ export function ValidationTargetsEditor({ challengeId, open }: { challengeId: st
                         : `${t.outcome === 'works' ? '✅ Works' : '❌ Broken'} (${t.verdictCount} votes)`}
                     </span>
                   </div>
-                  <button
-                    onClick={() => handleRemove(t.id)}
-                    disabled={deletingId === t.id || t.verdictCount > 0 || !!t.walkthroughCount}
-                    title={
-                      t.verdictCount > 0
-                        ? 'This target already received votes - it cannot be removed'
-                        : t.walkthroughCount
-                          ? 'This target already has walkthroughs - it cannot be removed'
-                          : undefined
-                    }
-                    className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white/25"
-                    aria-label="Remove submission"
-                  >
-                    {deletingId === t.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  </button>
+                  <div className="v-row-actions">
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(t.id)}
+                      disabled={deletingId === t.id || t.verdictCount > 0 || !!t.walkthroughCount}
+                      title={
+                        t.verdictCount > 0
+                          ? 'This target already received votes - it cannot be removed'
+                          : t.walkthroughCount
+                            ? 'This target already has walkthroughs - it cannot be removed'
+                            : undefined
+                      }
+                      className="v-btn-icon"
+                      data-tone="danger"
+                      aria-label="Remove submission"
+                    >
+                      {deletingId === t.id ? <Loader2 className="v-spin" /> : <Trash2 />}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
           {eligible.length > 0 && (
-            <div className="space-y-1.5 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-3">
-              <p className="text-[10px] font-medium uppercase tracking-widest" style={{ color: fgAt(0.25) }}>
+            <div className="v-section">
+              <p className="v-section-title">
                 Eligible - pick a submission and enter its endpoint
               </p>
-              {eligible.map(e => {
-                const url = urlDrafts[e.contributionId] ?? '';
-                const isAdding = addingId === e.contributionId;
-                return (
-                  <div key={e.contributionId} className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-                    <span className="w-28 shrink-0 truncate text-xs text-white/60">{e.userName}</span>
-                    <input
-                      type="url"
-                      value={url}
-                      onChange={ev => setUrlDrafts(d => ({ ...d, [e.contributionId]: ev.target.value }))}
-                      onKeyDown={ev => ev.key === 'Enter' && handleAdd(e.contributionId)}
-                      placeholder="https://your-model.example.com/predict"
-                      disabled={isAdding}
-                      className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-white placeholder:text-white/20 transition-all duration-200 focus:border-brandCP/40 focus:outline-none disabled:opacity-50"
-                    />
-                    <button
-                      onClick={() => handleAdd(e.contributionId)}
-                      disabled={isAdding || !url.trim()}
-                      title="Add as validation target"
-                      className="shrink-0 rounded-md p-1.5 text-brandCP/60 transition-all hover:bg-brandCP/10 hover:text-brandCP disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
-                    >
-                      {isAdding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                );
-              })}
+              <div className="v-rows">
+                {eligible.map(e => {
+                  const url = urlDrafts[e.contributionId] ?? '';
+                  const isAdding = addingId === e.contributionId;
+                  return (
+                    <div key={e.contributionId} className="v-row" data-quiet="true">
+                      <span className="v-row-title w-28 shrink-0 text-xs">{e.userName}</span>
+                      <input
+                        type="url"
+                        value={url}
+                        onChange={ev => setUrlDrafts(d => ({ ...d, [e.contributionId]: ev.target.value }))}
+                        onKeyDown={ev => ev.key === 'Enter' && handleAdd(e.contributionId)}
+                        placeholder="https://your-model.example.com/predict"
+                        disabled={isAdding}
+                        className="v-input min-w-0 flex-1"
+                        style={{ fontSize: '0.75rem', padding: '0.4rem 0.6rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAdd(e.contributionId)}
+                        disabled={isAdding || !url.trim()}
+                        title="Add as validation target"
+                        className="v-btn-icon"
+                        aria-label="Add as validation target"
+                      >
+                        {isAdding ? <Loader2 className="v-spin" /> : <Plus />}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </>
       )}
 
       {error && (
-        <p className="rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs text-red-400">{error}</p>
+        <p className="v-alert">{error}</p>
       )}
     </div>
   );

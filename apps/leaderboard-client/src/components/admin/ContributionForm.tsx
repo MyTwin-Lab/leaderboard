@@ -12,6 +12,7 @@ interface ContributionFormProps {
   onCancel: () => void;
 }
 
+/** Le formulaire de contribution des pages admin — une carte vitrine posée dans la page sombre. */
 export function ContributionForm({ users, challenges, contribution, onSubmit, onCancel }: ContributionFormProps) {
   const [formData, setFormData] = useState({
     title: contribution?.title ?? '',
@@ -56,7 +57,7 @@ export function ContributionForm({ users, challenges, contribution, onSubmit, on
       setFormData((p) => ({ ...p, [field]: field === 'reward' ? parseInt(e.target.value) || 0 : e.target.value }));
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-4">
+    <form onSubmit={handleSubmit} className="v-form">
       <FormSection title="Contribution">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField label="Title" required>
@@ -115,7 +116,11 @@ export function ContributionForm({ users, challenges, contribution, onSubmit, on
           </FormField>
         </div>
 
-        <FormField label="Reward (CP)" required>
+        <FormField
+          label="Reward (CP)"
+          required
+          hint={hasLedgerEntries ? 'This reward is computed from the reward ledger and cannot be edited manually.' : undefined}
+        >
           <input
             type="number"
             required
@@ -126,11 +131,6 @@ export function ContributionForm({ users, challenges, contribution, onSubmit, on
             placeholder="0"
             disabled={hasLedgerEntries}
           />
-          {hasLedgerEntries && (
-            <p className="mt-1 text-xs text-white/40">
-              This reward is computed from the reward ledger and cannot be edited manually.
-            </p>
-          )}
         </FormField>
       </FormSection>
 

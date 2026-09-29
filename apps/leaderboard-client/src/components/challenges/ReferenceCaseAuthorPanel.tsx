@@ -4,6 +4,9 @@ import { flowConfigView } from '@/lib/flowConfig';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flowActionUrl } from '@/lib/challengeActions';
 import { FilePlus2, Loader2, AlertCircle, FileText, Upload, X } from 'lucide-react';
+import { VitrineEmbed } from '@/components/vitrine/VitrineEmbed';
+
+import './challenge-overlays-vitrine.css';
 
 interface CaseSummary {
   id: string;
@@ -11,7 +14,7 @@ interface CaseSummary {
   createdAt: string;
 }
 
-/** Native file input dressed up as a dashed dropzone-style button, matching the rest of the redesign. */
+/** L'input de fichier natif, habillé en zone pointillée (`.v-co-file`). */
 function FilePicker({
   inputRef, file, onChange, placeholder,
 }: {
@@ -21,28 +24,23 @@ function FilePicker({
   placeholder: string;
 }) {
   return (
-    <div className="relative">
+    <div className="v-co-file">
       <input
         ref={inputRef}
         type="file"
         onChange={e => onChange(e.target.files?.[0] ?? null)}
-        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
       />
-      <div
-        className={`flex items-center gap-2.5 rounded-[14px] border border-dashed px-3.5 py-3 text-sm transition-colors ${
-          file ? 'border-brandCP/35 bg-brandCP/[0.05] text-white/80' : 'border-white/12 bg-white/[0.02] text-white/35'
-        }`}
-      >
-        <Upload className={`h-4 w-4 shrink-0 ${file ? 'text-brandCP' : 'text-white/25'}`} />
-        <span className="min-w-0 flex-1 truncate">{file ? file.name : placeholder}</span>
+      <div className="v-co-file-box" data-on={file ? 'true' : 'false'}>
+        <Upload />
+        <span className="v-co-file-name">{file ? file.name : placeholder}</span>
         {file && (
           <button
             type="button"
             onClick={() => { onChange(null); if (inputRef.current) inputRef.current.value = ''; }}
-            className="relative z-10 shrink-0 rounded-full p-1 text-white/30 transition-colors hover:bg-white/10 hover:text-white/70"
+            className="v-btn-icon"
             aria-label="Remove file"
           >
-            <X className="h-3.5 w-3.5" />
+            <X />
           </button>
         )}
       </div>
@@ -56,6 +54,9 @@ function FilePicker({
  * writes exactly `requiredValidations` ground-truth reference cases for a
  * validation challenge. Renders nothing for anyone else, same as
  * ValidationTargetsEditor renders nothing for a non-manager.
+ *
+ * Posé dans l'onglet d'un challenge, qui n'est pas une vitrine : le panneau
+ * porte sa propre racine (`VitrineEmbed`).
  */
 export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string }) {
   const [isReviewer, setIsReviewer] = useState(false);
@@ -156,106 +157,95 @@ export function ReferenceCaseAuthorPanel({ challengeId }: { challengeId: string 
   };
 
   return (
-    <div className="space-y-3 rounded-[20px] border border-dashed border-brandCP/30 bg-brandCP/[0.03] p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-0.5">
-          <p className="flex items-center gap-1.5 text-sm font-semibold text-white">
-            <FileText className="h-3.5 w-3.5 text-brandCP/70" /> Author a reference case
-          </p>
-          <p className="text-xs text-white/40">
-            Ground-truth input + expected output. Validators claim your cases blind -
-            {' '}{myCases.length} authored{quotaReached ? '' : `, ${requiredValidations - myCases.length} pending`}.
-          </p>
+    <VitrineEmbed>
+      <div className="v-co-rc">
+        <div className="v-co-rc-head">
+          <div className="flex flex-col gap-0.5">
+            <p className="v-co-rc-title">
+              <FileText /> Author a reference case
+            </p>
+            <p className="v-help">
+              Ground-truth input + expected output. Validators claim your cases blind -
+              {' '}{myCases.length} authored{quotaReached ? '' : `, ${requiredValidations - myCases.length} pending`}.
+            </p>
+          </div>
+          {!quotaReached && (
+            <button type="button" onClick={() => setFormOpen(o => !o)} className="v-btn-quiet v-btn-sm">
+              {formOpen ? 'Cancel' : 'New case'}
+            </button>
+          )}
         </div>
-        {!quotaReached && (
-          <button
-            onClick={() => setFormOpen(o => !o)}
-            style={{ color: '#000' }}
-            className="shrink-0 rounded-full bg-white px-4 py-2 text-xs font-semibold transition-colors hover:bg-white/90"
-          >
-            {formOpen ? 'Cancel' : 'New case'}
-          </button>
+
+        {quotaReached ? (
+          <p className="v-help">
+            Your {requiredValidations} reference cases are written - validation can start once the challenge total reaches this number.
+          </p>
+        ) : formOpen && (
+          <form onSubmit={handleSubmit} className="v-form v-co-rc-form">
+            <div className="v-field">
+              <span className="v-label">Known input</span>
+              <FilePicker
+                inputRef={inputRef}
+                file={inputFile}
+                onChange={f => setInputFile(f)}
+                placeholder="Choose an input file"
+              />
+            </div>
+
+            <div className="v-field">
+              <div className="flex items-center justify-between gap-2">
+                <span className="v-label">Expected output</span>
+                <div className="v-co-seg">
+                  <button
+                    type="button"
+                    onClick={() => setExpectedMode('text')}
+                    className="v-co-seg-btn"
+                    data-on={expectedMode === 'text' ? 'true' : 'false'}
+                  >
+                    Text
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExpectedMode('file')}
+                    className="v-co-seg-btn"
+                    data-on={expectedMode === 'file' ? 'true' : 'false'}
+                  >
+                    File
+                  </button>
+                </div>
+              </div>
+              {expectedMode === 'text' ? (
+                <textarea
+                  value={expectedText}
+                  onChange={e => setExpectedText(e.target.value)}
+                  placeholder="The correct answer for this input"
+                  rows={3}
+                  className="v-textarea"
+                />
+              ) : (
+                <FilePicker
+                  inputRef={expectedFileRef}
+                  file={expectedFile}
+                  onChange={f => setExpectedFile(f)}
+                  placeholder="Choose an expected-output file"
+                />
+              )}
+            </div>
+
+            {error && (
+              <div className="v-alert">
+                <AlertCircle />
+                {error}
+              </div>
+            )}
+
+            <button type="submit" disabled={submitting} className="v-btn v-co-wide" data-tone="accent">
+              {submitting ? <Loader2 className="v-spin" /> : <FilePlus2 />}
+              Write this reference case
+            </button>
+          </form>
         )}
       </div>
-
-      {quotaReached ? (
-        <p className="text-xs text-white/35">
-          Your {requiredValidations} reference cases are written - validation can start once the challenge total reaches this number.
-        </p>
-      ) : formOpen && (
-        <form onSubmit={handleSubmit} className="space-y-4 border-t border-white/[0.07] pt-4">
-          <div className="space-y-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">Known input</span>
-            <FilePicker
-              inputRef={inputRef}
-              file={inputFile}
-              onChange={f => setInputFile(f)}
-              placeholder="Choose an input file"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-white/40">Expected output</span>
-              <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.02] p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setExpectedMode('text')}
-                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
-                    expectedMode === 'text' ? 'bg-brandCP/15 text-brandCP' : 'text-white/35 hover:text-white/60'
-                  }`}
-                >
-                  Text
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExpectedMode('file')}
-                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
-                    expectedMode === 'file' ? 'bg-brandCP/15 text-brandCP' : 'text-white/35 hover:text-white/60'
-                  }`}
-                >
-                  File
-                </button>
-              </div>
-            </div>
-            {expectedMode === 'text' ? (
-              <textarea
-                value={expectedText}
-                onChange={e => setExpectedText(e.target.value)}
-                placeholder="The correct answer for this input"
-                rows={3}
-                className="w-full resize-none rounded-[14px] border border-white/10 bg-white/[0.03] px-3.5 py-3 text-sm text-white placeholder:text-white/20 transition-colors focus:border-brandCP/40 focus:outline-none"
-              />
-            ) : (
-              <FilePicker
-                inputRef={expectedFileRef}
-                file={expectedFile}
-                onChange={f => setExpectedFile(f)}
-                placeholder="Choose an expected-output file"
-              />
-            )}
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-1.5 text-xs text-red-400">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{ color: '#fff' }}
-            className="flex w-full items-center justify-center gap-1.5 rounded-full bg-brandCP px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-brandCP/90 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {submitting
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: '#fff' }} />
-              : <FilePlus2 className="h-3.5 w-3.5" style={{ color: '#fff' }} />}
-            Write this reference case
-          </button>
-        </form>
-      )}
-    </div>
+    </VitrineEmbed>
   );
 }

@@ -9,22 +9,22 @@ export function ValidationRules({ challenge }: { challenge: RulesChallenge }) {
   return (
     <div>
       <SectionLabel>How points are earned</SectionLabel>
-      <div className="space-y-0">
-        <FlowBox icon={<span className="text-sm">📬</span>} title="Submission exposed">
+      <div className="v-co-flow">
+        <FlowBox icon={<span>📬</span>} title="Submission exposed">
           An admin/manager picks an API packaging submission and its endpoint to test.
         </FlowBox>
         <FlowArrow />
-        <FlowBox icon={<span className="text-sm">🗳️</span>} title="Validators test & vote">
+        <FlowBox icon={<span>🗳️</span>} title="Validators test & vote">
           A qualified reviewer claims a blind reference case, records an observation,
           then votes Works or Broken once the expected output is revealed.
         </FlowBox>
         <FlowArrow />
-        <FlowBox icon={<span className="text-sm">🏁</span>} title="Majority resolves it">
-          Once <b className="text-white/80">{required}</b> votes are in, the majority side wins permanently.
+        <FlowBox icon={<span>🏁</span>} title="Majority resolves it">
+          Once <b>{required}</b> votes are in, the majority side wins permanently.
         </FlowBox>
         <FlowArrow />
-        <FlowBox icon={<span className="text-sm">💰</span>} title="Winners get paid">
-          <b className="text-white/80">{cpPerValidation} CP</b> to each validator on the winning side - the minority
+        <FlowBox icon={<span>💰</span>} title="Winners get paid">
+          <b>{cpPerValidation} CP</b> to each validator on the winning side - the minority
           earns nothing, even for the same work.
         </FlowBox>
       </div>

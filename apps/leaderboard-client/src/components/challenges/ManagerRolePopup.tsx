@@ -4,6 +4,11 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, Settings } from 'lucide-react';
 import { challengeManagePath, challengePath } from '@/lib/paths';
+import { vitrineFontVars } from '@/components/vitrine/fonts';
+
+import '@/components/vitrine/vitrine.css';
+import '@/components/vitrine/forms-vitrine.css';
+import './challenge-overlays-vitrine.css';
 
 interface ManagerRolePopupProps {
   x: number;
@@ -17,6 +22,11 @@ interface ManagerRolePopupProps {
   isAdmin?: boolean;
 }
 
+/**
+ * Le menu « ouvrir comme contributeur / comme manager », sous le curseur.
+ * Monté hors de `.vitrine` par la page des challenges : il porte donc sa
+ * propre racine `.vitrine-embed`.
+ */
 export function ManagerRolePopup({ x, y, challengeId, challengeSlug, onClose, isAdmin = false }: ManagerRolePopupProps) {
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
@@ -37,25 +47,26 @@ export function ManagerRolePopup({ x, y, challengeId, challengeSlug, onClose, is
   }, [onClose]);
 
   return (
-    <div
-      ref={ref}
-      style={{ position: 'fixed', top: y + 8, left: x, zIndex: 9999 }}
-      className="w-52 rounded-xl border border-white/10 bg-background p-1.5 shadow-2xl"
-    >
-      <button
-        onClick={() => { onClose(); router.push(challengePath(challengeSlug)); }}
-        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/[0.05] hover:text-white"
-      >
-        <Users className="h-4 w-4 shrink-0 text-white/40" />
-        Open as Contributor
-      </button>
-      <button
-        onClick={() => { onClose(); router.push(isAdmin ? `/admin/challenges/${challengeId}` : challengeManagePath(challengeSlug)); }}
-        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-purple-400 transition-colors hover:bg-purple-500/[0.08] hover:text-purple-300"
-      >
-        <Settings className="h-4 w-4 shrink-0 text-purple-400/70" />
-        {isAdmin ? 'Open as Admin' : 'Open as Manager'}
-      </button>
+    <div className={`vitrine-embed ${vitrineFontVars}`}>
+      <div ref={ref} className="v-cp" style={{ top: y + 8, left: x }}>
+        <button
+          type="button"
+          onClick={() => { onClose(); router.push(challengePath(challengeSlug)); }}
+          className="v-cp-item"
+        >
+          <Users />
+          Open as Contributor
+        </button>
+        <button
+          type="button"
+          onClick={() => { onClose(); router.push(isAdmin ? `/admin/challenges/${challengeId}` : challengeManagePath(challengeSlug)); }}
+          className="v-cp-item"
+          data-tone="manager"
+        >
+          <Settings />
+          {isAdmin ? 'Open as Admin' : 'Open as Manager'}
+        </button>
+      </div>
     </div>
   );
 }

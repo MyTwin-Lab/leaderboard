@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
+import { VitrineEmbed } from '@/components/vitrine/VitrineEmbed';
 import { Button } from '@/components/ui/Button';
 import { MeetingList } from '@/components/admin/MeetingList';
 import { MeetingForm } from '@/components/admin/MeetingForm';
@@ -103,13 +104,13 @@ export default function MeetingsPage() {
     <>
       <div className="space-y-6">
         {showForm ? (
-          <Card title="New Meeting">
+          <VitrineEmbed card title="New Meeting">
             <MeetingForm
               challenges={challenges}
               onSubmit={handleCreate}
               onCancel={() => setShowForm(false)}
             />
-          </Card>
+          </VitrineEmbed>
         ) : (
           <Card
             title="Sync Meetings"

@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ChevronDown, ChevronRight, Download, FlaskConical, Loader2, Pencil, Plus, Trash2, Settings2 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { GridDrawer } from './GridDrawer';
@@ -15,6 +13,9 @@ import type {
   EvaluationGridCategory,
   EvaluationGridSubcriterion,
 } from '@packages/database-service/domain/entities';
+
+import '@/components/vitrine/forms-vitrine.css';
+import './evaluation-grids-vitrine.css';
 
 /* ================================================================== */
 /*  Component                                                          */
@@ -30,6 +31,19 @@ interface GridEditorProps {
 
 type FullCategory = EvaluationGridCategory & { subcriteria: EvaluationGridSubcriterion[] };
 
+/** La teinte de l'étiquette d'un type de catégorie. */
+const CATEGORY_TONE: Record<string, string> = {
+  objective: 'info',
+  mixed: 'accent',
+  subjective: 'warning',
+  contextual: 'success',
+};
+
+/**
+ * L'éditeur d'une grille — l'onglet grilles du profil, sous la racine vitrine
+ * de la page. Sur le vocabulaire commun des formulaires (`v-*`), avec ce qui
+ * est propre aux grilles dans `evaluation-grids-vitrine.css`.
+ */
 export function GridEditor({ gridId, onBack, onDeleted, onUpdated, onTest }: GridEditorProps) {
   const [grid, setGrid] = useState<EvaluationGridFull | null>(null);
   const [loading, setLoading] = useState(true);
@@ -319,111 +333,106 @@ export function GridEditor({ gridId, onBack, onDeleted, onUpdated, onTest }: Gri
   if (loading) {
     return (
       <div className="space-y-3">
-        <div className="h-6 w-40 animate-pulse rounded bg-white/5" />
-        <div className="h-24 animate-pulse rounded-xl bg-white/5" />
+        <div className="v-eg-skeleton h-6 w-40" />
+        <div className="v-eg-skeleton h-24" />
         {[...Array(2)].map((_, i) => (
-          <div key={i} className="h-16 animate-pulse rounded-xl bg-white/5" />
+          <div key={i} className="v-eg-skeleton h-16" />
         ))}
       </div>
     );
   }
 
   if (!grid) {
-    return <div className="text-sm text-red-400">Grid not found.</div>;
+    return <p className="v-alert">Grid not found.</p>;
   }
 
   const totalWeight = grid.categories.reduce((sum, cat) => sum + cat.weight, 0);
   const weightPercent = Math.round(totalWeight * 100);
   const weightIsBalanced = Math.abs(totalWeight - 1) <= 0.01;
+  const isPublished = grid.status === 'published';
 
   return (
     <div className="space-y-5">
       {/* Back */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1 text-xs text-white/40 transition-colors hover:text-white/70"
-      >
-        <ArrowLeft className="h-3 w-3" />
+      <button type="button" onClick={onBack} className="v-back">
+        <ArrowLeft />
         Evaluation Grids
       </button>
 
       {/* Header */}
-      <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-bold text-white">{grid.name}</h2>
-              <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-white/40">
-                {grid.slug}
-              </span>
-              <Badge label={grid.status} />
+      <div className="v-section">
+        <div className="v-eg-head">
+          <div className="v-eg-head-text">
+            <div className="v-eg-head-title">
+              <h2 className="v-eg-name">{grid.name}</h2>
+              <span className="v-code">{grid.slug}</span>
+              <span className="v-badge" data-tone={isPublished ? 'success' : 'warning'}>{grid.status}</span>
             </div>
-            {grid.description && <p className="mt-1.5 text-sm text-white/40">{grid.description}</p>}
+            {grid.description && <p className="v-help">{grid.description}</p>}
             {grid.instructions && (
-              <p className="mt-2 text-xs text-white/30">
-                <span className="font-medium text-white/40">AI instructions: </span>
+              <p className="v-help" data-size="xs">
+                <strong>AI instructions: </strong>
                 {grid.instructions}
               </p>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <Button size="sm" variant="secondary" onClick={onTest} title="Test this grid">
-              <FlaskConical className="h-3.5 w-3.5" />
+          <div className="v-eg-actions">
+            <button type="button" className="v-btn-quiet v-btn-sm" onClick={onTest} title="Test this grid">
+              <FlaskConical />
               Test
-            </Button>
-            <Button size="sm" variant="secondary" onClick={exportGrid} title="Export as JSON">
-              <Download className="h-3.5 w-3.5" />
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => setMetaDrawerOpen(true)} title="Edit details">
-              <Settings2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="sm"
-              variant={grid.status === 'published' ? 'secondary' : 'primary'}
+            </button>
+            <button type="button" className="v-btn-icon" onClick={exportGrid} title="Export as JSON" aria-label="Export as JSON">
+              <Download />
+            </button>
+            <button type="button" className="v-btn-icon" onClick={() => setMetaDrawerOpen(true)} title="Edit details" aria-label="Edit details">
+              <Settings2 />
+            </button>
+            <button
+              type="button"
+              className={isPublished ? 'v-btn-quiet v-btn-sm' : 'v-btn v-btn-sm'}
               onClick={togglePublish}
               disabled={publishing}
             >
-              {publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-              {grid.status === 'published' ? 'Unpublish' : 'Publish'}
-            </Button>
-            <Button size="sm" variant="danger" onClick={deleteGrid} title="Delete grid">
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+              {publishing ? <Loader2 className="v-spin" /> : null}
+              {isPublished ? 'Unpublish' : 'Publish'}
+            </button>
+            <button type="button" className="v-btn-icon" data-tone="danger" onClick={deleteGrid} title="Delete grid" aria-label="Delete grid">
+              <Trash2 />
+            </button>
           </div>
         </div>
       </div>
 
       {/* Weight balance indicator */}
-      <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
-        <div className="mb-1.5 flex items-center justify-between text-xs">
-          <span className="text-white/40">Category weight allocated</span>
-          <span className={weightIsBalanced ? 'text-green-400' : 'text-yellow-400'}>{weightPercent}% of 100%</span>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-          <div
-            className={`h-full rounded-full transition-all ${weightIsBalanced ? 'bg-green-500/60' : 'bg-yellow-500/60'}`}
-            style={{ width: `${Math.min(weightPercent, 100)}%` }}
-          />
+      <div className="v-section">
+        <div className="v-eg-weight" data-ok={weightIsBalanced ? 'true' : 'false'}>
+          <div className="v-eg-weight-head">
+            <span>Category weight allocated</span>
+            <span className="v-eg-weight-value" data-ok={weightIsBalanced ? 'true' : 'false'}>{weightPercent}% of 100%</span>
+          </div>
+          <div className="v-bar">
+            <div className="v-bar-fill" style={{ width: `${Math.min(weightPercent, 100)}%` }} />
+          </div>
         </div>
       </div>
 
       {/* Categories */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/30">
-          Categories <span className="text-white/15">({grid.categories.length})</span>
+      <div className="v-section-head">
+        <h3 className="v-section-title">
+          Categories ({grid.categories.length})
         </h3>
-        <Button size="sm" onClick={openNewCat}>
-          <Plus className="h-3.5 w-3.5" />
+        <button type="button" className="v-btn v-btn-sm" onClick={openNewCat}>
+          <Plus />
           Category
-        </Button>
+        </button>
       </div>
 
       {grid.categories.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-white/40">
-          No categories yet. Add one to get started.
-        </p>
+        <div className="v-empty">
+          <span className="v-empty-sub">No categories yet. Add one to get started.</span>
+        </div>
       ) : (
-        <div className="space-y-2">
+        <div className="v-rows">
           {grid.categories
             .sort((a, b) => a.position - b.position)
             .map((cat) => (
@@ -491,9 +500,9 @@ function CategoryAccordion({
   onDeleteSub: (sub: EvaluationGridSubcriterion) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02]">
+    <div className="v-eg-cat">
       {/* A <div role="button"> here, not a real <button> — it wraps the
-          Add/Edit/Delete <Button>s below, and <button> cannot contain
+          Add/Edit/Delete buttons below, and <button> cannot contain
           nested <button> elements (invalid HTML, breaks hydration). */}
       <div
         role="button"
@@ -506,38 +515,34 @@ function CategoryAccordion({
           }
         }}
         aria-expanded={isExpanded}
-        className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brandCP/40"
+        className="v-eg-cat-head"
       >
-        <div className="flex min-w-0 items-center gap-2.5">
-          {isExpanded ? (
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-white/30" />
-          ) : (
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/30" />
-          )}
-          <span className="truncate font-medium text-white">{category.name}</span>
-          <Badge label={category.type} />
-          <span className="shrink-0 text-xs text-white/30">{Math.round(category.weight * 100)}%</span>
-          <span className="shrink-0 text-xs text-white/20">
+        <div className="v-eg-cat-main">
+          {isExpanded ? <ChevronDown /> : <ChevronRight />}
+          <span className="v-eg-cat-name">{category.name}</span>
+          <span className="v-badge" data-tone={CATEGORY_TONE[category.type] ?? undefined}>{category.type}</span>
+          <span className="v-eg-cat-meta">{Math.round(category.weight * 100)}%</span>
+          <span className="v-eg-cat-meta">
             {category.subcriteria.length} criteri{category.subcriteria.length === 1 ? 'on' : 'a'}
           </span>
         </div>
-        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <Button size="sm" variant="secondary" onClick={onAddSub} title="Add criterion">
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onEdit} title="Edit category">
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button size="sm" variant="danger" onClick={onDelete} title="Delete category">
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+        <div className="v-row-actions" onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="v-btn-icon" onClick={onAddSub} title="Add criterion" aria-label="Add criterion">
+            <Plus />
+          </button>
+          <button type="button" className="v-btn-icon" onClick={onEdit} title="Edit category" aria-label="Edit category">
+            <Pencil />
+          </button>
+          <button type="button" className="v-btn-icon" data-tone="danger" onClick={onDelete} title="Delete category" aria-label="Delete category">
+            <Trash2 />
+          </button>
         </div>
       </div>
 
       {isExpanded && (
-        <div className="space-y-2 border-t border-white/[0.06] p-3">
+        <div className="v-eg-cat-body">
           {category.subcriteria.length === 0 ? (
-            <p className="py-4 text-center text-xs text-white/30">No criteria yet in this category.</p>
+            <p className="v-quiet">No criteria yet in this category.</p>
           ) : (
             category.subcriteria
               .sort((a, b) => a.position - b.position)
@@ -567,45 +572,43 @@ function SubcriterionCard({
   const hasScoring = sub.scoring_excellent || sub.scoring_good || sub.scoring_average || sub.scoring_poor;
 
   return (
-    <div className="rounded-lg bg-white/[0.02] px-3 py-2.5">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-white/90">{sub.criterion}</span>
-            {sub.weight != null && <span className="text-xs text-white/30">w:{sub.weight}</span>}
+    <div className="v-eg-sub">
+      <div className="v-eg-sub-text">
+        <div className="v-eg-sub-title">
+          <span>{sub.criterion}</span>
+          {sub.weight != null && <span className="v-eg-sub-weight">w:{sub.weight}</span>}
+        </div>
+        {sub.description && <p className="v-help" data-size="xs">{sub.description}</p>}
+        {((sub.metrics?.length ?? 0) > 0 || (sub.indicators?.length ?? 0) > 0) && (
+          <div className="v-eg-tags">
+            {(sub.metrics ?? []).map((m, i) => (
+              <span key={`m-${i}`} className="v-eg-tag" data-kind="metric">
+                {m}
+              </span>
+            ))}
+            {(sub.indicators ?? []).map((ind, i) => (
+              <span key={`i-${i}`} className="v-eg-tag" data-kind="indicator">
+                {ind}
+              </span>
+            ))}
           </div>
-          {sub.description && <p className="mt-0.5 text-xs text-white/40">{sub.description}</p>}
-          {((sub.metrics?.length ?? 0) > 0 || (sub.indicators?.length ?? 0) > 0) && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {(sub.metrics ?? []).map((m, i) => (
-                <span key={`m-${i}`} className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-400">
-                  {m}
-                </span>
-              ))}
-              {(sub.indicators ?? []).map((ind, i) => (
-                <span key={`i-${i}`} className="rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] text-green-400">
-                  {ind}
-                </span>
-              ))}
-            </div>
-          )}
-          {hasScoring && (
-            <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px] text-white/40 sm:grid-cols-4">
-              {sub.scoring_excellent && <span>🟢 {sub.scoring_excellent}</span>}
-              {sub.scoring_good && <span>🔵 {sub.scoring_good}</span>}
-              {sub.scoring_average && <span>🟡 {sub.scoring_average}</span>}
-              {sub.scoring_poor && <span>🔴 {sub.scoring_poor}</span>}
-            </div>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button size="sm" variant="ghost" onClick={onEdit} title="Edit">
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button size="sm" variant="danger" onClick={onDelete} title="Delete">
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        )}
+        {hasScoring && (
+          <div className="v-eg-sub-scoring">
+            {sub.scoring_excellent && <span>🟢 {sub.scoring_excellent}</span>}
+            {sub.scoring_good && <span>🔵 {sub.scoring_good}</span>}
+            {sub.scoring_average && <span>🟡 {sub.scoring_average}</span>}
+            {sub.scoring_poor && <span>🔴 {sub.scoring_poor}</span>}
+          </div>
+        )}
+      </div>
+      <div className="v-row-actions">
+        <button type="button" className="v-btn-icon" onClick={onEdit} title="Edit" aria-label="Edit">
+          <Pencil />
+        </button>
+        <button type="button" className="v-btn-icon" data-tone="danger" onClick={onDelete} title="Delete" aria-label="Delete">
+          <Trash2 />
+        </button>
       </div>
     </div>
   );

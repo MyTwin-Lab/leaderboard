@@ -1,5 +1,8 @@
 'use client';
 
+import { FolderGit2 } from 'lucide-react';
+import { Modal } from '@/components/vitrine/Modal';
+
 interface RepoDetailProps {
   repoId: string;
   repoTitle: string;
@@ -13,24 +16,8 @@ interface RepoDetailProps {
 // still compile; a later task either repurposes or removes it.
 export function RepoDetail({ repoTitle, onClose }: RepoDetailProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-3xl rounded-2xl bg-background border border-white/10 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-white">
-            Repo: {repoTitle}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-white/60 hover:text-white transition-colors"
-          >
-            ✕
-          </button>
-        </div>
-
-        <p className="text-sm text-white/50">
-          Per-repo task workspaces are no longer tracked here.
-        </p>
-      </div>
-    </div>
+    <Modal open onClose={onClose} title={`Repo: ${repoTitle}`} icon={<FolderGit2 />} size="lg">
+      <p className="v-help">Per-repo task workspaces are no longer tracked here.</p>
+    </Modal>
   );
 }

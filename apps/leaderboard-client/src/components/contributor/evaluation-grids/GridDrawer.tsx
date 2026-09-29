@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { X, ClipboardList, Pencil, Plus, Sparkles, Loader2, CheckCircle2, Upload, FileJson } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ClipboardList, Pencil, Plus, Sparkles, Loader2, CheckCircle2, Upload, FileJson } from 'lucide-react';
+import { Drawer } from '@/components/vitrine/Drawer';
+import { Field } from '@/components/admin/challengeFormFields';
 import { useToast } from '@/components/ui/Toast';
 import type { EvaluationGrid, EvaluationGridCategoryType } from '@packages/database-service/domain/entities';
+
+import './evaluation-grids-vitrine.css';
 
 interface GridDrawerProps {
   open: boolean;
@@ -35,10 +38,6 @@ interface ImportedCategory {
 }
 
 const CATEGORY_TYPES: EvaluationGridCategoryType[] = ['objective', 'mixed', 'subjective', 'contextual'];
-
-function fgAt(opacity: number) {
-  return `color-mix(in srgb, var(--foreground) ${Math.round(opacity * 100)}%, transparent)`;
-}
 
 function slugify(value: string) {
   return value
@@ -102,6 +101,7 @@ function parseImportedGrid(raw: unknown): {
   };
 }
 
+/** Le tiroir d'une grille — création (avec import JSON) et édition des métadonnées, sur la coque vitrine. */
 export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
   const isEdit = !!grid;
 
@@ -113,16 +113,11 @@ export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [mounted, setMounted] = useState(false);
   const [importedCategories, setImportedCategories] = useState<ImportedCategory[]>([]);
   const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
-
-  // Portal target only exists client-side — mount after hydration to avoid
-  // an SSR/client markup mismatch.
-  useEffect(() => setMounted(true), []);
 
   // Fires on the false → true transition only, so we don't wipe in-progress
   // typing on unrelated parent re-renders. A freshly spread `grid` object on
@@ -152,15 +147,6 @@ export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
     }
     setTimeout(() => nameRef.current?.focus(), 80);
   }, [open, grid]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
 
   const handleNameChange = (value: string) => {
     setName(value);
@@ -273,195 +259,106 @@ export function GridDrawer({ open, onClose, onSaved, grid }: GridDrawerProps) {
     }
   };
 
-  if (!mounted) return null;
+  const submitLabel = success
+    ? isEdit
+      ? 'Saved!'
+      : 'Created!'
+    : importProgress
+      ? `Importing ${importProgress.done}/${importProgress.total}…`
+      : saving
+        ? isEdit
+          ? 'Saving…'
+          : 'Creating…'
+        : isEdit
+          ? 'Save changes'
+          : 'Create & add criteria';
 
-  // Rendered through a portal into document.body: ContributorTabs always wraps
-  // the active tab panel in an animated (transform) div, which would otherwise
-  // become the containing block for these position:fixed elements and pin them
-  // to the tab instead of the viewport.
-  return createPortal(
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ${open ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
-      />
-
-      {/* Drawer */}
-      <div
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-white/[0.07] shadow-2xl transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
-        style={{ background: 'var(--background-dark)', color: 'var(--foreground)' }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brandCP/15">
-              {isEdit ? (
-                <Pencil className="h-3.5 w-3.5 text-brandCP" />
-              ) : (
-                <ClipboardList className="h-3.5 w-3.5 text-brandCP" />
-              )}
-            </div>
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
-              {isEdit ? 'Edit evaluation grid' : 'New evaluation grid'}
-            </h2>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {!isEdit && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/json"
-                  onChange={handleFileSelected}
-                  className="hidden"
-                />
-                <button
-                  onClick={handleImportClick}
-                  className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-white/[0.06]"
-                  style={{ color: fgAt(0.5) }}
-                  title="Import from JSON"
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  Import
-                </button>
-              </>
-            )}
-            <button
-              onClick={onClose}
-              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/[0.06]"
-              style={{ color: fgAt(0.3) }}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
-          {!isEdit && importedCategories.length > 0 && (
-            <div className="flex items-start gap-2.5 rounded-xl border border-brandCP/20 bg-brandCP/[0.06] px-4 py-3">
-              <FileJson className="mt-0.5 h-4 w-4 shrink-0 text-brandCP" />
-              <p className="text-xs" style={{ color: fgAt(0.6) }}>
-                Imported {importedCategories.length} categor{importedCategories.length === 1 ? 'y' : 'ies'} (
-                {importedCategories.reduce((sum, c) => sum + c.subcriteria.length, 0)} criteria). Review the fields
-                below, then create the grid to add them.
-              </p>
-            </div>
-          )}
-
-          {/* Name */}
-          <div className="space-y-1.5">
-            <input
-              ref={nameRef}
-              type="text"
-              value={name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              placeholder="Grid name…"
-              className="w-full bg-transparent text-xl font-bold focus:outline-none"
-              style={{ color: 'var(--foreground)' }}
-            />
-            <div className="h-px bg-white/[0.06] transition-all focus-within:bg-brandCP/30" />
-          </div>
-
-          {/* Slug */}
-          <Field label="Slug">
-            <input
-              type="text"
-              value={slug}
-              onChange={(e) => {
-                setSlug(slugify(e.target.value));
-                setSlugTouched(true);
-              }}
-              placeholder="dataset"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 font-mono text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-              style={{ color: 'var(--foreground)' }}
-            />
-            <p className="text-[11px]" style={{ color: fgAt(0.25) }}>
-              Used by the evaluator to pick this grid for a given contribution type.
-            </p>
-          </Field>
-
-          {/* Description */}
-          <Field label="Description">
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What does this grid evaluate?"
-              rows={3}
-              className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-relaxed focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-              style={{ color: 'var(--foreground)' }}
-            />
-          </Field>
-
-          {/* AI instructions */}
-          <Field icon={<Sparkles className="h-3.5 w-3.5" />} label="Instructions for the AI evaluator">
-            <textarea
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              placeholder="Extra guidance given to the evaluator agent alongside the criteria."
-              rows={4}
-              className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-relaxed focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-              style={{ color: 'var(--foreground)' }}
-            />
-          </Field>
-
-          {error && (
-            <p className="animate-slide-in rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-400">
-              {error}
-            </p>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-4 border-t border-white/[0.07] px-6 py-4">
-          <button onClick={onClose} className="text-sm transition-colors" style={{ color: fgAt(0.35) }}>
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      icon={isEdit ? <Pencil /> : <ClipboardList />}
+      title={isEdit ? 'Edit evaluation grid' : 'New evaluation grid'}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="v-btn-text">
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={saving || success}
-            className={`flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
-              success
-                ? 'bg-green-500/20 text-green-400'
-                : 'bg-brandCP/20 text-brandCP hover:bg-brandCP/30 hover:shadow-[0_0_16px_rgba(10,247,193,0.2)]'
-            }`}
+            className="v-btn"
+            data-tone={success ? 'success' : undefined}
           >
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {success && <CheckCircle2 className="h-4 w-4" />}
-            {!isEdit && !saving && !success && <Plus className="h-4 w-4" />}
-            {success
-              ? isEdit
-                ? 'Saved!'
-                : 'Created!'
-              : importProgress
-                ? `Importing ${importProgress.done}/${importProgress.total}…`
-                : saving
-                  ? isEdit
-                    ? 'Saving…'
-                    : 'Creating…'
-                  : isEdit
-                    ? 'Save changes'
-                    : 'Create & add criteria'}
+            {saving && <Loader2 className="v-spin" />}
+            {success && <CheckCircle2 />}
+            {!isEdit && !saving && !success && <Plus />}
+            {submitLabel}
+          </button>
+        </>
+      }
+    >
+      {/* L'import JSON : le fichier exporté par l'éditeur, relu ici à la création. */}
+      {!isEdit && (
+        <div className="v-field-row" style={{ justifyContent: 'flex-end' }}>
+          <input ref={fileInputRef} type="file" accept="application/json" onChange={handleFileSelected} style={{ display: 'none' }} />
+          <button type="button" onClick={handleImportClick} className="v-btn-quiet v-btn-sm" title="Import from JSON">
+            <Upload />
+            Import
           </button>
         </div>
-      </div>
-    </>,
-    document.body
-  );
-}
+      )}
 
-function Field({ label, icon, children }: { label: string; icon?: ReactNode; children: ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <p
-        className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest"
-        style={{ color: 'color-mix(in srgb, var(--foreground) 30%, transparent)' }}
-      >
-        {icon}
-        {label}
-      </p>
-      {children}
-    </div>
+      {!isEdit && importedCategories.length > 0 && (
+        <div className="v-alert" data-tone="info">
+          <FileJson />
+          <span>
+            Imported {importedCategories.length} categor{importedCategories.length === 1 ? 'y' : 'ies'} (
+            {importedCategories.reduce((sum, c) => sum + c.subcriteria.length, 0)} criteria). Review the fields
+            below, then create the grid to add them.
+          </span>
+        </div>
+      )}
+
+      <div className="v-eg-title">
+        <input ref={nameRef} type="text" value={name} onChange={(e) => handleNameChange(e.target.value)} placeholder="Grid name…" />
+        <div className="v-eg-title-line" />
+      </div>
+
+      <Field label="Slug" hint="Used by the evaluator to pick this grid for a given contribution type.">
+        <input
+          type="text"
+          value={slug}
+          onChange={(e) => {
+            setSlug(slugify(e.target.value));
+            setSlugTouched(true);
+          }}
+          placeholder="dataset"
+          className="v-input"
+          data-mono="true"
+        />
+      </Field>
+
+      <Field label="Description">
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="What does this grid evaluate?"
+          rows={3}
+        />
+      </Field>
+
+      <Field icon={<Sparkles />} label="Instructions for the AI evaluator">
+        <textarea
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          placeholder="Extra guidance given to the evaluator agent alongside the criteria."
+          rows={4}
+        />
+      </Field>
+
+      {error && <p className="v-alert">{error}</p>}
+    </Drawer>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FormField, FormFooter, inputClass } from '@/components/ui/FormField';
+import { FormField, FormFooter, inputClass, selectClass } from '@/components/ui/FormField';
 import type { Project } from '../../../../../packages/database-service/domain/entities';
 
 interface Contributor {
@@ -16,6 +16,7 @@ interface ProjectFormProps {
   onCancel: () => void;
 }
 
+/** Le formulaire de projet des pages admin — une carte vitrine posée dans la page sombre. */
 export function ProjectForm({ project, contributors = [], onSubmit, onCancel }: ProjectFormProps) {
   const [formData, setFormData] = useState({
     title: project?.title ?? '',
@@ -35,7 +36,7 @@ export function ProjectForm({ project, contributors = [], onSubmit, onCancel }: 
     setFormData((p) => ({ ...p, [field]: e.target.value }));
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-4">
+    <form onSubmit={handleSubmit} className="v-form">
       <FormField label="Title" required>
         <input
           type="text"
@@ -62,7 +63,7 @@ export function ProjectForm({ project, contributors = [], onSubmit, onCancel }: 
         <select
           value={formData.manager_id}
           onChange={set('manager_id')}
-          className={inputClass}
+          className={selectClass}
         >
           <option value="">No manager</option>
           {contributors.map(c => (

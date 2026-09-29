@@ -3,6 +3,10 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle, XCircle, AlertCircle, X } from 'lucide-react';
+import { vitrineFontVars } from '@/components/vitrine/fonts';
+
+import '@/components/vitrine/vitrine.css';
+import '@/components/vitrine/forms-vitrine.css';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -20,6 +24,10 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 let nextId = 0;
 
+/**
+ * Les toasts, sur le vocabulaire vitrine (`.v-toast*`). Portés vers
+ * `document.body` sous leur propre racine `.vitrine-embed`, comme le tiroir.
+ */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [mounted, setMounted] = useState(false);
@@ -43,10 +51,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       {mounted && createPortal(
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
-          {toasts.map((t) => (
-            <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
-          ))}
+        <div className={`vitrine-embed ${vitrineFontVars}`}>
+          <div className="v-toasts">
+            {toasts.map((t) => (
+              <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
+            ))}
+          </div>
         </div>,
         document.body
       )}
@@ -55,29 +65,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 const icons: Record<ToastType, ReactNode> = {
-  success: <CheckCircle className="h-4 w-4 text-green-400 shrink-0" />,
-  error: <XCircle className="h-4 w-4 text-red-400 shrink-0" />,
-  info: <AlertCircle className="h-4 w-4 text-brandCP shrink-0" />,
-};
-
-const borders: Record<ToastType, string> = {
-  success: 'border-green-500/30',
-  error: 'border-red-500/30',
-  info: 'border-brandCP/30',
+  success: <CheckCircle />,
+  error: <XCircle />,
+  info: <AlertCircle />,
 };
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number) => void }) {
   return (
-    <div
-      className={`pointer-events-auto flex items-center gap-3 rounded-lg border bg-background/95 backdrop-blur-sm px-4 py-3 shadow-xl text-sm text-white min-w-[280px] max-w-sm animate-slide-in ${borders[toast.type]}`}
-    >
+    <div className="v-toast" data-tone={toast.type} role="status">
       {icons[toast.type]}
-      <span className="flex-1">{toast.message}</span>
-      <button
-        onClick={() => onDismiss(toast.id)}
-        className="text-white/40 hover:text-white/80 transition-colors"
-      >
-        <X className="h-3.5 w-3.5" />
+      <span className="v-toast-text">{toast.message}</span>
+      <button type="button" onClick={() => onDismiss(toast.id)} className="v-btn-icon" aria-label="Dismiss">
+        <X />
       </button>
     </div>
   );

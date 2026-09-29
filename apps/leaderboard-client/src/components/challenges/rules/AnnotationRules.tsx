@@ -14,24 +14,24 @@ export function AnnotationRules({ challenge }: { challenge: RulesChallenge }) {
   return (
     <div>
       <SectionLabel>How points are earned</SectionLabel>
-      <div className="space-y-0">
-        <FlowBox icon={<span className="text-sm">🏷️</span>} title="Label one image at a time">
+      <div className="v-co-flow">
+        <FlowBox icon={<span>🏷️</span>} title="Label one image at a time">
           Pick the answer that fits. Some images are hidden quality checks with a known answer - they look exactly like
           the others.
         </FlowBox>
         <FlowArrow />
-        <FlowBox icon={<span className="text-sm">💰</span>} title="Every label pays">
-          <b className="text-white/80">{perUnit} CP</b> per label, multiplied by your accuracy on the hidden checks
+        <FlowBox icon={<span>💰</span>} title="Every label pays">
+          <b>{perUnit} CP</b> per label, multiplied by your accuracy on the hidden checks
           (100% until the first ones count).
         </FlowBox>
         <FlowArrow />
-        <FlowBox icon={<span className="text-sm">🗳️</span>} title="Agreement settles each image">
-          Once <b className="text-white/80">{k}</b> people have labeled an image, the most frequent answer becomes its
+        <FlowBox icon={<span>🗳️</span>} title="Agreement settles each image">
+          Once <b>{k}</b> people have labeled an image, the most frequent answer becomes its
           label. A tie sends it to a manager.
         </FlowBox>
         <FlowArrow />
-        <FlowBox icon={<span className="text-sm">🔎</span>} title="Audits claw back">
-          About <b className="text-white/80">{Math.round(auditRate * 100)}%</b> of settled images are audited each week:
+        <FlowBox icon={<span>🔎</span>} title="Audits claw back">
+          About <b>{Math.round(auditRate * 100)}%</b> of settled images are audited each week:
           a label that disagreed with the agreed answer gives its CP back.
         </FlowBox>
       </div>

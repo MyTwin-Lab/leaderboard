@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { flowActionUrl } from '@/lib/challengeActions';
 import { Coins, Loader2 } from 'lucide-react';
+import { vitrineFontVars } from '@/components/vitrine/fonts';
+
+import '@/components/vitrine/vitrine.css';
+import '@/components/vitrine/forms-vitrine.css';
+import './challenge-editors-vitrine.css';
 
 interface RewardsState {
   pool: number;
@@ -13,11 +18,13 @@ interface RewardsState {
   breakdown: { userId: string; userName: string; points: number }[];
 }
 
-function fgAt(opacity: number) {
-  return `color-mix(in srgb, var(--foreground) ${Math.round(opacity * 100)}%, transparent)`;
-}
-
-/** Admin-side pool summary for a validation challenge — pool/distributed/remaining and who earned what. */
+/**
+ * Admin-side pool summary for a validation challenge — pool/distributed/remaining and who earned what.
+ *
+ * Rendu dans le tiroir de challenge et dans la vue de pilotage, qui n'est pas
+ * une vitrine : la racine porte sa propre `.vitrine-embed` et les polices de
+ * la maquette, comme `ValidationTargetsEditor`.
+ */
 export function ValidationRewardsPanel({ challengeId, open }: { challengeId: string; open: boolean }) {
   const [data, setData] = useState<RewardsState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,34 +43,39 @@ export function ValidationRewardsPanel({ challengeId, open }: { challengeId: str
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-2 text-xs" style={{ color: fgAt(0.35) }}>
-        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
+      <div className={`vitrine-embed ${vitrineFontVars}`}>
+        <div className="v-quiet" data-busy="true">
+          <Loader2 className="v-spin" /> Loading…
+        </div>
       </div>
     );
   }
   if (!data) return null;
 
   return (
-    <div className="space-y-2 rounded-[18px] border border-brandCP/[0.22] bg-white/[0.02] p-4">
-      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest" style={{ color: fgAt(0.3) }}>
-        <Coins className="h-3.5 w-3.5" /> CP pool
-      </p>
-      <p className="text-sm" style={{ color: fgAt(0.75) }}>
-        {data.remaining.toLocaleString()} / {data.pool.toLocaleString()} CP remaining
-        <span className="ml-1 text-xs" style={{ color: fgAt(0.35) }}>
-          ({data.cpPerValidation} CP each side of {data.requiredValidations})
-        </span>
-      </p>
-      {data.breakdown.length > 0 && (
-        <div className="space-y-1 pt-1">
-          {data.breakdown.map(b => (
-            <div key={b.userId} className="flex items-center justify-between text-xs" style={{ color: fgAt(0.5) }}>
-              <span className="truncate">{b.userName}</span>
-              <span className="shrink-0 font-medium" style={{ color: fgAt(0.7) }}>{b.points} CP</span>
-            </div>
-          ))}
-        </div>
-      )}
+    <div className={`vitrine-embed ${vitrineFontVars}`}>
+      <div className="v-section">
+        <p className="v-label">
+          <Coins /> CP pool
+        </p>
+        <p className="v-figure">
+          <span className="v-figure-value">{data.remaining.toLocaleString()}</span>
+          <span className="v-figure-unit">/ {data.pool.toLocaleString()} CP</span>
+        </p>
+        <p className="v-help" data-size="xs">
+          Remaining — {data.cpPerValidation} CP each side of {data.requiredValidations}.
+        </p>
+        {data.breakdown.length > 0 && (
+          <div className="v-ce-split">
+            {data.breakdown.map(b => (
+              <div key={b.userId} className="v-ce-split-row">
+                <span>{b.userName}</span>
+                <span>{b.points} CP</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

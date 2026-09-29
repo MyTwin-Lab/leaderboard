@@ -1,8 +1,7 @@
 'use client';
 
 import { X, AlertCircle, CheckCircle, Clock, Zap } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/vitrine/Modal';
 import { runHandler } from '@/components/admin/EvaluationRunList';
 import type { EvaluationRun } from '../../../../../packages/database-service/domain/entities';
 
@@ -15,16 +14,7 @@ interface EvaluationRunDetailProps {
   onClose: () => void;
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-4 py-2.5 border-b border-white/5 last:border-0">
-      <span className="text-sm text-white/40 shrink-0 w-36">{label}</span>
-      <span className="text-sm text-white text-right">{children}</span>
-    </div>
-  );
-}
-
-const empty = <span className="text-white/25 italic">-</span>;
+const empty = <span style={{ color: 'var(--v-subtle)', fontStyle: 'italic' }}>-</span>;
 
 function formatDate(d?: Date | string) {
   if (!d) return empty;
@@ -41,118 +31,145 @@ function formatDuration(ms?: number) {
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
 }
 
-const statusIcons: Record<string, React.ReactNode> = {
-  succeeded: <CheckCircle className="h-4 w-4 text-green-400" />,
-  failed: <AlertCircle className="h-4 w-4 text-red-400" />,
-  running: <Clock className="h-4 w-4 text-yellow-400 animate-pulse" />,
-  pending: <Clock className="h-4 w-4 text-white/40" />,
-  canceled: <X className="h-4 w-4 text-white/40" />,
+/** La couleur de la pastille de statut, dans les tons du vocabulaire vitrine. */
+const statusTone: Record<string, string> = {
+  succeeded: 'success',
+  failed: 'danger',
+  running: 'warning',
+  pending: 'muted',
+  canceled: 'muted',
 };
 
+const statusIcons: Record<string, React.ReactNode> = {
+  succeeded: <CheckCircle />,
+  failed: <AlertCircle />,
+  running: <Clock className="animate-pulse" />,
+  pending: <Clock />,
+  canceled: <X />,
+};
+
+/** Le détail d'un run d'évaluation, en lecture. Sur la modale vitrine, en grille de définitions. */
 export function EvaluationRunDetail({ run, onClose }: EvaluationRunDetailProps) {
   const handler = runHandler(run);
+  const tone = statusTone[run.status] ?? 'muted';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="w-full max-w-lg rounded-xl border border-white/10 bg-[#0f0f1a] shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-          <div className="flex items-center gap-2.5">
-            {statusIcons[run.status]}
-            <h3 className="text-base font-semibold text-white">Run Details</h3>
-            <Badge label={run.status} />
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+    <Modal
+      open
+      onClose={onClose}
+      title="Run Details"
+      subtitle={<span className="v-badge" data-tone={tone}>{run.status}</span>}
+      icon={statusIcons[run.status]}
+      tone={run.status === 'failed' ? 'danger' : 'accent'}
+      actions={
+        <button type="button" className="v-btn-quiet" onClick={onClose}>
+          Close
+        </button>
+      }
+    >
+      <dl className="v-dl">
+        <dt>Run ID</dt>
+        <dd><code className="v-code">{run.uuid}</code></dd>
 
-        {/* Body */}
-        <div className="px-5 py-2">
-          <Row label="Run ID">
-            <span className="font-mono text-xs text-white/60">{run.uuid}</span>
-          </Row>
-          <Row label="Challenge">
-            {run.challengeTitle ?? (run.challenge_id
-              ? <span className="font-mono text-xs text-white/40">{run.challenge_id}</span>
-              : empty)}
-          </Row>
-          {run.meta?.subject && (
-            <Row label="Subject">
+        <dt>Challenge</dt>
+        <dd>
+          {run.challengeTitle ?? (run.challenge_id
+            ? <code className="v-code">{run.challenge_id}</code>
+            : empty)}
+        </dd>
+
+        {run.meta?.subject && (
+          <>
+            <dt>Subject</dt>
+            <dd>
               {run.meta.subject.title}
-              <span className="ml-1.5 font-mono text-xs text-white/40">{run.meta.subject.ref.slice(0, 8)}…</span>
-            </Row>
-          )}
-          <Row label="Flow">
-            <span className="flex items-center justify-end gap-1.5">
-              <Badge label={run.trigger_type} variant="muted" />
-              {handler && <span className="font-mono text-xs text-white/50">{handler}</span>}
-            </span>
-          </Row>
-          {run.meta?.gridSlug && (
-            <Row label="Grid">
-              <span className="font-mono text-xs text-white/60">{run.meta.gridSlug}</span>
-            </Row>
-          )}
-          {run.meta?.bundleSource && (
-            <Row label="Bundle source">
-              <span className="font-mono text-xs text-white/60">{run.meta.bundleSource}</span>
-            </Row>
-          )}
-          {run.window_start && run.window_end && (
-            <Row label="Window">
-              <span className="font-mono text-xs">
-                {new Date(run.window_start).toLocaleDateString('fr-FR')} → {new Date(run.window_end).toLocaleDateString('fr-FR')}
-              </span>
-            </Row>
-          )}
-          <Row label="Started at">{formatDate(run.started_at)}</Row>
-          <Row label="Finished at">{formatDate(run.finished_at)}</Row>
-          <Row label="Duration">
-            <span className="flex items-center gap-1.5">
-              <Zap className="h-3 w-3 text-brandCP" />
-              {formatDuration(run.meta?.durationMs)}
-            </span>
-          </Row>
-          {run.meta?.globalScore !== undefined && (
-            <Row label="Score">
-              <span className="font-medium text-brandCP">{run.meta.globalScore.toFixed(2)} / 9</span>
-            </Row>
-          )}
-          <Row label="Contributions">
-            {run.meta?.contributionCount !== undefined
-              ? <span className="font-medium text-brandCP">{run.meta.contributionCount}</span>
-              : empty}
-          </Row>
-          {run.meta?.evaluatorVersion && (
-            <Row label="Evaluator version">
-              <span className="font-mono text-xs text-white/60">{run.meta.evaluatorVersion}</span>
-            </Row>
-          )}
-          {run.meta?.gridVersion && (
-            <Row label="Grid version">
-              <span className="font-mono text-xs text-white/60">v{run.meta.gridVersion}</span>
-            </Row>
-          )}
-        </div>
-
-        {/* Error block */}
-        {run.status === 'failed' && (run.error_code || run.error_message) && (
-          <div className="mx-5 mb-4 rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-            {run.error_code && (
-              <div className="mb-1 text-xs font-mono font-medium text-red-400">{run.error_code}</div>
-            )}
-            {run.error_message && (
-              <p className="text-xs text-red-300/70">{run.error_message}</p>
-            )}
-          </div>
+              <code className="v-code" style={{ marginLeft: '0.35rem' }}>{run.meta.subject.ref.slice(0, 8)}…</code>
+            </dd>
+          </>
         )}
 
-        {/* Footer */}
-        <div className="border-t border-white/10 px-5 py-3 text-right">
-          <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
+        <dt>Flow</dt>
+        <dd className="flex items-center gap-1.5">
+          <span className="v-badge">{run.trigger_type}</span>
+          {handler && <code className="v-code">{handler}</code>}
+        </dd>
+
+        {run.meta?.gridSlug && (
+          <>
+            <dt>Grid</dt>
+            <dd><code className="v-code">{run.meta.gridSlug}</code></dd>
+          </>
+        )}
+
+        {run.meta?.bundleSource && (
+          <>
+            <dt>Bundle source</dt>
+            <dd><code className="v-code">{run.meta.bundleSource}</code></dd>
+          </>
+        )}
+
+        {run.window_start && run.window_end && (
+          <>
+            <dt>Window</dt>
+            <dd>
+              <code className="v-code">
+                {new Date(run.window_start).toLocaleDateString('fr-FR')} → {new Date(run.window_end).toLocaleDateString('fr-FR')}
+              </code>
+            </dd>
+          </>
+        )}
+
+        <dt>Started at</dt>
+        <dd>{formatDate(run.started_at)}</dd>
+
+        <dt>Finished at</dt>
+        <dd>{formatDate(run.finished_at)}</dd>
+
+        <dt>Duration</dt>
+        <dd className="flex items-center gap-1.5">
+          <Zap style={{ width: '0.75rem', height: '0.75rem', color: 'var(--v-accent)' }} />
+          {formatDuration(run.meta?.durationMs)}
+        </dd>
+
+        {run.meta?.globalScore !== undefined && (
+          <>
+            <dt>Score</dt>
+            <dd style={{ fontWeight: 600, color: 'var(--v-accent-dark)' }}>{run.meta.globalScore.toFixed(2)} / 9</dd>
+          </>
+        )}
+
+        <dt>Contributions</dt>
+        <dd>
+          {run.meta?.contributionCount !== undefined
+            ? <span style={{ fontWeight: 600, color: 'var(--v-accent-dark)' }}>{run.meta.contributionCount}</span>
+            : empty}
+        </dd>
+
+        {run.meta?.evaluatorVersion && (
+          <>
+            <dt>Evaluator version</dt>
+            <dd><code className="v-code">{run.meta.evaluatorVersion}</code></dd>
+          </>
+        )}
+
+        {run.meta?.gridVersion && (
+          <>
+            <dt>Grid version</dt>
+            <dd><code className="v-code">v{run.meta.gridVersion}</code></dd>
+          </>
+        )}
+      </dl>
+
+      {/* Error block */}
+      {run.status === 'failed' && (run.error_code || run.error_message) && (
+        <div className="v-alert">
+          <AlertCircle />
+          <span>
+            {run.error_code && <code className="v-code" style={{ display: 'block', marginBottom: '0.25rem' }}>{run.error_code}</code>}
+            {run.error_message}
+          </span>
         </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 }

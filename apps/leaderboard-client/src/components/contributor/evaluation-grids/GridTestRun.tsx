@@ -2,10 +2,12 @@
 
 import { useEffect, useState, type ComponentType, type SVGProps } from 'react';
 import { ArrowLeft, AlertCircle, Box, Database, FlaskConical, Loader2, PlayCircle } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { GitHubIcon } from '@/components/ui/GitHubIcon';
 import { useToast } from '@/components/ui/Toast';
 import type { EvaluationGridFull } from '@packages/database-service/domain/entities';
+
+import '@/components/vitrine/forms-vitrine.css';
+import './evaluation-grids-vitrine.css';
 
 type SourceType = 'github' | 'kaggle_dataset' | 'kaggle_model';
 
@@ -37,9 +39,6 @@ interface TestRunResponse {
   perCriterion: CriterionStats[];
   warning?: string;
 }
-
-const inputClass =
-  'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-brandCP/50 focus:outline-none focus:ring-1 focus:ring-brandCP/50';
 
 const SOURCE_OPTIONS: {
   value: SourceType;
@@ -79,6 +78,7 @@ interface GridTestRunProps {
   onBack: () => void;
 }
 
+/** Le banc d'essai d'une grille — sous la racine vitrine du profil, sur le vocabulaire commun des formulaires. */
 export function GridTestRun({ gridId, onBack }: GridTestRunProps) {
   const [grid, setGrid] = useState<EvaluationGridFull | null>(null);
   const [loadingGrid, setLoadingGrid] = useState(true);
@@ -148,110 +148,98 @@ export function GridTestRun({ gridId, onBack }: GridTestRunProps) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1 text-xs text-white/40 transition-colors hover:text-white/70"
-      >
-        <ArrowLeft className="h-3 w-3" />
+      <button type="button" onClick={onBack} className="v-back">
+        <ArrowLeft />
         Back to grid
       </button>
 
-      <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brandCP/15">
-          <FlaskConical className="h-4 w-4 text-brandCP" />
+      <div className="v-eg-test-head">
+        <div className="v-drawer-icon">
+          <FlaskConical />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-white">Test grid{grid ? `: ${grid.name}` : ''}</h2>
-          <p className="text-xs text-white/40">
+          <h2 className="v-eg-name">Test grid{grid ? `: ${grid.name}` : ''}</h2>
+          <p className="v-help" data-size="xs">
             Runs 5 evaluations in parallel on the same real content and measures how consistent the scores are.
           </p>
         </div>
       </div>
 
       {noCategoriesYet && (
-        <div className="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/[0.06] px-4 py-3 text-sm text-yellow-400">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          Add at least one category to this grid before testing it.
+        <div className="v-alert" data-tone="warning">
+          <AlertCircle />
+          <span>Add at least one category to this grid before testing it.</span>
         </div>
       )}
 
       {/* Form */}
-      <div className="space-y-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-5">
-        <div>
-          <label className="mb-1.5 block text-xs text-white/50">Source</label>
-          <div className="grid grid-cols-3 gap-2">
+      <div className="v-section" style={{ gap: '1rem' }}>
+        <div className="v-field">
+          <span className="v-label">Source</span>
+          <div className="v-choices">
             {SOURCE_OPTIONS.map((opt) => {
               const Icon = opt.icon;
-              const active = sourceType === opt.value;
               return (
                 <button
                   key={opt.value}
+                  type="button"
                   onClick={() => setSourceType(opt.value)}
-                  className={`flex flex-col items-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-medium transition-all duration-200 ${
-                    active
-                      ? 'border-brandCP/40 bg-brandCP/10 text-brandCP ring-1 ring-brandCP/20'
-                      : 'border-white/[0.06] bg-white/[0.02] text-white/50 hover:border-white/15'
-                  }`}
+                  className="v-choice"
+                  data-on={sourceType === opt.value ? 'true' : 'false'}
                 >
-                  <Icon className="h-4 w-4" />
-                  {opt.label}
+                  <Icon />
+                  <span className="v-choice-text">
+                    <span className="v-choice-name">{opt.label}</span>
+                  </span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div>
-          <label className="mb-1 block text-xs text-white/50">URL</label>
+        <label className="v-field">
+          <span className="v-label">URL</span>
           <input
             value={sourceUrl}
             onChange={(e) => handleUrlChange(e.target.value)}
             placeholder={SOURCE_OPTIONS.find((o) => o.value === sourceType)?.placeholder}
-            className={inputClass}
           />
-        </div>
+        </label>
 
         {sourceType === 'github' && (
-          <div>
-            <label className="mb-1 block text-xs text-white/50">Branch override (optional)</label>
+          <label className="v-field">
+            <span className="v-label">Branch override (optional)</span>
             <input
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
               placeholder="Leave empty to use the URL's branch, or the repo's default"
-              className={inputClass}
             />
-          </div>
+          </label>
         )}
 
-        <div>
-          <label className="mb-1 block text-xs text-white/50">Title (optional)</label>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Derived from the URL if left empty"
-            className={inputClass}
-          />
-        </div>
+        <label className="v-field">
+          <span className="v-label">Title (optional)</span>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Derived from the URL if left empty" />
+        </label>
 
-        <div>
-          <label className="mb-1 block text-xs text-white/50">Challenge context (optional, free text)</label>
+        <label className="v-field">
+          <span className="v-label">Challenge context (optional, free text)</span>
           <textarea
             value={contextNote}
             onChange={(e) => setContextNote(e.target.value)}
             rows={3}
             placeholder="Describe the challenge this contribution would belong to - given to the evaluator as extra context."
-            className={inputClass}
           />
+        </label>
+
+        {error && <p className="v-alert">{error}</p>}
+
+        <div>
+          <button type="button" className="v-btn" onClick={handleRun} disabled={!canRun}>
+            {running ? <Loader2 className="v-spin" /> : <PlayCircle />}
+            {running ? 'Running 5 evaluations…' : 'Run test'}
+          </button>
         </div>
-
-        {error && (
-          <p className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-400">{error}</p>
-        )}
-
-        <Button onClick={handleRun} disabled={!canRun}>
-          {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
-          {running ? 'Running 5 evaluations…' : 'Run test'}
-        </Button>
       </div>
 
       {result && <TestRunResults result={result} />}
@@ -263,61 +251,58 @@ export function GridTestRun({ gridId, onBack }: GridTestRunProps) {
 /*  Results                                                             */
 /* ================================================================== */
 
-function determinismColor(score: number) {
-  if (score >= 80) return 'text-green-400 bg-green-500/10 border-green-500/20';
-  if (score >= 50) return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
-  return 'text-red-400 bg-red-500/10 border-red-500/20';
+function determinismTone(score: number) {
+  if (score >= 80) return 'good';
+  if (score >= 50) return 'medium';
+  return 'poor';
 }
 
 function TestRunResults({ result }: { result: TestRunResponse }) {
   return (
     <div className="animate-fade-up space-y-4">
       {result.warning && (
-        <div className="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/[0.06] px-4 py-3 text-sm text-yellow-400">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {result.warning}
+        <div className="v-alert" data-tone="warning">
+          <AlertCircle />
+          <span>{result.warning}</span>
         </div>
       )}
 
-      <div className={`flex items-center justify-between rounded-xl border p-5 ${determinismColor(result.determinism.score)}`}>
+      <div className="v-eg-det" data-tone={determinismTone(result.determinism.score)}>
         <div>
-          <p className="text-xs uppercase tracking-widest opacity-70">Determinism score</p>
-          <p className="text-3xl font-bold">{result.determinism.score}%</p>
+          <p className="v-eg-det-label">Determinism score</p>
+          <p className="v-eg-det-score">{result.determinism.score}%</p>
         </div>
-        <div className="text-right text-xs opacity-70">
+        <div className="v-eg-det-side">
           <p>
             Global score: {result.determinism.mean} ± {result.determinism.stddev}
           </p>
-          {result.failedCount > 0 && <p className="mt-1">{result.failedCount} run(s) failed</p>}
+          {result.failedCount > 0 && <p>{result.failedCount} run(s) failed</p>}
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">Individual runs</h3>
+      <div className="v-section">
+        <h3 className="v-section-title">Individual runs</h3>
         <div className="flex flex-wrap gap-2">
           {result.runs.map((run, i) => (
-            <span key={i} className="rounded-lg bg-white/[0.04] px-3 py-1.5 text-sm text-white/70">
-              Run {i + 1}: <span className="font-semibold text-white">{Math.round(run.globalScore)}</span>
+            <span key={i} className="v-eg-run">
+              Run {i + 1}: <strong>{Math.round(run.globalScore)}</strong>
             </span>
           ))}
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">Per-criterion consistency</h3>
-        <div className="space-y-1.5">
+      <div className="v-section">
+        <h3 className="v-section-title">Per-criterion consistency</h3>
+        <div className="v-rows">
           {result.perCriterion.map((c) => (
-            <div
-              key={c.criterion}
-              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-white/[0.02] px-3 py-2 text-sm"
-            >
-              <span className="text-white/80">{c.criterion}</span>
-              <div className="flex items-center gap-3 text-xs text-white/40">
-                <span>{c.values.join(', ')}</span>
-                <span className="text-white/60">
-                  avg {c.mean} · σ {c.stddev}
-                </span>
+            <div key={c.criterion} className="v-row" data-quiet="true">
+              <div className="v-row-text">
+                <span className="v-row-title">{c.criterion}</span>
               </div>
+              <span className="v-row-meta">{c.values.join(', ')}</span>
+              <span className="v-row-meta">
+                avg {c.mean} · σ {c.stddev}
+              </span>
             </div>
           ))}
         </div>

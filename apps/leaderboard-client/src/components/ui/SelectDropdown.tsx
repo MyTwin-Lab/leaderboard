@@ -17,6 +17,10 @@ interface SelectDropdownProps {
   className?: string;
 }
 
+/**
+ * Le menu déroulant des formulaires, sur le vocabulaire vitrine (`.v-dd*`).
+ * À poser sous une racine `.vitrine` ou `.vitrine-embed`.
+ */
 export function SelectDropdown({
   options,
   value,
@@ -48,38 +52,23 @@ export function SelectDropdown({
   }, [open]);
 
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
-      {/* Trigger */}
+    <div ref={containerRef} className={`v-dd ${className}`}>
       <button
         type="button"
         onClick={() => !disabled && setOpen((v) => !v)}
         disabled={disabled}
-        className={[
-          "flex w-full items-center justify-between gap-2 rounded-xl border bg-white/5 py-2.5 pl-3 pr-2.5 text-sm transition-all duration-150",
-          "border-white/10 focus:outline-none",
-          open
-            ? "border-brandCP/50 shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-            : "hover:border-white/20 hover:bg-white/8",
-          disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
-        ].join(" ")}
-        style={{ color: "var(--foreground)" }}
+        className="v-dd-trigger"
+        data-open={open ? "true" : "false"}
+        data-empty={selected ? "false" : "true"}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={selected ? "" : "opacity-40"}>{selected?.label ?? placeholder}</span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 opacity-40 transition-transform duration-150 ${open ? "rotate-180" : ""}`}
-          style={{ color: "var(--foreground)" }}
-        />
+        <span>{selected?.label ?? placeholder}</span>
+        <ChevronDown />
       </button>
 
-      {/* Dropdown panel */}
       {open && (
-        <div
-          className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-white/10 shadow-xl animate-slide-in"
-          style={{ background: "var(--background)" }}
-          role="listbox"
-        >
+        <div className="v-dd-menu" role="listbox">
           {options.map((option) => {
             const isSelected = option.value === value;
             return (
@@ -92,16 +81,11 @@ export function SelectDropdown({
                   onChange(option.value);
                   setOpen(false);
                 }}
-                className={[
-                  "flex w-full items-center justify-between px-3 py-2 text-sm transition-colors duration-100",
-                  isSelected
-                    ? "text-brandCP"
-                    : "hover:bg-white/[0.06]",
-                ].join(" ")}
-                style={{ color: isSelected ? "var(--theme-primary)" : "var(--foreground)" }}
+                className="v-dd-option"
+                data-on={isSelected ? "true" : "false"}
               >
                 <span>{option.label}</span>
-                {isSelected && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--theme-primary)" }} />}
+                {isSelected && <Check />}
               </button>
             );
           })}

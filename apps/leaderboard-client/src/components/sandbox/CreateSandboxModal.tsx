@@ -11,6 +11,7 @@ import { vitrineFontVars } from "@/components/vitrine/fonts";
 import { formatGoals, goalsError, parseGoals } from "./goalsField";
 
 import "@/components/vitrine/vitrine.css";
+import "@/components/vitrine/forms-vitrine.css";
 import "./sandbox-vitrine.css";
 
 interface CreateSandboxModalProps {

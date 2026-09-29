@@ -5,13 +5,17 @@ import { ImagePlus, Loader2, X } from "lucide-react";
 
 import { IMAGE_ACCEPT, useImageUpload } from "@/lib/useImageUpload";
 
+// Le vocabulaire de la couverture (`.v-cover*`) est celui de la modale de
+// sandbox : même zone de dépôt, même aperçu, même rangée URL + Replace.
+import "@/components/sandbox/sandbox-vitrine.css";
+
 interface CoverImageFieldProps {
   value: string;
   onChange: (value: string) => void;
 }
 
 /**
- * La couverture d'un challenge, dans le langage visuel du tiroir admin.
+ * La couverture d'un challenge, dans le langage visuel du tiroir.
  *
  * Deux entrées pour une seule valeur : déposer un fichier (réduit puis envoyé
  * à `/api/images`, qui rend une URL) ou coller une URL. L'aperçu affiche ce
@@ -28,18 +32,18 @@ export function CoverImageField({ value, onChange }: CoverImageFieldProps) {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="v-cover">
       {value ? (
-        <div className="relative overflow-hidden rounded-xl border border-white/10">
+        <div className="v-cover-preview">
           {/* eslint-disable-next-line @next/next/no-img-element -- source libre : URL externe ou /api/images */}
-          <img src={value} alt="" className="h-36 w-full object-cover" />
+          <img src={value} alt="" />
           <button
             type="button"
             onClick={() => onChange("")}
             aria-label="Remove the cover image"
-            className="absolute right-2 top-2 rounded-lg bg-black/60 p-1.5 text-white transition-colors hover:bg-black/80"
+            className="v-cover-remove"
           >
-            <X className="h-3.5 w-3.5" />
+            <X />
           </button>
         </div>
       ) : (
@@ -47,16 +51,11 @@ export function CoverImageField({ value, onChange }: CoverImageFieldProps) {
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="flex h-36 w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] transition-colors hover:border-brandCP/40 disabled:opacity-60"
-          style={{ color: "color-mix(in srgb, var(--foreground) 45%, transparent)" }}
+          className="v-cover-drop"
         >
-          {uploading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <ImagePlus className="h-5 w-5" />
-          )}
-          <span className="text-xs">{uploading ? "Uploading…" : "Upload a cover image"}</span>
-          <span className="text-[11px] opacity-70">PNG, JPEG, WebP — resized to 1600px</span>
+          {uploading ? <Loader2 className="v-spin" /> : <ImagePlus />}
+          <span className="v-cover-drop-title">{uploading ? "Uploading…" : "Upload a cover image"}</span>
+          <span className="v-cover-drop-hint">PNG, JPEG, WebP — resized to 1600px</span>
         </button>
       )}
 
@@ -64,14 +63,14 @@ export function CoverImageField({ value, onChange }: CoverImageFieldProps) {
         ref={fileRef}
         type="file"
         accept={IMAGE_ACCEPT}
-        className="hidden"
+        style={{ display: "none" }}
         onChange={(e) => {
           void pick(e.target.files?.[0]);
           e.target.value = "";
         }}
       />
 
-      <div className="flex items-center gap-2">
+      <div className="v-cover-row">
         {/* `text`, pas `url` : une image déposée vaut `/api/images/<uuid>`, un
             chemin relatif que la validation native d'un champ `url` refuse —
             elle veut une adresse absolue. Le champ accepte les deux formes,
@@ -84,23 +83,21 @@ export function CoverImageField({ value, onChange }: CoverImageFieldProps) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="…or paste an image URL"
-          className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-          style={{ color: "var(--foreground)" }}
+          className="v-input"
         />
         {value && (
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="shrink-0 rounded-xl border border-white/10 px-3 py-2 text-xs transition-colors hover:border-white/25 disabled:opacity-50"
-            style={{ color: "color-mix(in srgb, var(--foreground) 55%, transparent)" }}
+            className="v-cover-replace"
           >
             {uploading ? "Uploading…" : "Replace"}
           </button>
         )}
       </div>
 
-      {error && <p className="text-[11px] text-red-400">{error}</p>}
+      {error && <p className="v-field-error">{error}</p>}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
+import { VitrineEmbed } from '@/components/vitrine/VitrineEmbed';
 import { Button } from '@/components/ui/Button';
 import { EvaluationGridList } from '@/components/admin/EvaluationGridList';
 import { EvaluationGridForm } from '@/components/admin/EvaluationGridForm';
@@ -135,13 +136,13 @@ export default function EvaluationGridsPage() {
   return (
     <div className="space-y-6">
       {showForm ? (
-        <Card title={editingGrid ? 'Edit Evaluation Grid' : 'New Evaluation Grid'}>
+        <VitrineEmbed card title={editingGrid ? 'Edit Evaluation Grid' : 'New Evaluation Grid'}>
           <EvaluationGridForm
             grid={editingGrid}
             onSubmit={editingGrid ? handleUpdate : handleCreate}
             onCancel={handleCancel}
           />
-        </Card>
+        </VitrineEmbed>
       ) : (
         <Card
           title="Evaluation Grids"

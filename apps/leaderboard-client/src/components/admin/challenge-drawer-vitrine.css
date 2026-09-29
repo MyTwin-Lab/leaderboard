@@ -1,0 +1,104 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Le tiroir de challenge — ce qui lui est propre, au-delà du vocabulaire
+   commun de `components/vitrine/forms-vitrine.css`.
+
+   Préfixe `v-cdr-` (challenge drawer) : `v-cd-` est déjà celui de la page
+   vitrine d'un challenge (`challenge-vitrine.css`), et les deux feuilles se
+   retrouvent chargées ensemble pour l'aperçu du brief.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Le titre : une saisie nue, grande, soulignée d'un filet qui prend l'accent
+   au focus. Le filet est un élément à part : en mode clair, `globals.css`
+   force les bordures des inputs et `.v-bare` les efface — un `border-bottom`
+   sur l'input lui-même disparaîtrait. */
+.v-cdr-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.v-cdr-title input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0.15rem 0;
+  font-family: var(--v-font-h);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+  outline: none;
+}
+
+.v-cdr-title-line {
+  height: 1px;
+  background: var(--v-line);
+  transition: background-color 0.2s var(--v-ease);
+}
+
+.v-cdr-title:focus-within .v-cdr-title-line {
+  background: rgb(63 161 170 / 0.6);
+}
+
+/* La flèche entre les deux dates. */
+.v-cdr-arrow {
+  margin-top: 1.25rem;
+  color: var(--v-subtle);
+}
+
+/* Le bouton principal, une fois l'enregistrement réussi : il reste inactif
+   le temps de la fermeture, mais doit se lire comme un succès, pas comme un
+   bouton éteint. */
+.v-cdr-submit[data-state="success"]:disabled {
+  background: rgb(10 107 88 / 0.12);
+  color: var(--v-accent-dark);
+}
+
+/* L'aperçu du brief : la typographie de la vitrine (`.v-md-*`), ramenée à
+   l'échelle d'un panneau latéral. */
+.v-cdr-preview {
+  display: flex;
+  max-height: 24rem;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  padding: 1rem 1.25rem;
+}
+
+.v-cdr-preview .v-md-h1,
+.v-cdr-preview .v-md-h2 {
+  font-size: 1.0625rem;
+}
+
+.v-cdr-preview .v-md-h3 {
+  font-size: 0.9375rem;
+}
+
+.v-cdr-preview .v-md-h1 + *,
+.v-cdr-preview .v-md-h2 + *,
+.v-cdr-preview .v-md-h3 + * {
+  margin-top: -0.5rem;
+}
+
+.v-cdr-preview .v-md-p,
+.v-cdr-preview .v-md-li,
+.v-cdr-preview .v-md-quote {
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+
+.v-cdr-preview .v-md-bullet {
+  margin-top: 0.5rem;
+}
+
+.v-cdr-preview .v-md-pre {
+  font-size: 0.75rem;
+}
+
+.v-cdr-preview strong {
+  color: var(--v-ink) !important;
+  font-weight: 600;
+}

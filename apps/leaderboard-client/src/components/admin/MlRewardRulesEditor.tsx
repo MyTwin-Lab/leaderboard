@@ -10,6 +10,8 @@ import {
   type MlRewardRules,
 } from '../../../../../packages/database-service/domain/mlRewardRules';
 
+import './challenge-editors-vitrine.css';
+
 interface Props {
   value: MlRewardRules | null;
   pool: number;
@@ -22,14 +24,15 @@ interface Props {
 const toPct = (n: number) => Math.round(n * 100);
 const fromPct = (v: string) => Math.min(100, Math.max(0, parseInt(v) || 0)) / 100;
 
+/** Les règles de reward d'un challenge ML, sur le vocabulaire vitrine des tiroirs. */
 export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Props) {
   const rules = value ?? DEFAULT_ML_REWARD_RULES;
   const [contributors, setContributors] = useState(5);
   // Tailwind breakpoints track the viewport, not the container, so a `md:` grid
   // would still split into three inside a 512px drawer on a desktop screen.
   const gridClass = dense
-    ? 'grid grid-cols-2 gap-4'
-    : 'grid grid-cols-1 gap-4 md:grid-cols-3';
+    ? 'grid grid-cols-2 gap-3'
+    : 'grid grid-cols-1 gap-3 md:grid-cols-3';
 
   // Points are awarded live from a finite pool, so a generous configuration is
   // not caught at close — it is discovered mid-challenge, once the first
@@ -41,7 +44,7 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
 
   return (
     <FormSection title="ML Reward Rules">
-      <p className="-mt-1 text-xs text-white/35">
+      <p className="v-help">
         Points are awarded live as contributors submit, drawn from the CP reward above until it runs out.
       </p>
 
@@ -72,8 +75,8 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
       </div>
 
       {/* ── Model split ── */}
-      <div className="space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-        <p className="text-xs font-semibold text-white/60">Model reward split</p>
+      <div className="v-section">
+        <p className="v-section-title">Model reward split</p>
 
         <div className={gridClass}>
           <FormField label="Reserved for Kaggle (%)">
@@ -109,8 +112,8 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
           </FormField>
         </div>
 
-        <p className="text-xs text-white/30">
-          The Kaggle half is <span className="text-white/50">reserved, not granted</span>: it scales with the metric,
+        <p className="v-help" data-size="xs">
+          The Kaggle half is <span className="v-ce-strong">reserved, not granted</span>: it scales with the metric,
           so {toPct(rules.model.kaggleShare)}% of {rules.model.cap} CP goes to a perfect score and nothing to one at
           the baseline. The rest is unlocked by the model&apos;s GitHub, scored as code.
           {rules.model.metric.baseline > 0 && (
@@ -143,7 +146,7 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
           />
         </FormField>
         {rules.model.metric.blockThreshold != null && (
-          <p className="text-xs text-white/30">
+          <p className="v-help" data-size="xs">
             Once {rules.model.metric.name.toUpperCase()} reaches {toPct(rules.model.metric.blockThreshold)}%,
             dataset and model submissions close - only API packaging stays open.
           </p>
@@ -151,8 +154,8 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
       </div>
 
       {/* ── Reuse ── */}
-      <div className="space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-        <p className="text-xs font-semibold text-white/60">Reuse</p>
+      <div className="v-section">
+        <p className="v-section-title">Reuse</p>
 
         <div className={gridClass}>
           <FormField label="Dataset share (%)">
@@ -180,45 +183,45 @@ export function MlRewardRulesEditor({ value, pool, onChange, dense = false }: Pr
           </FormField>
         </div>
 
-        <p className="text-xs text-white/30">
-          These shares are <span className="text-white/50">taken from</span> the reuser&apos;s model points, not added on
+        <p className="v-help" data-size="xs">
+          These shares are <span className="v-ce-strong">taken from</span> the reuser&apos;s model points, not added on
           top - the pool is unchanged. Reuse someone&apos;s dataset and earn 500 CP on your model, and
           {' '}{Math.round(500 * rules.reuse.datasetShare)} CP go to its author.
         </p>
       </div>
 
       {/* ── Simulation ── */}
-      <div className={`space-y-2 rounded-xl border p-4 ${
-        overspends ? 'border-amber-500/25 bg-amber-500/[0.06]' : 'border-white/[0.06] bg-white/[0.02]'
-      }`}>
-        <div className="flex items-center gap-2">
-          <Users className="h-3.5 w-3.5 text-white/40" />
-          <p className="text-xs font-semibold text-white/60">Budget simulation</p>
-        </div>
+      <div className="v-section v-ce-sim" data-warn={overspends ? 'true' : 'false'}>
+        <p className="v-section-title flex items-center gap-2">
+          <Users className="h-3.5 w-3.5" />
+          Budget simulation
+        </p>
 
-        <div className="flex items-center gap-2">
+        <div className="v-field-row">
           <input
             type="number" min={1} max={100}
             value={contributors}
             onChange={e => setContributors(Math.max(1, parseInt(e.target.value) || 1))}
-            className={`${inputClass} w-20`}
+            className={`${inputClass} w-24`}
           />
-          <span className="text-xs text-white/40">contributors</span>
+          <span className="v-help">contributors</span>
         </div>
 
-        <p className="text-xs text-white/40">
+        <p className="v-help" data-size="xs">
           This configuration can distribute up to{' '}
-          <span className={overspends ? 'font-semibold text-amber-300' : 'font-semibold text-white/70'}>
+          <span className={overspends ? 'v-ce-warn' : 'v-ce-strong'}>
             {maxDistributable.toLocaleString()} CP
           </span>{' '}
           against a pool of {pool.toLocaleString()} CP.
         </p>
 
         {overspends && (
-          <p className="flex items-start gap-1.5 text-xs text-amber-300/80">
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            The pool runs out before everyone is paid. Awards are clamped to whatever is left, so late contributors
-            may earn nothing - raise the CP reward or lower the caps.
+          <p className="v-alert" data-tone="warning">
+            <AlertTriangle />
+            <span>
+              The pool runs out before everyone is paid. Awards are clamped to whatever is left, so late contributors
+              may earn nothing - raise the CP reward or lower the caps.
+            </span>
           </p>
         )}
       </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
+import { VitrineEmbed } from '@/components/vitrine/VitrineEmbed';
 import { Button } from '@/components/ui/Button';
 import { RepoList } from '@/components/admin/RepoList';
 import { RepoForm } from '@/components/admin/RepoForm';
@@ -121,13 +122,13 @@ export default function ReposPage() {
   return (
     <div className="space-y-6">
       {showForm ? (
-        <Card title="New Repository">
+        <VitrineEmbed card title="New Repository">
           <RepoForm
             projects={projects}
             onSubmit={handleCreate}
             onCancel={() => setShowForm(false)}
           />
-        </Card>
+        </VitrineEmbed>
       ) : (
         <Card
           title="Repositories"

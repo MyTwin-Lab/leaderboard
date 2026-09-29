@@ -5,7 +5,7 @@ import { ShieldCheck, Trophy } from 'lucide-react';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
 import { ValidationTargetsEditor } from '@/components/admin/ValidationTargetsEditor';
 import { ValidationRewardsPanel } from '@/components/admin/ValidationRewardsPanel';
-import { Field, INPUT_CLASS, LockedValue, fgAt } from '@/components/admin/challengeFormFields';
+import { Field, INPUT_CLASS, LockedValue } from '@/components/admin/challengeFormFields';
 import type { FlowFormSectionProps } from '@/lib/flowFormSlots';
 import { flowCatalog } from '../mytwin.flows';
 import { VALIDATION_FLOW_BY_SOURCE, isScenarioValidation, type ValidationFormState } from './validation';
@@ -37,7 +37,7 @@ export function ValidationFields({ state, onChange, ctx }: FlowFormSectionProps<
 
   return (
     <>
-      <Field icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Source challenge">
+      <Field icon={<ShieldCheck />} label="Source challenge">
         {!isCreate ? (
           <LockedValue text="Source challenge" />
         ) : (
@@ -47,7 +47,7 @@ export function ValidationFields({ state, onChange, ctx }: FlowFormSectionProps<
               value={state.sourceChallengeId}
               onChange={id => onChange({ sourceChallengeId: id, sourceType: sources.find(c => c.id === id)?.type ?? null })}
             />
-            <p className="text-[11px] mt-1.5" style={{ color: fgAt(0.25) }}>
+            <p className="v-help" data-size="xs">
               {scenario
                 ? 'A Code challenge: validators walk a scenario through each deployed application.'
                 : 'An ML challenge: validators test each endpoint against a ground-truth reference case.'}
@@ -57,7 +57,7 @@ export function ValidationFields({ state, onChange, ctx }: FlowFormSectionProps<
         )}
       </Field>
 
-      <Field icon={<Trophy className="h-3.5 w-3.5" />} label="CP per validation">
+      <Field icon={<Trophy />} label="CP per validation">
         {!isCreate ? (
           <LockedValue text={`${state.cpPerValidation} CP`} />
         ) : (
@@ -67,18 +67,17 @@ export function ValidationFields({ state, onChange, ctx }: FlowFormSectionProps<
             value={state.cpPerValidation}
             onChange={e => onChange({ cpPerValidation: Math.max(1, parseInt(e.target.value) || 1) })}
             className={`w-28 ${INPUT_CLASS}`}
-            style={{ color: 'var(--foreground)' }}
           />
         )}
       </Field>
 
       {/* No quorum in scenario mode: nothing resolves by majority. */}
       {!scenario && (
-        <Field icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Required validations">
+        <Field icon={<ShieldCheck />} label="Required validations">
           {!isCreate ? (
             <LockedValue text={`${state.requiredValidations} validators must agree`} />
           ) : (
-            <div className="space-y-1.5">
+            <>
               <input
                 type="number"
                 min={1}
@@ -89,12 +88,11 @@ export function ValidationFields({ state, onChange, ctx }: FlowFormSectionProps<
                   onChange({ requiredValidations: n % 2 === 0 ? n + 1 : n });
                 }}
                 className={`w-28 ${INPUT_CLASS}`}
-                style={{ color: 'var(--foreground)' }}
               />
-              <p className="text-[11px]" style={{ color: fgAt(0.25) }}>
+              <p className="v-help" data-size="xs">
                 Must be odd - majority wins once this many validators have voted.
               </p>
-            </div>
+            </>
           )}
         </Field>
       )}
@@ -108,9 +106,7 @@ export function ValidationDetails({ ctx }: FlowFormSectionProps<ValidationFormSt
   return (
     <>
       <ValidationTargetsEditor challengeId={ctx.challenge!.uuid} open={ctx.open} />
-      <div className="mt-3">
-        <ValidationRewardsPanel challengeId={ctx.challenge!.uuid} open={ctx.open} />
-      </div>
+      <ValidationRewardsPanel challengeId={ctx.challenge!.uuid} open={ctx.open} />
     </>
   );
 }

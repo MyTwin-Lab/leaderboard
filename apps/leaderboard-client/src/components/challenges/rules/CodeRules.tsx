@@ -12,17 +12,17 @@ export function CodeRules({ challenge }: { challenge: RulesChallenge }) {
   return (
     <div>
       <SectionLabel>How points are earned</SectionLabel>
-      <div className="space-y-0">
-        <FlowBox icon={<span className="text-sm">✅</span>} title="Contributions scored">
+      <div className="v-co-flow">
+        <FlowBox icon={<span>✅</span>} title="Contributions scored">
           Every contribution is graded by the evaluator (a score out of 9 per criterion).
         </FlowBox>
         <FlowArrow />
-        <FlowBox icon={<span className="text-sm">➗</span>} title="Proportional share">
+        <FlowBox icon={<span>➗</span>} title="Proportional share">
           At close, your score is divided by the total score of every contribution on this challenge.
         </FlowBox>
         <FlowArrow />
-        <FlowBox icon={<span className="text-sm">💰</span>} title="Your CP">
-          That fraction of the <b className="text-white/80">{challenge.contribution_points_reward} CP</b> pool is yours.
+        <FlowBox icon={<span>💰</span>} title="Your CP">
+          That fraction of the <b>{challenge.contribution_points_reward} CP</b> pool is yours.
         </FlowBox>
       </div>
     </div>
@@ -33,13 +33,13 @@ function CodeRewardRulesFlow({ rules }: { rules: CodeRewardRules }) {
   return (
     <div>
       <SectionLabel>How points are earned</SectionLabel>
-      <div className="space-y-0">
-        <FlowBox icon={<CheckCircle2 className="h-3.5 w-3.5" />} title="Fixed part">
-          <b className="text-white/80">{rules.delivery.fixed} CP</b> - earned when your evaluated delivery lands.
+      <div className="v-co-flow">
+        <FlowBox icon={<CheckCircle2 />} title="Fixed part">
+          <b>{rules.delivery.fixed} CP</b> - earned when your evaluated delivery lands.
         </FlowBox>
         <FlowArrow />
-        <FlowBox icon={<Star className="h-3.5 w-3.5" />} title="Quality cap">
-          Up to <b className="text-white/80">{rules.delivery.cap} CP</b> - × your AI score /10, delta on re-runs.
+        <FlowBox icon={<Star />} title="Quality cap">
+          Up to <b>{rules.delivery.cap} CP</b> - × your AI score /10, delta on re-runs.
         </FlowBox>
       </div>
     </div>

@@ -1,8 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { X, FileText, Upload, Trash2, ArrowLeft, Download, Loader2 } from 'lucide-react';
+import { FileText, Upload, Trash2, ArrowLeft, Download, Loader2 } from 'lucide-react';
+import { Drawer } from '@/components/vitrine/Drawer';
 import { renderMarkdown } from '@/components/ui/Markdown';
+
+// La typographie `vitrine` du Markdown (`v-md-*`) vit dans la feuille de la
+// page challenge ; le tiroir la charge lui-même, car il s'ouvre aussi depuis
+// la vue de pilotage.
+import '@/components/challenges/vitrine/challenge-vitrine.css';
+import './challenge-overlays-vitrine.css';
 
 interface ChallengeDoc {
   uuid: string;
@@ -19,8 +26,11 @@ interface DocumentsDrawerProps {
   onClose: () => void;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
+/**
+ * Le tiroir Docs : la liste des documents d'un challenge, leur lecture, et —
+ * pour un admin — leur dépôt et leur suppression. Sur le tiroir du design
+ * vitrine.
+ */
 export function DocumentsDrawer({ challengeId, isAdmin = false, open, onClose }: DocumentsDrawerProps) {
   const [docs, setDocs] = useState<ChallengeDoc[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,14 +40,6 @@ export function DocumentsDrawer({ challengeId, isAdmin = false, open, onClose }:
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') { if (selectedDoc) setSelectedDoc(null); else onClose(); } };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose, selectedDoc]);
 
   // Load documents when drawer opens
   useEffect(() => {
@@ -113,169 +115,116 @@ export function DocumentsDrawer({ challengeId, isAdmin = false, open, onClose }:
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+  // Un document ouvert se referme d'abord : Échap, la croix et le fond
+  // ramènent à la liste, puis ferment le tiroir.
+  const close = () => {
+    if (selectedDoc) setSelectedDoc(null);
+    else onClose();
+  };
+
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-      />
-
-      {/* Drawer */}
-      <div
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-white/[0.07] shadow-2xl transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
-        style={{ background: 'var(--background-dark)', color: 'var(--foreground)' }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            {selectedDoc ? (
-              <button
-                onClick={() => setSelectedDoc(null)}
-                className="flex items-center gap-1.5 text-xs text-white/40 transition-colors hover:text-white/70"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Documents
-              </button>
-            ) : (
-              <>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.07]">
-                  <FileText className="h-3.5 w-3.5 text-white/50" />
-                </div>
-                <h2 className="text-sm font-semibold text-white">Documents</h2>
-                <span className="rounded-full bg-white/8 px-2 py-0.5 text-[11px] text-white/40">{docs.length}</span>
-              </>
-            )}
+    <Drawer
+      open={open}
+      onClose={close}
+      icon={<FileText />}
+      title={selectedDoc ? selectedDoc.filename : 'Documents'}
+      subtitle={selectedDoc ? fmtDate(selectedDoc.created_at) : `${docs.length} document${docs.length === 1 ? '' : 's'}`}
+    >
+      {selectedDoc ? (
+        // ── Document viewer ──
+        <>
+          <div className="v-co-viewer-head">
+            <button type="button" onClick={() => setSelectedDoc(null)} className="v-btn-text">
+              <ArrowLeft />
+              Documents
+            </button>
+            <button type="button" onClick={() => downloadDoc(selectedDoc)} className="v-btn-quiet v-btn-sm">
+              <Download />
+              Download
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 transition-colors hover:bg-white/[0.06] hover:text-white/60"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="v-co-viewer v-cd-md">
+            {renderMarkdown(selectedDoc.content, 'vitrine')}
+          </div>
+        </>
+      ) : loading ? (
+        // ── Loading ──
+        <div className="v-quiet" data-busy="true">
+          <Loader2 className="v-spin" />
+          Loading…
         </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto">
-          {selectedDoc ? (
-            // ── Document viewer ──
-            <div className="px-6 py-5">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="truncate text-sm font-medium text-white/80">{selectedDoc.filename}</span>
-                <button
-                  onClick={() => downloadDoc(selectedDoc)}
-                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/40 transition-colors hover:border-white/20 hover:text-white/70"
-                >
-                  <Download className="h-3 w-3" />
-                  Download
-                </button>
-              </div>
-              <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-5">
-                {renderMarkdown(selectedDoc.content)}
-              </div>
-            </div>
-          ) : loading ? (
-            // ── Loading ──
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-5 w-5 animate-spin text-white/20" />
-            </div>
-          ) : (
-            // ── Documents list ──
-            <div className="px-6 py-5 space-y-4">
-              {/* Drag & drop zone — admin only */}
-              {isAdmin && (
-                <div
-                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed py-8 transition-all duration-200
-                    ${dragOver
-                      ? 'border-brandCP/50 bg-brandCP/[0.06]'
-                      : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
-                    }`}
-                >
-                  {uploading ? (
-                    <Loader2 className="h-6 w-6 animate-spin text-brandCP/50" />
-                  ) : (
-                    <Upload className={`h-6 w-6 transition-colors ${dragOver ? 'text-brandCP/70' : 'text-white/20'}`} />
-                  )}
-                  <div className="text-center">
-                    <p className="text-sm text-white/40">
-                      {uploading ? 'Uploading…' : 'Drop a .md file or click to browse'}
-                    </p>
-                    {!uploading && (
-                      <p className="mt-0.5 text-xs text-white/20">Markdown files only</p>
-                    )}
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".md"
-                    className="hidden"
-                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ''; }}
-                  />
-                </div>
-              )}
-
-              {uploadError && (
-                <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400">{uploadError}</p>
-              )}
-
-              {/* Document list */}
-              {docs.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-12 text-center">
-                  <FileText className="h-8 w-8 text-white/10" />
-                  <p className="text-sm text-white/30">No documents yet</p>
-                  {isAdmin && <p className="text-xs text-white/20">Upload a .md file above</p>}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {docs.map(doc => (
-                    <div
-                      key={doc.uuid}
-                      className="group flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 transition-all duration-150 hover:border-white/10 hover:bg-white/[0.04]"
-                    >
-                      <FileText className="h-4 w-4 shrink-0 text-white/25" />
-                      <div className="min-w-0 flex-1">
-                        <button
-                          onClick={() => setSelectedDoc(doc)}
-                          className="truncate text-sm font-medium text-white/75 transition-colors hover:text-white text-left"
-                        >
-                          {doc.filename}
-                        </button>
-                        <p className="text-[11px] text-white/25">{fmtDate(doc.created_at)}</p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                        <button
-                          onClick={() => downloadDoc(doc)}
-                          title="Download"
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 transition-colors hover:bg-white/[0.07] hover:text-white/60"
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                        </button>
-                        {isAdmin && (
-                          <button
-                            onClick={() => handleDelete(doc)}
-                            disabled={deletingId === doc.uuid}
-                            title="Delete"
-                            className="flex h-7 w-7 items-center justify-center rounded-lg text-white/20 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"
-                          >
-                            {deletingId === doc.uuid
-                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              : <Trash2 className="h-3.5 w-3.5" />
-                            }
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+      ) : (
+        // ── Documents list ──
+        <>
+          {/* Drag & drop zone — admin only */}
+          {isAdmin && (
+            <div
+              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className="v-co-drop"
+              data-over={dragOver ? 'true' : 'false'}
+              data-busy={uploading ? 'true' : 'false'}
+            >
+              {uploading ? <Loader2 className="v-spin" /> : <Upload />}
+              <span className="v-co-drop-title">
+                {uploading ? 'Uploading…' : 'Drop a .md file or click to browse'}
+              </span>
+              {!uploading && <span className="v-co-drop-hint">Markdown files only</span>}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".md"
+                style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ''; }}
+              />
             </div>
           )}
-        </div>
-      </div>
-    </>
+
+          {uploadError && <p className="v-alert">{uploadError}</p>}
+
+          {/* Document list */}
+          {docs.length === 0 ? (
+            <div className="v-co-empty">
+              <FileText />
+              <p className="v-co-empty-title">No documents yet</p>
+              {isAdmin && <p className="v-co-empty-sub">Upload a .md file above</p>}
+            </div>
+          ) : (
+            <div className="v-rows">
+              {docs.map(doc => (
+                <div key={doc.uuid} className="v-row v-co-doc">
+                  <FileText />
+                  <div className="v-row-text">
+                    <button type="button" onClick={() => setSelectedDoc(doc)} className="v-co-doc-name">
+                      {doc.filename}
+                    </button>
+                    <p className="v-row-meta">{fmtDate(doc.created_at)}</p>
+                  </div>
+                  <div className="v-row-actions">
+                    <button type="button" onClick={() => downloadDoc(doc)} title="Download" className="v-btn-icon">
+                      <Download />
+                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(doc)}
+                        disabled={deletingId === doc.uuid}
+                        title="Delete"
+                        className="v-btn-icon"
+                        data-tone="danger"
+                      >
+                        {deletingId === doc.uuid ? <Loader2 className="v-spin" /> : <Trash2 />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </Drawer>
   );
 }

@@ -10,10 +10,6 @@ interface TaskItem {
   parent_task_id?: string;
 }
 
-function fgAt(opacity: number) {
-  return `color-mix(in srgb, var(--foreground) ${Math.round(opacity * 100)}%, transparent)`;
-}
-
 /**
  * Template task management for a code challenge, embedded in the edit drawer.
  * These are the tasks copied to a contributor's personal board when they join
@@ -21,6 +17,8 @@ function fgAt(opacity: number) {
  * have no shared progress to show here.
  * Tasks are independent entities: each add/delete hits the API immediately,
  * it is not tied to the challenge's "Save changes" button.
+ *
+ * Sur le vocabulaire vitrine des tiroirs (`components/vitrine/forms-vitrine.css`).
  */
 export function ChallengeTasksEditor({ challengeId, open }: { challengeId: string; open: boolean }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -87,73 +85,75 @@ export function ChallengeTasksEditor({ challengeId, open }: { challengeId: strin
   const parents = tasks.filter(t => !t.parent_task_id);
 
   return (
-    <div className="space-y-3">
-      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest" style={{ color: fgAt(0.3) }}>
-        <ListTodo className="h-3.5 w-3.5" />
+    <div className="v-field">
+      <p className="v-label">
+        <ListTodo />
         Template tasks
-        <span className="ml-1 rounded-full bg-white/8 px-1.5 py-0.5 text-[9px] font-normal" style={{ color: fgAt(0.4) }}>
-          {parents.length}
-        </span>
+        <span className="v-badge">{parents.length}</span>
       </p>
-      <p className="-mt-2 text-xs" style={{ color: fgAt(0.3) }}>
+      <p className="v-help" data-size="xs">
         Copied to each contributor&apos;s personal board when they join.
       </p>
 
       {/* Existing tasks */}
       {loading ? (
-        <div className="flex items-center gap-2 py-2 text-xs" style={{ color: fgAt(0.35) }}>
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
+        <div className="v-quiet" data-busy="true">
+          <Loader2 className="v-spin" /> Loading…
         </div>
       ) : parents.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-white/[0.06] px-4 py-3 text-xs" style={{ color: fgAt(0.3) }}>
+        <p className="v-alert" data-tone="info">
           No template task yet. Add the first one below.
         </p>
       ) : (
-        <div className="space-y-1.5">
+        <div className="v-rows">
           {parents.map(task => (
-            <div key={task.uuid} className="group flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-              <span className="min-w-0 flex-1 truncate text-sm" style={{ color: fgAt(0.75) }}>
-                {task.title}
-              </span>
-              <button
-                onClick={() => handleDelete(task.uuid)}
-                disabled={deletingId === task.uuid}
-                className="shrink-0 rounded-md p-1 text-white/25 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100 disabled:opacity-40"
-                aria-label="Delete task"
-              >
-                {deletingId === task.uuid ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-              </button>
+            <div key={task.uuid} className="v-row">
+              <div className="v-row-text">
+                <span className="v-row-title">{task.title}</span>
+              </div>
+              <div className="v-row-actions">
+                <button
+                  type="button"
+                  onClick={() => handleDelete(task.uuid)}
+                  disabled={deletingId === task.uuid}
+                  className="v-btn-icon"
+                  data-tone="danger"
+                  aria-label="Delete task"
+                >
+                  {deletingId === task.uuid ? <Loader2 className="v-spin" /> : <Trash2 />}
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
 
       {/* Add form */}
-      <div className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+      <div className="v-section">
         <input
           type="text"
           value={title}
           onChange={e => setTitle(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !adding) handleAdd(); }}
           placeholder="New template task title…"
-          className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-          style={{ color: 'var(--foreground)' }}
+          className="v-input"
         />
 
         <div className="flex items-center justify-end">
           <button
+            type="button"
             onClick={handleAdd}
             disabled={adding || !title.trim()}
-            className="flex items-center gap-1.5 rounded-lg bg-brandCP/15 px-3 py-1.5 text-xs font-semibold text-brandCP transition-all hover:bg-brandCP/25 disabled:cursor-not-allowed disabled:opacity-40"
+            className="v-btn v-btn-sm"
           >
-            {adding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            {adding ? <Loader2 className="v-spin" /> : <Plus />}
             Add
           </button>
         </div>
       </div>
 
       {error && (
-        <p className="rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs text-red-400">{error}</p>
+        <p className="v-alert">{error}</p>
       )}
     </div>
   );

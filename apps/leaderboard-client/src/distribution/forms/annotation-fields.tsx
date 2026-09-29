@@ -1,7 +1,7 @@
 'use client';
 
 import { Clock, Coins, ListChecks, Plus, ShieldAlert, Trash2, Users } from 'lucide-react';
-import { Field, INPUT_CLASS, LockedValue, fgAt } from '@/components/admin/challengeFormFields';
+import { Field, INPUT_CLASS, LockedValue } from '@/components/admin/challengeFormFields';
 import type { FlowFormSectionProps } from '@/lib/flowFormSlots';
 import { optionKeyOf, type AnnotationFormState } from './annotation';
 
@@ -17,7 +17,6 @@ function NumberInput({
       step={step}
       onChange={e => onChange(Number(e.target.value))}
       className={`${className} ${INPUT_CLASS}`}
-      style={{ color: 'var(--foreground)' }}
     />
   );
 }
@@ -34,11 +33,11 @@ export function AnnotationFields({ state, onChange, ctx }: FlowFormSectionProps<
 
   return (
     <>
-      <Field icon={<ListChecks className="h-3.5 w-3.5" />} label="Label options">
+      <Field icon={<ListChecks />} label="Label options">
         {!isCreate ? (
           <LockedValue text={state.options.map(o => o.label).join(' · ')} />
         ) : (
-          <div className="space-y-2">
+          <div className="v-rows">
             {state.options.map((option, index) => (
               <div key={index} className="flex items-center gap-2">
                 <input
@@ -46,18 +45,17 @@ export function AnnotationFields({ state, onChange, ctx }: FlowFormSectionProps<
                   placeholder={`Option ${index + 1}`}
                   onChange={e => setOption(index, e.target.value)}
                   className={`flex-1 ${INPUT_CLASS}`}
-                  style={{ color: 'var(--foreground)' }}
                 />
-                <code className="w-28 truncate text-[11px]" style={{ color: fgAt(0.35) }}>{option.key || '—'}</code>
+                <code className="v-code w-28 truncate">{option.key || '—'}</code>
                 <button
                   type="button"
                   aria-label="Remove option"
                   disabled={state.options.length <= 2}
                   onClick={() => onChange({ options: state.options.filter((_, i) => i !== index) })}
-                  className="rounded-lg p-2 disabled:opacity-30"
-                  style={{ color: fgAt(0.45) }}
+                  className="v-btn-icon"
+                  data-tone="danger"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 />
                 </button>
               </div>
             ))}
@@ -65,24 +63,24 @@ export function AnnotationFields({ state, onChange, ctx }: FlowFormSectionProps<
               <button
                 type="button"
                 onClick={() => onChange({ options: [...state.options, { key: '', label: '' }] })}
-                className="flex items-center gap-1.5 text-xs"
-                style={{ color: fgAt(0.5) }}
+                className="v-btn-text"
+                data-tone="accent"
               >
-                <Plus className="h-3.5 w-3.5" /> Add an option
+                <Plus /> Add an option
               </button>
             )}
-            <p className="text-[11px]" style={{ color: fgAt(0.25) }}>
+            <p className="v-help" data-size="xs">
               2 to 12 answers. The key on the right is what golds and the export use.
             </p>
           </div>
         )}
       </Field>
 
-      <Field icon={<Users className="h-3.5 w-3.5" />} label="Labels per item (k)">
+      <Field icon={<Users />} label="Labels per item (k)">
         {!isCreate ? (
           <LockedValue text={`${state.k} labels per item`} />
         ) : (
-          <div className="space-y-1.5">
+          <>
             <NumberInput
               value={state.k}
               min={1}
@@ -90,14 +88,14 @@ export function AnnotationFields({ state, onChange, ctx }: FlowFormSectionProps<
               step={2}
               onChange={n => onChange({ k: n % 2 === 0 ? n + 1 : n })}
             />
-            <p className="text-[11px]" style={{ color: fgAt(0.25) }}>
+            <p className="v-help" data-size="xs">
               Odd. The most frequent answer wins; a tie at the top marks the item contested.
             </p>
-          </div>
+          </>
         )}
       </Field>
 
-      <Field icon={<Clock className="h-3.5 w-3.5" />} label="Claim lifetime (hours)">
+      <Field icon={<Clock />} label="Claim lifetime (hours)">
         {!isCreate ? (
           <LockedValue text={`${state.ttlHours} h`} />
         ) : (
@@ -105,11 +103,11 @@ export function AnnotationFields({ state, onChange, ctx }: FlowFormSectionProps<
         )}
       </Field>
 
-      <Field icon={<ShieldAlert className="h-3.5 w-3.5" />} label="Sensitive items clearance">
+      <Field icon={<ShieldAlert />} label="Sensitive items clearance">
         {!isCreate ? (
           <LockedValue text={`${state.minSeen} hidden checks, ${Math.round(state.minAccuracy * 100)}% accuracy`} />
         ) : (
-          <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: fgAt(0.45) }}>
+          <div className="v-field-row v-help">
             At least
             <NumberInput value={state.minSeen} min={0} className="w-20" onChange={minSeen => onChange({ minSeen })} />
             hidden checks and
@@ -125,14 +123,14 @@ export function AnnotationFields({ state, onChange, ctx }: FlowFormSectionProps<
         )}
       </Field>
 
-      <Field icon={<Coins className="h-3.5 w-3.5" />} label="Pay">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <label className="space-y-1 text-[11px]" style={{ color: fgAt(0.4) }}>
-            CP per label
+      <Field icon={<Coins />} label="Pay">
+        <div className="v-fields">
+          <label className="v-field">
+            <span className="v-field-label">CP per label</span>
             <NumberInput value={rules.per_unit_cp} min={0} className="w-full" onChange={per_unit_cp => setRules({ per_unit_cp })} />
           </label>
-          <label className="space-y-1 text-[11px]" style={{ color: fgAt(0.4) }}>
-            Hidden checks (%)
+          <label className="v-field">
+            <span className="v-field-label">Hidden checks (%)</span>
             <NumberInput
               value={Math.round(rules.gold_rate * 100)}
               min={0}
@@ -141,8 +139,8 @@ export function AnnotationFields({ state, onChange, ctx }: FlowFormSectionProps<
               onChange={pct => setRules({ gold_rate: pct / 100 })}
             />
           </label>
-          <label className="space-y-1 text-[11px]" style={{ color: fgAt(0.4) }}>
-            Audited items (%)
+          <label className="v-field">
+            <span className="v-field-label">Audited items (%)</span>
             <NumberInput
               value={Math.round(rules.audit_rate * 100)}
               min={0}
@@ -152,7 +150,7 @@ export function AnnotationFields({ state, onChange, ctx }: FlowFormSectionProps<
             />
           </label>
         </div>
-        <p className="text-[11px]" style={{ color: fgAt(0.25) }}>
+        <p className="v-help" data-size="xs">
           Each label pays CP per label × the annotator&apos;s accuracy on hidden checks. Audited labels that disagree with
           the consensus are clawed back.
         </p>

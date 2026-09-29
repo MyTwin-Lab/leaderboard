@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/vitrine/Modal';
 
 /**
  * Détecte, sur n'importe quel fetch (appel API applicatif ou navigation RSC
@@ -12,6 +12,9 @@ import { Button } from '@/components/ui/Button';
  * JWT encore valide par signature). Affiche une modale de reconnexion plutôt
  * que de laisser l'utilisateur continuer à agir sur un compte qui n'existe
  * plus.
+ *
+ * Sur la modale vitrine, sans fermeture possible : la seule sortie est la
+ * reconnexion.
  */
 export function SessionGuard() {
   const [invalid, setInvalid] = useState(false);
@@ -43,21 +46,25 @@ export function SessionGuard() {
   const reconnectUrl = `/api/google-auth/authorize?from=${encodeURIComponent(pathname || '/')}`;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-      <div className="w-full max-w-sm space-y-4 rounded-xl border border-white/10 bg-background p-6 text-center shadow-2xl">
-        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
-          <AlertTriangle className="h-5 w-5 text-amber-400" />
-        </div>
-        <div>
-          <h3 className="text-base font-semibold text-white">Session expirée</h3>
-          <p className="mt-1 text-sm text-white/60">
-            Ton compte a été mis à jour, merci de te reconnecter pour continuer.
-          </p>
-        </div>
-        <Button className="w-full" onClick={() => { window.location.href = reconnectUrl; }}>
-          Se reconnecter
-        </Button>
-      </div>
-    </div>
+    <Modal
+      open
+      onClose={() => {}}
+      title="Session expirée"
+      subtitle="Ton compte a été mis à jour, merci de te reconnecter pour continuer."
+      icon={<AlertTriangle />}
+      size="sm"
+      center
+      above
+    >
+      <button
+        type="button"
+        className="v-btn"
+        data-tone="accent"
+        style={{ width: '100%' }}
+        onClick={() => { window.location.href = reconnectUrl; }}
+      >
+        Se reconnecter
+      </button>
+    </Modal>
   );
 }

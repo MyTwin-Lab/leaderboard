@@ -2,15 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import {
-  X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
-  CheckCircle2, ChevronDown, Plus, Pencil, FileText, Eye, Rocket, Image as ImageIcon, Building2, Percent,
+  Trophy, CalendarDays, AlignLeft, Map, Loader2,
+  CheckCircle2, ChevronDown, Plus, Pencil, FileText, Eye, Rocket, Image as ImageIcon, Building2, Percent, FolderKanban,
 } from 'lucide-react';
+import { Drawer } from '@/components/vitrine/Drawer';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
 import { ChallengeSlackSignalsEditor } from '@/components/admin/ChallengeSlackSignalsEditor';
 import { flushBrief } from './briefFlush';
 import { buildPromotionRequestBody } from './promotionRequestBody';
 import { CoverImageField } from '@/components/admin/CoverImageField';
-import { Field, LockedValue, fgAt } from './challengeFormFields';
+import { Field, LockedValue } from './challengeFormFields';
 import { buildPromotedBrief, buildPromotedDescription } from '../../../../../packages/services/sandbox/promotion';
 import { Markdown } from '@/components/ui/Markdown';
 import { SlugField } from '@/components/ui/SlugField';
@@ -24,6 +25,12 @@ import type {
   SavedChallenge,
 } from '@/lib/flowFormSlots';
 import { creatableFormSections, formSectionByKey, formSectionFor } from '@/distribution/mytwin.forms';
+
+// Les classes `.v-md-*` de l'aperçu du brief vivent dans la feuille de la page
+// vitrine d'un challenge ; `challenge-drawer-vitrine.css` les ramène à
+// l'échelle du panneau.
+import '@/components/challenges/vitrine/challenge-vitrine.css';
+import './challenge-drawer-vitrine.css';
 
 export type { EditableChallenge, PromotableSandbox, SavedChallenge } from '@/lib/flowFormSlots';
 
@@ -62,11 +69,12 @@ interface CreateChallengeDrawerProps {
 const toDateInput = (d: string | Date | null | undefined): string =>
   d ? new Date(d).toISOString().split('T')[0] : '';
 
+/** Les statuts, avec la couleur de leur pastille (`--v-dot` de `.v-status-dot`). */
 const STATUS_OPTIONS = [
-  { value: 'draft',     label: 'Draft',     dot: 'bg-white/25',   ring: 'ring-white/15'     },
-  { value: 'active',    label: 'Active',    dot: 'bg-brandCP',    ring: 'ring-brandCP/30'   },
-  { value: 'completed', label: 'Completed', dot: 'bg-green-500',  ring: 'ring-green-500/30' },
-  { value: 'archived',  label: 'Archived',  dot: 'bg-white/10',   ring: 'ring-white/10'     },
+  { value: 'draft',     label: 'Draft',     dot: 'var(--v-subtle)'     },
+  { value: 'active',    label: 'Active',    dot: 'var(--v-accent)'     },
+  { value: 'completed', label: 'Completed', dot: '#1d4ed8'             },
+  { value: 'archived',  label: 'Archived',  dot: 'rgb(17 22 26 / 0.3)' },
 ];
 
 /**
@@ -76,6 +84,9 @@ const STATUS_OPTIONS = [
  * configuration, ses règles, ses éditeurs, ce qu'il ajoute au corps envoyé et
  * ce qu'il enregistre après coup) vient de la section du flow choisi, déclarée
  * par la distribution (`src/distribution/mytwin.forms.tsx`).
+ *
+ * Sa coque est le `Drawer` du design vitrine ; ses champs, le vocabulaire
+ * commun de `forms-vitrine.css`.
  */
 export function CreateChallengeDrawer({ open, onClose, projects, onCreated, challenge, promotion }: CreateChallengeDrawerProps) {
   const isEdit = !!challenge;
@@ -228,14 +239,6 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       .catch(() => {});
     return () => { cancelled = true; };
   }, [open, challenge]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
 
   const resetForm = () => {
     setTitle('');
@@ -414,420 +417,373 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const SectionFields = section.Fields;
   const SectionDetails = section.Details;
 
-  return (
+  const footer = (
     <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-      />
+      <button type="button" onClick={onClose} className="v-btn-text">
+        Cancel
+      </button>
 
-      {/* Drawer */}
-      <div
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-white/[0.07] shadow-2xl transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
-        style={{ background: 'var(--background-dark)', color: 'var(--foreground)' }}
+      <button
+        type="button"
+        onClick={pendingChallenge ? handleAcknowledgeFailure : handleSubmit}
+        disabled={saving || (success && !pendingChallenge)}
+        className="v-btn v-cdr-submit"
+        data-tone={isPromotion && !success ? 'accent' : undefined}
+        data-state={success ? 'success' : undefined}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brandCP/15">
-              {isPromotion
-                ? <Rocket className="h-3.5 w-3.5 text-brandCP" />
-                : isEdit
-                  ? <Pencil className="h-3.5 w-3.5 text-brandCP" />
-                  : <Plus className="h-4 w-4 text-brandCP" />}
-            </div>
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
-              {isPromotion ? 'Promote to challenge' : isEdit ? 'Edit challenge' : 'New challenge'}
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/[0.06]"
-            style={{ color: fgAt(0.3) }}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
-
-          {/* ── Effets de la promotion ──
-              Dit une fois, en tête : promouvoir n'est pas « créer un challenge
-              de plus », c'est une opération qui touche la proposition, son
-              auteur et le pool. L'admin doit le lire avant de valider. */}
-          {isPromotion && (
-            <div className="space-y-2 rounded-xl border border-brandCP/25 bg-brandCP/[0.06] px-4 py-3.5">
-              <p className="flex items-center gap-1.5 text-xs font-semibold text-brandCP">
-                <Rocket className="h-3.5 w-3.5" />
-                What promoting does
-              </p>
-              <ul className="space-y-1 text-[11px] leading-relaxed" style={{ color: fgAt(0.5) }}>
-                <li>• Creates a <strong>new project</strong> named after the proposal, with its author as manager, and this challenge as its first one.</li>
-                <li>• Closes the sandbox as <strong>Promoted</strong> - for good.</li>
-                <li>• The proposal's context, goals and why become the challenge <strong>brief</strong>, pre-filled below for you to edit.</li>
-                <li>• The author joins as a member; they declare their workspace from the challenge, like everyone else.</li>
-                <li>• The promotion bonus is paid to the author, per the Sandbox module settings.</li>
-                <li>• The type is your call, below - it decides the steps and the grid. The cover image follows the proposal.</li>
-              </ul>
-            </div>
-          )}
-
-          {/* ── Title ── */}
-          <div className="space-y-1.5">
-            <input
-              ref={titleRef}
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="Challenge title…"
-              className="w-full bg-transparent text-xl font-bold focus:outline-none"
-              style={{ color: 'var(--foreground)' }}
-            />
-            <div className="h-px bg-white/[0.06] transition-all focus-within:bg-brandCP/30" />
-          </div>
-
-          {/* ── Address ── */}
-          <Field label="Address">
-            <SlugField field={slugField} />
-          </Field>
-
-          {/* ── Type ── */}
-          {/* Locked on edit: the type decides which repos are created, and they
-              only get created once, at creation. On promotion it is open: a
-              sandbox is an idea and carries no type, so this is where the shape
-              of the challenge gets decided — among the shapes a proposal can
-              become, code or ML. */}
-          <Field label="Type">
-            <div className="flex gap-2">
-              {creatableFormSections.map(opt => {
-                const Icon = opt.icon;
-                const active = section.key === opt.key;
-                if (typeLocked && !active) return null;
-                // Une validation dérive d'un challenge existant, une annotation
-                // d'une campagne : aucune ne naît d'une proposition.
-                if (isPromotion && !PROMOTABLE_SECTION_KEYS.has(opt.key)) return null;
-                return (
-                  <button
-                    key={opt.key}
-                    onClick={() => !typeLocked && setSectionKey(opt.key)}
-                    disabled={typeLocked}
-                    className={`flex flex-1 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
-                      active
-                        ? 'border-brandCP/40 bg-brandCP/10 ring-1 ring-brandCP/20'
-                        : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'
-                    } ${typeLocked ? 'cursor-default' : ''}`}
-                  >
-                    <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-brandCP' : ''}`} style={active ? undefined : { color: fgAt(0.3) }} />
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: active ? 'var(--foreground)' : fgAt(0.5) }}>{opt.label}</p>
-                      <p className="text-[10px]" style={{ color: fgAt(0.3) }}>{opt.description}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-
-          {/* ── Project ──
-              En promotion il n'y a rien à choisir : le projet naît avec le
-              challenge, nommé comme la proposition, son auteur pour manager. */}
-          <Field icon={<ChevronDown className="h-3.5 w-3.5" />} label="Project">
-            {isPromotion ? (
-              <LockedValue text={`New project: ${title.trim() || promotion!.title} (managed by the author)`} />
-            ) : isEdit ? (
-              <LockedValue text={projects.find(p => p.id === projectId)?.name ?? '-'} />
-            ) : (
-              <SelectDropdown
-                options={projectOptions}
-                value={projectId}
-                onChange={setProjectId}
-              />
-            )}
-          </Field>
-
-          {/* ── Status ── */}
-          <Field label="Status">
-            <div className="flex flex-wrap gap-2">
-              {STATUS_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setStatus(opt.value)}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
-                    status === opt.value
-                      ? `border-white/20 bg-white/[0.08] ring-1 ${opt.ring}`
-                      : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'
-                  }`}
-                  style={{ color: status === opt.value ? 'var(--foreground)' : fgAt(0.4) }}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${opt.dot}`} />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </Field>
-
-          {/* ── Dates ── */}
-          <Field icon={<CalendarDays className="h-3.5 w-3.5" />} label="Timeline">
-            <div className="flex items-center gap-3">
-              <div className="flex-1 space-y-1">
-                <p className="text-[10px] font-medium uppercase tracking-widest" style={{ color: fgAt(0.25) }}>Start</p>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-                  style={{ color: 'var(--foreground)', colorScheme: 'auto' }}
-                />
-              </div>
-              <span className="mt-5" style={{ color: fgAt(0.2) }}>→</span>
-              <div className="flex-1 space-y-1">
-                <p className="text-[10px] font-medium uppercase tracking-widest" style={{ color: fgAt(0.25) }}>End</p>
-                <input
-                  type="date"
-                  value={endDate}
-                  min={startDate}
-                  onChange={e => setEndDate(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-                  style={{ color: 'var(--foreground)', colorScheme: 'auto' }}
-                />
-              </div>
-            </div>
-          </Field>
-
-          {/* ── CP Reward ── */}
-          {/* Locked on edit: contributors are already racing against this pool. */}
-          <Field icon={<Trophy className="h-3.5 w-3.5" />} label="CP Reward">
-            <div className="flex items-center gap-4">
-              {!isEdit && (
-                <input
-                  type="number"
-                  min={0}
-                  step={10}
-                  value={cp}
-                  onChange={e => setCp(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-28 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-                  style={{ color: 'var(--foreground)' }}
-                />
-              )}
-              <div className="flex items-baseline gap-1.5 animate-fade-up">
-                <span className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{cp.toLocaleString()}</span>
-                <span className="text-sm font-semibold text-brandCP">CP</span>
-              </div>
-            </div>
-          </Field>
-
-          {/* ── Complétion (édition seulement) ──
-              Le pourcentage que montrent les cartes et la barre de progression.
-              Pour un code ou un ML, c'est la part du pool déjà versée, recalculée
-              à chaque distribution : la saisir à la main sert surtout aux autres
-              types, où rien ne la calcule. ── */}
-          {isEdit && (
-            <Field icon={<Percent className="h-3.5 w-3.5" />} label="Completion">
-              <div className="flex items-center gap-4">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={completion}
-                  onChange={e => setCompletion(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-                  className="w-28 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-                  style={{ color: 'var(--foreground)' }}
-                />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                    <div className="h-full rounded-full bg-brandCP transition-all duration-300" style={{ width: `${completion}%` }} />
-                  </div>
-                  <p className="text-[10px] leading-relaxed" style={{ color: fgAt(0.3) }}>
-                    {completion}% shown on the cards. Code and ML challenges recompute it at every reward
-                    distribution, from the share of the pool paid out.
-                  </p>
-                </div>
-              </div>
-            </Field>
-          )}
-
-          {/* ── Le flow : configuration et règles ── */}
-          {SectionFields && <SectionFields state={flowState} onChange={patchFlowState} ctx={ctx} />}
-
-          {/* ── Couverture ──
-              L'image que porteront la carte du listing et l'en-tête de la
-              page du challenge. Posée à la création, modifiable ici. À la
-              promotion, la couverture de la proposition suit d'elle-même. ── */}
-          {!isPromotion && (
-            <Field icon={<ImageIcon className="h-3.5 w-3.5" />} label="Cover image">
-              <CoverImageField value={coverImageUrl} onChange={setCoverImageUrl} />
-            </Field>
-          )}
-
-          {/* ── Hôte ──
-              Qui porte le challenge : le partenaire clinique, l'équipe du Lab.
-              Une phrase, rendue telle quelle sur la page publique ; vide, la
-              carte « Who hosts this challenge » n'y apparaît pas. ── */}
-          {!isPromotion && (
-            <Field icon={<Building2 className="h-3.5 w-3.5" />} label="Host">
-              <input
-                value={host}
-                onChange={e => setHost(e.target.value)}
-                placeholder="CHU de Montpellier, service de médecine physique et de réadaptation"
-                maxLength={500}
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-                style={{ color: 'var(--foreground)' }}
-              />
-            </Field>
-          )}
-
-          {/* ── Description ── */}
-          <Field icon={<AlignLeft className="h-3.5 w-3.5" />} label="Description">
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="What is this challenge about?"
-              rows={3}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)] resize-none leading-relaxed"
-              style={{ color: 'var(--foreground)' }}
-            />
-          </Field>
-
-          {/* ── Brief — Markdown, enregistré comme document `brief.md` ──
-              Affiché à un contributeur connecté qui n'a pas encore rejoint le
-              challenge, à la place des KPI et de l'espace de travail. En
-              création il est bufferisé ici puis flushé. ── */}
-          <div className="space-y-2">
-            <button
-              onClick={() => setShowBrief(v => !v)}
-              className="flex items-center gap-1.5 text-xs transition-colors"
-              style={{ color: fgAt(0.35) }}
-            >
-              <FileText className="h-3.5 w-3.5" />
-              {showBrief ? 'Hide brief' : brief.trim() ? 'Edit brief' : 'Add brief (optional)'}
-              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${showBrief ? 'rotate-180' : ''}`} />
-            </button>
-
-            {showBrief && (
-              <div className="space-y-2 animate-fade-up">
-                <p className="text-xs" style={{ color: fgAt(0.3) }}>
-                  {isPromotion
-                    ? 'Composed from the proposal: its context and why under Context, its goals as objectives. Add the expected result if you want one. '
-                    : 'Context, objectives and expected result, in Markdown. '}
-                  Shown before the workspace to contributors who have not joined yet, and kept in the
-                  challenge documents as
-                  <code className="mx-1 rounded bg-white/10 px-1 py-0.5 font-mono text-[11px]">brief.md</code>
-                  afterwards.
-                </p>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setBriefPreview(v => !v)}
-                    disabled={!brief.trim()}
-                    className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] transition-colors hover:border-white/20 disabled:opacity-40"
-                    style={{ color: fgAt(0.45) }}
-                  >
-                    {briefPreview ? <Pencil className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                    {briefPreview ? 'Write' : 'Preview'}
-                  </button>
-                  {!brief.trim() && (
-                    <button
-                      onClick={() => setBrief(BRIEF_TEMPLATE)}
-                      className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] transition-colors hover:border-brandCP/30 hover:text-brandCP/70"
-                      style={{ color: fgAt(0.45) }}
-                    >
-                      <Plus className="h-3 w-3" />
-                      Start from the template
-                    </button>
-                  )}
-                </div>
-
-                {briefPreview ? (
-                  <div className="max-h-96 overflow-y-auto rounded-xl border border-white/[0.07] bg-white/[0.02] px-5 py-4">
-                    <Markdown source={brief} variant="prose" />
-                  </div>
-                ) : (
-                  <textarea
-                    value={brief}
-                    onChange={e => setBrief(e.target.value)}
-                    placeholder={'## Context\n\n…'}
-                    rows={14}
-                    className="w-full resize-y rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 font-mono text-xs leading-relaxed focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
-                    style={{ color: 'var(--foreground)' }}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── Le flow : éditeurs autonomes (tâches, cibles, dépôt…) ── */}
-          {SectionDetails && <SectionDetails state={flowState} onChange={patchFlowState} ctx={ctx} />}
-
-          {/* ── Slack discussion signals (edit only, every flow) — independent CRUD ── */}
-          {isEdit && (
-            <ChallengeSlackSignalsEditor challengeId={challenge!.uuid} open={open} />
-          )}
-
-          {/* ── Roadmap (optional) ── */}
-          <div className="space-y-2">
-            <button
-              onClick={() => setShowRoadmap(v => !v)}
-              className="flex items-center gap-1.5 text-xs transition-colors"
-              style={{ color: fgAt(0.35) }}
-            >
-              <Map className="h-3.5 w-3.5" />
-              {showRoadmap ? 'Hide roadmap' : 'Add roadmap (optional)'}
-              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${showRoadmap ? 'rotate-180' : ''}`} />
-            </button>
-            {showRoadmap && (
-              <textarea
-                value={roadmap}
-                onChange={e => setRoadmap(e.target.value)}
-                placeholder="Roadmap, milestones, links…"
-                rows={4}
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)] resize-none leading-relaxed animate-fade-up"
-                style={{ color: 'var(--foreground)' }}
-              />
-            )}
-          </div>
-
-          {/* Error */}
-          {error && (
-            <p className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-400 animate-slide-in">
-              {error}
-            </p>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-white/[0.07] px-6 py-4 flex items-center justify-between gap-4">
-          <button
-            onClick={onClose}
-            className="text-sm transition-colors"
-            style={{ color: fgAt(0.35) }}
-          >
-            Cancel
-          </button>
-
-          <button
-            onClick={pendingChallenge ? handleAcknowledgeFailure : handleSubmit}
-            disabled={saving || (success && !pendingChallenge)}
-            className={`flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60
-              ${success
-                ? 'bg-green-500/20 text-green-400'
-                : 'bg-brandCP/20 text-brandCP hover:bg-brandCP/30 hover:shadow-[0_0_16px_rgba(10,247,193,0.2)]'
-              }`}
-          >
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {success && <CheckCircle2 className="h-4 w-4" />}
-            {pendingChallenge
-              ? 'Continue'
-              : isPromotion
-                ? (success ? 'Promoted!' : saving ? 'Promoting…' : 'Promote to challenge')
-                : isEdit
-                  ? (success ? 'Saved!' : saving ? 'Saving…' : 'Save changes')
-                  : (success ? 'Created!' : saving ? 'Creating…' : 'Create challenge')}
-          </button>
-        </div>
-      </div>
+        {saving && <Loader2 className="v-spin" />}
+        {success && <CheckCircle2 />}
+        {pendingChallenge
+          ? 'Continue'
+          : isPromotion
+            ? (success ? 'Promoted!' : saving ? 'Promoting…' : 'Promote to challenge')
+            : isEdit
+              ? (success ? 'Saved!' : saving ? 'Saving…' : 'Save changes')
+              : (success ? 'Created!' : saving ? 'Creating…' : 'Create challenge')}
+      </button>
     </>
+  );
+
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      size="lg"
+      className="v-cdr"
+      icon={isPromotion ? <Rocket /> : isEdit ? <Pencil /> : <Plus />}
+      title={isPromotion ? 'Promote to challenge' : isEdit ? 'Edit challenge' : 'New challenge'}
+      footer={footer}
+    >
+      {/* ── Effets de la promotion ──
+          Dit une fois, en tête : promouvoir n'est pas « créer un challenge
+          de plus », c'est une opération qui touche la proposition, son
+          auteur et le pool. L'admin doit le lire avant de valider. */}
+      {isPromotion && (
+        <div className="v-note">
+          <p className="v-note-title">
+            <Rocket />
+            What promoting does
+          </p>
+          <ul>
+            <li>Creates a <strong>new project</strong> named after the proposal, with its author as manager, and this challenge as its first one.</li>
+            <li>Closes the sandbox as <strong>Promoted</strong> - for good.</li>
+            <li>The proposal's context, goals and why become the challenge <strong>brief</strong>, pre-filled below for you to edit.</li>
+            <li>The author joins as a member; they declare their workspace from the challenge, like everyone else.</li>
+            <li>The promotion bonus is paid to the author, per the Sandbox module settings.</li>
+            <li>The type is your call, below - it decides the steps and the grid. The cover image follows the proposal.</li>
+          </ul>
+        </div>
+      )}
+
+      {/* ── Title ── */}
+      <div className="v-cdr-title">
+        <input
+          ref={titleRef}
+          type="text"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Challenge title…"
+          className="v-bare"
+        />
+        <span className="v-cdr-title-line" />
+      </div>
+
+      {/* ── Address ── */}
+      <Field label="Address">
+        <SlugField field={slugField} />
+      </Field>
+
+      {/* ── Type ── */}
+      {/* Locked on edit: the type decides which repos are created, and they
+          only get created once, at creation. On promotion it is open: a
+          sandbox is an idea and carries no type, so this is where the shape
+          of the challenge gets decided — among the shapes a proposal can
+          become, code or ML. */}
+      <Field label="Type">
+        <div className="v-choices">
+          {creatableFormSections.map(opt => {
+            const Icon = opt.icon;
+            const active = section.key === opt.key;
+            if (typeLocked && !active) return null;
+            // Une validation dérive d'un challenge existant, une annotation
+            // d'une campagne : aucune ne naît d'une proposition.
+            if (isPromotion && !PROMOTABLE_SECTION_KEYS.has(opt.key)) return null;
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => !typeLocked && setSectionKey(opt.key)}
+                disabled={typeLocked}
+                className="v-choice"
+                data-on={active ? 'true' : 'false'}
+                data-locked={typeLocked ? 'true' : 'false'}
+              >
+                <Icon />
+                <div className="v-choice-text">
+                  <p className="v-choice-name">{opt.label}</p>
+                  <p className="v-choice-hint">{opt.description}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+
+      {/* ── Project ──
+          En promotion il n'y a rien à choisir : le projet naît avec le
+          challenge, nommé comme la proposition, son auteur pour manager. */}
+      <Field icon={<FolderKanban />} label="Project">
+        {isPromotion ? (
+          <LockedValue text={`New project: ${title.trim() || promotion!.title} (managed by the author)`} />
+        ) : isEdit ? (
+          <LockedValue text={projects.find(p => p.id === projectId)?.name ?? '-'} />
+        ) : (
+          <SelectDropdown
+            options={projectOptions}
+            value={projectId}
+            onChange={setProjectId}
+          />
+        )}
+      </Field>
+
+      {/* ── Status ── */}
+      <Field label="Status">
+        <div className="flex flex-wrap gap-2">
+          {STATUS_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setStatus(opt.value)}
+              className="v-status"
+              data-on={status === opt.value ? 'true' : 'false'}
+            >
+              <span className="v-status-dot" style={{ '--v-dot': opt.dot } as React.CSSProperties} />
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      {/* ── Dates ── */}
+      <Field icon={<CalendarDays />} label="Timeline">
+        <div className="flex items-center gap-3">
+          <div className="v-field flex-1">
+            <p className="v-label">Start</p>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              style={{ colorScheme: 'light' }}
+            />
+          </div>
+          <span className="v-cdr-arrow">→</span>
+          <div className="v-field flex-1">
+            <p className="v-label">End</p>
+            <input
+              type="date"
+              value={endDate}
+              min={startDate}
+              onChange={e => setEndDate(e.target.value)}
+              style={{ colorScheme: 'light' }}
+            />
+          </div>
+        </div>
+      </Field>
+
+      {/* ── CP Reward ── */}
+      {/* Locked on edit: contributors are already racing against this pool. */}
+      <Field icon={<Trophy />} label="CP Reward">
+        <div className="flex items-center gap-4">
+          {!isEdit && (
+            <input
+              type="number"
+              min={0}
+              step={10}
+              value={cp}
+              onChange={e => setCp(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-28"
+            />
+          )}
+          <div className="v-figure animate-fade-up">
+            <span className="v-figure-value">{cp.toLocaleString()}</span>
+            <span className="v-figure-unit">CP</span>
+          </div>
+        </div>
+      </Field>
+
+      {/* ── Complétion (édition seulement) ──
+          Le pourcentage que montrent les cartes et la barre de progression.
+          Pour un code ou un ML, c'est la part du pool déjà versée, recalculée
+          à chaque distribution : la saisir à la main sert surtout aux autres
+          types, où rien ne la calcule. ── */}
+      {isEdit && (
+        <Field icon={<Percent />} label="Completion">
+          <div className="flex items-center gap-4">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={completion}
+              onChange={e => setCompletion(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+              className="w-28"
+            />
+            <div className="flex-1 space-y-1.5">
+              <div className="v-bar">
+                <div className="v-bar-fill" style={{ width: `${completion}%` }} />
+              </div>
+              <p className="v-help" data-size="xs">
+                {completion}% shown on the cards. Code and ML challenges recompute it at every reward
+                distribution, from the share of the pool paid out.
+              </p>
+            </div>
+          </div>
+        </Field>
+      )}
+
+      {/* ── Le flow : configuration et règles ── */}
+      {SectionFields && <SectionFields state={flowState} onChange={patchFlowState} ctx={ctx} />}
+
+      {/* ── Couverture ──
+          L'image que porteront la carte du listing et l'en-tête de la
+          page du challenge. Posée à la création, modifiable ici. À la
+          promotion, la couverture de la proposition suit d'elle-même. ── */}
+      {!isPromotion && (
+        <Field icon={<ImageIcon />} label="Cover image">
+          <CoverImageField value={coverImageUrl} onChange={setCoverImageUrl} />
+        </Field>
+      )}
+
+      {/* ── Hôte ──
+          Qui porte le challenge : le partenaire clinique, l'équipe du Lab.
+          Une phrase, rendue telle quelle sur la page publique ; vide, la
+          carte « Who hosts this challenge » n'y apparaît pas. ── */}
+      {!isPromotion && (
+        <Field icon={<Building2 />} label="Host">
+          <input
+            type="text"
+            value={host}
+            onChange={e => setHost(e.target.value)}
+            placeholder="CHU de Montpellier, service de médecine physique et de réadaptation"
+            maxLength={500}
+          />
+        </Field>
+      )}
+
+      {/* ── Description ── */}
+      <Field icon={<AlignLeft />} label="Description">
+        <textarea
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          placeholder="What is this challenge about?"
+          rows={3}
+        />
+      </Field>
+
+      {/* ── Brief — Markdown, enregistré comme document `brief.md` ──
+          Affiché à un contributeur connecté qui n'a pas encore rejoint le
+          challenge, à la place des KPI et de l'espace de travail. En
+          création il est bufferisé ici puis flushé. ── */}
+      <div className="v-field">
+        <button
+          type="button"
+          onClick={() => setShowBrief(v => !v)}
+          className="v-disclose"
+          data-open={showBrief ? 'true' : 'false'}
+        >
+          <FileText />
+          {showBrief ? 'Hide brief' : brief.trim() ? 'Edit brief' : 'Add brief (optional)'}
+          <ChevronDown />
+        </button>
+
+        {showBrief && (
+          <div className="v-field animate-fade-up">
+            <p className="v-help" data-size="xs">
+              {isPromotion
+                ? 'Composed from the proposal: its context and why under Context, its goals as objectives. Add the expected result if you want one. '
+                : 'Context, objectives and expected result, in Markdown. '}
+              Shown before the workspace to contributors who have not joined yet, and kept in the
+              challenge documents as <code className="v-code">brief.md</code> afterwards.
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setBriefPreview(v => !v)}
+                disabled={!brief.trim()}
+                className="v-btn-quiet v-btn-sm"
+                data-on={briefPreview ? 'true' : 'false'}
+              >
+                {briefPreview ? <Pencil /> : <Eye />}
+                {briefPreview ? 'Write' : 'Preview'}
+              </button>
+              {!brief.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setBrief(BRIEF_TEMPLATE)}
+                  className="v-btn-text"
+                  data-tone="accent"
+                >
+                  <Plus />
+                  Start from the template
+                </button>
+              )}
+            </div>
+
+            {briefPreview ? (
+              <div className="v-cdr-preview">
+                <Markdown source={brief} variant="vitrine" />
+              </div>
+            ) : (
+              <textarea
+                value={brief}
+                onChange={e => setBrief(e.target.value)}
+                placeholder={'## Context\n\n…'}
+                rows={14}
+                data-mono="true"
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Le flow : éditeurs autonomes (tâches, cibles, dépôt…) ── */}
+      {SectionDetails && <SectionDetails state={flowState} onChange={patchFlowState} ctx={ctx} />}
+
+      {/* ── Slack discussion signals (edit only, every flow) — independent CRUD ── */}
+      {isEdit && (
+        <ChallengeSlackSignalsEditor challengeId={challenge!.uuid} open={open} />
+      )}
+
+      {/* ── Roadmap (optional) ── */}
+      <div className="v-field">
+        <button
+          type="button"
+          onClick={() => setShowRoadmap(v => !v)}
+          className="v-disclose"
+          data-open={showRoadmap ? 'true' : 'false'}
+        >
+          <Map />
+          {showRoadmap ? 'Hide roadmap' : 'Add roadmap (optional)'}
+          <ChevronDown />
+        </button>
+        {showRoadmap && (
+          <textarea
+            value={roadmap}
+            onChange={e => setRoadmap(e.target.value)}
+            placeholder="Roadmap, milestones, links…"
+            rows={4}
+            className="animate-fade-up"
+          />
+        )}
+      </div>
+
+      {/* Error */}
+      {error && (
+        <p className="v-alert animate-slide-in">
+          {error}
+        </p>
+      )}
+    </Drawer>
   );
 }
