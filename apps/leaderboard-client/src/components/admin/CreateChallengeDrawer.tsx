@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   X, Trophy, CalendarDays, AlignLeft, Map, Loader2,
-  CheckCircle2, ChevronDown, Plus, Pencil, FileText, Eye, Rocket, Image as ImageIcon, Building2,
+  CheckCircle2, ChevronDown, Plus, Pencil, FileText, Eye, Rocket, Image as ImageIcon, Building2, Percent,
 } from 'lucide-react';
 import { SelectDropdown } from '@/components/ui/SelectDropdown';
 import { ChallengeSlackSignalsEditor } from '@/components/admin/ChallengeSlackSignalsEditor';
@@ -99,6 +99,13 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [cp, setCp] = useState(100);
+  // La complétion, en pourcentage entier (la colonne est un ratio 0–1). Édition
+  // seulement : un challenge naît à 0. `initialCompletion` sert à ne l'envoyer
+  // que si l'admin y a touché — pour un code ou un ML, une distribution de
+  // rewards peut l'avoir recalculée pendant que le tiroir était ouvert, et
+  // renvoyer la valeur d'ouverture l'écraserait.
+  const [completion, setCompletion] = useState(0);
+  const [initialCompletion, setInitialCompletion] = useState(0);
   const [description, setDescription] = useState('');
   const [roadmap, setRoadmap] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
@@ -163,6 +170,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       setStartDate(toDateInput(challenge.start_date));
       setEndDate(toDateInput(challenge.end_date));
       setCp(challenge.contribution_points_reward);
+      const pct = Math.round((challenge.completion ?? 0) * 100);
+      setCompletion(pct);
+      setInitialCompletion(pct);
       setDescription(challenge.description ?? '');
       setRoadmap(challenge.roadmap ?? '');
       setCoverImageUrl(challenge.cover_image_url ?? '');
@@ -237,6 +247,8 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
     setStartDate('');
     setEndDate('');
     setCp(100);
+    setCompletion(0);
+    setInitialCompletion(0);
     setDescription('');
     setRoadmap('');
     setCoverImageUrl('');
@@ -334,8 +346,14 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                   flowFields,
                 )
               : isEdit
-                // Envoyé seulement s'il a changé : l'ancien devient une redirection.
-                ? { ...shared, ...flowFields, ...(slugField.changed ? { slug: slugField.submitValue } : {}) }
+                // Envoyés seulement s'ils ont changé : l'ancien slug devient une
+                // redirection, et la complétion ne doit pas écraser un recalcul.
+                ? {
+                    ...shared,
+                    ...flowFields,
+                    ...(slugField.changed ? { slug: slugField.submitValue } : {}),
+                    ...(completion !== initialCompletion ? { completion: completion / 100 } : {}),
+                  }
                 : {
                     ...shared,
                     slug: slugField.submitValue,
@@ -599,6 +617,37 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
               </div>
             </div>
           </Field>
+
+          {/* ── Complétion (édition seulement) ──
+              Le pourcentage que montrent les cartes et la barre de progression.
+              Pour un code ou un ML, c'est la part du pool déjà versée, recalculée
+              à chaque distribution : la saisir à la main sert surtout aux autres
+              types, où rien ne la calcule. ── */}
+          {isEdit && (
+            <Field icon={<Percent className="h-3.5 w-3.5" />} label="Completion">
+              <div className="flex items-center gap-4">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={completion}
+                  onChange={e => setCompletion(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                  className="w-28 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm focus:border-brandCP/40 focus:outline-none focus:shadow-[0_0_0_1px_rgba(10,247,193,0.15)]"
+                  style={{ color: 'var(--foreground)' }}
+                />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div className="h-full rounded-full bg-brandCP transition-all duration-300" style={{ width: `${completion}%` }} />
+                  </div>
+                  <p className="text-[10px] leading-relaxed" style={{ color: fgAt(0.3) }}>
+                    {completion}% shown on the cards. Code and ML challenges recompute it at every reward
+                    distribution, from the share of the pool paid out.
+                  </p>
+                </div>
+              </div>
+            </Field>
+          )}
 
           {/* ── Le flow : configuration et règles ── */}
           {SectionFields && <SectionFields state={flowState} onChange={patchFlowState} ctx={ctx} />}

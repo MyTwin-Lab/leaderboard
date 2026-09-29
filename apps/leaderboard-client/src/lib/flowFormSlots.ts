@@ -4,7 +4,8 @@ import type { ComponentType, CSSProperties } from 'react';
  * Sections de formulaire par flow (challenge 020, L4c)
  * ----------------------------------------------------
  * Le tiroir de création et d'édition d'un challenge porte les champs communs
- * (titre, adresse, projet, statut, dates, pool, description, brief, roadmap).
+ * (titre, adresse, projet, statut, dates, pool, description, brief, roadmap —
+ * et la complétion, en édition seulement).
  * Tout ce qui dépend du flow — ses champs de configuration, ses règles, ses
  * éditeurs autonomes, ce qu'il ajoute au corps envoyé et ce qu'il enregistre
  * après coup — vient de sa section, déclarée par la distribution
@@ -23,6 +24,8 @@ export interface EditableChallenge {
   description?: string | null;
   roadmap?: string | null;
   contribution_points_reward: number;
+  /** Un ratio 0–1, comme la colonne ; le tiroir l'affiche et le saisit en pourcentage. */
+  completion?: number | null;
   project_id: string;
   /** Lues par la section du flow, qui sait les parser. */
   reward_rules?: unknown;
