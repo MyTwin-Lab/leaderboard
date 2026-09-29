@@ -245,9 +245,8 @@ export function WatchExplorer({ highImpactThreshold, spotlight, knownAnonymous }
               </button>
             )}
           </div>
-          <button type="button" className="v-pill v-watch-filters-btn" onClick={() => setFiltersOpen(true)}>
-            <SlidersHorizontal style={{ width: 14, height: 14 }} />
-            Filters
+          <button type="button" className="v-watch-filters-btn" aria-label="Filters" title="Filters" onClick={() => setFiltersOpen(true)}>
+            <SlidersHorizontal />
           </button>
         </form>
 

@@ -25,6 +25,11 @@
   flex: 1 1 280px;
 }
 
+/* Des coins doux plutôt que la gélule des listings : la page est un outil. */
+.v-watch .v-search input {
+  border-radius: 12px;
+}
+
 /* La croix qui vide le champ, dans la gélule. */
 .v-watch-clear {
   position: absolute;
@@ -51,9 +56,31 @@
   height: 14px;
 }
 
-/* Le bouton « Filters » du téléphone : la même pill que les statuts. */
+/* Le bouton des filtres du téléphone : une icône seule, un carré de la
+   hauteur du champ de recherche (12px de padding + une ligne de 14px). */
 .v-watch-filters-btn {
   display: none;
+  flex: none;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  color: var(--v-muted);
+  cursor: pointer;
+  transition: border-color 0.3s var(--v-ease), color 0.3s var(--v-ease);
+}
+
+.v-watch-filters-btn:hover {
+  border-color: rgb(11 122 100 / 0.5);
+  color: var(--v-ink);
+}
+
+.v-watch-filters-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* ── Deux colonnes : les filtres, les résultats ─────────────────────────── */
@@ -229,7 +256,7 @@
   flex-direction: column;
   gap: 6px;
   border: 1px solid var(--v-line);
-  border-radius: 20px;
+  border-radius: 12px;
   background: var(--v-surface);
   padding: 16px 18px;
   transition: border-color 0.3s var(--v-ease), box-shadow 0.3s var(--v-ease);
@@ -454,7 +481,7 @@
   flex-direction: column;
   gap: 10px;
   border: 1px solid var(--v-line);
-  border-radius: 20px;
+  border-radius: 12px;
   background: var(--v-surface);
   padding: 16px 18px;
   animation: v-watch-pulse 1.6s var(--v-ease) infinite;
