@@ -6,9 +6,11 @@
    La bascule téléphone se fait à 768px, comme les autres vitrines.
    ───────────────────────────────────────────────────────────────────────── */
 
+/* Pas de `z-index` ici, contrairement à `.v-ch-main` : il ouvrirait un
+   contexte d'empilement, et le tiroir des filtres (fixe, z 60) resterait
+   dessous la navbar (z 50) sur téléphone, logo compris. */
 .v-watch-main {
   position: relative;
-  z-index: 10;
 }
 
 /* ── Recherche ─────────────────────────────────────────────────────────── */
