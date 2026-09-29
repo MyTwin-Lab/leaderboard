@@ -3,7 +3,8 @@ import type { Sandbox } from "../../database-service/domain/entities.js";
 /**
  * Promotion — la partie **pure**.
  * ------------------------------
- * Tout ce qui se décide sans base : le brouillon du challenge et la
+ * Tout ce qui se décide sans base : le projet que devient la proposition, le
+ * brouillon de son premier challenge, le brief de ce challenge et la
  * participation de l'auteur.
  *
  * Ce qui n'y est plus : les seeds `workspace_meta` des repos ML et les
@@ -29,11 +30,16 @@ export interface PromotionInput {
   status: string;
   start_date?: string | null;
   end_date?: string | null;
-  /** Vide = la description markdown est composée depuis la proposition. */
+  /** Vide = le contexte de la proposition, comme accroche du challenge. */
   description?: string | null;
   roadmap?: string | null;
+  /**
+   * Vide = le brief est composé depuis les trois sections de la proposition
+   * (`buildPromotedBrief`). C'est le texte que le tiroir pré-remplit et que
+   * l'admin relit ; s'il l'efface entièrement, le challenge naît sans brief.
+   */
+  brief?: string | null;
   contribution_points_reward: number;
-  project_id: string;
   reward_rules?: unknown;
   compute_enabled?: boolean;
   api_packaging_enabled?: boolean;
@@ -51,7 +57,22 @@ export interface PromotionInput {
   workspace_mode?: unknown;
 }
 
-/** La ligne `challenges` à insérer, dans le vocabulaire du domaine. */
+/**
+ * La ligne `projects` à insérer : le projet que devient la proposition.
+ *
+ * Toujours un **nouveau** projet, jamais un rattachement à un projet
+ * existant — un sandbox est un projet, la promotion ne fait que le rendre
+ * officiel. Son auteur en devient le manager : c'est son idée, et le rôle de
+ * manager (`projects.manager_id`, voir docs/auth.md) est exactement ce qui lui
+ * donne la main sur les challenges qui y naîtront.
+ */
+export interface PromotedProjectDraft {
+  title: string;
+  description: string | null;
+  manager_id: string;
+}
+
+/** La ligne `challenges` à insérer, dans le vocabulaire du domaine. Son `project_id` est celui du projet créé en même temps. */
 export interface PromotedChallengeDraft {
   title: string;
   status: string;
@@ -62,7 +83,6 @@ export interface PromotedChallengeDraft {
   roadmap: string | null;
   contribution_points_reward: number;
   completion: number;
-  project_id: string;
   reward_rules: unknown;
   /**
    * La configuration candidate du flow (`workspace_mode` d'un code, l'extension
@@ -83,29 +103,63 @@ function trimmed(value: string | null | undefined): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function trimmedGoals(goals: string[] | null | undefined): string[] {
+  return (goals ?? []).map((goal) => goal.trim()).filter(Boolean);
+}
+
 /**
- * La description markdown composée depuis les trois sections de la proposition.
- *
- * `challenges.description` est un markdown unique, `sandboxes` porte trois
- * champs distincts (§1.1) : c'est ici que la conversion se fait. Une section
- * vide ne produit **aucun** titre — un « ## Why it matters » suivi de rien
- * donnerait un challenge qui a l'air bâclé.
+ * Le projet que devient la proposition : son titre, son contexte en
+ * description, son auteur en manager.
  */
-export function buildPromotedDescription(
+export function buildPromotedProject(
+  sandbox: Pick<Sandbox, "title" | "context" | "user_id">,
+): PromotedProjectDraft {
+  return {
+    title: sandbox.title,
+    description: trimmed(sandbox.context) || null,
+    manager_id: sandbox.user_id,
+  };
+}
+
+/**
+ * L'accroche du challenge : le contexte de la proposition, tel quel.
+ *
+ * `challenges.description` est le texte court des cartes et de l'en-tête ; les
+ * trois sections de la proposition, elles, vont dans le brief
+ * (`buildPromotedBrief`). Les recopier ici aussi doublerait le même texte sur
+ * la même page.
+ */
+export function buildPromotedDescription(sandbox: Pick<Sandbox, "context">): string {
+  return trimmed(sandbox.context);
+}
+
+/**
+ * Le brief composé depuis les trois sections de la proposition, dans la forme
+ * du squelette de brief (`BRIEF_TEMPLATE`, côté client) : `## Context` puis
+ * `## Objective`.
+ *
+ * La vitrine du challenge lit la section `Context` comme « Why this challenge
+ * exists » : le contexte et le why de la proposition y vont tous les deux —
+ * le problème, puis pourquoi il compte. Les buts deviennent la liste
+ * d'objectifs. La section « Expected result » du squelette n'a pas de source
+ * dans une proposition : elle n'est pas écrite plutôt que laissée vide, et
+ * l'admin l'ajoute dans le tiroir s'il la veut.
+ *
+ * Une section vide ne produit **aucun** titre — un « ## Objective » suivi de
+ * rien donnerait un brief qui a l'air bâclé.
+ */
+export function buildPromotedBrief(
   sandbox: Pick<Sandbox, "context" | "goals" | "why">,
 ): string {
   const sections: string[] = [];
 
-  const context = trimmed(sandbox.context);
-  if (context) sections.push(`## Context\n\n${context}`);
+  const context = [trimmed(sandbox.context), trimmed(sandbox.why)].filter(Boolean);
+  if (context.length > 0) sections.push(`## Context\n\n${context.join("\n\n")}`);
 
-  const goals = (sandbox.goals ?? []).map((goal) => goal.trim()).filter(Boolean);
+  const goals = trimmedGoals(sandbox.goals);
   if (goals.length > 0) {
-    sections.push(`## What I want to build\n\n${goals.map((g) => `- ${g}`).join("\n")}`);
+    sections.push(`## Objective\n\n${goals.map((g) => `- ${g}`).join("\n")}`);
   }
-
-  const why = trimmed(sandbox.why);
-  if (why) sections.push(`## Why it matters\n\n${why}`);
 
   return sections.join("\n\n");
 }
@@ -124,7 +178,7 @@ export function buildPromotedFlowConfig(type: "code" | "ml", input: Pick<Promoti
 }
 
 /**
- * Le challenge que devient la proposition.
+ * Le premier challenge du projet que devient la proposition.
  *
  * **Le type est choisi ici, par l'admin.** Une proposition n'en porte plus :
  * `code` / `ml` décide des repos à créer et de la grille d'évaluation, c'est
@@ -132,7 +186,7 @@ export function buildPromotedFlowConfig(type: "code" | "ml", input: Pick<Promoti
  * forme la plus courante.
  */
 export function buildPromotedChallengeDraft(
-  sandbox: Pick<Sandbox, "title" | "context" | "goals" | "why" | "cover_image_url">,
+  sandbox: Pick<Sandbox, "title" | "context" | "cover_image_url">,
   input: PromotionInput,
 ): PromotedChallengeDraft {
   const type = input.type === "ml" ? "ml" : "code";
@@ -148,7 +202,6 @@ export function buildPromotedChallengeDraft(
     roadmap: trimmed(input.roadmap) || null,
     contribution_points_reward: input.contribution_points_reward,
     completion: 0,
-    project_id: input.project_id,
     reward_rules: input.reward_rules ?? null,
     flow_config: buildPromotedFlowConfig(type, input),
     // La couverture suit la proposition : le challenge s'ouvre avec l'image
@@ -158,6 +211,19 @@ export function buildPromotedChallengeDraft(
     // pas naître d'une proposition.
     source_challenge_id: null,
   };
+}
+
+/**
+ * Le brief que reçoit le challenge : celui que l'admin a relu dans le tiroir,
+ * ou, si la promotion arrive sans (un script, un seed), celui composé depuis
+ * la proposition. Une chaîne vide est un choix — l'admin a tout effacé — et
+ * vaut « pas de document ».
+ */
+export function resolvePromotedBrief(
+  sandbox: Pick<Sandbox, "context" | "goals" | "why">,
+  input: Pick<PromotionInput, "brief">,
+): string {
+  return input.brief == null ? buildPromotedBrief(sandbox) : trimmed(input.brief);
 }
 
 /** La row `challenge_teams` de l'auteur. */

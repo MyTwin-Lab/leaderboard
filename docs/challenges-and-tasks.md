@@ -28,7 +28,7 @@ A challenge has a `type`: `code` (the default), `ml`, `validation`, or `none`.
 draft → active → completed → archived
 ```
 
-A challenge can also be **born from a sandbox**: an admin promotes a contributor proposal and picks the type it becomes — `code` or `ml`, never `validation` (it derives from an ML challenge) nor `none` (promoting opens work; a placeholder opens none). The author is auto-joined, with their workspace left to declare. See [`sandbox.md`](./sandbox.md).
+A challenge can also be **born from a sandbox**: an admin promotes a contributor proposal, which creates a new project (the author as manager) and this challenge as its first one, and picks the type it becomes — `code` or `ml`, never `validation` (it derives from an ML challenge) nor `none` (promoting opens work; a placeholder opens none). The proposal's context, goals and why become the challenge brief. The author is auto-joined, with their workspace left to declare. See [`sandbox.md`](./sandbox.md).
 
 | Status | Description |
 |--------|-------------|

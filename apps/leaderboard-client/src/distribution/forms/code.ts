@@ -42,18 +42,18 @@ export const codeFormLogic: FlowFormLogic<CodeFormState> = {
         nextTaskId: 0,
       };
     }
-    // Les buts d'une proposition sont le candidat naturel aux tâches du
-    // challenge : ils arrivent en template tasks, éditables avant l'envoi.
-    const goals = ctx.mode === 'promotion' ? ctx.promotion?.goals ?? [] : [];
+    // En promotion, les buts de la proposition ne deviennent pas des tâches :
+    // ils vont dans le brief du challenge, avec le contexte et le why. Les
+    // tâches, l'admin les écrit ici s'il en veut, comme à la création.
     return {
       // Un sandbox code devient un challenge `own_repo` : l'auteur arrive avec
       // son dépôt, il n'y a pas de repo partagé à provisionner.
       workspaceMode: ctx.mode === 'promotion' ? 'own_repo' : 'provided_repo',
       githubRepo: '',
       codeRules: DEFAULT_CODE_REWARD_RULES,
-      pendingTasks: goals.map((title, i) => ({ id: String(i), title })),
+      pendingTasks: [],
       pendingTaskTitle: '',
-      nextTaskId: goals.length,
+      nextTaskId: 0,
     };
   },
 

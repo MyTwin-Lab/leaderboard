@@ -1,6 +1,6 @@
 # Sandbox
 
-The Sandbox is where anyone can **propose** a project in the health domain, without approval. The community reacts with **stars**, crossing star milestones pays the author in CP, and an admin can **promote** the best proposals into official challenges.
+The Sandbox is where anyone can **propose** a project in the health domain, without approval. The community reacts with **stars**, crossing star milestones pays the author in CP, and an admin can **promote** the best proposals into official projects, each opening with its first challenge.
 
 It turns the leaderboard from a task board — where MyTwin defines the work and contributors execute it — into a two-way platform.
 
@@ -52,7 +52,7 @@ The module declares its settings schema (`modules/sandbox/settings.ts` — the s
 | `user_id` | the author, sole editor |
 | `title` | |
 | `slug` | the public URL segment, `/sandbox/<slug>`. Unique among sandboxes, derived from the title at creation, editable by the author; a former slug keeps redirecting (`sandbox_slug_redirects`). See [`seo.md`](./seo.md) |
-| `context`, `goals`, `why` | the three sections of the proposal. `goals` is a `jsonb` string array rather than a markdown list, because each goal is rendered on its own and they are the natural candidates for the challenge's tasks after promotion |
+| `context`, `goals`, `why` | the three sections of the proposal. `goals` is a `jsonb` string array rather than a markdown list, because each goal is rendered on its own. At promotion the three become the brief of the first challenge (`buildPromotedBrief`) |
 | `cover_image_url` | the card illustration, set by the author; it follows the proposal to the challenge on promotion |
 | `status` | `open` / `promoted` / `archived`. Created directly as `open` |
 | `promoted_challenge_id` | set at promotion, `ON DELETE SET NULL` — deleting the challenge must not erase the proposal that produced it |
@@ -246,7 +246,11 @@ What tells an admin a proposal is worth promoting is its stars.
 
 ## Promotion
 
-An admin turns a convincing proposal into an official challenge. **The type is chosen here**, in the drawer: a proposal does not carry one, and `code` / `ml` decides which repos get created and which grid scores them. `validation` and `annotation` are not offered — a validation challenge derives from an existing challenge, an annotation challenge from a campaign. Everything else (project, pool, reward rules, dates, compute, brief) is the admin's call too, filled in through the usual challenge drawer, pre-filled from the sandbox — the address included: the challenge takes the sandbox's slug when it is free among challenges, so `/sandbox/mykine` becomes `/challenges/mykine`.
+An admin turns a convincing proposal into an official **project**, with its **first challenge**. A sandbox is a project, so promotion never attaches it to an existing one: it creates a new `projects` row, named after the proposal, with the author as `manager_id` — the per-project relationship that gives them the manage view of its challenges (see [`auth.md`](./auth.md)). The project's description is the proposal's context. There is no project to pick in the drawer.
+
+The challenge is the admin's to shape. **The type is chosen here**: a proposal does not carry one, and `code` / `ml` decides which repos get created and which grid scores them. `validation` and `annotation` are not offered — a validation challenge derives from an existing challenge, an annotation challenge from a campaign. Everything else (pool, reward rules, dates, compute) is the admin's call too, filled in through the usual challenge drawer, pre-filled from the sandbox — the address included: the challenge takes the sandbox's slug when it is free among challenges, so `/sandbox/mykine` becomes `/challenges/mykine`.
+
+**The three sections become the brief.** `context`, `goals` and `why` are composed by `buildPromotedBrief` in the shape of the brief skeleton: the context and the why under `## Context` (which the challenge vitrine reads as "Why this challenge exists"), the goals as the `## Objective` list. No `## Expected result` — a proposal has none, and an empty heading would look sloppy; the admin adds it in the drawer if they want one. The drawer opens with the brief pre-filled and editable; what is sent is what gets written, an emptied brief meaning no document. A promotion that arrives without a `brief` field (a script, the seed) gets the composed one. The challenge's `description` is only its short blurb, the proposal's context — the sections are not repeated there. The goals are **not** turned into template tasks.
 
 The challenge is born as it would be from the creation route: its reward rules are read by the chosen flow (`parseFlowRules`), its configuration validated and stored in the flow's current version (`prepareFlowConfig` — `own_repo` for a code challenge, the compute extension for an ML one), its repos decided by the flow's `onCreate` hook (`creationRepos`). The promotion bonus comes from the module's settings.
 
@@ -254,12 +258,16 @@ The challenge is born as it would be from the creation route: its reward rules a
 
 ```
 UPDATE sandboxes … WHERE uuid = $id AND status = 'open' RETURNING   ← row lock, the concurrency guard
-INSERT challenges
-INSERT repos + challenge_repos   (workspace_meta empty)
-INSERT challenge_teams           (the author, workspace pending)
+INSERT projects                  (the proposal's title and context, the author as manager)
+INSERT challenges                (project_id = the new project)
 UPDATE sandboxes SET promoted_challenge_id = …
+INSERT repos + challenge_repos   (workspace_meta empty)
+INSERT challenge_documents       (brief.md — skipped when the brief is empty)
+INSERT challenge_teams           (the author, workspace pending)
 INSERT sandbox_rewards { rule_key: 'promotion' }
 ```
+
+The brief is written **inside** the transaction rather than posted afterwards by the drawer, as the creation route does: a promoted challenge without its brief would be a half-done promotion. The client sends the text in the body (`brief`), the service resolves it (`resolvePromotedBrief`) and writes the `brief.md` document under the shared `BRIEF_FILENAME` (`packages/database-service/domain/brief.ts`).
 
 The guarded update comes **first**: a second concurrent promotion finds no row, throws, and rolls back. The unique `promotion` index on `sandbox_rewards` is the belt to that pair of braces.
 
@@ -277,7 +285,7 @@ The contribution titles and the artifact flag live in `ML_ROLE_RULE` (`packages/
 
 ### After promotion
 
-The sandbox is marked `promoted` and linked to the challenge; its card in the listing points there. Other contributors join through the normal challenge flow. The proposal itself is never deleted — deleting the challenge sets the link back to NULL rather than erasing what produced it.
+The sandbox is marked `promoted` and linked to the challenge; its card in the listing points there. The project is reached through the challenge (`challenges.project_id`) — no second link on the sandbox. Other contributors join through the normal challenge flow; the author, as project manager, opens the next challenges of their project the usual way. The proposal itself is never deleted — deleting the challenge sets the link back to NULL rather than erasing what produced it.
 
 ---
 

@@ -7,9 +7,11 @@ const h = vi.hoisted(() => ({
 // La transaction n'est jamais ouverte par les refus testés ici : la doublure le vérifie.
 vi.mock("../../database-service/db/drizzle.js", () => ({
   db: { transaction: h.transaction },
+  challenge_documents: {},
   challenge_repos: {},
   challenge_teams: {},
   challenges: {},
+  projects: {},
   repos: {},
   sandbox_rewards: {},
   sandboxes: {},
@@ -24,7 +26,8 @@ import { InvalidRewardRulesError, SandboxForbiddenError, SandboxNotFoundError } 
 import type { Sandbox } from "../../database-service/domain/entities.js";
 
 const ADMIN = { userId: "admin-1", role: "admin" };
-const INPUT = { status: "active", contribution_points_reward: 500, project_id: "11111111-1111-4111-8111-111111111111" };
+// Pas de `project_id` : la promotion crée son propre projet.
+const INPUT = { status: "active", contribution_points_reward: 500 };
 
 function makeService(sandbox: Partial<Sandbox> | null) {
   const deps = {

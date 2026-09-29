@@ -2,14 +2,16 @@ import { describe, it, expect } from "vitest";
 import type { Sandbox } from "../../database-service/domain/entities.js";
 import {
   buildAuthorParticipation,
+  buildPromotedBrief,
   buildPromotedChallengeDraft,
   buildPromotedDescription,
+  buildPromotedProject,
+  resolvePromotedBrief,
   type PromotionInput,
 } from "./promotion.js";
 
 const AUTHOR = "user-1";
 const CHALLENGE_ID = "challenge-1";
-const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
 
 function sandbox(overrides: Partial<Sandbox> = {}): Sandbox {
   return {
@@ -33,8 +35,23 @@ function sandbox(overrides: Partial<Sandbox> = {}): Sandbox {
 const baseInput: PromotionInput = {
   status: "active",
   contribution_points_reward: 500,
-  project_id: PROJECT_ID,
 };
+
+describe("buildPromotedProject", () => {
+  it("nomme le projet comme la proposition et en fait l'auteur le manager", () => {
+    // Toujours un nouveau projet : un sandbox *est* un projet, la promotion le
+    // rend officiel. Le manager est ce qui donne à l'auteur la main dessus.
+    expect(buildPromotedProject(sandbox())).toEqual({
+      title: "Triage assistant",
+      description: "Emergency triage is slow.",
+      manager_id: AUTHOR,
+    });
+  });
+
+  it("laisse la description nulle sans contexte", () => {
+    expect(buildPromotedProject(sandbox({ context: "  " })).description).toBeNull();
+  });
+});
 
 describe("buildPromotedChallengeDraft", () => {
   it("prend le type choisi par l'admin — la proposition n'en porte pas", () => {
@@ -72,11 +89,18 @@ describe("buildPromotedChallengeDraft", () => {
     ).toBe("Renamed");
   });
 
-  it("compose la description quand elle est absente, et respecte celle de l'admin sinon", () => {
-    expect(buildPromotedChallengeDraft(sandbox(), baseInput).description).toContain("## Context");
+  it("prend le contexte comme accroche quand la description est absente, et respecte celle de l'admin sinon", () => {
+    // Les trois sections vont dans le brief : la description ne les recopie
+    // pas, elle n'est que l'accroche des cartes.
+    expect(buildPromotedChallengeDraft(sandbox(), baseInput).description).toBe("Emergency triage is slow.");
     expect(
       buildPromotedChallengeDraft(sandbox(), { ...baseInput, description: "Rewritten." }).description,
     ).toBe("Rewritten.");
+    expect(buildPromotedChallengeDraft(sandbox({ context: null }), baseInput).description).toBeNull();
+  });
+
+  it("ne porte pas de project_id : le projet naît avec le challenge", () => {
+    expect(buildPromotedChallengeDraft(sandbox(), baseInput)).not.toHaveProperty("project_id");
   });
 
   it("n'active le compute que sur un ml, et jamais les champs de validation", () => {
@@ -116,29 +140,53 @@ describe("buildPromotedChallengeDraft", () => {
 });
 
 describe("buildPromotedDescription", () => {
-  it("compose les trois sections dans l'ordre de la page détail", () => {
-    expect(buildPromotedDescription(sandbox())).toBe(
+  it("rend le contexte, nettoyé, ou une chaîne vide", () => {
+    expect(buildPromotedDescription(sandbox({ context: "  Slow.  " }))).toBe("Slow.");
+    expect(buildPromotedDescription(sandbox({ context: null }))).toBe("");
+  });
+});
+
+describe("buildPromotedBrief", () => {
+  it("compose le brief dans la forme du squelette : Context puis Objective", () => {
+    // La vitrine lit `## Context` comme « Why this challenge exists » : le
+    // contexte et le why de la proposition y vont tous les deux.
+    expect(buildPromotedBrief(sandbox())).toBe(
       [
-        "## Context\n\nEmergency triage is slow.",
-        "## What I want to build\n\n- Parse the intake form\n- Rank by severity",
-        "## Why it matters\n\nNurses lose hours every shift.",
+        "## Context\n\nEmergency triage is slow.\n\nNurses lose hours every shift.",
+        "## Objective\n\n- Parse the intake form\n- Rank by severity",
       ].join("\n\n"),
     );
   });
 
   it("n'écrit aucun titre pour une section vide", () => {
-    const composed = buildPromotedDescription(sandbox({ context: null, why: "   ", goals: ["Ship it"] }));
-    expect(composed).toBe("## What I want to build\n\n- Ship it");
+    const composed = buildPromotedBrief(sandbox({ context: null, why: "   ", goals: ["Ship it"] }));
+    expect(composed).toBe("## Objective\n\n- Ship it");
     expect(composed).not.toContain("## Context");
-    expect(composed).not.toContain("## Why it matters");
+  });
+
+  it("garde le contexte seul sous Context quand le why manque", () => {
+    expect(buildPromotedBrief(sandbox({ why: null, goals: [] }))).toBe("## Context\n\nEmergency triage is slow.");
+  });
+
+  it("n'écrit jamais la section Expected result : une proposition n'en a pas", () => {
+    expect(buildPromotedBrief(sandbox())).not.toContain("Expected result");
   });
 
   it("rend une chaîne vide quand la proposition n'a aucune section", () => {
-    expect(buildPromotedDescription(sandbox({ context: null, why: null, goals: [] }))).toBe("");
-    expect(
-      buildPromotedChallengeDraft(sandbox({ context: null, why: null, goals: [] }), baseInput)
-        .description,
-    ).toBeNull();
+    expect(buildPromotedBrief(sandbox({ context: null, why: null, goals: [] }))).toBe("");
+  });
+});
+
+describe("resolvePromotedBrief", () => {
+  it("compose le brief quand la promotion arrive sans", () => {
+    expect(resolvePromotedBrief(sandbox(), {})).toContain("## Context");
+    expect(resolvePromotedBrief(sandbox(), { brief: null })).toContain("## Context");
+  });
+
+  it("respecte le brief relu par l'admin, et son effacement", () => {
+    expect(resolvePromotedBrief(sandbox(), { brief: "  ## Context\n\nRewritten.  " })).toBe("## Context\n\nRewritten.");
+    // Vide est un choix : le challenge naît sans brief.
+    expect(resolvePromotedBrief(sandbox(), { brief: "   " })).toBe("");
   });
 });
 

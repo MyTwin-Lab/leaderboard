@@ -2,21 +2,24 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import {
   db,
+  challenge_documents,
   challenge_repos,
   challenge_teams,
   challenges,
+  projects,
   repos,
   sandbox_rewards,
   sandboxes,
 } from "../../database-service/db/drizzle.js";
-import { toDomainChallenge, toDomainSandbox } from "../../database-service/db/mappers.js";
+import { toDomainChallenge, toDomainProject, toDomainSandbox } from "../../database-service/db/mappers.js";
 import { ChallengeRepository, SandboxRepository } from "../../database-service/repositories/index.js";
 import { isSlugUniqueViolation } from "../../database-service/repositories/slugs.js";
 import { SlugTakenError } from "../../database-service/domain/slug.js";
-import type { Challenge, Sandbox } from "../../database-service/domain/entities.js";
+import type { Challenge, Project, Sandbox } from "../../database-service/domain/entities.js";
 import { creationRepos } from "../../capabilities/challenge-hooks.js";
 import { parseFlowRules, prepareFlowConfig } from "../../capabilities/flow-config.js";
 import { legacyChallengeColumns } from "../../database-service/domain/legacyFlowConfig.js";
+import { BRIEF_FILENAME } from "../../database-service/domain/brief.js";
 import {
   InvalidRewardRulesError,
   SandboxForbiddenError,
@@ -24,7 +27,14 @@ import {
   SandboxNotOpenError,
 } from "./sandbox.service.js";
 import { readSandboxSettings, type SandboxEconomySettings } from "./settings.js";
-import { buildAuthorParticipation, buildPromotedChallengeDraft, type PromotionInput } from "./promotion.js";
+import {
+  buildAuthorParticipation,
+  buildPromotedChallengeDraft,
+  buildPromotedProject,
+  resolvePromotedBrief,
+  type PromotionInput,
+} from "./promotion.js";
+
 
 export interface PromoteCommand {
   sandboxId: string;
@@ -34,6 +44,7 @@ export interface PromoteCommand {
 }
 
 export interface PromoteResult {
+  project: Project;
   challenge: Challenge;
   sandbox: Sandbox;
 }
@@ -49,13 +60,21 @@ export interface SandboxPromotionDeps {
 /**
  * SandboxPromotionService
  * -----------------------
- * Transforme une proposition en challenge officiel. Voir docs/sandbox.md.
+ * Transforme une proposition en projet officiel, avec son premier challenge.
+ * Voir docs/sandbox.md.
+ *
+ * Un sandbox est un projet : la promotion crée donc **un nouveau projet** —
+ * jamais un rattachement à un projet existant — nommé comme la proposition,
+ * dont l'auteur est le manager, et y ouvre le challenge que l'admin a réglé
+ * dans le tiroir. Les trois sections de la proposition deviennent le brief de
+ * ce challenge.
  *
  * Tout ce qui doit vivre ou mourir ensemble tient dans **une** transaction :
- * la bascule du sandbox, le challenge, ses repos, la participation de l'auteur
- * et le bonus de promotion. Les repositories n'acceptent pas de `tx`, donc
- * cette partie-là parle aux tables Drizzle directement — c'est le prix d'une
- * promotion qui ne peut pas rester à moitié faite.
+ * la bascule du sandbox, le projet, le challenge, ses repos, son brief, la
+ * participation de l'auteur et le bonus de promotion. Les repositories
+ * n'acceptent pas de `tx`, donc cette partie-là parle aux tables Drizzle
+ * directement — c'est le prix d'une promotion qui ne peut pas rester à moitié
+ * faite.
  *
  * Ce que la promotion ne fait plus : reprendre le travail de l'auteur. Elle
  * recopiait le dépôt, le dataset et le modèle de la proposition en
@@ -109,7 +128,7 @@ export class SandboxPromotionService {
 
     const challengeId = randomUUID();
 
-    const { challenge, sandbox } = await db.transaction(async (tx) => {
+    const { project, challenge, sandbox } = await db.transaction(async (tx) => {
       // 1. La garde, en tête. `WHERE status = 'open'` pose le verrou de ligne :
       //    une seconde promotion concurrente attend ici, puis relit `promoted`
       //    et ne ramène aucune row → exception → rollback. L'index unique
@@ -132,8 +151,13 @@ export class SandboxPromotionService {
 
       const claimedSandbox = toDomainSandbox(claimed);
 
-      // 2. Le challenge. Son uuid est généré côté applicatif pour pouvoir le
-      //    recoller sur le sandbox sans second aller-retour.
+      // 2. Le projet. Toujours nouveau : la proposition *est* le projet, la
+      //    promotion le rend officiel. Son auteur en est le manager.
+      const [projectRow] = await tx.insert(projects).values(buildPromotedProject(claimedSandbox)).returning();
+
+      // 3. Le challenge, premier du projet. Son uuid est généré côté
+      //    applicatif pour pouvoir le recoller sur le sandbox sans second
+      //    aller-retour.
       const draft = buildPromotedChallengeDraft(claimedSandbox, input);
       // Validée par le flow, écrite dans sa version courante. L'insert est brut
       // (transaction) : les colonnes historiques sont posées en miroir ici,
@@ -153,7 +177,7 @@ export class SandboxPromotionService {
           roadmap: draft.roadmap,
           contribution_points_reward: draft.contribution_points_reward,
           completion: draft.completion,
-          project_id: draft.project_id,
+          project_id: projectRow.uuid,
           reward_rules: draft.reward_rules ?? null,
           cover_image_url: draft.cover_image_url,
           source_challenge_id: draft.source_challenge_id,
@@ -168,7 +192,7 @@ export class SandboxPromotionService {
         .where(eq(sandboxes.uuid, sandboxId))
         .returning();
 
-      // 3. Repos et liens. Les définitions viennent du hook `onCreate` du
+      // 4. Repos et liens. Les définitions viennent du hook `onCreate` du
       //    flow, que lit aussi la route de création : un challenge promu a les
       //    mêmes étapes qu'un challenge créé à la main. Leur `workspace_meta`
       //    part vide — la proposition ne porte ni dépôt ni artefact à recopier.
@@ -182,7 +206,7 @@ export class SandboxPromotionService {
           .values({
             title: definition.title,
             type: definition.type,
-            project_id: draft.project_id,
+            project_id: projectRow.uuid,
             external_repo_id: definition.external_repo_id ?? null,
           })
           .returning();
@@ -195,10 +219,24 @@ export class SandboxPromotionService {
         });
       }
 
-      // 4. L'auteur est membre de son challenge, son workspace à déclarer.
+      // 5. Le brief : les trois sections de la proposition, relues par l'admin
+      //    dans le tiroir. Un document comme les autres (`brief.md`), écrit ici
+      //    plutôt que par un second appel du client : un challenge promu sans
+      //    son brief serait une promotion à moitié faite.
+      const brief = resolvePromotedBrief(claimedSandbox, input);
+      if (brief) {
+        await tx.insert(challenge_documents).values({
+          challenge_id: challengeId,
+          filename: BRIEF_FILENAME,
+          content: brief,
+          uploaded_by: actor.userId,
+        });
+      }
+
+      // 6. L'auteur est membre de son challenge, son workspace à déclarer.
       await tx.insert(challenge_teams).values(buildAuthorParticipation(claimedSandbox, challengeId));
 
-      // 5. La trace de la promotion. Écrite **même si le bonus est nul** : la
+      // 7. La trace de la promotion. Écrite **même si le bonus est nul** : la
       //    ligne est ce sur quoi s'appuie l'index unique, donc ce qui rend une
       //    seconde promotion impossible. Pas de `onConflictDoNothing` — un
       //    conflit ici doit faire tomber toute la transaction.
@@ -211,6 +249,7 @@ export class SandboxPromotionService {
       });
 
       return {
+        project: toDomainProject(projectRow),
         challenge: toDomainChallenge(challengeRow),
         sandbox: toDomainSandbox(linkedSandbox ?? claimed),
       };
@@ -223,7 +262,7 @@ export class SandboxPromotionService {
       throw error;
     });
 
-    return { challenge, sandbox };
+    return { project, challenge, sandbox };
   }
 
   /**

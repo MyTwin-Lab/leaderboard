@@ -8,10 +8,10 @@ const base: PromotionFormState = {
   type: 'code',
   startDate: '',
   endDate: '2026-06-01',
-  description: '## Context\n\nEmergency triage is slow.',
+  description: 'Emergency triage is slow.',
   roadmap: '',
+  brief: '## Context\n\nEmergency triage is slow.\n\n## Objective\n\n- Parse the intake form\n',
   cp: 500,
-  projectId: '11111111-1111-4111-8111-111111111111',
 };
 
 describe('buildPromotionRequestBody', () => {
@@ -20,12 +20,14 @@ describe('buildPromotionRequestBody', () => {
     expect(buildPromotionRequestBody({ ...base, type: 'ml' }).type).toBe('ml');
   });
 
-  it("n'envoie ni le mode de workspace ni le repo, même si la section du flow les propose", () => {
-    // Ils découlent du type : un challenge `code` issu d'une promotion est
-    // forcément un `own_repo`, et la route n'accepte pas ces champs. Le type
+  it("n'envoie ni projet, ni mode de workspace, ni repo, même si la section du flow les propose", () => {
+    // Le projet est créé par la promotion elle-même ; le mode et le repo
+    // découlent du type : un challenge `code` issu d'une promotion est
+    // forcément un `own_repo`. La route n'accepte aucun de ces champs. Le type
     // de la section est ignoré aussi : c'est l'état du tiroir qui le porte.
-    const body = buildPromotionRequestBody(base, { type: 'ml', workspace_mode: 'provided_repo', github_repo: 'acme/app' });
+    const body = buildPromotionRequestBody(base, { type: 'ml', workspace_mode: 'provided_repo', github_repo: 'acme/app', project_id: 'p-1' });
     expect(body.type).toBe('code');
+    expect(body).not.toHaveProperty('project_id');
     expect(body).not.toHaveProperty('workspace_mode');
     expect(body).not.toHaveProperty('github_repo');
   });
@@ -42,6 +44,12 @@ describe('buildPromotionRequestBody', () => {
     expect(body).not.toHaveProperty('required_validations');
   });
 
+  it('envoie le brief nettoyé, et vide quand l’admin l’a effacé', () => {
+    // Vide veut dire « effacé », pas « à composer » : le champ est toujours là.
+    expect(buildPromotionRequestBody(base).brief).toBe(base.brief.trim());
+    expect(buildPromotionRequestBody({ ...base, brief: '   ' }).brief).toBe('');
+  });
+
   it('nettoie le titre, garde le slug, et traduit les dates et les champs vides', () => {
     const body = buildPromotionRequestBody(base);
     expect(body).toMatchObject({
@@ -50,9 +58,8 @@ describe('buildPromotionRequestBody', () => {
       status: 'active',
       start_date: null,
       end_date: '2026-06-01',
-      description: '## Context\n\nEmergency triage is slow.',
+      description: 'Emergency triage is slow.',
       contribution_points_reward: 500,
-      project_id: '11111111-1111-4111-8111-111111111111',
     });
     expect(body.roadmap).toBeUndefined();
   });

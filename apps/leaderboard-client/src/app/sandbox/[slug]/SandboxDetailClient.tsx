@@ -110,14 +110,6 @@ export default function SandboxDetailClient({
   const sandbox = sandboxQuery.data?.sandbox ?? null;
   const isAdmin = me?.role === "admin";
 
-  // Le tiroir de promotion a besoin de la liste des projets : un sandbox n'en a
-  // pas, c'est l'admin qui rattache le challenge. Chargée pour lui seul.
-  const projectsQuery = useQuery({
-    queryKey: ["projects"],
-    queryFn: () => fetchJson("/api/projects") as Promise<{ uuid: string; title: string }[]>,
-    enabled: isAdmin,
-    staleTime: 5 * 60_000,
-  });
 
   const applyStarState = (state: StarState) => {
     queryClient.setQueryData<SandboxDetailResponse>(["sandbox", sandboxId], (current) =>
@@ -226,7 +218,9 @@ export default function SandboxDetailClient({
         <CreateChallengeDrawer
           open={promoteOpen}
           onClose={() => setPromoteOpen(false)}
-          projects={(projectsQuery.data ?? []).map((p) => ({ id: p.uuid, name: p.title }))}
+          // Aucun projet à choisir : la promotion crée le sien, nommé comme la
+          // proposition et managé par son auteur.
+          projects={[]}
           promotion={{
             uuid: sandbox.uuid,
             title: sandbox.title,

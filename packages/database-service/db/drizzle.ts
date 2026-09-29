@@ -1049,8 +1049,9 @@ export const sandboxes = pgTable("sandboxes", {
   slug: varchar("slug", { length: 80 }).notNull(),
   // Les trois sections de la proposition, telles que la page détail les rend.
   // `context` et `why` sont du markdown libre ; `goals` est un tableau d'items
-  // courts plutôt qu'une liste markdown, parce qu'ils sont rendus un par un et
-  // qu'ils sont le candidat naturel aux tâches du challenge après promotion.
+  // courts plutôt qu'une liste markdown, parce qu'ils sont rendus un par un.
+  // À la promotion, les trois deviennent le brief du premier challenge du
+  // projet (`buildPromotedBrief`).
   context: text("context"),
   goals: jsonb("goals").$type<string[]>().notNull().default([]),
   why: text("why"),

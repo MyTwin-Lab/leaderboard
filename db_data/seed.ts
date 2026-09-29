@@ -25,7 +25,6 @@ import {
 } from "../packages/database-service/db/drizzle.js";
 import {
   ModuleSettingRepository,
-  ProjectRepository,
   SandboxRepository,
 } from "../packages/database-service/repositories/index.js";
 import { ChallengeRepository } from "../packages/database-service/repositories/challenge.repo.js";
@@ -1043,7 +1042,6 @@ const DEMO_IP_HASHES = Array.from({ length: 6 }, (_, i) =>
 async function seedDemoSandboxes() {
   const data = read<any[]>("demo-sandboxes.json");
 
-  const projectRepo = new ProjectRepository();
   const sandboxRepo = new SandboxRepository();
   const sandboxService = new SandboxService();
   const promotionService = new SandboxPromotionService();
@@ -1080,33 +1078,9 @@ async function seedDemoSandboxes() {
     console.log(`  = Star tiers already configured (${configuredTiers.length}) — left as is`);
   }
 
-  /**
-   * Le projet qui accueille les challenges issus d'une promotion.
-   *
-   * Créé à la demande, et non d'office : aucune proposition de démonstration
-   * n'est promue aujourd'hui, et un projet vide de plus sur la page d'accueil
-   * n'aurait rien à montrer. Il suffit d'ajouter un bloc `promote` dans
-   * `demo-sandboxes.json` pour que ce chemin reprenne.
-   */
-  const HOST_PROJECT_TITLE = "MyTwin — Jumeau numérique du corps";
-  let hostProjectId: string | null = null;
-  async function hostProject(): Promise<string> {
-    if (hostProjectId) return hostProjectId;
-    const [existing] = await db
-      .select({ uuid: projects.uuid })
-      .from(projects)
-      .where(eq(projects.title, HOST_PROJECT_TITLE))
-      .limit(1);
-    hostProjectId =
-      existing?.uuid ??
-      (
-        await projectRepo.create({
-          title: HOST_PROJECT_TITLE,
-          description: "Projet d'accueil des challenges issus de propositions du Sandbox.",
-        })
-      ).uuid;
-    return hostProjectId;
-  }
+  // Pas de projet d'accueil : chaque promotion crée le projet de sa
+  // proposition. Il suffit d'ajouter un bloc `promote` dans
+  // `demo-sandboxes.json` pour que ce chemin reprenne.
 
   for (const [index, entry] of data.entries()) {
     const authorId = userByName.get(entry.author_full_name) ?? allUserIds[index % allUserIds.length];
@@ -1182,7 +1156,8 @@ async function seedDemoSandboxes() {
             start_date: daysAgo(p.start_days_ago).toISOString().split("T")[0],
             end_date: daysAgo(p.end_days_ago).toISOString().split("T")[0],
             contribution_points_reward: p.contribution_points_reward,
-            project_id: await hostProject(),
+            // Pas de `project_id` : la promotion crée le projet de la
+            // proposition, avec son auteur pour manager.
             compute_enabled: p.compute_enabled,
             api_packaging_enabled: p.api_packaging_enabled,
           },

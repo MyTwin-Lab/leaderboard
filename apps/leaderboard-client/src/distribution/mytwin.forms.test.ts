@@ -74,12 +74,13 @@ describe('code form section', () => {
     expect(codeFormLogic.body(state, ctx)).toEqual({ reward_rules: DEFAULT_CODE_REWARD_RULES, compute_enabled: false });
   });
 
-  it('promotes into own_repo with the proposal goals as template tasks, sending neither type nor repo', () => {
+  it('promotes into own_repo without turning the proposal goals into tasks, sending neither type nor repo', () => {
+    // Les buts vont dans le brief du challenge, pas dans ses tâches.
     const ctx = promotion('code', ['Collect data', 'Train']);
     const state = codeFormLogic.initialState(ctx);
 
     expect(state.workspaceMode).toBe('own_repo');
-    expect(state.pendingTasks.map((t) => t.title)).toEqual(['Collect data', 'Train']);
+    expect(state.pendingTasks).toEqual([]);
     expect(codeFormLogic.body(state, ctx)).not.toHaveProperty('type');
     expect(codeFormLogic.body(state, ctx)).not.toHaveProperty('github_repo');
   });

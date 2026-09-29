@@ -14,6 +14,8 @@ const service = new SandboxPromotionService();
  * Le corps du POST, c'est `createChallengeSchema` **moins ce qui est décidé
  * ailleurs** :
  *
+ * - `project_id` — la promotion crée **son** projet, nommé comme la
+ *   proposition et managé par son auteur. Il n'y a pas de projet à choisir ;
  * - `workspace_mode` et `github_repo` — un challenge `code` issu d'une
  *   promotion est forcément en `own_repo` sur le dépôt de son auteur, il n'y a
  *   pas de repo partagé à saisir ;
@@ -21,7 +23,7 @@ const service = new SandboxPromotionService();
  *   aux challenges de validation, qui dérivent d'un challenge ML existant et ne
  *   peuvent pas naître d'une proposition.
  *
- * Tout le reste (projet, statut, dates, pool, règles de reward, compute, API
+ * Tout le reste (statut, dates, pool, règles de reward, compute, API
  * packaging, brief) reste à la main de l'admin. Les règles de reward sont lues
  * par le service, avec le flow du challenge à naître.
  */
@@ -39,8 +41,10 @@ const promoteSchema = z.object({
   end_date: z.string().nullish(),
   description: z.string().optional(),
   roadmap: z.string().optional(),
+  // Absent : composé depuis les trois sections de la proposition. Vide :
+  // l'admin l'a effacé, le challenge naît sans brief.
+  brief: z.string().max(500_000).nullish(),
   contribution_points_reward: z.number().int().nonnegative(),
-  project_id: z.string().uuid(),
   reward_rules: z.unknown().nullish(),
   compute_enabled: z.boolean().optional(),
   api_packaging_enabled: z.boolean().optional(),
@@ -49,8 +53,9 @@ const promoteSchema = z.object({
 /**
  * POST /api/sandboxes/[id]/promote — **admin uniquement** (§1.6).
  *
- * Un manager est rattaché à un projet ; un sandbox n'en a pas, donc il n'a
- * aucun droit particulier ici — c'est délibéré, pas un oubli.
+ * Un manager est rattaché à un projet ; un sandbox n'en a pas encore, donc il
+ * n'a aucun droit particulier ici — c'est délibéré, pas un oubli. C'est la
+ * promotion qui crée le projet, et qui en fait l'auteur le manager.
  *
  * `409` quand la proposition n'est plus `open` : elle a déjà été promue (ou
  * archivée). C'est la garde en tête de transaction qui le dit, pas une lecture
@@ -86,7 +91,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
 
     // La forme de la réponse est celle de `POST /api/challenges` : le tiroir
-    // lit `uuid` pour naviguer vers le challenge fraîchement créé.
+    // lit `uuid` et `slug` pour naviguer vers le challenge fraîchement créé.
+    // Le projet, lui, se retrouve par `challenge.project_id`.
     return NextResponse.json(challenge, { status: 201 });
   } catch (error) {
     const mapped = sandboxErrorResponse(error);

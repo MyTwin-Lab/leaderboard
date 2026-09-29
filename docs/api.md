@@ -286,7 +286,7 @@ A sandbox is a project, not a challenge in waiting: it carries neither type nor 
 | `GET` | `/api/sandboxes/slug-availability` | `?slug=&exclude=<uuid>`, in the sandbox namespace. | `admin`, `contributor`, `medical_pro` |
 | `GET` | `/api/sandboxes/:id` | Detail. The CP ledger is present only for the author and admins. | Public |
 | `PATCH` | `/api/sandboxes/:id` | Edit title, slug, sections, cover. `{ status: 'archived' }` archives it. | Author (archive: author or admin) |
-| `POST` | `/api/sandboxes/:id/promote` | Turn the sandbox into a challenge. `type` (`code` / `ml`) is the admin's call — a sandbox does not carry one. Optional `slug`, the sandbox's own when omitted and free; `409` when taken. | Admin |
+| `POST` | `/api/sandboxes/:id/promote` | Turn the sandbox into a **new project** (named after it, its author as manager) with its first challenge. No `project_id`. `type` (`code` / `ml`) is the admin's call — a sandbox does not carry one. Optional `slug`, the sandbox's own when omitted and free; `409` when taken. Optional `brief`: absent, it is composed from the proposal's context, goals and why; empty, the challenge gets none. Answers the challenge. | Admin |
 | `PUT` | `/api/sandboxes/:id/star` | Star. Idempotent, checks the tiers, and issues the anonymous cookie when the request carries none. `403` for the author, `409` if not `open`, `429` past the rate limit. | Public |
 | `DELETE` | `/api/sandboxes/:id/star` | Unstar. Soft delete — never reverses a paid tier. | Public |
 | `GET` | `/api/admin/sandboxes/:id/stars` | Audit: stars grouped by origin, hashed-IP prefix and day. Never the full hash or the `anon_id`. | Admin |

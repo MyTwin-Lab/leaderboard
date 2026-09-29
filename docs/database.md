@@ -157,7 +157,7 @@ Claimable work units of the core `resources` capability (`packages/capabilities/
 
 | Table | Purpose |
 |-------|---------|
-| `sandboxes` | A contributor-proposed **project**, outside the challenge system: no pool, no members, no tasks — and no type, repository, dataset, model or evaluation (dropped by migration `0025`; the admin picks the challenge's shape at promotion). `slug` is unique among sandboxes (its own namespace, separate from challenges'), with former slugs in `sandbox_slug_redirects` like challenges'. The proposal is held by `context` / `goals` / `why`, its illustration by `cover_image_url`, which follows it to the challenge. `promoted_challenge_id` is `ON DELETE SET NULL` — deleting the challenge must not erase the proposal behind it. |
+| `sandboxes` | A contributor-proposed **project**, outside the challenge system: no pool, no members, no tasks — and no type, repository, dataset, model or evaluation (dropped by migration `0025`; the admin picks the challenge's shape at promotion). `slug` is unique among sandboxes (its own namespace, separate from challenges'), with former slugs in `sandbox_slug_redirects` like challenges'. The proposal is held by `context` / `goals` / `why`, which become the brief of the first challenge at promotion; its illustration by `cover_image_url`, which follows it to the challenge. Promotion creates a `projects` row (the author as `manager_id`) and the challenge inside it; the project is reached through `challenges.project_id`. `promoted_challenge_id` is `ON DELETE SET NULL` — deleting the challenge must not erase the proposal behind it. |
 | `sandbox_stars` | One row per identity per sandbox, signed in (`user_id`) or not (`anon_id`, from a signed cookie). Uniqueness is two partial unique indexes rather than a composite key, which tolerates no NULL. Unstarring is a soft delete (`removed_at`): a paid milestone is never taken back, so the wave has to stay auditable. `ip_hash` is HMAC'd and rate-limits only — never uniqueness, since a campus leaves through one address — and is purged after 30 days. |
 | `sandbox_rewards` | The sandbox CP ledger, separate from `reward_entries` (whose `challenge_id` is NOT NULL and whose rows the leaderboard aggregates per contribution). Two partial unique indexes carry idempotence: one `star_tier` row per crossed threshold, one `promotion` row per sandbox. No cached total — the CP are summed live, so deleting a row is the clawback. See [`sandbox.md`](./sandbox.md). |
 
@@ -198,7 +198,7 @@ challenges ─── challenges (source_challenge_id, validation → ml or code,
 challenges ──< validation_targets >── contributions
 challenges ──< validation_reference_cases >── users (author)
 validation_reference_cases ──< validation_case_claims >── contributions
-users ──< sandboxes >── challenges (promoted_challenge_id, nullable)
+users ──< sandboxes >── challenges (promoted_challenge_id, nullable; the challenge's project is the one promotion created)
 sandboxes ──< sandbox_slug_redirects
 sandboxes ──< sandbox_stars >── users (user_id nullable — null = anonymous star)
 sandboxes ──< sandbox_rewards >── users (author)

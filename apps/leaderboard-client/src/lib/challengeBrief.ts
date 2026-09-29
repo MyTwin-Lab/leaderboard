@@ -6,11 +6,15 @@ import { flowCatalog } from '@/distribution/mytwin.flows';
  * challenge rejoint. Ce qui le désigne est son nom de fichier, par
  * convention : pas de colonne dédiée, pas de migration.
  *
- * La constante est partagée entre l'API (upsert du POST) et le client
- * (tiroir de création, gate de la page challenge) pour qu'aucun de ces
- * endroits ne porte la chaîne en dur.
+ * La constante vit dans le domaine (`packages/database-service/domain/brief.ts`)
+ * parce que la promotion d'un sandbox l'écrit aussi, dans sa transaction. Elle
+ * est réexportée ici pour l'API (upsert du POST) et le client (tiroir de
+ * création, gate de la page challenge), qu'aucun de ces endroits ne porte la
+ * chaîne en dur.
  */
-export const BRIEF_FILENAME = 'brief.md';
+import { BRIEF_FILENAME } from '../../../../packages/database-service/domain/brief';
+
+export { BRIEF_FILENAME };
 
 /** Squelette proposé à l'auteur — la maquette rend ces trois sections. */
 export const BRIEF_TEMPLATE = `## Context

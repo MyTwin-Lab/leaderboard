@@ -11,7 +11,7 @@ import { flushBrief } from './briefFlush';
 import { buildPromotionRequestBody } from './promotionRequestBody';
 import { CoverImageField } from '@/components/admin/CoverImageField';
 import { Field, LockedValue, fgAt } from './challengeFormFields';
-import { buildPromotedDescription } from '../../../../../packages/services/sandbox/promotion';
+import { buildPromotedBrief, buildPromotedDescription } from '../../../../../packages/services/sandbox/promotion';
 import { Markdown } from '@/components/ui/Markdown';
 import { SlugField } from '@/components/ui/SlugField';
 import { useSlugField } from '@/lib/useSlugField';
@@ -48,10 +48,12 @@ interface CreateChallengeDrawerProps {
    */
   challenge?: EditableChallenge;
   /**
-   * Présente = mode promotion, **exclusif** de `challenge`. Le tiroir crée un
-   * challenge depuis une proposition : titre, description, type, buts et mode
-   * de workspace sont pré-remplis, le type est verrouillé, et le formulaire
-   * poste vers `/api/sandboxes/:id/promote` au lieu de `/api/challenges`.
+   * Présente = mode promotion, **exclusif** de `challenge`. Le tiroir crée le
+   * projet de la proposition et son premier challenge : titre, adresse,
+   * description et brief sont pré-remplis depuis la proposition, le projet
+   * n'est pas à choisir (il naît avec le challenge, managé par l'auteur), et
+   * le formulaire poste vers `/api/sandboxes/:id/promote` au lieu de
+   * `/api/challenges`.
    */
   promotion?: PromotableSandbox;
 }
@@ -179,19 +181,22 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
       const promoted = creatableFormSections[0];
       setSectionKey(promoted.key);
       setFlowStates({ [promoted.key]: promoted.initialState({ mode: 'promotion', promotion, pool: cp, open }) });
-      // La description markdown est composée par la même fonction que le
+      // L'accroche et le brief sont composés par les mêmes fonctions que le
       // serveur, pour que ce que l'admin relit soit exactement ce qui serait
-      // écrit s'il n'y touchait pas.
-      setDescription(buildPromotedDescription({
+      // écrit s'il n'y touchait pas. Les trois sections de la proposition
+      // deviennent le brief, ouvert d'emblée : c'est ce qu'il y a à relire.
+      setDescription(buildPromotedDescription({ context: promotion.context ?? null }));
+      setBrief(buildPromotedBrief({
         context: promotion.context ?? null,
         goals: promotion.goals ?? [],
         why: promotion.why ?? null,
       }));
+      setExistingBriefId(null);
+      setShowBrief(true);
       // Promouvoir, c'est ouvrir le challenge — pas préparer un brouillon.
       setStatus('active');
-      // Le tiroir s'ouvre après le chargement des projets : sans ça, l'état
-      // initial (`projects[0]` au premier rendu) resterait vide.
-      setProjectId((current) => current || projects[0]?.id || '');
+      // Pas de projet à choisir : la promotion crée le sien.
+      setProjectId('');
     }
   }, [open, challenge, promotion]);
 
@@ -254,8 +259,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
   };
 
   const handleSubmit = async () => {
-    if (!title.trim() || !projectId) {
-      setError('Title and project are required.');
+    // En promotion le projet n'est pas à choisir : il naît avec le challenge.
+    if (!title.trim() || (!isPromotion && !projectId)) {
+      setError(isPromotion ? 'Title is required.' : 'Title and project are required.');
       return;
     }
     // Dates are optional, but an ordering that makes no sense still is one.
@@ -320,8 +326,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                     endDate,
                     description,
                     roadmap,
+                    // Le brief part avec le corps : la promotion l'écrit dans
+                    // sa transaction, il n'y a pas de flush après coup.
+                    brief,
                     cp,
-                    projectId,
                   },
                   flowFields,
                 )
@@ -349,8 +357,9 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
         const problems = section.afterSave ? await section.afterSave(saved, flowState, ctx) : [];
 
         // Le brief est un document : même contrainte (pas d'uuid avant la
-        // création), même traitement de l'échec.
-        if (saved.uuid && (brief.trim() || existingBriefId)) {
+        // création), même traitement de l'échec. Sauf en promotion, où il est
+        // parti dans le corps et écrit par la transaction.
+        if (!isPromotion && saved.uuid && (brief.trim() || existingBriefId)) {
           if (!(await flushBrief(saved.uuid, brief, existingBriefId)).ok) problems.push('the brief failed to save');
         }
 
@@ -437,9 +446,10 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
                 What promoting does
               </p>
               <ul className="space-y-1 text-[11px] leading-relaxed" style={{ color: fgAt(0.5) }}>
-                <li>• Creates this challenge and closes the sandbox as <strong>Promoted</strong> - for good.</li>
+                <li>• Creates a <strong>new project</strong> named after the proposal, with its author as manager, and this challenge as its first one.</li>
+                <li>• Closes the sandbox as <strong>Promoted</strong> - for good.</li>
+                <li>• The proposal's context, goals and why become the challenge <strong>brief</strong>, pre-filled below for you to edit.</li>
                 <li>• The author joins as a member; they declare their workspace from the challenge, like everyone else.</li>
-                <li>• Nothing is carried over: a proposal is an idea, the author submits from the challenge.</li>
                 <li>• The promotion bonus is paid to the author, per the Sandbox module settings.</li>
                 <li>• The type is your call, below - it decides the steps and the grid. The cover image follows the proposal.</li>
               </ul>
@@ -502,9 +512,13 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             </div>
           </Field>
 
-          {/* ── Project ── */}
+          {/* ── Project ──
+              En promotion il n'y a rien à choisir : le projet naît avec le
+              challenge, nommé comme la proposition, son auteur pour manager. */}
           <Field icon={<ChevronDown className="h-3.5 w-3.5" />} label="Project">
-            {isEdit ? (
+            {isPromotion ? (
+              <LockedValue text={`New project: ${title.trim() || promotion!.title} (managed by the author)`} />
+            ) : isEdit ? (
               <LockedValue text={projects.find(p => p.id === projectId)?.name ?? '-'} />
             ) : (
               <SelectDropdown
@@ -646,8 +660,11 @@ export function CreateChallengeDrawer({ open, onClose, projects, onCreated, chal
             {showBrief && (
               <div className="space-y-2 animate-fade-up">
                 <p className="text-xs" style={{ color: fgAt(0.3) }}>
-                  Context, objectives and expected result, in Markdown. Shown before the workspace
-                  to contributors who have not joined yet, and kept in the challenge documents as
+                  {isPromotion
+                    ? 'Composed from the proposal: its context and why under Context, its goals as objectives. Add the expected result if you want one. '
+                    : 'Context, objectives and expected result, in Markdown. '}
+                  Shown before the workspace to contributors who have not joined yet, and kept in the
+                  challenge documents as
                   <code className="mx-1 rounded bg-white/10 px-1 py-0.5 font-mono text-[11px]">brief.md</code>
                   afterwards.
                 </p>

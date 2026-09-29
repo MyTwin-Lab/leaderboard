@@ -9,12 +9,16 @@
  * vocabulaire des challenges, une proposition n'en porte plus, et c'est donc
  * l'admin qui tranche ici, parmi les formes qu'une proposition peut prendre.
  *
- * Ce qui n'y figure **pas** reste le cœur de la règle : `workspace_mode` et
- * `github_repo` découlent du type (un challenge `code` promu est un `own_repo`
- * sur le dépôt de son auteur), et les champs des challenges de validation n'ont
- * pas de sens ici — un challenge de validation dérive d'un challenge ML
- * existant, pas d'une proposition. La route les refuserait de toute façon :
- * les envoyer laisserait croire le contraire.
+ * `brief` y figure parce que la promotion l'écrit dans sa transaction, avec le
+ * projet et le challenge : pas de second appel après coup comme à la création.
+ *
+ * Ce qui n'y figure **pas** reste le cœur de la règle : pas de `project_id`,
+ * la promotion crée son propre projet ; `workspace_mode` et `github_repo`
+ * découlent du type (un challenge `code` promu est un `own_repo` sur le dépôt
+ * de son auteur) ; et les champs des challenges de validation n'ont pas de
+ * sens ici — un challenge de validation dérive d'un challenge ML existant, pas
+ * d'une proposition. La route les refuserait de toute façon : les envoyer
+ * laisserait croire le contraire.
  */
 export interface PromotionFormState {
   title: string;
@@ -27,12 +31,13 @@ export interface PromotionFormState {
   endDate: string;
   description: string;
   roadmap: string;
+  /** Pré-rempli depuis les trois sections de la proposition, relu par l'admin. Vide = pas de brief. */
+  brief: string;
   cp: number;
-  projectId: string;
 }
 
 /** Ce que la route de promotion fixe elle-même, et qu'une section ne peut pas lui imposer. */
-const INHERITED_FIELDS = ['type', 'workspace_mode', 'github_repo'];
+const INHERITED_FIELDS = ['type', 'workspace_mode', 'github_repo', 'project_id'];
 
 export function buildPromotionRequestBody(
   state: PromotionFormState,
@@ -49,8 +54,9 @@ export function buildPromotionRequestBody(
     end_date: state.endDate || null,
     description: state.description.trim() || undefined,
     roadmap: state.roadmap.trim() || undefined,
+    // Toujours envoyé, même vide : vide veut dire « effacé », pas « à composer ».
+    brief: state.brief.trim(),
     contribution_points_reward: state.cp,
-    project_id: state.projectId,
     ...fields,
   };
 }
