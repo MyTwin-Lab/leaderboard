@@ -12,6 +12,7 @@ describe("watch module settings", () => {
       high_impact_threshold: 9,
       page_size: 25,
       cache_ttl_seconds: 600,
+      spotlight_query: "mammography deep learning",
     });
   });
 

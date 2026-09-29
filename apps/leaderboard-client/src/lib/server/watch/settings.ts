@@ -12,6 +12,8 @@ export interface WatchSettings {
   highImpactThreshold: number;
   pageSize: number;
   cacheTtlSeconds: number;
+  /** La recherche de la sélection d'accueil ; vide, les plus citées du mois. */
+  spotlightQuery: string;
 }
 
 /**
@@ -31,5 +33,6 @@ export async function readWatchSettings(registry: Pick<Modules, "settings"> = mo
     highImpactThreshold: typeof settings.high_impact_threshold === "number" ? settings.high_impact_threshold : 9,
     pageSize: typeof settings.page_size === "number" ? Math.min(50, Math.max(1, Math.floor(settings.page_size))) : 25,
     cacheTtlSeconds: typeof settings.cache_ttl_seconds === "number" ? Math.max(0, settings.cache_ttl_seconds) : 600,
+    spotlightQuery: typeof settings.spotlight_query === "string" ? settings.spotlight_query.trim() : "mammography deep learning",
   };
 }

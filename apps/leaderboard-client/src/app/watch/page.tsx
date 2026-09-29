@@ -37,7 +37,12 @@ export default async function WatchPage() {
   return (
     // `useSearchParams` dans l'explorateur : Next exige une frontière Suspense.
     <Suspense fallback={null}>
-      <WatchExplorer highImpactThreshold={settings.highImpactThreshold} spotlight={spotlight} knownAnonymous={knownAnonymous} />
+      <WatchExplorer
+        highImpactThreshold={settings.highImpactThreshold}
+        spotlight={spotlight}
+        spotlightQuery={settings.spotlightQuery}
+        knownAnonymous={knownAnonymous}
+      />
     </Suspense>
   );
 }

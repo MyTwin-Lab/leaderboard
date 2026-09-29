@@ -47,8 +47,10 @@ const DEBOUNCE_MS = 400;
 
 interface WatchExplorerProps {
   highImpactThreshold: number;
-  /** La sélection rendue côté serveur avant toute recherche : les plus citées du mois. */
+  /** La sélection rendue côté serveur avant toute recherche. */
   spotlight: WatchResult[];
+  /** La recherche dont elle vient (réglage du module) ; vide, les plus citées du mois. */
+  spotlightQuery: string;
   /** Vrai pour un visiteur sans aucun cookie : anonyme dès le serveur, sans `meQuery`. */
   knownAnonymous: boolean;
 }
@@ -102,7 +104,7 @@ function RetryButton({ onClick }: { onClick(): void }) {
   );
 }
 
-export function WatchExplorer({ highImpactThreshold, spotlight, knownAnonymous }: WatchExplorerProps) {
+export function WatchExplorer({ highImpactThreshold, spotlight, spotlightQuery, knownAnonymous }: WatchExplorerProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -273,9 +275,13 @@ export function WatchExplorer({ highImpactThreshold, spotlight, knownAnonymous }
                     <div className="v-watch-spotlight-head">
                       <span className="v-eyebrow">
                         <span className="v-eyebrow-dot" />
-                        Latest in health research
+                        {spotlightQuery ? "Latest research" : "Latest in health research"}
                       </span>
-                      <span className="v-watch-spotlight-sub">The most cited publications of the last 30 days</span>
+                      <span className="v-watch-spotlight-sub">
+                        {spotlightQuery
+                          ? `The most relevant publications on “${spotlightQuery}”`
+                          : "The most cited publications of the last 30 days"}
+                      </span>
                     </div>
                     <div className="v-watch-list">
                       {spotlight.map((result) => (

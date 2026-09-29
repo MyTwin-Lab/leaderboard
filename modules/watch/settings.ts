@@ -16,6 +16,9 @@ export const watchSettingsSchema = z.object({
   high_impact_threshold: z.number().min(0).max(1000).default(9),
   page_size: z.number().int().min(1).max(50).default(25),
   cache_ttl_seconds: z.number().int().min(0).max(86_400).default(600),
+  // La recherche affichée avant toute recherche (la sélection de la page).
+  // Vide : les publications les plus citées du mois, tous sujets.
+  spotlight_query: z.string().trim().max(300).default("mammography deep learning"),
 });
 
 export type WatchSettings = z.infer<typeof watchSettingsSchema>;

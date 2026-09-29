@@ -73,7 +73,7 @@ The same editor carries the **star audit**: a sandbox's stars grouped by origin,
 
 ### Watch settings
 
-The OpenAlex contact email (recommended: it earns OpenAlex's polite pool), the default OpenAlex domains (`4` = Health Sciences), the high-impact threshold (2-year mean citedness, default 9), the page size (1–50) and the cache TTL. See [`watch.md`](./watch.md).
+The default search shown on `/watch` before any search (`spotlight_query`, « mammography deep learning » by default), the OpenAlex contact email (recommended: it earns OpenAlex's polite pool), the default OpenAlex domains (`4` = Health Sciences), the high-impact threshold (2-year mean citedness, default 9), the page size (1–50) and the cache TTL. See [`watch.md`](./watch.md).
 
 ### Onboarding
 

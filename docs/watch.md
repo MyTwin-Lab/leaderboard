@@ -16,7 +16,7 @@ It is a product **module** (`modules/watch`), **enabled by default**, that an ad
 
 | Element | Behaviour |
 |---|---|
-| Search box | Debounced 400 ms, or Enter. Empty query with no restrictive filter → the **spotlight** (three publications rendered on the server: the most cited of the last 30 days in the default domains, `lib/server/watch/spotlight.ts`, through the same cached search) above a help state with clickable example queries, and no client request. |
+| Search box | Debounced 400 ms, or Enter. Empty query with no restrictive filter → the **spotlight** (three publications rendered on the server, `lib/server/watch/spotlight.ts`, through the same cached search: the `spotlight_query` setting by relevance — « mammography deep learning » by default — or, when it is empty, the most cited of the last 30 days in the default domains) above a help state with clickable example queries, and no client request. |
 | Search in | `Title + abstract` (OpenAlex `search=`) or `Title only` (`title.search:` filter). |
 | Period | 30 days / 6 months / 1 year (default) / 5 years / Any — turned into a `from` date on the client. |
 | Topics | Multi-select chips fed by the facets of the current search (OpenAlex subfields, with their count). 10 visible, « more » for the rest. |
@@ -46,6 +46,7 @@ The page follows the vitrine design system of the redesign (`components/vitrine/
 | `high_impact_threshold` | `9` | 2-year mean citedness at or above which a journal counts as high-impact. |
 | `page_size` | `25` | Results per page, 1 to 50. Never taken from the client. |
 | `cache_ttl_seconds` | `600` | How long a search answer is reused before asking OpenAlex again. |
+| `spotlight_query` | `mammography deep learning` | The search shown before any search (the page's spotlight), by relevance. Empty: the most cited papers of the last 30 days. |
 
 **Enable guard.** The module is the first to use `ModuleDefinition.enableGuard` (challenge 020's registry, `packages/registry/platform.ts`): a function of the settings that says what prevents the module from being active, or `null`. The `modules` capability calls it on every update that leaves the module enabled; the watch guard refuses a malformed email with a `ModuleEnableError`, which `PATCH /api/modules/[key]` answers as `409` with the reason. Disabling never consults the guard.
 
