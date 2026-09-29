@@ -12,7 +12,6 @@ import { vitrineFontVars } from "@/components/vitrine/fonts";
 import {
   DEFAULT_WATCH_FILTERS,
   MAX_WATCH_PAGE,
-  WATCH_EXAMPLE_QUERIES,
   isInitialState,
   parseWatchFilters,
   serializeWatchFilters,
@@ -267,11 +266,13 @@ export function WatchExplorer({ highImpactThreshold, spotlight, spotlightQuery, 
 
           <section className="v-watch-results">
             {initial ? (
-              <>
-                {/* La sélection du serveur : la page ne s'ouvre pas vide, et
-                    ces trois cartes sont dans le HTML initial. */}
-                {spotlight.length > 0 && (
-                  <div className="v-watch-spotlight">
+              /* La sélection du serveur : la page ne s'ouvre pas vide, et ces
+                 trois cartes sont dans le HTML initial. Sans elle (OpenAlex
+                 muet), une ligne le dit. */
+              spotlight.length === 0 ? (
+                <p className="v-watch-count">The selection could not be loaded — search above.</p>
+              ) : (
+                <div className="v-watch-spotlight">
                     <div className="v-watch-spotlight-head">
                       <span className="v-eyebrow">
                         <span className="v-eyebrow-dot" />
@@ -289,29 +290,7 @@ export function WatchExplorer({ highImpactThreshold, spotlight, spotlightQuery, 
                       ))}
                     </div>
                   </div>
-                )}
-              <div className="v-empty">
-                <span className="v-empty-title">Type a query, or start from an example</span>
-                <span className="v-empty-sub">
-                  Results cover journal articles in English from the Health Sciences domain, most recent first.
-                </span>
-                <div className="v-watch-examples">
-                  {WATCH_EXAMPLE_QUERIES.map((example) => (
-                    <button
-                      key={example}
-                      type="button"
-                      className="v-chip"
-                      onClick={() => {
-                        setText(example);
-                        apply({ q: example });
-                      }}
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              </>
+              )
             ) : sessionKnown && !signedIn ? (
               /* La recherche demande un compte : la requête est gardée dans
                  l'URL, la connexion y ramène. */

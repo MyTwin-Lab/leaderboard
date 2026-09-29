@@ -12,11 +12,11 @@ It is a product **module** (`modules/watch`), **enabled by default**, that an ad
 
 ## What the page does
 
-`/watch` is public: anyone reads the spotlight, and the page is indexable and in the sitemap while the module is enabled. Searching needs an account — `/api/watch/search` is in the proxy matcher (`distribution/modules/watch.proxy.ts`), and an anonymous visitor who types a query or picks an example is offered to sign in (`/signin?from=/watch…`), the query kept in the URL. The page answers 404 while the module is disabled.
+`/watch` is public: anyone reads the spotlight, and the page is indexable and in the sitemap while the module is enabled. Searching needs an account — `/api/watch/search` is in the proxy matcher (`distribution/modules/watch.proxy.ts`), and an anonymous visitor who types a query is offered to sign in (`/signin?from=/watch…`), the query kept in the URL. The page answers 404 while the module is disabled.
 
 | Element | Behaviour |
 |---|---|
-| Search box | Debounced 400 ms, or Enter. Empty query with no restrictive filter → the **spotlight** (three publications rendered on the server, `lib/server/watch/spotlight.ts`, through the same cached search: the `spotlight_query` setting by relevance — « mammography deep learning » by default — or, when it is empty, the most cited of the last 30 days in the default domains) above a help state with clickable example queries, and no client request. |
+| Search box | Debounced 400 ms, or Enter. Empty query with no restrictive filter → the **spotlight** (three publications rendered on the server, `lib/server/watch/spotlight.ts`, through the same cached search: the `spotlight_query` setting by relevance — « mammography deep learning » by default — or, when it is empty, the most cited of the last 30 days in the default domains), and no client request. |
 | Search in | `Title + abstract` (OpenAlex `search=`) or `Title only` (`title.search:` filter). |
 | Period | 30 days / 6 months / 1 year (default) / 5 years / Any — turned into a `from` date on the client. |
 | Topics | Multi-select chips fed by the facets of the current search (OpenAlex subfields, with their count). 10 visible, « more » for the rest. |

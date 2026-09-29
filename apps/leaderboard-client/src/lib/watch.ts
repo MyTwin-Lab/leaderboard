@@ -104,14 +104,6 @@ export const WATCH_SCOPES: ReadonlyArray<{ key: WatchScope; label: string }> = [
   { key: "title", label: "Title only" },
 ];
 
-/** Les exemples cliquables de l'état initial. */
-export const WATCH_EXAMPLE_QUERIES: readonly string[] = [
-  "hepatocellular carcinoma",
-  "mammography deep learning",
-  "gut microbiome depression",
-  "digital twin cardiology",
-];
-
 const SCOPES = new Set<string>(WATCH_SCOPES.map((scope) => scope.key));
 const SORTS = new Set<string>(WATCH_SORTS.map((sort) => sort.key));
 const PERIODS = new Set<string>(WATCH_PERIODS.map((period) => period.key));

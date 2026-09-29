@@ -468,15 +468,6 @@
   color: var(--v-subtle);
 }
 
-/* L'état initial : les exemples, en pills accent. */
-.v-watch-examples {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 0.75rem;
-}
-
 /* ── Squelettes ─────────────────────────────────────────────────────────── */
 .v-watch-skeleton {
   display: flex;
