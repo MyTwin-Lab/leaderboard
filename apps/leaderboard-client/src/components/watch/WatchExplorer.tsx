@@ -52,8 +52,6 @@ interface WatchExplorerProps {
   /** La sélection : une recherche réglée (`query`), ou les derniers jours (`recent`). */
   spotlightMode: "query" | "recent";
   spotlightQuery: string;
-  spotlightWindowDays: number;
-  spotlightRanking: "impact" | "newest";
   /** Vrai pour un visiteur sans aucun cookie : anonyme dès le serveur, sans `meQuery`. */
   knownAnonymous: boolean;
 }
@@ -112,18 +110,13 @@ export function WatchExplorer({
   spotlight,
   spotlightMode,
   spotlightQuery,
-  spotlightWindowDays,
-  spotlightRanking,
   knownAnonymous,
 }: WatchExplorerProps) {
-  // Ce que la sélection est, dit en une ligne sous son surtitre.
+  // Une recherche réglée se dit en une ligne sous le surtitre ; les derniers
+  // jours, non — le surtitre suffit, la fenêtre et le classement sont des
+  // réglages d'admin qui n'ont rien à dire au lecteur.
   const spotlightIsQuery = spotlightMode === "query" && spotlightQuery.trim().length > 0;
-  const windowLabel = spotlightWindowDays === 1 ? "the last 24 hours" : `the last ${spotlightWindowDays} days`;
-  const spotlightSub = spotlightIsQuery
-    ? `The most relevant publications on “${spotlightQuery}”`
-    : spotlightRanking === "impact"
-      ? `The most cited publications of ${windowLabel}, from high-impact journals`
-      : `The newest publications of ${windowLabel}`;
+  const spotlightSub = spotlightIsQuery ? `The most relevant publications on “${spotlightQuery}”` : null;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -298,7 +291,7 @@ export function WatchExplorer({
                         <span className="v-eyebrow-dot" />
                         {spotlightIsQuery ? "Latest research" : "Latest in health research"}
                       </span>
-                      <span className="v-watch-spotlight-sub">{spotlightSub}</span>
+                      {spotlightSub && <span className="v-watch-spotlight-sub">{spotlightSub}</span>}
                     </div>
                     <div className="v-watch-list">
                       {spotlight.map((result) => (

@@ -43,8 +43,6 @@ export default async function WatchPage() {
         spotlight={spotlight}
         spotlightMode={settings.spotlightMode}
         spotlightQuery={settings.spotlightQuery}
-        spotlightWindowDays={settings.spotlightWindowDays}
-        spotlightRanking={settings.spotlightRanking}
         knownAnonymous={knownAnonymous}
       />
     </Suspense>
