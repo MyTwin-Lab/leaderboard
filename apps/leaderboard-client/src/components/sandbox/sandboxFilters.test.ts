@@ -161,6 +161,30 @@ describe("filterAndSort", () => {
     expect(open.map((s) => s.uuid)).not.toContain("mine-archived");
   });
 
+  it("shows open sandboxes first, then promoted ones, under 'all' — never archived", () => {
+    const list = filterAndSort(FIXTURES, {
+      query: "",
+      status: "all",
+      sort: "stars",
+      currentUserId: ME,
+    });
+    // Le promu a plus de stars que tous les ouverts : il reste pourtant après eux.
+    expect(list.map((s) => s.uuid)).toEqual(["open-popular", "mine-open", "open-recent", "promoted"]);
+  });
+
+  it("sorts inside each group under 'all'", () => {
+    const list = filterAndSort(
+      [
+        sandbox({ uuid: "promoted-old", status: "promoted", created_at: "2026-01-01T00:00:00.000Z" }),
+        sandbox({ uuid: "open-old", created_at: "2026-01-01T00:00:00.000Z" }),
+        sandbox({ uuid: "promoted-new", status: "promoted", created_at: "2026-03-01T00:00:00.000Z" }),
+        sandbox({ uuid: "open-new", created_at: "2026-03-01T00:00:00.000Z" }),
+      ],
+      { query: "", status: "all", sort: "recent", currentUserId: null },
+    );
+    expect(list.map((s) => s.uuid)).toEqual(["open-new", "open-old", "promoted-new", "promoted-old"]);
+  });
+
   it("applies the search before the pill", () => {
     const list = filterAndSort(FIXTURES, {
       query: "twin",

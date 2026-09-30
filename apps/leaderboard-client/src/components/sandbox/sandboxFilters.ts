@@ -19,7 +19,15 @@ export type SandboxSort = "stars" | "recent";
  * `archived` — un archivé n'apparaît nulle part ailleurs, et c'est le seul
  * endroit où son auteur le retrouve.
  */
-export type SandboxStatusFilter = "open" | "promoted" | "mine";
+export type SandboxPill = "open" | "promoted" | "mine";
+
+/**
+ * Ce que la grille peut afficher : une pill, ou `all` — la vue par défaut
+ * depuis que les pills sont masquées. `all` n'est pas « tout » : ce sont les
+ * ouverts d'abord, puis les promus à la suite, et jamais les archivés — eux
+ * restent derrière `mine`.
+ */
+export type SandboxStatusFilter = SandboxPill | "all";
 
 /**
  * Le minimum dont ce module a besoin. Volontairement structurel plutôt que
@@ -84,7 +92,7 @@ function isMine(sandbox: FilterableSandbox, currentUserId: string | null): boole
 export function statusCounts<T extends FilterableSandbox>(
   pool: T[],
   currentUserId: string | null,
-): Record<SandboxStatusFilter, number> {
+): Record<SandboxPill, number> {
   return {
     open: pool.filter((sandbox) => sandbox.status === "open").length,
     promoted: pool.filter((sandbox) => sandbox.status === "promoted").length,
@@ -92,8 +100,15 @@ export function statusCounts<T extends FilterableSandbox>(
   };
 }
 
+/** L'ordre des groupes de `all` : les ouverts, puis les promus. */
+const ALL_GROUP_RANK: Record<string, number> = { open: 0, promoted: 1 };
+
 /**
  * La liste affichée : recherche, puis pill, puis tri.
+ *
+ * En `all`, le tri joue **à l'intérieur** de chaque groupe : un promu à
+ * soixante stars reste sous le dernier ouvert. La grille raconte d'abord ce
+ * qui se joue encore, puis ce qui a abouti.
  *
  * Le tri « stars » départage les égalités par date décroissante — sans ça,
  * l'ordre des sandboxes à zéro star dépendrait de celui du payload, donc
@@ -108,9 +123,15 @@ export function filterAndSort<T extends FilterableSandbox>(
   const filtered =
     status === "mine"
       ? pool.filter((sandbox) => isMine(sandbox, currentUserId))
-      : pool.filter((sandbox) => sandbox.status === status);
+      : status === "all"
+        ? pool.filter((sandbox) => sandbox.status in ALL_GROUP_RANK)
+        : pool.filter((sandbox) => sandbox.status === status);
 
   return filtered.sort((a, b) => {
+    if (status === "all") {
+      const rank = ALL_GROUP_RANK[a.status] - ALL_GROUP_RANK[b.status];
+      if (rank !== 0) return rank;
+    }
     if (sort === "stars" && b.star_count !== a.star_count) return b.star_count - a.star_count;
     return timeOf(b.created_at) - timeOf(a.created_at);
   });

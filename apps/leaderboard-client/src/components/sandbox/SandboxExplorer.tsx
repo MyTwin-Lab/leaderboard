@@ -13,6 +13,7 @@ import {
   filterAndSort,
   searchPool,
   statusCounts,
+  type SandboxPill,
   type SandboxStatusFilter,
 } from "./sandboxFilters";
 import type { StarState } from "./StarButton";
@@ -28,7 +29,7 @@ interface SandboxListResponse {
   promotion_bonus_cp: number;
 }
 
-const PILLS: { key: SandboxStatusFilter; label: string }[] = [
+const PILLS: { key: SandboxPill; label: string }[] = [
   { key: "open", label: "Open" },
   { key: "promoted", label: "Promoted" },
   { key: "mine", label: "Mine" },
@@ -51,7 +52,9 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
   const queryClient = useQueryClient();
 
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<SandboxStatusFilter>("open");
+  // Les pills sont masquées (voir `sandbox-vitrine.css`) : la grille reste
+  // donc sur `all` — les ouverts, puis les promus à la suite.
+  const [status, setStatus] = useState<SandboxStatusFilter>("all");
   const gridRef = useRef<HTMLDivElement>(null);
 
   /**
