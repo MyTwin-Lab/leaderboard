@@ -49,7 +49,11 @@ interface WatchExplorerProps {
   /** La sélection rendue côté serveur avant toute recherche. */
   spotlight: WatchResult[];
   /** La recherche dont elle vient (réglage du module) ; vide, les plus citées du mois. */
+  /** La sélection : une recherche réglée (`query`), ou les derniers jours (`recent`). */
+  spotlightMode: "query" | "recent";
   spotlightQuery: string;
+  spotlightWindowDays: number;
+  spotlightRanking: "impact" | "newest";
   /** Vrai pour un visiteur sans aucun cookie : anonyme dès le serveur, sans `meQuery`. */
   knownAnonymous: boolean;
 }
@@ -103,7 +107,23 @@ function RetryButton({ onClick }: { onClick(): void }) {
   );
 }
 
-export function WatchExplorer({ highImpactThreshold, spotlight, spotlightQuery, knownAnonymous }: WatchExplorerProps) {
+export function WatchExplorer({
+  highImpactThreshold,
+  spotlight,
+  spotlightMode,
+  spotlightQuery,
+  spotlightWindowDays,
+  spotlightRanking,
+  knownAnonymous,
+}: WatchExplorerProps) {
+  // Ce que la sélection est, dit en une ligne sous son surtitre.
+  const spotlightIsQuery = spotlightMode === "query" && spotlightQuery.trim().length > 0;
+  const windowLabel = spotlightWindowDays === 1 ? "the last 24 hours" : `the last ${spotlightWindowDays} days`;
+  const spotlightSub = spotlightIsQuery
+    ? `The most relevant publications on “${spotlightQuery}”`
+    : spotlightRanking === "impact"
+      ? `The most cited publications of ${windowLabel}, from high-impact journals`
+      : `The newest publications of ${windowLabel}`;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -276,13 +296,9 @@ export function WatchExplorer({ highImpactThreshold, spotlight, spotlightQuery, 
                     <div className="v-watch-spotlight-head">
                       <span className="v-eyebrow">
                         <span className="v-eyebrow-dot" />
-                        {spotlightQuery ? "Latest research" : "Latest in health research"}
+                        {spotlightIsQuery ? "Latest research" : "Latest in health research"}
                       </span>
-                      <span className="v-watch-spotlight-sub">
-                        {spotlightQuery
-                          ? `The most relevant publications on “${spotlightQuery}”`
-                          : "The most cited publications of the last 30 days"}
-                      </span>
+                      <span className="v-watch-spotlight-sub">{spotlightSub}</span>
                     </div>
                     <div className="v-watch-list">
                       {spotlight.map((result) => (
@@ -297,7 +313,7 @@ export function WatchExplorer({ highImpactThreshold, spotlight, spotlightQuery, 
               <div className="v-empty">
                 <span className="v-empty-title">Sign in to search the literature</span>
                 <span className="v-empty-sub">
-                  Reading the monthly selection is open to everyone; searching by topic, period and impact needs an account.
+                  Reading the selection is open to everyone; searching by topic, period and impact needs an account.
                 </span>
                 <Link
                   href={`/signin?from=${encodeURIComponent(`${pathname}?${serializeWatchFilters(filters).toString()}`)}`}

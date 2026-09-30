@@ -166,6 +166,7 @@ Claimable work units of the core `resources` capability (`packages/capabilities/
 | Table | Purpose |
 |-------|---------|
 | `watch_sources` | The persistent cache of OpenAlex journals for the watch module: `source_id` (`S…`, primary key), `display_name`, `citedness_2yr` (`numeric(8,3)`, the journal's 2-year mean citedness, null when OpenAlex has none), `refreshed_at`. Rows older than 30 days are refreshed by the next search that touches them; nothing is deleted. See [`watch.md`](./watch.md). |
+| `watch_spotlight` | The frozen spotlight of `/watch`: one row (`key = 'default'`), the three publications as `results` (jsonb), the `signature` of the settings that produced them, `refreshed_at`. Rewritten when it expires (every `spotlight_window_days` days) or when those settings change. See [`watch.md`](./watch.md). |
 
 ### Notifications
 

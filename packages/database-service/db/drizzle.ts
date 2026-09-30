@@ -1429,6 +1429,18 @@ export const watch_sources = pgTable("watch_sources", {
   refreshed_at: timestamp("refreshed_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// --- WATCH_SPOTLIGHT ---
+// Module watch : la sélection d'accueil de `/watch`, figée côté serveur. Une
+// ligne (`key = 'default'`), ses publications en JSON et la signature des
+// réglages qui l'ont produite. Relue à chaque visite, réécrite quand elle a
+// passé l'âge réglé (`spotlight_window_days`) ou que les réglages ont changé.
+export const watch_spotlight = pgTable("watch_spotlight", {
+  key: text("key").primaryKey(),
+  signature: text("signature").notNull(),
+  results: jsonb("results").$type<unknown[]>().notNull().default([]),
+  refreshed_at: timestamp("refreshed_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // --- DATABASE CLIENT ---
 
 // --- IMAGES ---

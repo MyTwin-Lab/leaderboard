@@ -16,7 +16,7 @@ It is a product **module** (`modules/watch`), **enabled by default**, that an ad
 
 | Element | Behaviour |
 |---|---|
-| Search box | Debounced 400 ms, or Enter. Empty query with no restrictive filter → the **spotlight** (three publications rendered on the server, `lib/server/watch/spotlight.ts`, through the same cached search: the `spotlight_query` setting by relevance — « mammography deep learning » by default — or, when it is empty, the most cited of the last 30 days in the default domains), and no client request. |
+| Search box | Debounced 400 ms, or Enter. Empty query with no restrictive filter → the **spotlight** (three publications rendered on the server, see below), and no client request. |
 | Search in | `Title + abstract` (OpenAlex `search=`) or `Title only` (`title.search:` filter). |
 | Period | 30 days / 6 months / 1 year (default) / 5 years / Any — turned into a `from` date on the client. |
 | Topics | Multi-select chips fed by the facets of the current search (OpenAlex subfields, with their count). 10 visible, « more » for the rest. |
@@ -26,6 +26,17 @@ It is a product **module** (`modules/watch`), **enabled by default**, that an ad
 | Sort | Relevance (Newest when the query is empty — OpenAlex refuses a relevance sort without text), Newest, Most cited. |
 
 Every filter lives in the URL (`lib/watch.ts`: `parseWatchFilters` / `serializeWatchFilters`), so a search reloads and shares as is.
+
+### The spotlight
+
+What the page shows before any search: three publications, in the initial HTML so the page never opens empty and a crawler has something to read. Two modes, chosen by the admin (`spotlight_mode`):
+
+- **`recent`** (default) — the publications of the last `spotlight_window_days` days (15 by default) in the default domains, ranked by `spotlight_ranking`: `impact` (the most cited, from high-impact journals only — the same threshold as the search filter) or `newest`.
+- **`query`** — the `spotlight_query` search (« mammography deep learning » by default), by relevance, with no date bound. An empty query falls back to the newest of the window.
+
+**The selection is frozen on the server.** `lib/server/watch/spotlight.ts` keeps it in `watch_spotlight` — one row, the three results as JSON, the signature of the settings that produced it (mode, query or window and ranking, domains, threshold) and its date — and reads it on every visit: an ordinary visit makes **no** OpenAlex call. It is renewed every `spotlight_window_days` days, in both modes, by the first visit that finds it expired: that visit still reads the previous selection while the refresh runs in the background (one at a time per process), the next visit reads the new one. If OpenAlex does not answer, the previous selection stays. Only a change of the settings behind it recomputes before rendering, so the admin sees the new mode at once. Without the table (a database not yet migrated), the selection is computed live on each visit, through the search cache, as it used to be.
+
+There is no cron job for it: the search service lives in the app, which a module's job cannot reach, and a visit-driven refresh gives the same period without a scheduler.
 
 A result card shows the title (linked to PubMed when a PMID exists, else the DOI, else OpenAlex), the journal and its score badge (tinted at or above the threshold), the date, the citation count, an `OA` badge, the first three authors (`+N`), the primary topic, and the abstract folded on two lines. Publishers that do not give OpenAlex an abstract are shown `No abstract available` — that is normal, not an error.
 
@@ -46,11 +57,14 @@ The page follows the vitrine design system of the redesign (`components/vitrine/
 | `high_impact_threshold` | `9` | 2-year mean citedness at or above which a journal counts as high-impact. |
 | `page_size` | `25` | Results per page, 1 to 50. Never taken from the client. |
 | `cache_ttl_seconds` | `600` | How long a search answer is reused before asking OpenAlex again. |
-| `spotlight_query` | `mammography deep learning` | The search shown before any search (the page's spotlight), by relevance. Empty: the most cited papers of the last 30 days. |
+| `spotlight_mode` | `recent` | What the spotlight is: `recent` (the last days) or `query` (a search). |
+| `spotlight_query` | `mammography deep learning` | Mode `query`: the search, by relevance. Empty: the newest of the window. |
+| `spotlight_window_days` | `15` | Mode `recent`: the window in days. In both modes, how often the selection is renewed. 1 to 365. |
+| `spotlight_ranking` | `impact` | Mode `recent`: `impact` (most cited, high-impact journals only) or `newest`. |
 
 **Enable guard.** The module is the first to use `ModuleDefinition.enableGuard` (challenge 020's registry, `packages/registry/platform.ts`): a function of the settings that says what prevents the module from being active, or `null`. The `modules` capability calls it on every update that leaves the module enabled; the watch guard refuses a malformed email with a `ModuleEnableError`, which `PATCH /api/modules/[key]` answers as `409` with the reason. Disabling never consults the guard.
 
-The admin editor (`components/watch/WatchSettings.tsx`, wired in `distribution/modules/settings.tsx`) edits the five settings, each saved on blur.
+The admin editor (`components/watch/WatchSettings.tsx`, wired in `distribution/modules/settings.tsx`) edits every setting, each saved on blur or on change; the spotlight rows show only what the chosen mode uses.
 
 ---
 
@@ -100,6 +114,7 @@ One table, created by `db:apply-schema` (`CREATE TABLE IF NOT EXISTS`) and decla
 | Table | Purpose |
 |---|---|
 | `watch_sources` | The persistent cache of OpenAlex journals: `source_id` (e.g. `S137773608`, primary key), `display_name`, `citedness_2yr` (`numeric(8,3)`, null when OpenAlex has none), `refreshed_at`. Read by batches of ids, written by upsert; nothing is ever deleted. |
+| `watch_spotlight` | The frozen spotlight: `key` (`default`, primary key — one selection per instance), `signature` (the settings that produced it), `results` (jsonb, the three publications), `refreshed_at`. Rewritten by upsert when it expires or the settings change. `WatchSpotlightRepository`: `find`, `save`. |
 
 ---
 
@@ -109,7 +124,7 @@ One table, created by `db:apply-schema` (`CREATE TABLE IF NOT EXISTS`) and decla
 |---|---|
 | Module declaration and settings schema | `modules/watch/` |
 | Enable guard in the core | `packages/registry/platform.ts` (`enableGuard`), `packages/capabilities/modules.ts` (`ModuleEnableError`) |
-| Table and repository | `packages/database-service/db/drizzle.ts` (`watch_sources`), `packages/database-service/repositories/watchSource.repo.ts`, `scripts/db-apply-schema.ts` |
+| Tables and repositories | `packages/database-service/db/drizzle.ts` (`watch_sources`, `watch_spotlight`), `packages/database-service/repositories/watchSource.repo.ts`, `watchSpotlight.repo.ts`, `scripts/db-apply-schema.ts` |
 | OpenAlex client | `apps/leaderboard-client/src/lib/server/openalex.ts` |
 | Search service (query building, cache, journal scores) | `apps/leaderboard-client/src/lib/server/watch/` |
 | Shared types and URL filters | `apps/leaderboard-client/src/lib/watch.ts` |
@@ -124,7 +139,7 @@ The shell never imports `modules/watch`: the route reads the module through the 
 
 ## Tests
 
-- **Unit** — `lib/watch.test.ts` (URL filters), `lib/server/watch/query.test.ts` (params, filter building for every combination, cache keys, abstract reconstruction, normalization), `lib/server/watch/search.test.ts` (cache hits, facets reuse, journal resolution by batches, high-impact truncation), `lib/server/openalex.test.ts` (mailto, retry, timeout, limiter), `modules/watch/settings.test.ts`, `packages/capabilities/modules.test.ts` (enable guard).
+- **Unit** — `lib/watch.test.ts` (URL filters), `lib/server/watch/query.test.ts` (params, filter building for every combination, cache keys, abstract reconstruction, normalization), `lib/server/watch/search.test.ts` (cache hits, facets reuse, journal resolution by batches, high-impact truncation), `lib/server/watch/spotlight.test.ts` (the two modes and rankings, the signature, expiry, the stored selection served without a call, the background refresh, the stale selection kept on failure), `lib/server/openalex.test.ts` (mailto, retry, timeout, limiter), `modules/watch/settings.test.ts`, `packages/capabilities/modules.test.ts` (enable guard).
 - **Route** — `app/api/watch/search/route.test.ts`: 404 module off, 401 without session, 400 on invalid params, spec-shaped response with a mocked service, error mapping.
 - **External** — `lib/server/watch/openalex.external.test.ts`: one real call on `hepatocellular carcinoma`, checks ≥ 1 result with a non-null `journal.citedness_2yr`. Skipped unless `WATCH_EXTERNAL_TESTS=1`, and always in CI (see [`testing.md`](./testing.md)).
 

@@ -12,7 +12,23 @@ describe("watch module settings", () => {
       high_impact_threshold: 9,
       page_size: 25,
       cache_ttl_seconds: 600,
+      spotlight_mode: "recent",
       spotlight_query: "mammography deep learning",
+      spotlight_window_days: 15,
+      spotlight_ranking: "impact",
+    });
+  });
+
+  it("bounds the spotlight: a known mode and ranking, a window of 1 to 365 days", () => {
+    expect(watchSettingsSchema.safeParse({ spotlight_mode: "random" }).success).toBe(false);
+    expect(watchSettingsSchema.safeParse({ spotlight_ranking: "cited" }).success).toBe(false);
+    expect(watchSettingsSchema.safeParse({ spotlight_window_days: 0 }).success).toBe(false);
+    expect(watchSettingsSchema.safeParse({ spotlight_window_days: 366 }).success).toBe(false);
+    expect(watchSettingsSchema.safeParse({ spotlight_window_days: 7.5 }).success).toBe(false);
+    expect(watchSettingsSchema.parse({ spotlight_mode: "query", spotlight_window_days: 30, spotlight_ranking: "newest" })).toMatchObject({
+      spotlight_mode: "query",
+      spotlight_window_days: 30,
+      spotlight_ranking: "newest",
     });
   });
 

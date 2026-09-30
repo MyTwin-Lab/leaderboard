@@ -1275,6 +1275,16 @@ const STATEMENTS: Array<{ label: string; sql: string } | { label: string; run: (
         refreshed_at timestamptz NOT NULL DEFAULT now()
       )`,
   },
+  {
+    label: "watch_spotlight",
+    sql: `
+      CREATE TABLE IF NOT EXISTS watch_spotlight (
+        key text PRIMARY KEY,
+        signature text NOT NULL,
+        results jsonb NOT NULL DEFAULT '[]'::jsonb,
+        refreshed_at timestamptz NOT NULL DEFAULT now()
+      )`,
+  },
 ];
 
 async function main() {

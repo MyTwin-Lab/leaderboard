@@ -4,7 +4,7 @@ import { modules } from "@packages/capabilities/modules";
 import { WatchExplorer } from "@/components/watch/WatchExplorer";
 import { isCookielessVisitor } from "@/lib/server/publicSsr";
 import { readWatchSettings, WATCH_MODULE } from "@/lib/server/watch/settings";
-import { fetchWatchSpotlight } from "@/lib/server/watch/spotlight";
+import { loadWatchSpotlight } from "@/lib/server/watch/spotlight";
 import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const metadata = pageMetadata({
   title: "Watch: Latest Health Research",
   description:
-    "The most cited health publications of the month, and a search over the health literature: topics, period, open access and journal impact, from OpenAlex.",
+    "A selection of recent health publications, and a search over the health literature: topics, period, open access and journal impact, from OpenAlex.",
   path: "/watch",
 });
 
@@ -20,8 +20,9 @@ export const metadata = pageMetadata({
  * `/watch` — l'explorateur de publications santé. **Page publique.**
  *
  * Avant toute recherche, la page montre une sélection rendue côté serveur —
- * les publications santé les plus citées du mois (`fetchWatchSpotlight`) —
- * que tout le monde lit, crawlers compris : elle est dans le HTML initial.
+ * une recherche réglée ou les derniers jours, figée en base et renouvelée
+ * périodiquement (`loadWatchSpotlight`) — que tout le monde lit, crawlers
+ * compris : elle est dans le HTML initial.
  *
  * La recherche, elle, demande un compte : `/api/watch/search` est derrière le
  * proxy, et l'explorateur propose la connexion à l'anonyme qui cherche. Comme
@@ -33,14 +34,17 @@ export default async function WatchPage() {
   if (!(await modules.enabled(WATCH_MODULE))) notFound();
 
   const [settings, knownAnonymous] = await Promise.all([readWatchSettings(), isCookielessVisitor()]);
-  const spotlight = await fetchWatchSpotlight(settings);
+  const spotlight = await loadWatchSpotlight(settings);
   return (
     // `useSearchParams` dans l'explorateur : Next exige une frontière Suspense.
     <Suspense fallback={null}>
       <WatchExplorer
         highImpactThreshold={settings.highImpactThreshold}
         spotlight={spotlight}
+        spotlightMode={settings.spotlightMode}
         spotlightQuery={settings.spotlightQuery}
+        spotlightWindowDays={settings.spotlightWindowDays}
+        spotlightRanking={settings.spotlightRanking}
         knownAnonymous={knownAnonymous}
       />
     </Suspense>
