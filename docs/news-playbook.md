@@ -58,8 +58,7 @@ When a project reaches two chapters or more, it's time to add a "story so far" t
 
 Before writing, check three places:
 
-1. **The mytwin.care blog** (`src/features/blog/articles/` in mytwin-health-landing). Current articles and their queries:
-   `patient-digital-twin` · `predictive-health` · `real-world-data-patient-monitoring` · `remote-patient-monitoring` · `ai-medical-imaging` · `second-medical-opinion` · `personal-health-record` · `workplace-heart-health` · `measure-workplace-health-program` · `personalized-workplace-health-privacy`.
+1. **The mytwin.care blog.** Which page owns which query, in French and English, is kept in the keyword map of mytwin-health-landing's `docs/editorial-playbook.md` (§3), updated with every article: check it there rather than keeping a copy here.
    A news never titles on one of those queries: it links to the article instead (e.g. a mammography challenge news links to *AI in medical imaging* for the conditions of trust).
 2. **The Lab's own pages.** A challenge or sandbox page owns the *what* and the *how to contribute* (brief, rewards, rules). The news tells the *why* and the *when*, and links to the page. `/about` owns the evergreen explanation of the Lab; the launch news tells the event.
 3. **The other news.** One event, one news. Two news about the same partner are two chapters, never two versions.
