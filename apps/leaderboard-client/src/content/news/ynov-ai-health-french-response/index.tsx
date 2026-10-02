@@ -46,7 +46,7 @@ export const ynovAiHealthFrenchResponse: NewsArticle = {
   },
   seoTitle: "AI and health: MyTwin Lab at Ynov Campus",
   description:
-    "At Ynov Campus’s Scientific Council, Rubens Valcy presented the vision behind MyTwin and MyTwin Lab: connecting health innovations around the patient, up to a digital twin able to simulate.",
+    "Rubens Valcy at Ynov Campus: the vision of MyTwin and MyTwin Lab, connecting health innovations around the patient up to a digital twin that can simulate.",
   excerpt:
     "So many health innovations exist, yet so few reach the patients who could benefit from them. At Ynov Campus’s Scientific Council, Rubens Valcy presented the vision behind MyTwin and MyTwin Lab.",
   keywords: [

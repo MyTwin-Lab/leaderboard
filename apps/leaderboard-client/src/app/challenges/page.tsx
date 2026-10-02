@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Open Health Innovation Challenges",
   description:
-    "Real health problems turned into open challenges: join one, contribute code, datasets or models, get evaluated on clear criteria and earn contribution points.",
+    "Join open health innovation challenges at MyTwin Lab. Contribute code, datasets or models, get evaluated and earn contribution points.",
   path: "/challenges",
 });
 

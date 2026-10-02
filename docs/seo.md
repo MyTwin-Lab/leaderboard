@@ -2,7 +2,7 @@
 
 > What search engines may index on mytwinlab.care, how the site declares itself as part of the MyTwin entity, and where the public-facing pages that carry that live.
 
-The site has two jobs in search: rank its own pages (the `/` landing, the Lab home `/home`, challenge and sandbox pages, the news) and reinforce the **MyTwin** entity whose canonical domain is mytwin.care. The two sites must not compete for the same queries: "digital twin" belongs to mytwin.care, the Lab owns "MyTwin Lab", open health innovation, and the events and partnerships told in its news ([`news-playbook.md`](./news-playbook.md)).
+The site has two jobs in search: rank its own pages (the `/` landing, the Lab home `/home`, challenge and sandbox pages, the news) and reinforce the **MyTwin** entity whose canonical domain is mytwin.care. The two sites must not compete for the same queries: mytwin.care owns the *health* digital twin (and "patient digital twin"), the Lab owns the *human* digital twin, "MyTwin Lab", open health innovation, and the events and partnerships told in its news ([`news-playbook.md`](./news-playbook.md)).
 
 ## Surface
 
@@ -49,12 +49,12 @@ Where things live:
 - **A disabled query stays `isPending`.** The client components skip `meQuery` for a known-anonymous visitor, so they test a `sessionKnown` flag rather than `meQuery.isPending` — testing the latter would bring the skeleton back.
 - Challenge cards on `/challenges` carry a real `<a href>` on their title: an `onClick` + `router.push` is not a link to a crawler.
 - **JSON-LD escapes `<`** (`components/seo/JsonLd.tsx`): challenge and sandbox titles are user input.
-- **Google may write its own snippet from the page text, so the text must read well out of layout.** The home page carries little prose, and Google built its snippet from the footer, gluing column titles and links together ("ExploreAbout MyTwin LabChallenges…"): they were inline `<span>` and `<a>` stacked by flexbox, with nothing separating them in the text. Footer columns are now `<p>` + `<ul>/<li>`. The home description (`DEFAULT_DESCRIPTION`) also starts with the footer's sentence word for word, so the text Google picked and the meta agree. Check a page's text the way a crawler reads it: strip the tags from `curl -s` output.
+- **Google may write its own snippet from the page text, so the text must read well out of layout.** The home page carries little prose, and Google built its snippet from the footer, gluing column titles and links together ("ExploreAbout MyTwin LabChallenges…"): they were inline `<span>` and `<a>` stacked by flexbox, with nothing separating them in the text. Footer columns are now `<p>` + `<ul>/<li>`. The home description (`DEFAULT_DESCRIPTION`) is written to be the snippet Google can take as is, so it no longer needs to echo the footer. Check a page's text the way a crawler reads it: strip the tags from `curl -s` output.
 - **Legal markdown is read with `process.cwd()`** (`lib/server/legal.ts`), which is `apps/leaderboard-client` under the Procfile and `next dev`. The in-house `Markdown` renderer has no tables, restarts ordered lists after a paragraph, and renders a bare `>` line as text — the legal files are written around that.
 
 ## Decisions
 
-**"Digital twin" appears only as the mission line.** In `DEFAULT_DESCRIPTION`, in the `/home` "Our mission" paragraph ("…the most advanced digital twin of the human body") and the `alt` of the diagram under it, and in the landing's H1, which states the mission. No `<title>` of the Lab — page or news — targets a "digital twin" query.
+**The Lab owns the *human* digital twin; mytwin.care owns the *health* digital twin.** Decided on 2026-10-02 with the MyTwin brand signature (mytwin.care `docs/seo-strategy.md` §3). The Lab's vision is "building the world's most advanced human digital twin": the Lab does the R&D, MyTwin distributes it. The two concepts are neighbours, not the same query, so the Lab may title on "human digital twin" (home, `/vision`) and never on "health digital twin" or "patient digital twin", which mytwin.care's landings and its pillar article own. Every other title follows *topic | MyTwin Lab*; only `/` and `/news` lead with the brand.
 
 **`/` carries the brand, `/home` carries the Lab.** The root is the landing that must rank on "MyTwin Lab": it keeps the brand-first title and the entity JSON-LD. What used to be the home page moved to `/home`, titled after what it shows so the two do not compete for the same query.
 

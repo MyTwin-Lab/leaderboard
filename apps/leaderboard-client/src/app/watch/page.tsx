@@ -10,9 +10,9 @@ import { pageMetadata } from "@/lib/seo";
 export const dynamic = "force-dynamic";
 
 export const metadata = pageMetadata({
-  title: "Watch: Latest Health Research",
+  title: "Latest Health Research Watch",
   description:
-    "A selection of recent health publications, and a search over the health literature: topics, period, open access and journal impact, from OpenAlex.",
+    "Recent health publications selected by MyTwin Lab, and a search across the health literature by topic, period, open access and journal impact.",
   path: "/watch",
 });
 

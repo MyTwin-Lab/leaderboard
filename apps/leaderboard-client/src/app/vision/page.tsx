@@ -2,9 +2,9 @@ import { VisionVitrine } from "@/components/vision/VisionVitrine";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Our Research Vision",
+  title: "Human Digital Twin Research Vision",
   description:
-    "One person, one evolving digital twin: connecting health data and scientific models to represent each person over time, from the body to the molecule.",
+    "Discover MyTwin Lab’s research vision for an evolving human digital twin connecting health data and scientific models from body to molecule.",
   path: "/vision",
 });
 

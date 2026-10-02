@@ -36,7 +36,7 @@ export const dynamic = "force-dynamic";
 // `/home`. `/home` redirige en 308 (voir `next.config.ts`) — l'URL était
 // indexée, elle ne doit pas répondre 404.
 export const metadata = pageMetadata({
-  absoluteTitle: "MyTwin Lab | Open Health Innovation Community",
+  absoluteTitle: "MyTwin Lab | Human Digital Twin & Open Health Innovation",
   description: DEFAULT_DESCRIPTION,
   path: "/",
 });

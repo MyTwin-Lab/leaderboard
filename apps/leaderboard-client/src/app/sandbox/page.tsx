@@ -7,9 +7,9 @@ import { isCookielessVisitor, readPublicRoute } from "@/lib/server/publicSsr";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Sandbox: Community Health Projects",
+  title: "Community Health Projects Sandbox",
   description:
-    "Propose a health project, no approval needed. The community stars what it wants built, and the best projects are promoted into official MyTwin Lab challenges.",
+    "Propose a health project in the MyTwin Lab Sandbox, build with the community and help promising ideas become official open challenges.",
   path: "/sandbox",
 });
 

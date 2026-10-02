@@ -64,7 +64,7 @@ Before writing, check three places:
 2. **The Lab's own pages.** A challenge or sandbox page owns the *what* and the *how to contribute* (brief, rewards, rules). The news tells the *why* and the *when*, and links to the page. `/about` owns the evergreen explanation of the Lab; the launch news tells the event.
 3. **The other news.** One event, one news. Two news about the same partner are two chapters, never two versions.
 
-"Digital twin" belongs to mytwin.care: never the main query of a news title.
+"Health digital twin" and "patient digital twin" belong to mytwin.care, "human digital twin" to the Lab's home and `/vision`: none of them is ever the main query of a news title.
 
 ## 5. Anatomy of a news
 

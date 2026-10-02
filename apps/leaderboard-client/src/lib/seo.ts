@@ -23,13 +23,12 @@ export const SITE_NAME = "MyTwin Lab";
 export const SITE_URL = "https://mytwinlab.care";
 
 /**
- * La description de l'accueil, et celle de l'entité dans le JSON-LD. Sa
- * première phrase est mot pour mot celle du footer : c'est elle que Google
- * reprenait quand il réécrivait l'extrait, autant qu'il trouve la même dans la
- * meta.
+ * La description de l'accueil, et celle de l'entité dans le JSON-LD. Elle
+ * nomme le « human digital twin », le concept que porte le Lab — le « health
+ * digital twin » reste à mytwin.care (cf. docs/seo.md, Decisions).
  */
 export const DEFAULT_DESCRIPTION =
-  "The open innovation lab of MyTwin, where health challenges become working applications. Together, we’re building the world’s most advanced human digital twin.";
+  "MyTwin Lab is an open health innovation lab building human digital twins for predictive, preventive, personalized and proactive health.";
 
 /**
  * L'entité mère, déclarée par mytwin.care (`src/lib/seo.ts` du repo
