@@ -5,6 +5,8 @@ import { mammographyAiChallenges } from "./mammography-ai-challenges";
 import { mykine } from "./mykine";
 import { mytwinAccessibility } from "./mytwin-accessibility";
 import { mytwinAthlete } from "./mytwin-athlete";
+import { mytwinEngineHealthScoring } from "./mytwin-engine-health-scoring";
+import { mytwinLongevity } from "./mytwin-longevity";
 import { petScan3dAnatomicalModel } from "./pet-scan-3d-anatomical-model";
 import { racketSportsInjuryRisk } from "./racket-sports-injury-risk";
 import { scanEngineFullBody3dAvatar } from "./scan-engine-full-body-3d-avatar";
@@ -22,7 +24,9 @@ import { ynovAiHealthFrenchResponse } from "./ynov-ai-health-french-response";
  */
 const ARTICLES: readonly NewsArticle[] = [
   mytwinAthlete,
+  mytwinLongevity,
   mykine,
+  mytwinEngineHealthScoring,
   mytwinAccessibility,
   mammographyAiChallenges,
   ynovAiHealthFrenchResponse,
