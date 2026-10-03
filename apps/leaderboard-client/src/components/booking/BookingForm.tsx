@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from "react";
 
-import { calendlyBookingUrl, type BookingIntent } from "@/lib/booking";
+import { startBooking } from "@/app/book/actions";
+import type { BookingIntent } from "@/lib/booking";
 
 /**
  * Le prénom et l'e-mail, puis Calendly.
  *
- * Rien n'est envoyé au Lab : la soumission ouvre la page Calendly dans le même
- * onglet, les deux champs pré-remplis. La validation est celle du navigateur
- * (`required`, `type="email"`), à la hauteur de l'enjeu — Calendly revérifie.
+ * La server action dépose la demande au CRM et rend l'URL Calendly, que le
+ * formulaire ouvre dans le même onglet, les deux champs pré-remplis. La
+ * validation du navigateur (`required`, `type="email"`) arrête presque tout ;
+ * le serveur revérifie, et seul son refus affiche un message.
  */
 export function BookingForm({ intent }: { intent: BookingIntent | null }) {
   const [leaving, setLeaving] = useState(false);
+  const [invalid, setInvalid] = useState(false);
 
   // Revenu par « Précédent », la page sort du cache du navigateur telle qu'on
   // l'a quittée : le bouton ne doit pas rester sur « Opening Calendly… ».
@@ -24,17 +27,18 @@ export function BookingForm({ intent }: { intent: BookingIntent | null }) {
     return () => window.removeEventListener("pageshow", reset);
   }, []);
 
-  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    setInvalid(false);
     setLeaving(true);
-    window.location.assign(
-      calendlyBookingUrl({
-        firstName: String(data.get("firstName") ?? ""),
-        email: String(data.get("email") ?? ""),
-        intent,
-      }),
-    );
+    const result = await startBooking(intent, data);
+    if ("url" in result) {
+      window.location.assign(result.url);
+    } else {
+      setInvalid(true);
+      setLeaving(false);
+    }
   };
 
   return (
@@ -65,6 +69,18 @@ export function BookingForm({ intent }: { intent: BookingIntent | null }) {
           placeholder="you@example.com"
         />
       </div>
+
+      {/* Pot de miel : hors écran, hors tabulation, ignoré des lecteurs d'écran. */}
+      <div className="v-book-trap" aria-hidden="true">
+        <label htmlFor="book-website">Website</label>
+        <input id="book-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+      </div>
+
+      {invalid && (
+        <p className="v-book-error" role="alert">
+          Please check your first name and email.
+        </p>
+      )}
 
       <button type="submit" className="v-book-cta" disabled={leaving}>
         {leaving ? "Opening Calendly…" : "Choose a time"}

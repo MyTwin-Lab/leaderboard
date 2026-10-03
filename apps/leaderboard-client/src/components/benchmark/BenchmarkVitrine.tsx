@@ -1,5 +1,8 @@
+import Link from "next/link";
+
 import { BackToLab } from "@/components/vitrine/BackToLab";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
+import { bookingPath } from "@/lib/booking";
 
 import { BenchmarkDimensions } from "./BenchmarkDimensions";
 import { BenchmarkRadar, BenchmarkScores } from "./BenchmarkRadar";
@@ -21,9 +24,9 @@ import "./benchmark-vitrine.css";
  * (`digital-twin-anatomy-desktop.jpeg`), pas le PNG de la maquette : même
  * sujet, et une seule image pour les deux cadres.
  *
- * « Submit a twin » et « Join the Scientific Committee » n'ont pas encore de
- * destination : ce sont des boutons sans action, pas des liens vers `#` — un
- * lien vide remonterait en haut de page et se lirait comme un lien mort.
+ * « Submit a twin » et « Join the Scientific Committee » mènent à la prise de
+ * rendez-vous, chacun avec son intention (`/book?for=…`) : deux parcours, deux
+ * sources CRM — celui qui soumet un twin n'est pas celui qui les évalue.
  */
 
 const TWIN = "/home/twin/digital-twin-anatomy-desktop.jpeg";
@@ -70,10 +73,10 @@ export function BenchmarkVitrine() {
               We created an open framework to evaluate what makes a true human digital twin, and how
               advanced it is.
             </p>
-            <button type="button" className="v-bm-submit">
+            <Link href={bookingPath("benchmark-submission")} className="v-bm-submit">
               Submit a twin
               <BenchmarkArrow />
-            </button>
+            </Link>
             <dl className="v-bm-stats">
               {STATS.map((stat) => (
                 <div key={stat.label} className="v-bm-stat">
@@ -181,10 +184,10 @@ export function BenchmarkVitrine() {
             <p className="v-bm-contribute-sub">
               Researchers, startups, clinics and builders can submit their projects for review.
             </p>
-            <button type="button" className="v-bm-join">
+            <Link href={bookingPath("scientific-committee")} className="v-bm-join">
               Join the Scientific Committee
               <BenchmarkArrow />
-            </button>
+            </Link>
           </div>
           <div className="v-bm-contribute-shot" aria-hidden="true">
             {/* eslint-disable-next-line @next/next/no-img-element -- masque en

@@ -22,13 +22,21 @@ export const metadata: Metadata = {
 
 /** L'accroche suit l'appel qui a mené ici ; sans `?for=`, la page reste générale. */
 const COPY: Record<BookingIntent | "general", { eyebrow: string; lede: string }> = {
-  twin: {
+  "twin-creation": {
     eyebrow: "Create your twin",
     lede: "A twin for yourself, your patients or your employees? Leave your details, then pick a time that suits you.",
   },
-  project: {
+  "sandbox-project": {
     eyebrow: "Your project in the Sandbox",
     lede: "Got a health project in mind? Let's talk it through and see how to launch it in the Sandbox with the Lab community.",
+  },
+  "benchmark-submission": {
+    eyebrow: "Submit a twin",
+    lede: "Building a human digital twin? Tell us about it, and we'll walk you through its review against the benchmark.",
+  },
+  "scientific-committee": {
+    eyebrow: "Scientific Committee",
+    lede: "Researcher, clinician or builder? Let's talk about how you could help review the twins submitted to the benchmark.",
   },
   general: {
     eyebrow: "MyTwin Lab",
@@ -39,10 +47,10 @@ const COPY: Record<BookingIntent | "general", { eyebrow: string; lede: string }>
 /**
  * `/book` — la prise de rendez-vous, au style vitrine.
  *
- * Deux temps : le prénom et l'e-mail ici, puis le créneau sur Calendly, où ils
- * arrivent pré-remplis (`lib/booking.ts`). Pas d'iframe : la page n'appelle
- * aucun tiers tant que le visiteur n'a pas cliqué, et le Lab reste sans
- * cookie non essentiel.
+ * Deux temps : le prénom et l'e-mail ici, qui entrent au CRM de MyTwin, puis
+ * le créneau sur Calendly, où ils arrivent pré-remplis (`lib/booking.ts`). Pas
+ * d'iframe : la page n'appelle aucun tiers tant que le visiteur n'a pas
+ * cliqué, et le Lab reste sans cookie non essentiel.
  */
 export default async function BookPage({
   searchParams,

@@ -6,7 +6,7 @@ It turns the leaderboard from a task board — where MyTwin defines the work and
 
 **A sandbox is a project, not a challenge in waiting.** What you deposit is an idea: a title, a context, goals, a why. No type, no repository, no dataset, no model — and no formative evaluation. Those were the vocabulary and the machinery of a challenge; they are created at promotion, on the challenge, not before.
 
-**No self-serve creation from the listing.** The "Create your sandbox" strip at the bottom of `/sandbox`, `/challenges` and `/leaderboard` books a call with the team (`/book?for=project`, see [`booking.md`](./booking.md)) for everyone, signed in or not. `POST /api/sandboxes` and `CreateSandboxModal` are unchanged; the modal is only mounted on a sandbox's detail page, for editing. An admin creation screen is on the booking TODO.
+**No self-serve creation from the listing.** The "Create your sandbox" strip at the bottom of `/sandbox`, `/challenges` and `/leaderboard` books a call with the team (`/book?for=sandbox-project`, see [`booking.md`](./booking.md)) for everyone, signed in or not. `POST /api/sandboxes` and `CreateSandboxModal` are unchanged; the modal is only mounted on a sandbox's detail page, for editing. An admin creation screen is on the booking TODO.
 
 It is a product **module** (`modules/sandbox`), **enabled by default**, that an admin can turn off from the Modules tab of `/contributors/me` (see [`admin-settings.md`](./admin-settings.md)). Its star tiers and promotion bonus are the module's settings.
 
