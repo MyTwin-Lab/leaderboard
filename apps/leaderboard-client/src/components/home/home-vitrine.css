@@ -1639,3 +1639,109 @@
     justify-self: end;
   }
 }
+
+/* ── Benchmark ──────────────────────────────────────────────────────────────
+   L'aperçu du cadre de maturité, entre les challenges et « Create your twin ».
+   Le radar et les jauges ont leur propre feuille (`benchmark-radar.css`),
+   partagée avec `/benchmark` ; ici, seulement la carte qui les range. */
+.v-home-bench-head {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.v-home-bench-title {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.v-home-bench-sub {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.0625rem, 1.6vw, 1.25rem);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-home-bench-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: clamp(1.25rem, 3vw, 3rem);
+  align-items: center;
+  padding: clamp(1rem, 2.5vw, 2rem);
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+}
+
+.v-home-bench-radar {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.v-home-bench-overall {
+  display: none;
+}
+
+.v-home-bench-side {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.v-home-bench-side .v-home-more {
+  justify-self: end;
+}
+
+@media (max-width: 767px) {
+  .v-home-bench {
+    gap: 1rem;
+  }
+
+  .v-home-bench-head {
+    gap: 0.3rem;
+  }
+
+  .v-home-bench-title {
+    font-size: 1.375rem;
+  }
+
+  .v-home-bench-sub {
+    font-size: 0.9375rem;
+    line-height: 1.4;
+  }
+
+  .v-home-bench-card {
+    grid-template-columns: 8.5rem minmax(0, 1fr);
+    gap: 0.875rem;
+    padding: 0.875rem;
+  }
+
+  .v-home-bench-overall {
+    position: absolute;
+    display: grid;
+    justify-items: center;
+    line-height: 1;
+  }
+
+  .v-home-bench-overall b {
+    font-family: var(--v-font-h);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .v-home-bench-overall small {
+    margin-top: 0.2rem;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--v-muted);
+  }
+}

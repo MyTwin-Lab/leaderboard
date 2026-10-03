@@ -1,0 +1,866 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   La page benchmark, d'après `Benchmark Vitrine.dc.html`.
+
+   Tout est scopé sous `.v-benchmark`, dont la racine est `.vitrine` : le
+   réarmement et les jetons viennent de là. Comme `/vision`, la feuille lit les
+   `--v-*` du repo plutôt que les couleurs figées de la maquette.
+
+   La maquette décrit deux mises en page — un cadre PC et un cadre téléphone de
+   390px. Un seul balisage porte les deux : chaque écart est une règle sous
+   `@media (max-width: 767px)`, plus bas.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.v-benchmark {
+  /* Les deux mesures de la maquette, celles de l'accueil. */
+  --v-gutter: clamp(1.25rem, 4vw, 4.5rem);
+  --v-max: 78rem;
+
+  /* Les deux teintes que la maquette tire de son accent. */
+  --bm-mint: color-mix(in srgb, var(--v-accent) 7%, transparent);
+  --bm-ring: color-mix(in srgb, var(--v-accent) 45%, transparent);
+}
+
+/* La seule animation de la maquette : l'entrée de l'intro au chargement. */
+@keyframes v-bm-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.v-bm-main {
+  width: 100%;
+  max-width: var(--v-max);
+  margin-inline: auto;
+  padding-inline: var(--v-gutter);
+}
+
+/* Les pictogrammes prennent l'accent par leur trait : `vitrine.css` ramène la
+   `color` de tout `svg` à celle du texte, `stroke` lui échappe. */
+.v-bm-icon {
+  flex: none;
+  stroke: var(--v-accent);
+}
+
+.v-bm-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+.v-bm-h2 {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* ── L'intro ────────────────────────────────────────────────────────────── */
+
+.v-bm-hero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  gap: clamp(1.5rem, 4vw, 4rem);
+  align-items: center;
+  /* `LabShell` réserve déjà la hauteur de la navbar au-dessus. */
+  padding-block: clamp(0.5rem, 2vw, 1.5rem) clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.v-bm-hero-text {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+  animation: v-bm-up 0.8s var(--v-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v-bm-hero-text {
+    animation: none;
+  }
+}
+
+.v-bm-title {
+  max-width: 18ch;
+  font-family: var(--v-font-h);
+  font-size: clamp(2.125rem, 4vw, 3.25rem);
+  line-height: 1.06;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.v-bm-lede {
+  max-width: 34rem;
+  font-family: var(--v-font-h);
+  font-size: clamp(1.0625rem, 1.6vw, 1.25rem);
+  line-height: 1.45;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-bm-submit {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  height: 3rem;
+  padding-inline: 1.6rem 1.35rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--v-accent);
+  background: none;
+  color: var(--v-accent);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s var(--v-ease), color 0.3s var(--v-ease);
+}
+
+.v-bm-submit:hover {
+  background: var(--v-accent);
+  color: #fff;
+}
+
+.v-bm-submit svg,
+.v-bm-join svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.v-bm-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 30rem;
+  margin-top: 0.5rem;
+}
+
+.v-bm-stat {
+  display: grid;
+  gap: 0.25rem;
+  padding-inline: 1rem;
+  border-left: 1px solid var(--v-line);
+}
+
+.v-bm-stat:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.v-bm-stat:last-child {
+  padding-right: 0;
+}
+
+.v-bm-stat dt {
+  font-family: var(--v-font-h);
+  font-size: 1.625rem;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--v-accent);
+}
+
+.v-bm-stat dd {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--v-muted);
+}
+
+/* Le masque fond la figure dans la page, et le `multiply` efface le blanc du
+   fichier : mêmes réglages que la figure de `/vision`. */
+.v-bm-figure {
+  justify-self: center;
+  overflow: hidden;
+  width: 100%;
+  max-width: 32rem;
+  aspect-ratio: 1024 / 820;
+  -webkit-mask-image: radial-gradient(ellipse 62% 70% at 50% 42%, #000 58%, transparent 100%);
+  mask-image: radial-gradient(ellipse 62% 70% at 50% 42%, #000 58%, transparent 100%);
+}
+
+.v-bm-figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+  mix-blend-mode: multiply;
+}
+
+/* ── Ce qui fait un jumeau ──────────────────────────────────────────────── */
+
+.v-bm-what {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.25rem);
+  margin-bottom: clamp(2.25rem, 4.5vw, 3.75rem);
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
+  border-radius: 12px;
+  background: var(--bm-mint);
+}
+
+.v-bm-flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 1.5rem 0.5rem;
+}
+
+.v-bm-flow-step {
+  position: relative;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+
+.v-bm-flow-icon,
+.v-bm-trait-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 999px;
+  border: 1px solid var(--bm-ring);
+  background: var(--v-surface);
+}
+
+.v-bm-flow-icon {
+  width: 4.25rem;
+  height: 4.25rem;
+  margin-bottom: 0.4rem;
+}
+
+.v-bm-flow-icon svg {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.v-bm-flow-title {
+  font-family: var(--v-font-h);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.v-bm-flow-num {
+  color: var(--v-accent);
+}
+
+.v-bm-flow-text {
+  max-width: 10rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--v-muted);
+}
+
+/* À cheval sur la gouttière, à mi-hauteur de la pastille. */
+.v-bm-flow-arrow {
+  position: absolute;
+  top: 1.75rem;
+  right: -0.85rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  stroke: var(--v-accent);
+}
+
+.v-bm-flow-arrow path {
+  stroke: inherit;
+  stroke-width: 1.2;
+}
+
+.v-bm-traits {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 1rem 0.875rem;
+  padding-top: clamp(1.25rem, 2.5vw, 1.75rem);
+  border-top: 1px solid var(--v-line);
+}
+
+.v-bm-trait {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.v-bm-trait-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.v-bm-trait-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.v-bm-trait-body {
+  display: grid;
+  min-width: 0;
+}
+
+.v-bm-trait-body b {
+  font-family: var(--v-font-h);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  hyphens: manual;
+}
+
+.v-bm-trait-body span {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--v-muted);
+}
+
+/* ── Le niveau de maturité ──────────────────────────────────────────────── */
+
+.v-bm-how {
+  display: grid;
+  gap: 1.25rem;
+  padding-bottom: clamp(2.25rem, 4.5vw, 3.75rem);
+}
+
+.v-bm-how-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem;
+}
+
+.v-bm-radar-card,
+.v-bm-scores {
+  padding: clamp(1rem, 2.5vw, 1.75rem);
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+}
+
+.v-bm-radar-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.v-bm-scores {
+  --sc-gap: 1rem;
+  --sc-bar: 8px;
+  --sc-pct-col: 3.25rem;
+  --sc-pct-size: 1rem;
+  --sc-pct-weight: 700;
+  align-content: center;
+}
+
+.v-bm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.5rem;
+  font-size: 0.75rem;
+  color: var(--v-muted);
+}
+
+.v-bm-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.v-bm-legend-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: none;
+  border-radius: 999px;
+}
+
+.v-bm-legend-dot[data-kind="mature"] {
+  background: var(--v-accent);
+}
+
+.v-bm-legend-dot[data-kind="early"] {
+  border: 1px dashed var(--v-subtle);
+  background: color-mix(in srgb, var(--v-subtle) 15%, transparent);
+}
+
+/* ── Les dix dimensions ─────────────────────────────────────────────────── */
+
+.v-bm-dims-section {
+  display: grid;
+  gap: 1.25rem;
+  border-top: 1px solid var(--v-line);
+  padding-block: clamp(2.25rem, 4.5vw, 3.75rem);
+}
+
+.v-bm-dims {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: 0.625rem 1rem;
+}
+
+.v-bm-dim {
+  display: grid;
+}
+
+/* Un bouton pour le téléphone, où la carte s'ouvre. Sur PC il n'y a rien à
+   ouvrir : la carte n'a ni survol ni curseur de lien. */
+.v-bm-dim-card {
+  display: grid;
+  grid-template-columns: 2.5rem 2rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 0.75rem;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.v-bm-dim-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--bm-ring);
+  font-family: var(--v-font-h);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--v-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.v-bm-dim-card .v-bm-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.v-bm-dim-body {
+  display: grid;
+  min-width: 0;
+}
+
+.v-bm-dim-title {
+  font-family: var(--v-font-h);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.v-bm-dim-text {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--v-muted);
+}
+
+/* ── L'appel à contribuer ───────────────────────────────────────────────── */
+
+.v-bm-contribute {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: clamp(2.25rem, 4.5vw, 3.75rem);
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
+  border-radius: 12px;
+  background: var(--bm-mint);
+}
+
+.v-bm-contribute-text {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.v-bm-contribute-sub {
+  max-width: 28rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-bm-join {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 3.25rem;
+  margin-top: 0.5rem;
+  padding-inline: 1.6rem 1.35rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--v-ink);
+  color: var(--v-bg);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s var(--v-ease);
+}
+
+.v-bm-join:hover {
+  background: var(--v-accent);
+}
+
+/* L'image se fond dans l'encart par son bord gauche, côté texte. */
+.v-bm-contribute-shot {
+  justify-self: end;
+  overflow: hidden;
+  width: 100%;
+  max-width: 34rem;
+  border-radius: 8px;
+  -webkit-mask-image: linear-gradient(to left, #000 80%, transparent);
+  mask-image: linear-gradient(to left, #000 80%, transparent);
+}
+
+.v-bm-contribute-shot img {
+  width: 100%;
+  height: auto;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Le cadre téléphone de la maquette.
+
+   Mesures resserrées, figure en filigrane derrière le titre, fil numéroté sur
+   trois colonnes, radar et jauges dans une seule carte, dimensions repliées
+   sur deux colonnes, image de l'appel passée au-dessus du texte.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .v-benchmark {
+    --v-gutter: 1.25rem;
+    font-size: 15px;
+  }
+
+  .v-bm-eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.26em;
+  }
+
+  .v-bm-h2 {
+    font-size: 1.25rem;
+  }
+
+  /* `isolation` garde la figure, en `z-index: -1`, derrière le texte mais
+     devant le fond de la page. */
+  .v-bm-hero {
+    position: relative;
+    isolation: isolate;
+    display: block;
+    padding-block: 0.75rem 1.5rem;
+  }
+
+  .v-bm-hero-text {
+    gap: 1rem;
+  }
+
+  .v-bm-title {
+    max-width: 15ch;
+    font-size: 1.75rem;
+    line-height: 1.08;
+    letter-spacing: -0.035em;
+  }
+
+  .v-bm-lede {
+    font-family: inherit;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    letter-spacing: normal;
+  }
+
+  /* Opaque : il passe sur la figure. */
+  .v-bm-submit {
+    gap: 0.5rem;
+    height: 2.75rem;
+    padding-inline: 1.3rem 1.1rem;
+    background: var(--v-bg);
+    font-size: 0.875rem;
+  }
+
+  .v-bm-submit svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .v-bm-stats {
+    max-width: none;
+    padding-top: 1rem;
+    border-top: 1px solid var(--v-line);
+  }
+
+  .v-bm-stat {
+    gap: 0.15rem;
+    padding-inline: 0.75rem;
+  }
+
+  .v-bm-stat:first-child {
+    padding-right: 0.5rem;
+  }
+
+  .v-bm-stat dt {
+    font-size: 1.25rem;
+    letter-spacing: normal;
+  }
+
+  .v-bm-stat dd {
+    font-size: 0.6875rem;
+    line-height: 1.3;
+  }
+
+  .v-bm-figure {
+    position: absolute;
+    z-index: -1;
+    top: 0.5rem;
+    right: calc(-3rem - var(--v-gutter));
+    width: 12rem;
+    max-width: none;
+    aspect-ratio: auto;
+    opacity: 0.3;
+    -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 75%);
+    mask-image: linear-gradient(to bottom, #000 40%, transparent 75%);
+  }
+
+  .v-bm-figure img {
+    height: auto;
+  }
+
+  /* L'encart déborde la gouttière d'un demi-rem de chaque côté : la maquette
+     le pose à 0.75rem du bord, le texte de la page à 1.25rem. */
+  .v-bm-what {
+    gap: 1.25rem;
+    margin: 0 -0.5rem 1.5rem;
+    padding: 1.5rem 1rem;
+  }
+
+  .v-bm-flow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.125rem 0.25rem;
+  }
+
+  .v-bm-flow-step {
+    gap: 0.15rem;
+  }
+
+  .v-bm-flow-icon {
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .v-bm-flow-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .v-bm-flow-title {
+    font-size: 0.8125rem;
+    letter-spacing: normal;
+  }
+
+  .v-bm-flow-text {
+    font-size: 0.6875rem;
+    line-height: 1.3;
+  }
+
+  .v-bm-flow-arrow {
+    display: none;
+  }
+
+  .v-bm-traits {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    padding-top: 1.125rem;
+  }
+
+  .v-bm-trait {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+  }
+
+  .v-bm-trait-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .v-bm-trait-icon svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* Titre et description sur une même ligne, qui se replie au besoin. */
+  .v-bm-trait-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.4rem;
+  }
+
+  .v-bm-trait-body b {
+    font-size: 0.8125rem;
+  }
+
+  .v-bm-trait-body span {
+    font-size: 0.75rem;
+  }
+
+  .v-bm-how {
+    gap: 1rem;
+    padding-bottom: 1.75rem;
+  }
+
+  /* Une seule carte : la silhouette du radar à gauche, les jauges à droite,
+     la légende dessous. La `figure` s'efface (`display: contents`) pour que
+     son radar et sa légende se rangent dans cette grille-ci. */
+  .v-bm-how-grid {
+    grid-template-columns: 8.5rem minmax(0, 1fr);
+    gap: 0.75rem 0.875rem;
+    align-items: center;
+    padding: 0.875rem;
+    border: 1px solid var(--v-line);
+    border-radius: 12px;
+    background: var(--v-surface);
+  }
+
+  .v-bm-radar-card {
+    display: contents;
+  }
+
+  .v-bm-scores {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  .v-bm-legend {
+    order: 1;
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    gap: 0.25rem 1rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--v-line);
+    font-size: 0.6875rem;
+  }
+
+  .v-bm-legend > span {
+    gap: 0.35rem;
+  }
+
+  .v-bm-legend-dot {
+    width: 0.625rem;
+    height: 0.625rem;
+  }
+
+  .v-bm-dims-section {
+    gap: 1rem;
+    padding-block: 1.75rem;
+  }
+
+  /* Deux colonnes, et `dense` : la carte ouverte prend une ligne entière, ses
+     voisines remontent combler le trou qu'elle laisse. */
+  .v-bm-dims {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+    gap: 0.5rem;
+  }
+
+  .v-bm-dim[data-open] {
+    grid-column: 1 / -1;
+  }
+
+  .v-bm-dim-card {
+    display: flex;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0.4rem 0.625rem;
+    cursor: pointer;
+  }
+
+  .v-bm-dim[data-open] .v-bm-dim-card {
+    border-color: var(--bm-ring);
+  }
+
+  .v-bm-dim-num {
+    display: none;
+  }
+
+  .v-bm-dim-card .v-bm-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .v-bm-dim-title {
+    font-size: 0.75rem;
+    line-height: 1.25;
+    letter-spacing: normal;
+    text-wrap: balance;
+  }
+
+  .v-bm-dim-text {
+    display: none;
+    margin-top: 0.15rem;
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  .v-bm-dim[data-open] .v-bm-dim-text {
+    display: block;
+  }
+
+  /* L'image passe au-dessus du texte, bord à bord, et se fond par le bas. */
+  .v-bm-contribute {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    margin: 0 -0.5rem 1.5rem;
+    padding: 0 1.25rem 1.5rem;
+  }
+
+  .v-bm-contribute-text {
+    gap: 0.75rem;
+  }
+
+  .v-bm-contribute .v-bm-h2 {
+    font-size: 1.375rem;
+  }
+
+  .v-bm-contribute-sub {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .v-bm-join {
+    justify-self: stretch;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 3rem;
+    margin-top: 0.25rem;
+    font-size: 0.9375rem;
+  }
+
+  .v-bm-join svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .v-bm-contribute-shot {
+    order: -1;
+    width: calc(100% + 2.5rem);
+    max-width: none;
+    margin: 0 -1.25rem 0.25rem;
+    border-radius: 0;
+    -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent);
+    mask-image: linear-gradient(to bottom, #000 80%, transparent);
+  }
+}

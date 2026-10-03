@@ -8,13 +8,15 @@ The site has two jobs in search: rank its own pages (the `/` landing, the Lab ho
 
 | Path | Indexed | Notes |
 |---|---|---|
-| `/` | ✅ | the Lab home (mission, vision, news, podcast, community, top 3 contributors, challenges, create your twin → `/book`), behind a full-screen gate: brand-first title, `Organization` + `WebSite` JSON-LD |
+| `/` | ✅ | the Lab home (mission, vision, news, podcast, community, top 3 contributors, challenges, benchmark → `/benchmark`, create your twin → `/book`), behind a full-screen gate: brand-first title, `Organization` + `WebSite` JSON-LD |
 | `/home` | — | where the home lived until it took the root; permanent redirect to `/` |
 | `/news`, `/news/<slug>` | ✅ | `CollectionPage` on the index, `NewsArticle` + `BreadcrumbList` on each news, a generated OG image per news; unknown slug → `404` ([`news.md`](./news.md)) |
 | `/about` | ❌ `noindex, follow` | the former Lab landing, parked: out of the navigation and the sitemap, still open at its URL |
 | `/challenges`, `/challenges/<slug>` | ✅ public ones | `BreadcrumbList` JSON-LD on detail |
 | `/sandbox`, `/sandbox/<slug>` | ✅ visible ones | `BreadcrumbList` JSON-LD on detail; `404` and out of the sitemap while the `sandbox` module is disabled |
 | `/leaderboard` | ✅ | |
+| `/vision` | ✅ | the research vision, static; titled on "human digital twin" |
+| `/benchmark` | ✅ | the human digital twin maturity benchmark, static: `WebPage` + `BreadcrumbList` JSON-LD. Not in the navbar — reached from the home "Benchmark" section and the sitemap |
 | `/book` | ❌ `noindex, follow` | the booking page, a conversion step ([`booking.md`](./booking.md)); out of the sitemap |
 | `/terms-of-use`, `/privacy-policy` | ✅ | markdown in `apps/leaderboard-client/content/legal/` |
 | `/contributors/<id>` | ❌ `noindex, follow` | public, but a person's name is not a search result |
@@ -54,7 +56,7 @@ Where things live:
 
 ## Decisions
 
-**The Lab owns the *human* digital twin; mytwin.care owns the *health* digital twin.** Decided on 2026-10-02 with the MyTwin brand signature (mytwin.care `docs/seo-strategy.md` §3). The Lab's vision is "building the world's most advanced human digital twin": the Lab does the R&D, MyTwin distributes it. The two concepts are neighbours, not the same query, so the Lab may title on "human digital twin" (home, `/vision`) and never on "health digital twin" or "patient digital twin", which mytwin.care's landings and its pillar article own. Every other title follows *topic | MyTwin Lab*; only `/` and `/news` lead with the brand.
+**The Lab owns the *human* digital twin; mytwin.care owns the *health* digital twin.** Decided on 2026-10-02 with the MyTwin brand signature (mytwin.care `docs/seo-strategy.md` §3). The Lab's vision is "building the world's most advanced human digital twin": the Lab does the R&D, MyTwin distributes it. The two concepts are neighbours, not the same query, so the Lab may title on "human digital twin" (home, `/vision`, `/benchmark`) and never on "health digital twin" or "patient digital twin", which mytwin.care's landings and its pillar article own. Every other title follows *topic | MyTwin Lab*; only `/` and `/news` lead with the brand.
 
 **`/` carries the brand, `/home` carries the Lab.** The root is the landing that must rank on "MyTwin Lab": it keeps the brand-first title and the entity JSON-LD. What used to be the home page moved to `/home`, titled after what it shows so the two do not compete for the same query.
 

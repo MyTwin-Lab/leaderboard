@@ -9,6 +9,7 @@ import { HomeCommunity } from "@/components/home/HomeCommunity";
 import { HomeLeaderboardPreview } from "@/components/home/HomeLeaderboardPreview";
 import { HomeOpenResources } from "@/components/home/HomeOpenResources";
 import { HomeChallengesPreview } from "@/components/home/HomeChallengesPreview";
+import { HomeBenchmark } from "@/components/home/HomeBenchmark";
 import { HomeGate } from "@/components/home/HomeGate";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
@@ -76,6 +77,7 @@ export default async function HomePage() {
           <HomeCommunity />
           <HomeLeaderboardPreview podium={overview.podium} />
           <HomeChallengesPreview challenges={overview.trendingChallenges} />
+          <HomeBenchmark />
           <HomeCreateTwin />
           <HomeOpenResources />
         </div>

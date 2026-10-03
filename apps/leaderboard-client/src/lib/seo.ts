@@ -210,6 +210,7 @@ export function buildSitemap({ baseUrl, challenges, sandboxes, news, sandboxEnab
     ...(watchEnabled ? [{ url: url("/watch"), changeFrequency: "daily" as const, priority: 0.6 }] : []),
     { url: url(NEWS_PATH), changeFrequency: "weekly", priority: 0.8 },
     { url: url("/vision"), changeFrequency: "monthly", priority: 0.5 },
+    { url: url("/benchmark"), changeFrequency: "monthly", priority: 0.6 },
     { url: url("/terms-of-use"), changeFrequency: "yearly", priority: 0.2 },
     { url: url("/privacy-policy"), changeFrequency: "yearly", priority: 0.2 },
     ...challenges.map((challenge) => ({
@@ -407,6 +408,32 @@ export function newsArticleJsonLd({
           },
         }
       : {}),
+  };
+}
+
+/**
+ * Une page éditoriale statique (le benchmark) : rattachée au site et à l'entité
+ * du Lab par leurs `@id`, pour qu'elle ne soit pas une page orpheline du graphe.
+ */
+export function webPageJsonLd({
+  path,
+  name,
+  description,
+}: {
+  path: string;
+  name: string;
+  description: string;
+}): JsonLdNode {
+  const url = `${SITE_URL}${path}`;
+  return {
+    "@type": "WebPage",
+    "@id": `${url}#webpage`,
+    name,
+    description,
+    url,
+    inLanguage: "en",
+    isPartOf: { "@id": WEBSITE_ID },
+    publisher: { "@id": LAB_ORGANIZATION_ID },
   };
 }
 

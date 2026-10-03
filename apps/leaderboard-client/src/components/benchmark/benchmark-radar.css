@@ -1,0 +1,115 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Le radar et les jauges du benchmark, partagés par l'accueil et `/benchmark`.
+
+   Rendus sous `.vitrine` dans les deux cas : les `--v-*` viennent de là. Les
+   trois mesures qui diffèrent d'une page à l'autre sur PC — épaisseur de la
+   jauge, corps et graisse du chiffre — sont des variables que le parent pose.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.v-radar {
+  display: block;
+  width: 100%;
+  font-family: var(--v-font-s);
+}
+
+.v-radar-full {
+  max-width: 28rem;
+  justify-self: center;
+  overflow: visible;
+}
+
+.v-radar-compact {
+  display: none;
+}
+
+.v-scores {
+  display: grid;
+  gap: var(--sc-gap, 0.875rem);
+  min-width: 0;
+}
+
+.v-score {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--sc-pct-col, 3rem);
+  align-items: center;
+  gap: 0.35rem 1rem;
+}
+
+.v-score-label {
+  grid-column: 1 / -1;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.v-score-track {
+  overflow: hidden;
+  height: var(--sc-bar, 6px);
+  border-radius: 999px;
+  background: var(--v-tint);
+}
+
+.v-score-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--v-accent);
+}
+
+.v-score-pct {
+  justify-self: end;
+  font-family: var(--v-font-h);
+  font-size: var(--sc-pct-size, 0.875rem);
+  font-weight: var(--sc-pct-weight, 600);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ce qui n'existe que dans l'un des deux cadres de la maquette. */
+.v-bm-only-phone {
+  display: none;
+}
+
+/* ── Le cadre téléphone ─────────────────────────────────────────────────────
+   Le radar passe à sa silhouette ; chaque jauge met son nom et son chiffre
+   sur une ligne, et la barre dessous, pleine largeur. */
+@media (max-width: 767px) {
+  .v-radar-full,
+  .v-bm-only-desktop {
+    display: none;
+  }
+
+  .v-radar-compact {
+    display: block;
+  }
+
+  .v-bm-only-phone {
+    display: inline;
+  }
+
+  .v-scores {
+    gap: 0.45rem;
+  }
+
+  .v-score {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.15rem 0.5rem;
+  }
+
+  .v-score-label {
+    grid-column: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.6875rem;
+  }
+
+  .v-score-track {
+    order: 1;
+    grid-column: 1 / -1;
+    height: 4px;
+  }
+
+  .v-score-pct {
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
+}

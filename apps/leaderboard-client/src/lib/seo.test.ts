@@ -120,6 +120,7 @@ describe("buildSitemap", () => {
       "https://lab.example.com/watch",
       "https://lab.example.com/news",
       "https://lab.example.com/vision",
+      "https://lab.example.com/benchmark",
       "https://lab.example.com/terms-of-use",
       "https://lab.example.com/privacy-policy",
       "https://lab.example.com/challenges/predict-glucose",
@@ -127,12 +128,12 @@ describe("buildSitemap", () => {
       "https://lab.example.com/sandbox/sleep-tracker",
       "https://lab.example.com/news/mykine",
     ]);
-    // Les index suivent la liste ci-dessus : neuf pages fixes, puis les
+    // Les index suivent la liste ci-dessus : dix pages fixes, puis les
     // entités dans l'ordre où elles sont passées.
-    expect(sitemap[9].lastModified).toBe(created);
-    expect(sitemap[10].lastModified).toBe(closed);
-    expect(sitemap[11].lastModified).toBe(updated);
-    expect(sitemap[12].lastModified).toBe("2026-09-16");
+    expect(sitemap[10].lastModified).toBe(created);
+    expect(sitemap[11].lastModified).toBe(closed);
+    expect(sitemap[12].lastModified).toBe(updated);
+    expect(sitemap[13].lastModified).toBe("2026-09-16");
   });
 });
 
