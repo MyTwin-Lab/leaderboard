@@ -14,6 +14,8 @@ const SOURCES = {
 const ENGINE = newsPath("mytwin-engine-health-scoring");
 const ATHLETE = newsPath("mytwin-athlete");
 const HEALTH_CHECKUP = "https://mytwin.care/en/blog/preventive-health-checkup";
+const HEALTHSPAN = "https://mytwin.care/en/blog/healthy-longevity";
+const BIOLOGICAL_AGE = "https://mytwin.care/en/blog/biological-age";
 const MYTWIN = "https://mytwin.care/en";
 
 export const mytwinLongevity: NewsArticle = {
@@ -73,7 +75,9 @@ export const mytwinLongevity: NewsArticle = {
           </p>
           <p>
             The idea is to look early, while there is still room to act: measure where the body stands today, see which
-            levers matter most for this person, and follow how things change over time.
+            levers matter most for this person, and follow how things change over time. Our article on{" "}
+            <NewsLink href={HEALTHSPAN}>healthspan</NewsLink> sorts what science really knows about living longer in
+            good health.
           </p>
         </>
       ),
@@ -116,7 +120,9 @@ export const mytwinLongevity: NewsArticle = {
           </p>
           <p>
             A biological age is a signal, not a diagnosis. A single measurement is a snapshot; its value grows with
-            repeated tests, which turn one number into a trajectory. That is why the journey loops back.
+            repeated tests, which turn one number into a trajectory. That is why the journey loops back. Our article on{" "}
+            <NewsLink href={BIOLOGICAL_AGE}>biological age</NewsLink> explains what the tests really measure, and what
+            they don’t.
           </p>
         </>
       ),
