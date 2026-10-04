@@ -221,8 +221,7 @@
   text-align: center;
 }
 
-.v-bm-flow-icon,
-.v-bm-trait-icon {
+.v-bm-flow-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -274,50 +273,6 @@
 .v-bm-flow-arrow path {
   stroke: inherit;
   stroke-width: 1.2;
-}
-
-.v-bm-traits {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
-  gap: 1rem 0.875rem;
-  padding-top: clamp(1.25rem, 2.5vw, 1.75rem);
-  border-top: 1px solid var(--v-line);
-}
-
-.v-bm-trait {
-  display: grid;
-  grid-template-columns: 2.75rem minmax(0, 1fr);
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.v-bm-trait-icon {
-  width: 2.75rem;
-  height: 2.75rem;
-}
-
-.v-bm-trait-icon svg {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.v-bm-trait-body {
-  display: grid;
-  min-width: 0;
-}
-
-.v-bm-trait-body b {
-  font-family: var(--v-font-h);
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.3;
-  hyphens: manual;
-}
-
-.v-bm-trait-body span {
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  color: var(--v-muted);
 }
 
 /* ── Le niveau de maturité ──────────────────────────────────────────────── */
@@ -385,81 +340,6 @@
 .v-bm-legend-dot[data-kind="early"] {
   border: 1px dashed var(--v-subtle);
   background: color-mix(in srgb, var(--v-subtle) 15%, transparent);
-}
-
-/* ── Les dix dimensions ─────────────────────────────────────────────────── */
-
-.v-bm-dims-section {
-  display: grid;
-  gap: 1.25rem;
-  border-top: 1px solid var(--v-line);
-  padding-block: clamp(2.25rem, 4.5vw, 3.75rem);
-}
-
-.v-bm-dims {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
-  gap: 0.625rem 1rem;
-}
-
-.v-bm-dim {
-  display: grid;
-}
-
-/* Un bouton pour le téléphone, où la carte s'ouvre. Sur PC il n'y a rien à
-   ouvrir : la carte n'a ni survol ni curseur de lien. */
-.v-bm-dim-card {
-  display: grid;
-  grid-template-columns: 2.5rem 2rem minmax(0, 1fr);
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  padding: 0.75rem 1rem 0.75rem 0.75rem;
-  border: 1px solid var(--v-line);
-  border-radius: 12px;
-  background: var(--v-surface);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: default;
-}
-
-.v-bm-dim-num {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 999px;
-  border: 1px solid var(--bm-ring);
-  font-family: var(--v-font-h);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--v-accent);
-  font-variant-numeric: tabular-nums;
-}
-
-.v-bm-dim-card .v-bm-icon {
-  width: 1.75rem;
-  height: 1.75rem;
-}
-
-.v-bm-dim-body {
-  display: grid;
-  min-width: 0;
-}
-
-.v-bm-dim-title {
-  font-family: var(--v-font-h);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.v-bm-dim-text {
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  color: var(--v-muted);
 }
 
 /* ── L'appel à contribuer ───────────────────────────────────────────────── */
@@ -678,42 +558,6 @@
     display: none;
   }
 
-  .v-bm-traits {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.75rem;
-    padding-top: 1.125rem;
-  }
-
-  .v-bm-trait {
-    grid-template-columns: 2.25rem minmax(0, 1fr);
-  }
-
-  .v-bm-trait-icon {
-    width: 2.25rem;
-    height: 2.25rem;
-  }
-
-  .v-bm-trait-icon svg {
-    width: 1rem;
-    height: 1rem;
-  }
-
-  /* Titre et description sur une même ligne, qui se replie au besoin. */
-  .v-bm-trait-body {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0 0.4rem;
-  }
-
-  .v-bm-trait-body b {
-    font-size: 0.8125rem;
-  }
-
-  .v-bm-trait-body span {
-    font-size: 0.75rem;
-  }
-
   .v-bm-how {
     gap: 1rem;
     padding-bottom: 1.75rem;
@@ -760,62 +604,6 @@
   .v-bm-legend-dot {
     width: 0.625rem;
     height: 0.625rem;
-  }
-
-  .v-bm-dims-section {
-    gap: 1rem;
-    padding-block: 1.75rem;
-  }
-
-  /* Deux colonnes, et `dense` : la carte ouverte prend une ligne entière, ses
-     voisines remontent combler le trou qu'elle laisse. */
-  .v-bm-dims {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-flow: row dense;
-    gap: 0.5rem;
-  }
-
-  .v-bm-dim[data-open] {
-    grid-column: 1 / -1;
-  }
-
-  .v-bm-dim-card {
-    display: flex;
-    gap: 0.5rem;
-    min-height: 3rem;
-    padding: 0.4rem 0.625rem;
-    cursor: pointer;
-  }
-
-  .v-bm-dim[data-open] .v-bm-dim-card {
-    border-color: var(--bm-ring);
-  }
-
-  .v-bm-dim-num {
-    display: none;
-  }
-
-  .v-bm-dim-card .v-bm-icon {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-
-  .v-bm-dim-title {
-    font-size: 0.75rem;
-    line-height: 1.25;
-    letter-spacing: normal;
-    text-wrap: balance;
-  }
-
-  .v-bm-dim-text {
-    display: none;
-    margin-top: 0.15rem;
-    font-size: 0.75rem;
-    line-height: 1.35;
-  }
-
-  .v-bm-dim[data-open] .v-bm-dim-text {
-    display: block;
   }
 
   /* L'image passe au-dessus du texte, bord à bord, et se fond par le bas. */

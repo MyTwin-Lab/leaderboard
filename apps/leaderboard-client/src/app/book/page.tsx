@@ -20,8 +20,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-/** L'accroche suit l'appel qui a mené ici ; sans `?for=`, la page reste générale. */
-const COPY: Record<BookingIntent | "general", { eyebrow: string; lede: string }> = {
+/**
+ * L'accroche suit l'appel qui a mené ici ; sans `?for=`, la page reste générale.
+ * Les deux appels de `/benchmark` n'ont pas de surtitre.
+ */
+const COPY: Record<BookingIntent | "general", { eyebrow?: string; lede: string }> = {
   "twin-creation": {
     eyebrow: "Create your twin",
     lede: "A twin for yourself, your patients or your employees? Leave your details, then pick a time that suits you.",
@@ -31,11 +34,9 @@ const COPY: Record<BookingIntent | "general", { eyebrow: string; lede: string }>
     lede: "Got a health project in mind? Let's talk it through and see how to launch it in the Sandbox with the Lab community.",
   },
   "benchmark-submission": {
-    eyebrow: "Submit a twin",
     lede: "Building a human digital twin? Tell us about it, and we'll walk you through its review against the benchmark.",
   },
   "scientific-committee": {
-    eyebrow: "Scientific Committee",
     lede: "Researcher, clinician or builder? Let's talk about how you could help review the twins submitted to the benchmark.",
   },
   general: {
@@ -67,10 +68,12 @@ export default async function BookPage({
 
         <div className="v-book-grid">
           <header className="v-book-intro">
-            <span className="v-eyebrow">
-              <span className="v-eyebrow-dot" aria-hidden="true" />
-              {copy.eyebrow}
-            </span>
+            {copy.eyebrow && (
+              <span className="v-eyebrow">
+                <span className="v-eyebrow-dot" aria-hidden="true" />
+                {copy.eyebrow}
+              </span>
+            )}
             <h1 className="v-title">Book a meeting with us</h1>
             <p className="v-lede">{copy.lede}</p>
 

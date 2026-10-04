@@ -4,7 +4,6 @@ import { BackToLab } from "@/components/vitrine/BackToLab";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
 import { bookingPath } from "@/lib/booking";
 
-import { BenchmarkDimensions } from "./BenchmarkDimensions";
 import { BenchmarkRadar, BenchmarkScores } from "./BenchmarkRadar";
 import { BenchmarkArrow, BenchmarkIcon, type BenchmarkIconName } from "./icons";
 
@@ -24,9 +23,9 @@ import "./benchmark-vitrine.css";
  * (`digital-twin-anatomy-desktop.jpeg`), pas le PNG de la maquette : même
  * sujet, et une seule image pour les deux cadres.
  *
- * « Submit a twin » et « Join the Scientific Committee » mènent à la prise de
- * rendez-vous, chacun avec son intention (`/book?for=…`) : deux parcours, deux
- * sources CRM — celui qui soumet un twin n'est pas celui qui les évalue.
+ * Les deux « Build the benchmark with us » mènent à la prise de rendez-vous,
+ * chacun avec son intention (`/book?for=…`) : celui de l'intro pour soumettre
+ * un twin, celui de « Contribute » pour les évaluer — deux sources CRM.
  */
 
 const TWIN = "/home/twin/digital-twin-anatomy-desktop.jpeg";
@@ -44,14 +43,6 @@ const FLOW: { icon: BenchmarkIconName; title: string; text: string }[] = [
   { icon: "bars", title: "Prediction", text: "Individualized predictions" },
   { icon: "doc", title: "Decision", text: "Actionable insights" },
   { icon: "person", title: "Person", text: "Improved outcomes" },
-];
-
-const TRAITS: { icon: BenchmarkIconName; title: string; text: string }[] = [
-  { icon: "person", title: "Personalized", text: "Tailored to one individual" },
-  { icon: "refresh", title: "Dynamic", text: "Continuously updated" },
-  { icon: "bars", title: "Predictive", text: "Forecasts future states" },
-  { icon: "doc", title: "Decision-supporting", text: "Informs actions" },
-  { icon: "loop", title: "Feedback loop", text: "Learns from outcomes" },
 ];
 
 export function BenchmarkVitrine() {
@@ -74,7 +65,7 @@ export function BenchmarkVitrine() {
               advanced it is.
             </p>
             <Link href={bookingPath("benchmark-submission")} className="v-bm-submit">
-              Submit a twin
+              Build the benchmark with us
               <BenchmarkArrow />
             </Link>
             <dl className="v-bm-stats">
@@ -123,19 +114,6 @@ export function BenchmarkVitrine() {
               </li>
             ))}
           </ol>
-          <ul className="v-bm-traits">
-            {TRAITS.map((trait) => (
-              <li key={trait.title} className="v-bm-trait">
-                <span className="v-bm-trait-icon">
-                  <BenchmarkIcon name={trait.icon} />
-                </span>
-                <span className="v-bm-trait-body">
-                  <b>{trait.title}</b>
-                  <span>{trait.text}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
         </section>
 
         {/* ── Le niveau de maturité ─────────────────────────────────────── */}
@@ -166,14 +144,6 @@ export function BenchmarkVitrine() {
           </div>
         </section>
 
-        {/* ── Les dix dimensions ────────────────────────────────────────── */}
-        <section className="v-bm-dims-section" aria-labelledby="benchmark-dimensions">
-          <h2 id="benchmark-dimensions" className="v-bm-h2">
-            The 10 dimensions of maturity
-          </h2>
-          <BenchmarkDimensions />
-        </section>
-
         {/* ── L'appel à contribuer ──────────────────────────────────────── */}
         <section className="v-bm-contribute" aria-labelledby="benchmark-contribute">
           <div className="v-bm-contribute-text">
@@ -185,7 +155,7 @@ export function BenchmarkVitrine() {
               Researchers, startups, clinics and builders can submit their projects for review.
             </p>
             <Link href={bookingPath("scientific-committee")} className="v-bm-join">
-              Join the Scientific Committee
+              Build the benchmark with us
               <BenchmarkArrow />
             </Link>
           </div>

@@ -12,8 +12,8 @@
    |---|---|---|---|---|
    | **Create Your Twin** | home, last section | `twin-creation` | `lab_twin_creation` | `patient` |
    | **Create your sandbox** | the night strip at the bottom of `/challenges`, `/leaderboard`, `/sandbox` | `sandbox-project` | `lab_sandbox_project` | `startup` |
-   | **Submit a twin** | `/benchmark`, hero | `benchmark-submission` | `lab_benchmark_submission` | `startup` |
-   | **Join the Scientific Committee** | `/benchmark`, Contribute section | `scientific-committee` | `lab_scientific_committee` | `expert` |
+   | **Build the benchmark with us** | `/benchmark`, hero | `benchmark-submission` | `lab_benchmark_submission` | `startup` |
+   | **Build the benchmark with us** | `/benchmark`, Contribute section | `scientific-committee` | `lab_scientific_committee` | `expert` |
    | — | `/book` with no or an unknown `?for=` | — | `lab_general` | `patient` |
 
 2. `/book` asks for a first name and an email. **Choose a time** calls the server action `startBooking` (`app/book/actions.ts`), which:

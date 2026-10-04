@@ -20,6 +20,15 @@
   gap: 14px;
 }
 
+/* L'accroche est mise en avant par un soulignement à la couleur d'accent, qui
+   suit chaque ligne du texte. */
+.v-book .v-lede {
+  text-decoration: underline;
+  text-decoration-color: var(--v-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.3em;
+}
+
 .v-book-facts {
   display: flex;
   flex-direction: column;
