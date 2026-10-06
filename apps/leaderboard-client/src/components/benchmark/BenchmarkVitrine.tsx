@@ -23,9 +23,9 @@ import "./benchmark-vitrine.css";
  * (`digital-twin-anatomy-desktop.jpeg`), pas le PNG de la maquette : même
  * sujet, et une seule image pour les deux cadres.
  *
- * Les deux « Build the benchmark with us » mènent à la prise de rendez-vous,
- * chacun avec son intention (`/book?for=…`) : celui de l'intro pour soumettre
- * un twin, celui de « Contribute » pour les évaluer — deux sources CRM.
+ * Les deux « Build the benchmark with us » mènent à la même prise de
+ * rendez-vous (`/book?for=scientific-committee`) : la page ne parle qu'à
+ * l'expert qui veut faire avancer le benchmark, une seule source CRM.
  */
 
 const TWIN = "/home/twin/digital-twin-anatomy-desktop.jpeg";
@@ -64,7 +64,7 @@ export function BenchmarkVitrine() {
               We created an open framework to evaluate what makes a true human digital twin, and how
               advanced it is.
             </p>
-            <Link href={bookingPath("benchmark-submission")} className="v-bm-submit">
+            <Link href={bookingPath("scientific-committee")} className="v-bm-submit">
               Build the benchmark with us
               <BenchmarkArrow />
             </Link>
@@ -149,10 +149,11 @@ export function BenchmarkVitrine() {
           <div className="v-bm-contribute-text">
             <span className="v-bm-eyebrow">Contribute</span>
             <h2 id="benchmark-contribute" className="v-bm-h2">
-              Submit your human digital twin
+              Help us build the human digital twin benchmark
             </h2>
             <p className="v-bm-contribute-sub">
-              Researchers, startups, clinics and builders can submit their projects for review.
+              Researchers, startups, clinics and builders can contribute their projects and help
+              shape the benchmark.
             </p>
             <Link href={bookingPath("scientific-committee")} className="v-bm-join">
               Build the benchmark with us

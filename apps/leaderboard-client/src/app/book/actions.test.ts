@@ -18,19 +18,19 @@ describe("startBooking", () => {
     submitBookingRequest.mockResolvedValue("sub-1");
 
     const result = await startBooking(
-      "benchmark-submission",
+      "scientific-committee",
       form({ firstName: " Ada ", email: " Ada@Example.com " }),
     );
 
     expect(submitBookingRequest).toHaveBeenCalledWith({
-      source: "lab_benchmark_submission",
+      source: "lab_scientific_committee",
       firstName: "Ada",
       email: "ada@example.com",
-      utm: { source: "mytwinlab.care", medium: "booking-page", campaign: "benchmark-submission" },
+      utm: { source: "mytwinlab.care", medium: "booking-page", campaign: "scientific-committee" },
     });
     if (!("url" in result)) throw new Error("expected a URL");
     const url = new URL(result.url);
-    expect(url.searchParams.get("utm_campaign")).toBe("benchmark-submission");
+    expect(url.searchParams.get("utm_campaign")).toBe("scientific-committee");
     expect(url.searchParams.get("utm_content")).toBe("sub-1");
   });
 

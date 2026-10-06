@@ -12,8 +12,7 @@
    |---|---|---|---|---|
    | **Create Your Twin** | home, last section | `twin-creation` | `lab_twin_creation` | `patient` |
    | **Create your sandbox** | the night strip at the bottom of `/challenges`, `/leaderboard`, `/sandbox` | `sandbox-project` | `lab_sandbox_project` | `startup` |
-   | **Build the benchmark with us** | `/benchmark`, hero | `benchmark-submission` | `lab_benchmark_submission` | `startup` |
-   | **Build the benchmark with us** | `/benchmark`, Contribute section | `scientific-committee` | `lab_scientific_committee` | `expert` |
+   | **Build the benchmark with us** | `/benchmark`, hero and Contribute section | `scientific-committee` | `lab_scientific_committee` | `expert` |
    | — | `/book` with no or an unknown `?for=` | — | `lab_general` | `patient` |
 
 2. `/book` asks for a first name and an email. **Choose a time** calls the server action `startBooking` (`app/book/actions.ts`), which:
@@ -46,7 +45,7 @@
 ## Decisions
 
 - **The CRM never blocks a booking.** `submitBookingRequest` never throws: no endpoint configured, a timeout (5 s), an HTTP or GraphQL error all return `null`, are logged as `[crm:booking]`, and the visitor still goes to Calendly — without `utm_content`. A lost CRM row can be found again from Calendly's UTMs; a lost booking cannot.
-- **Two calls on `/benchmark`, two sources.** Submitting a twin and joining the committee that reviews them are two audiences: a builder (`startup`) and a researcher or clinician (`expert`).
+- **Two calls on `/benchmark`, one source.** The page speaks to a single audience: the expert (researcher, clinician, builder) who wants to help improve the open-source benchmark. There is no twin submission; a `lab_benchmark_submission` source existed for a few days and was folded into `lab_scientific_committee` (MyTwinOS migration `20261006120000_drop_crm_lab_benchmark_submission`).
 - **A honeypot, not a captcha.** The form carries a `website` field, off-screen and out of the tab order. Filled, the request skips the CRM but the answer is the same — a bot learns nothing. The CRM mutation is public, like every `crmSubmit*`.
 - **A redirect, not an embedded iframe.** The Calendly widget sets its own cookies and shows its own consent banner; the Lab has none and promises none (privacy policy §9). Nothing on `/book` calls a third party until the visitor clicks.
 - **`noindex, follow`, out of the sitemap.** A conversion page, not content ([`seo.md`](./seo.md)).
@@ -55,7 +54,7 @@
 
 ## Gotchas
 
-- **Former intents are gone.** `?for=twin` and `?for=project` now open the general page (source `lab_general`). No CRM request had been made with them.
+- **Former intents are gone.** `?for=twin` and `?for=project` now open the general page (source `lab_general`). No CRM request had been made with them. `?for=benchmark-submission` does too; its CRM requests were moved to `lab_scientific_committee`.
 - **An intent is declared in four places**: `BOOKING_INTENTS` and `CRM_SOURCE_BY_INTENT` (`lib/booking.ts`), the page copy (`app/book/page.tsx`), and — for a new source — the `CrmSource` enum of MyTwinOS (Prisma + migration, `CRM_SOURCES`, `TYPE_BY_SOURCE`, SDL, the `@IsIn` of `SubmitCrmBookingRequestInput`) and the admin labels.
 - The event type is the only one the free plan allows. Changing its slug (`30min`) breaks the link: update `CALENDLY_EVENT_URL`.
 - Calendly pre-fills only the fields it knows: `name` and `email`. If the event is switched to separate first/last name fields, the params become `first_name` / `last_name`.

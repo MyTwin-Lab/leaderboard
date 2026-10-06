@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 /**
  * L'accroche suit l'appel qui a mené ici ; sans `?for=`, la page reste générale.
- * Les deux appels de `/benchmark` n'ont pas de surtitre.
+ * L'appel de `/benchmark` n'a pas de surtitre.
  */
 const COPY: Record<BookingIntent | "general", { eyebrow?: string; lede: string }> = {
   "twin-creation": {
@@ -32,9 +32,6 @@ const COPY: Record<BookingIntent | "general", { eyebrow?: string; lede: string }
   "sandbox-project": {
     eyebrow: "Your project in the Sandbox",
     lede: "Got a health project in mind? Let's talk it through and see how to launch it in the Sandbox with the Lab community.",
-  },
-  "benchmark-submission": {
-    lede: "Building a human digital twin? Tell us about it, and we'll walk you through its review against the benchmark.",
   },
   "scientific-committee": {
     lede: "Researcher, clinician or builder? Let's talk about how you could help review the twins submitted to the benchmark.",

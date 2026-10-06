@@ -20,6 +20,7 @@ describe("parseBookingIntent", () => {
     expect(parseBookingIntent("TWIN-CREATION")).toBeNull();
     expect(parseBookingIntent("twin")).toBeNull();
     expect(parseBookingIntent("project")).toBeNull();
+    expect(parseBookingIntent("benchmark-submission")).toBeNull();
     expect(parseBookingIntent({ toString: () => "twin-creation" })).toBeNull();
   });
 });
@@ -35,7 +36,6 @@ describe("bookingCrmSource", () => {
   it("gives each intent its own lab_* source", () => {
     expect(bookingCrmSource("twin-creation")).toBe("lab_twin_creation");
     expect(bookingCrmSource("sandbox-project")).toBe("lab_sandbox_project");
-    expect(bookingCrmSource("benchmark-submission")).toBe("lab_benchmark_submission");
     expect(bookingCrmSource("scientific-committee")).toBe("lab_scientific_committee");
     expect(bookingCrmSource(null)).toBe("lab_general");
   });
@@ -43,10 +43,10 @@ describe("bookingCrmSource", () => {
 
 describe("bookingUtm", () => {
   it("names the campaign after the intent", () => {
-    expect(bookingUtm("benchmark-submission")).toEqual({
+    expect(bookingUtm("scientific-committee")).toEqual({
       source: "mytwinlab.care",
       medium: "booking-page",
-      campaign: "benchmark-submission",
+      campaign: "scientific-committee",
     });
     expect(bookingUtm(null).campaign).toBe("general");
   });

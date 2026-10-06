@@ -25,7 +25,6 @@ export const CALENDLY_EVENT_URL = "https://calendly.com/rubens-mytwin/30min";
 export const BOOKING_INTENTS = [
   "twin-creation",
   "sandbox-project",
-  "benchmark-submission",
   "scientific-committee",
 ] as const;
 export type BookingIntent = (typeof BOOKING_INTENTS)[number];
@@ -40,14 +39,12 @@ export const GENERAL_CAMPAIGN = "general";
 export type BookingCrmSource =
   | "lab_twin_creation"
   | "lab_sandbox_project"
-  | "lab_benchmark_submission"
   | "lab_scientific_committee"
   | "lab_general";
 
 const CRM_SOURCE_BY_INTENT: Record<BookingIntent, BookingCrmSource> = {
   "twin-creation": "lab_twin_creation",
   "sandbox-project": "lab_sandbox_project",
-  "benchmark-submission": "lab_benchmark_submission",
   "scientific-committee": "lab_scientific_committee",
 };
 
