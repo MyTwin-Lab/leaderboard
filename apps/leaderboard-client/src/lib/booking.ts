@@ -61,14 +61,42 @@ export function bookingUtm(intent: BookingIntent | null) {
   };
 }
 
+/**
+ * D'où l'on vient : la page qui porte l'appel, et où ramène le retour de
+ * `/book`. Distinct de l'intention — le bandeau sandbox, une seule intention,
+ * vit sur trois pages. Ne sert qu'à la navigation : ni le CRM ni Calendly ne
+ * le voient.
+ *
+ * Liste fermée : `?from=` n'est jamais une URL, un lien venu d'ailleurs ne
+ * peut pas choisir où renvoie le retour.
+ */
+export const BOOKING_ORIGINS = {
+  benchmark: { href: "/benchmark", label: "Back to the benchmark" },
+  challenges: { href: "/challenges", label: "Back to the challenges" },
+  leaderboard: { href: "/leaderboard", label: "Back to the leaderboard" },
+  sandbox: { href: "/sandbox", label: "Back to the Sandbox" },
+} as const satisfies Record<string, { href: string; label: string }>;
+export type BookingOrigin = keyof typeof BOOKING_ORIGINS;
+
+function firstParam(value: unknown): unknown {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 /** Lit `?for=` ; une valeur absente ou inconnue ouvre la page sans intention. */
 export function parseBookingIntent(value: unknown): BookingIntent | null {
-  const raw = Array.isArray(value) ? value[0] : value;
+  const raw = firstParam(value);
   return BOOKING_INTENTS.find((intent) => intent === raw) ?? null;
 }
 
-export function bookingPath(intent: BookingIntent): string {
-  return `${BOOKING_PATH}?for=${intent}`;
+/** Lit `?from=` ; une valeur absente ou inconnue ramène au Lab. */
+export function parseBookingOrigin(value: unknown): BookingOrigin | null {
+  const raw = firstParam(value);
+  return typeof raw === "string" && Object.hasOwn(BOOKING_ORIGINS, raw) ? (raw as BookingOrigin) : null;
+}
+
+/** Sans origine, le retour mène à l'accueil du Lab — le cas de la home. */
+export function bookingPath(intent: BookingIntent, from?: BookingOrigin): string {
+  return from ? `${BOOKING_PATH}?for=${intent}&from=${from}` : `${BOOKING_PATH}?for=${intent}`;
 }
 
 /**

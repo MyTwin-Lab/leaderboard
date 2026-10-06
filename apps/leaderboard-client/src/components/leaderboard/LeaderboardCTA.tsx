@@ -6,5 +6,5 @@ import { CreateSandboxStrip } from "@/components/vitrine/CreateSandboxStrip";
  * rendez-vous d'un porteur de projet.
  */
 export function LeaderboardCTA() {
-  return <CreateSandboxStrip />;
+  return <CreateSandboxStrip from="leaderboard" />;
 }

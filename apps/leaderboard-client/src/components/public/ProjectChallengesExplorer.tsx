@@ -321,7 +321,7 @@ export function ProjectChallengesExplorer({
           </div>
         )}
 
-        <CreateSandboxStrip className="v-ch-strip" />
+        <CreateSandboxStrip from="challenges" className="v-ch-strip" />
       </div>
     </div>
 

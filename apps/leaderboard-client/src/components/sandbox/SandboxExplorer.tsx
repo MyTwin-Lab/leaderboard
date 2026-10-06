@@ -234,7 +234,7 @@ export function SandboxExplorer({ knownAnonymous = false }: { knownAnonymous?: b
 
         {/* ── Le bandeau de bas de page : un projet se propose désormais en
             prenant rendez-vous, pas en déposant soi-même une sandbox. ── */}
-        <CreateSandboxStrip />
+        <CreateSandboxStrip from="sandbox" />
       </div>
     </div>
   );

@@ -15,6 +15,8 @@
    | **Build the benchmark with us** | `/benchmark`, hero and Contribute section | `scientific-committee` | `lab_scientific_committee` | `expert` |
    | — | `/book` with no or an unknown `?for=` | — | `lab_general` | `patient` |
 
+   Calls that are not on the home also carry an **origin** (`?from=`): `benchmark`, or the page showing the sandbox strip (`challenges`, `leaderboard`, `sandbox`). It only sets where `/book`'s back link leads ("Back to the benchmark"…); without it, the link goes back to the Lab's home.
+
 2. `/book` asks for a first name and an email. **Choose a time** calls the server action `startBooking` (`app/book/actions.ts`), which:
    - validates the two fields again, and re-reads the intent against the closed list — it comes from the client;
    - calls `crmSubmitBookingRequest` on MyTwinOS (kind `booking`, the intent's source, the `utm_*` below), which answers with the **submission uuid**;
@@ -35,7 +37,7 @@
 
 ## Where things live
 
-- `apps/leaderboard-client/src/lib/booking.ts` — `BOOKING_PATH`, the Calendly URL, the intents and their CRM sources, `bookingPath()`, `bookingUtm()`, `calendlyBookingUrl()`. Pure; tested in `booking.test.ts`.
+- `apps/leaderboard-client/src/lib/booking.ts` — `BOOKING_PATH`, the Calendly URL, the intents and their CRM sources, the origins (`BOOKING_ORIGINS`), `bookingPath()`, `bookingUtm()`, `calendlyBookingUrl()`. Pure; tested in `booking.test.ts`.
 - `apps/leaderboard-client/src/lib/server/crm.ts` — `submitBookingRequest()`, the only call to the CRM. Tested in `crm.test.ts`.
 - `apps/leaderboard-client/src/app/book/` — the page and its copy per intent, `actions.ts` (the server action, tested in `actions.test.ts`).
 - `apps/leaderboard-client/src/components/booking/` — `BookingForm.tsx` (client) and `booking-vitrine.css`.
@@ -46,6 +48,7 @@
 
 - **The CRM never blocks a booking.** `submitBookingRequest` never throws: no endpoint configured, a timeout (5 s), an HTTP or GraphQL error all return `null`, are logged as `[crm:booking]`, and the visitor still goes to Calendly — without `utm_content`. A lost CRM row can be found again from Calendly's UTMs; a lost booking cannot.
 - **Two calls on `/benchmark`, one source.** The page speaks to a single audience: the expert (researcher, clinician, builder) who wants to help improve the open-source benchmark. There is no twin submission; a `lab_benchmark_submission` source existed for a few days and was folded into `lab_scientific_committee` (MyTwinOS migration `20261006120000_drop_crm_lab_benchmark_submission`).
+- **One page, intent and origin kept apart.** The `/book` variants differ only by their lede and their back link, so they stay one page. The intent says *why* someone books (lede, CRM source, `utm_campaign`); the origin says *where from* (back link only). They cannot be merged: the sandbox strip is one intent on three pages. `?from=` is read against the closed `BOOKING_ORIGINS` list, never as a URL, so an outside link cannot pick the back link's target. Not `history.back()`: it breaks on a direct visit or a new tab.
 - **A honeypot, not a captcha.** The form carries a `website` field, off-screen and out of the tab order. Filled, the request skips the CRM but the answer is the same — a bot learns nothing. The CRM mutation is public, like every `crmSubmit*`.
 - **A redirect, not an embedded iframe.** The Calendly widget sets its own cookies and shows its own consent banner; the Lab has none and promises none (privacy policy §9). Nothing on `/book` calls a third party until the visitor clicks.
 - **`noindex, follow`, out of the sitemap.** A conversion page, not content ([`seo.md`](./seo.md)).

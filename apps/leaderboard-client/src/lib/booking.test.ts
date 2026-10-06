@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   BOOKING_INTENTS,
+  BOOKING_ORIGINS,
   bookingCrmSource,
   bookingPath,
   bookingUtm,
   calendlyBookingUrl,
   parseBookingIntent,
+  parseBookingOrigin,
 } from "./booking";
 
 describe("parseBookingIntent", () => {
@@ -29,6 +31,27 @@ describe("bookingPath", () => {
   it("carries the intent", () => {
     expect(bookingPath("twin-creation")).toBe("/book?for=twin-creation");
     expect(bookingPath("scientific-committee")).toBe("/book?for=scientific-committee");
+  });
+
+  it("carries the origin when there is one", () => {
+    expect(bookingPath("scientific-committee", "benchmark")).toBe("/book?for=scientific-committee&from=benchmark");
+    expect(bookingPath("sandbox-project", "challenges")).toBe("/book?for=sandbox-project&from=challenges");
+  });
+});
+
+describe("parseBookingOrigin", () => {
+  it("keeps the known origins", () => {
+    for (const origin of Object.keys(BOOKING_ORIGINS)) expect(parseBookingOrigin(origin)).toBe(origin);
+    expect(parseBookingOrigin(["benchmark", "sandbox"])).toBe("benchmark");
+  });
+
+  it("drops anything else, URLs and inherited keys included", () => {
+    expect(parseBookingOrigin(undefined)).toBeNull();
+    expect(parseBookingOrigin("")).toBeNull();
+    expect(parseBookingOrigin("/benchmark")).toBeNull();
+    expect(parseBookingOrigin("https://evil.example")).toBeNull();
+    expect(parseBookingOrigin("toString")).toBeNull();
+    expect(parseBookingOrigin("__proto__")).toBeNull();
   });
 });
 

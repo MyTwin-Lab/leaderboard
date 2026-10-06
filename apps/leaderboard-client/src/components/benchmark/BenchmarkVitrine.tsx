@@ -24,7 +24,7 @@ import "./benchmark-vitrine.css";
  * sujet, et une seule image pour les deux cadres.
  *
  * Les deux « Build the benchmark with us » mènent à la même prise de
- * rendez-vous (`/book?for=scientific-committee`) : la page ne parle qu'à
+ * rendez-vous (`/book?for=scientific-committee&from=benchmark`) : la page ne parle qu'à
  * l'expert qui veut faire avancer le benchmark, une seule source CRM.
  */
 
@@ -64,7 +64,7 @@ export function BenchmarkVitrine() {
               We created an open framework to evaluate what makes a true human digital twin, and how
               advanced it is.
             </p>
-            <Link href={bookingPath("scientific-committee")} className="v-bm-submit">
+            <Link href={bookingPath("scientific-committee", "benchmark")} className="v-bm-submit">
               Build the benchmark with us
               <BenchmarkArrow />
             </Link>
@@ -155,7 +155,7 @@ export function BenchmarkVitrine() {
               Researchers, startups, clinics and builders can contribute their projects and help
               shape the benchmark.
             </p>
-            <Link href={bookingPath("scientific-committee")} className="v-bm-join">
+            <Link href={bookingPath("scientific-committee", "benchmark")} className="v-bm-join">
               Build the benchmark with us
               <BenchmarkArrow />
             </Link>

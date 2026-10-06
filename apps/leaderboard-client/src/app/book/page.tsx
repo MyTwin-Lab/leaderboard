@@ -3,7 +3,13 @@ import type { Metadata } from "next";
 import { BookingForm } from "@/components/booking/BookingForm";
 import { BackToLab } from "@/components/vitrine/BackToLab";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
-import { BOOKING_PATH, parseBookingIntent, type BookingIntent } from "@/lib/booking";
+import {
+  BOOKING_ORIGINS,
+  BOOKING_PATH,
+  parseBookingIntent,
+  parseBookingOrigin,
+  type BookingIntent,
+} from "@/lib/booking";
 import { pageMetadata } from "@/lib/seo";
 
 import "@/components/vitrine/vitrine.css";
@@ -45,6 +51,8 @@ const COPY: Record<BookingIntent | "general", { eyebrow?: string; lede: string }
 /**
  * `/book` — la prise de rendez-vous, au style vitrine.
  *
+ * Le retour ramène à la page de l'appel (`?from=`), à l'accueil du Lab sinon.
+ *
  * Deux temps : le prénom et l'e-mail ici, qui entrent au CRM de MyTwin, puis
  * le créneau sur Calendly, où ils arrivent pré-remplis (`lib/booking.ts`). Pas
  * d'iframe : la page n'appelle aucun tiers tant que le visiteur n'a pas
@@ -55,13 +63,15 @@ export default async function BookPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const intent = parseBookingIntent((await searchParams).for);
+  const params = await searchParams;
+  const intent = parseBookingIntent(params.for);
+  const origin = parseBookingOrigin(params.from);
   const copy = COPY[intent ?? "general"];
 
   return (
     <div className={`vitrine v-book ${vitrineFontVars}`}>
       <div className="v-main">
-        <BackToLab />
+        <BackToLab {...(origin && BOOKING_ORIGINS[origin])} />
 
         <div className="v-book-grid">
           <header className="v-book-intro">
