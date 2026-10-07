@@ -113,7 +113,7 @@
   line-height: 1.06;
   font-weight: 700;
   letter-spacing: -0.045em;
-  text-wrap: balance;
+  text-wrap: pretty;
   color: var(--v-ink);
 }
 
@@ -486,7 +486,7 @@ details[open] > summary .v-nd-plus {
   line-height: 1.15;
   font-weight: 700;
   letter-spacing: -0.035em;
-  text-wrap: balance;
+  text-wrap: pretty;
   color: var(--v-ink);
 }
 
