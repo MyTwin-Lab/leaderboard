@@ -6,9 +6,9 @@ import { startBooking } from "@/app/book/actions";
 import type { BookingIntent } from "@/lib/booking";
 
 /**
- * Le prénom et l'e-mail, puis Calendly.
+ * Le prénom et l'e-mail, puis Lemcal.
  *
- * La server action dépose la demande au CRM et rend l'URL Calendly, que le
+ * La server action dépose la demande au CRM et rend l'URL Lemcal, que le
  * formulaire ouvre dans le même onglet, les deux champs pré-remplis. La
  * validation du navigateur (`required`, `type="email"`) arrête presque tout ;
  * le serveur revérifie, et seul son refus affiche un message.
@@ -18,7 +18,7 @@ export function BookingForm({ intent }: { intent: BookingIntent | null }) {
   const [invalid, setInvalid] = useState(false);
 
   // Revenu par « Précédent », la page sort du cache du navigateur telle qu'on
-  // l'a quittée : le bouton ne doit pas rester sur « Opening Calendly… ».
+  // l'a quittée : le bouton ne doit pas rester sur « Opening the calendar… ».
   useEffect(() => {
     const reset = (event: PageTransitionEvent) => {
       if (event.persisted) setLeaving(false);
@@ -83,7 +83,7 @@ export function BookingForm({ intent }: { intent: BookingIntent | null }) {
       )}
 
       <button type="submit" className="v-book-cta" disabled={leaving}>
-        {leaving ? "Opening Calendly…" : "Choose a time"}
+        {leaving ? "Opening the calendar…" : "Choose a time"}
         {!leaving && (
           <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path

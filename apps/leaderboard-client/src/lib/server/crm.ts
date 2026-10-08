@@ -11,9 +11,9 @@ import type { BookingCrmSource } from "@/lib/booking";
  * mytwin-health-landing.
  *
  * Ne lève jamais : un CRM absent, lent ou en erreur rend `null`, et le
- * visiteur part quand même sur Calendly. Perdre un rendez-vous parce que le
- * backend a eu un raté coûterait plus cher que la ligne CRM manquante, que les
- * `utm_*` de Calendly permettent de retrouver.
+ * visiteur part quand même sur Lemcal. Perdre un rendez-vous parce que le
+ * backend a eu un raté coûterait plus cher que la ligne CRM manquante, que la
+ * réservation Lemcal (nom, e-mail) permet de retrouver.
  */
 
 export const CRM_TIMEOUT_MS = 5_000;

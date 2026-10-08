@@ -14,7 +14,7 @@ function form(fields: Record<string, string>): FormData {
 beforeEach(() => submitBookingRequest.mockReset());
 
 describe("startBooking", () => {
-  it("records the request under the intent's source, then hands over the Calendly URL", async () => {
+  it("records the request under the intent's source, then hands over the Lemcal URL", async () => {
     submitBookingRequest.mockResolvedValue("sub-1");
 
     const result = await startBooking(
@@ -30,8 +30,8 @@ describe("startBooking", () => {
     });
     if (!("url" in result)) throw new Error("expected a URL");
     const url = new URL(result.url);
-    expect(url.searchParams.get("utm_campaign")).toBe("scientific-committee");
-    expect(url.searchParams.get("utm_content")).toBe("sub-1");
+    expect(url.hostname).toBe("app.lemcal.com");
+    expect(JSON.parse(url.searchParams.get("guestInfos") ?? "")).toEqual({ name: "Ada", email: "ada@example.com" });
   });
 
   it("treats an unknown intent as a general request", async () => {
@@ -42,13 +42,13 @@ describe("startBooking", () => {
     expect(submitBookingRequest).toHaveBeenCalledWith(expect.objectContaining({ source: "lab_general" }));
   });
 
-  it("still sends the visitor to Calendly when the CRM is unavailable", async () => {
+  it("still sends the visitor to Lemcal when the CRM is unavailable", async () => {
     submitBookingRequest.mockResolvedValue(null);
 
     const result = await startBooking("twin-creation", form({ firstName: "Ada", email: "ada@example.com" }));
 
     if (!("url" in result)) throw new Error("expected a URL");
-    expect(new URL(result.url).searchParams.has("utm_content")).toBe(false);
+    expect(new URL(result.url).hostname).toBe("app.lemcal.com");
   });
 
   it("keeps a filled honeypot out of the CRM, with the same answer", async () => {

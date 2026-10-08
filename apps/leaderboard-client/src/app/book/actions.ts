@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { bookingCrmSource, bookingUtm, calendlyBookingUrl, parseBookingIntent } from "@/lib/booking";
+import { bookingCrmSource, bookingUtm, lemcalBookingUrl, parseBookingIntent } from "@/lib/booking";
 import { submitBookingRequest } from "@/lib/server/crm";
 
 export type StartBookingResult = { url: string } | { error: "invalid" };
@@ -14,7 +14,7 @@ const schema = z.object({
 
 /**
  * Le formulaire de `/book` : la demande entre au CRM, puis le visiteur part
- * sur Calendly avec l'URL rendue ici, `utm_content` = la soumission CRM.
+ * sur Lemcal avec l'URL rendue ici, son prénom et son e-mail pré-remplis.
  *
  * L'intention arrive du client : elle est relue contre la liste fermée, jamais
  * transmise telle quelle. Le champ `website` est un pot de miel, invisible pour
@@ -32,14 +32,14 @@ export async function startBooking(rawIntent: unknown, formData: FormData): Prom
   const { firstName, email } = parsed.data;
   const isBot = Boolean(formData.get("website"));
 
-  const submissionUuid = isBot
-    ? null
-    : await submitBookingRequest({
-        source: bookingCrmSource(intent),
-        firstName,
-        email,
-        utm: bookingUtm(intent),
-      });
+  if (!isBot) {
+    await submitBookingRequest({
+      source: bookingCrmSource(intent),
+      firstName,
+      email,
+      utm: bookingUtm(intent),
+    });
+  }
 
-  return { url: calendlyBookingUrl({ firstName, email, intent, submissionUuid }) };
+  return { url: lemcalBookingUrl({ firstName, email }) };
 }

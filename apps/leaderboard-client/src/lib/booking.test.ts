@@ -5,7 +5,7 @@ import {
   bookingCrmSource,
   bookingPath,
   bookingUtm,
-  calendlyBookingUrl,
+  lemcalBookingUrl,
   parseBookingIntent,
   parseBookingOrigin,
 } from "./booking";
@@ -75,30 +75,14 @@ describe("bookingUtm", () => {
   });
 });
 
-describe("calendlyBookingUrl", () => {
-  it("prefills the details and tags the request with its CRM submission", () => {
-    const url = new URL(
-      calendlyBookingUrl({
-        firstName: "  Ada ",
-        email: " ada+lab@example.com ",
-        intent: "sandbox-project",
-        submissionUuid: "4f1c2b9e-0000-4000-8000-000000000000",
-      }),
-    );
-    expect(`${url.origin}${url.pathname}`).toBe("https://calendly.com/rubens-mytwin/30min");
-    expect(url.searchParams.get("name")).toBe("Ada");
-    expect(url.searchParams.get("email")).toBe("ada+lab@example.com");
-    expect(url.searchParams.get("utm_source")).toBe("mytwinlab.care");
-    expect(url.searchParams.get("utm_medium")).toBe("booking-page");
-    expect(url.searchParams.get("utm_campaign")).toBe("sandbox-project");
-    expect(url.searchParams.get("utm_content")).toBe("4f1c2b9e-0000-4000-8000-000000000000");
-  });
-
-  it("falls back to a general campaign, and no utm_content without a submission", () => {
-    const url = new URL(
-      calendlyBookingUrl({ firstName: "Ada", email: "ada@example.com", intent: null, submissionUuid: null }),
-    );
-    expect(url.searchParams.get("utm_campaign")).toBe("general");
-    expect(url.searchParams.has("utm_content")).toBe(false);
+describe("lemcalBookingUrl", () => {
+  it("prefills the name and email through guestInfos, and nothing else", () => {
+    const url = new URL(lemcalBookingUrl({ firstName: "  Ada ", email: " ada+lab@example.com " }));
+    expect(`${url.origin}${url.pathname}`).toBe("https://app.lemcal.com/@mytwinlab/30min");
+    expect(JSON.parse(url.searchParams.get("guestInfos") ?? "")).toEqual({
+      name: "Ada",
+      email: "ada+lab@example.com",
+    });
+    expect([...url.searchParams.keys()]).toEqual(["guestInfos"]);
   });
 });

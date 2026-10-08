@@ -54,7 +54,7 @@ const COPY: Record<BookingIntent | "general", { eyebrow?: string; lede: string }
  * Le retour ramène à la page de l'appel (`?from=`), à l'accueil du Lab sinon.
  *
  * Deux temps : le prénom et l'e-mail ici, qui entrent au CRM de MyTwin, puis
- * le créneau sur Calendly, où ils arrivent pré-remplis (`lib/booking.ts`). Pas
+ * le créneau sur Lemcal, où ils arrivent pré-remplis (`lib/booking.ts`). Pas
  * d'iframe : la page n'appelle aucun tiers tant que le visiteur n'a pas
  * cliqué, et le Lab reste sans cookie non essentiel.
  */
