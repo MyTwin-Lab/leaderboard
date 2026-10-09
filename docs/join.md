@@ -63,7 +63,8 @@
 
 ## TODO
 
-- [ ] **Privacy policy** (`content/legal/privacy-policy.md`): add the *Join the Lab* processing (email, optional role, purpose: the Lab's news; basis: consent; retention) and the anecdote collected on `/join/share`.
-- [ ] **Unsubscribe.** The consent line promises it; the CRM has `unsubscribedAt`, but no link exists yet. To land with the newsletter tooling, before the first newsletter is sent.
+- [x] **Privacy policy**: § 4.6 *Joining the Lab community* (consent, until unsubscribed, record deleted 3 years after the last contact), § 4.7 *Your health story* (explicit consent, never published), the exception in § 3, Resend in § 8, the `lab_member` cookie in § 9 (2026-10-09).
+- [ ] **Unsubscribe.** The consent line and the policy promise it from each newsletter: the link comes with the newsletter tooling, before the first newsletter is sent. The welcome email has none.
+- [ ] **The anecdote consent text says the story is « processed anonymously »**, but it is stored attached to the contact (so it can be deleted on request). The policy says what is true (read by the team only, never published, de-identified if quoted); the checkbox text, shared with mytwin.care, could say the same — a new `ANECDOTE_CONSENT_VERSION` on both sites.
 
 Related: [`booking.md`](./booking.md) · [`seo.md`](./seo.md) · [`index.md`](./index.md)

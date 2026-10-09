@@ -83,7 +83,8 @@ The booking page redirects to the Lab's home after a booking (*Confirmation redi
 
 ### 3. Privacy policy
 
-- [ ] `content/legal/privacy-policy.md`: the booking form now sends the first name and email to the MyTwin CRM. Add a "Booking a call" processing in §4 (data, purpose, basis, retention — 3 years after the last contact is the CNIL norm for prospects), Lemcal (lemlist — check where the data is hosted and sign their DPA) in §8, and mention in §9 that the booking page itself loads nothing from Lemcal.
+- [x] `content/legal/privacy-policy.md`: § 4.8 *Booking a call* (3 years after the last contact), Lemcal in § 8, and the booking page loading nothing from Lemcal (2026-10-09).
+- [ ] Lemcal (lemlist): check where the data is hosted and sign their DPA. The policy names lemlist (France) without a hosting region.
 
 ### 4. Lab (this repo)
 

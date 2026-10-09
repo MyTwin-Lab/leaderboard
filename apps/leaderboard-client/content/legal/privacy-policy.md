@@ -1,6 +1,6 @@
 # Privacy Policy - MyTwin Lab
 
-> Last updated: **September 16, 2026**
+> Last updated: **October 9, 2026**
 
 This policy explains how **We Are One** processes your personal data when you visit or take part in **MyTwin Lab** (https://mytwinlab.care), and how you can exercise your rights. It does not cover the MyTwin application, whose own policy is available at [https://mytwin.care/en/privacy-policy](https://mytwin.care/en/privacy-policy).
 
@@ -9,7 +9,8 @@ This policy explains how **We Are One** processes your personal data when you vi
 - We only process the data needed to run the Lab. We **do not sell** it, do not use it for advertising, and use **no analytics or advertising trackers**.
 - The Lab is open by design: your display name, profile picture, GitHub username, contributions and contribution points are **public**. Your email address is not.
 - Part of the evaluation of contributions is done by **AI**. You can always ask for a human review.
-- The Lab is **not designed for health data**: never upload data about a patient.
+- If you join the Lab community, we send you its news by email. You can unsubscribe at any time, from the link in each newsletter.
+- The Lab is **not designed for health data**: never upload data about a patient. The only exception is the health story you may choose to share about yourself, with your explicit consent (§ 4.7).
 - You can access, correct or delete your data, and object to some processing, by writing to **contact@my-twin.io**.
 
 ## 2. Who is responsible for your data
@@ -23,6 +24,8 @@ For any question about your data, contact us at **contact@my-twin.io**.
 MyTwin Lab is a research and development platform, not a medical service. It is **not hosted by a certified health data host (HDS)** and is not designed to process health data.
 
 Our [Terms of Use](https://mytwinlab.care/terms-of-use) prohibit uploading personal health data or any data about an identifiable patient: challenges rely on public, anonymized or synthetic data. If you notice personal health data in the Lab, report it to us so that we can remove it.
+
+The one exception is the **health story** a member of the community may choose to share on the Lab (§ 4.7). It is sent directly to the MyTwin contact database, is never published, and is never placed in a challenge.
 
 ## 4. What we process, why, and for how long
 
@@ -66,7 +69,40 @@ This processing only takes place on challenges where it is enabled, and team mem
 - **Legal basis:** our legitimate interest in operating a reliable and fair service.
 - **Retention:** hashed IP addresses, **30 days**; the anonymous identifier, as long as the star it is attached to; logs and traces, **12 months** at most.
 
-### 4.6 Your requests and our legal obligations
+### 4.6 Joining the Lab community
+
+When you click « Join the Lab » and leave your email address.
+
+- **Data:** your email address; if you choose to give it, who you are (patient or caregiver, clinician, researcher, developer, other); the date of your sign-up, the version of the consent text you accepted, and the page that led you there.
+- **Purpose:** sending you the Lab's news by email (new challenges, research progress, community life), starting with a welcome email; knowing who joins the Lab, so that what we send is relevant to you.
+- **Legal basis:** your consent, given by signing up. You can withdraw it at any time, from the unsubscribe link in each newsletter or by writing to contact@my-twin.io; withdrawing it does not affect what was done before.
+- **Retention:** news is sent until you unsubscribe. Your contact details are deleted **3 years** after your last contact with us.
+
+Your sign-up is recorded in the contact database that MyTwin uses for all its websites. If you have also contacted MyTwin elsewhere (for example on mytwin.care) with the same email address, we keep a single record of you.
+
+### 4.7 Your health story
+
+When, as a member of the community, you share a health experience on the Lab.
+
+- **Data:** the text you write, which may contain information about your health or a relative's health; the version of the consent text you accepted; the date. The story is attached to your contact record, so that we can delete it at your request.
+- **Purpose:** understanding real care journeys, to decide where the human digital twin should help first and to improve MyTwin's services. Stories are read by the MyTwin team only. They are **never published** and never shared with other members or with third parties; if we quote a story, it is only after removing anything that could identify you.
+- **Legal basis:** your **explicit consent**, given by ticking the box under the form. You can withdraw it and have your story deleted at any time by writing to contact@my-twin.io.
+- **Retention:** as long as your contact record is kept (§ 4.6), unless you ask us to delete it sooner.
+
+Please do not write anything about another person that would allow them to be identified.
+
+### 4.8 Booking a call
+
+When you book a call with the MyTwin Lab team.
+
+- **Data:** your first name and email address, and the reason for the call (creating a twin, a Sandbox project, the scientific committee, or a general request); then, on Lemcal, the time slot you choose.
+- **Purpose:** organizing the call and following up on your request.
+- **Legal basis:** steps taken at your request before any agreement, and our legitimate interest in answering you.
+- **Retention:** **3 years** after your last contact with us.
+
+Your first name and email are recorded in the MyTwin contact database (§ 4.6), then sent to Lemcal, where you pick the slot. The booking page itself loads nothing from Lemcal: your browser only contacts Lemcal when you click to choose a time.
+
+### 4.9 Your requests and our legal obligations
 
 - **Data:** your messages and the details of your requests (for example a request to exercise your rights or a content report).
 - **Purpose:** answering you and complying with our legal obligations.
@@ -75,7 +111,7 @@ This processing only takes place on challenges where it is enabled, and team mem
 
 ## 5. Where the data comes from
 
-Most data comes from you: your profile, your contributions, your messages. Some comes from other sources:
+Most data comes from you: your profile, your contributions, your messages, your sign-up to the community, your health story, your booking requests. Some comes from other sources:
 
 - **Google**, for your identity when you sign in, and for meeting participants and transcripts on challenges where meetings are enabled;
 - **GitHub**, for the content and history of the repositories linked to a challenge or a Sandbox project;
@@ -83,7 +119,7 @@ Most data comes from you: your profile, your contributions, your messages. Some 
 - **Kaggle**, for the metadata and metrics of public datasets and models;
 - **other members**, for example when they invite you to a group or give a verdict on a deliverable you built.
 
-Signing in with Google is required to take part in the Lab. The rest depends on how you choose to take part.
+Signing in with Google is required to take part in challenges and the Sandbox; it is not required to join the community, share a health story or book a call. The rest depends on how you choose to take part.
 
 ## 6. Automated evaluation
 
@@ -126,6 +162,8 @@ We rely on the following providers, bound by contractual commitments ensuring th
 - **Kaggle** (United States): dataset and model metadata and metrics.
 - **Scaleway** (France): temporary GPU instances.
 - **Grafana Labs** (European Union region): monitoring and performance traces.
+- **Resend** (United States): sending the welcome email and the Lab's news.
+- **Lemcal**, operated by **lemlist** (France): choosing the slot of a call you book, and its confirmation.
 
 When data is transferred outside the European Union, the transfer relies on the EU-U.S. Data Privacy Framework where the provider is certified under it, or on the Standard Contractual Clauses adopted by the European Commission.
 
@@ -138,6 +176,7 @@ MyTwin Lab only uses cookies that are **strictly necessary** for the service you
 - **access_token** — keeps you signed in (15 minutes).
 - **refresh_token** — renews your session without asking you to sign in again (7 days).
 - **sb_anon** — remembers the stars you give without an account (1 year). Only set when you star a project while signed out.
+- **lab_member** — remembers that you joined the community, with your email address and the first steps you completed, so that your welcome page and your health story reach you (1 year). Only set when you join the Lab community; it cannot be read by the page's scripts.
 - **g_oauth_state** — protects your sign-in with Google against request forgery (10 minutes).
 - **gh_oauth_state** — protects the connection of a GitHub account by an administrator (10 minutes).
 
@@ -162,6 +201,7 @@ Under the GDPR and the French Data Protection Act, you have the right to:
 - **erase** your data, including by closing your account;
 - **restrict** processing;
 - **object** to processing based on our legitimate interest, in particular the analysis of discussions and meetings;
+- **withdraw your consent** at any time, for the news and for your health story, without affecting what was done before;
 - **data portability**, for the data you provided;
 - **define directives** on what happens to your data after your death.
 
