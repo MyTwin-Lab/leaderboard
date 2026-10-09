@@ -62,24 +62,35 @@
 
 ## TODO — next session
 
-### 1. Lemcal webhook (MyTwinOS)
+### 1. Lemcal meetings in the CRM (MyTwinOS)
 
-- [ ] Get the **user id and API key** (`app.lemcal.com/integrations`): the API uses Basic auth `userId:apiKey` on `api.lemcal.com`, 20 requests per 2 s.
-- [ ] `POST /webhooks/lemcal` in MyTwinOS (REST, like `resend-webhook.controller.ts`). Lemcal documents no signature: put a secret in the hook's `targetUrl` and check it. A meeting → find the latest open `booking` submission by email and mark it booked; no match → keep the meeting, unmatched. Idempotent on the Lemcal meeting `_id`.
-- [ ] Subscribe it with `POST /api/lemcal/hooks` (`targetUrl`, the `30min` `meetingTypeId`). The payload and the events sent (cancellation?) are not documented: capture a real one before writing the mapping.
-- [ ] **Backfill** the meetings booked before the webhook, through `GET /api/lemcal/meetings`.
-- [ ] Optional: add a booking question *"Who is the twin for? Yourself / your patients / your employees"* — it would let a `lab_twin_creation` booking set the contact type. It comes back as the meeting's answers, not as a pre-fill.
+Live since 2026-10-09: `CrmMeeting`, `POST /webhooks/lemcal?token=…` (a signal only: it triggers a full sync from `GET /api/lemcal/meetings`), the admin mutation `syncCrmMeetings` and the field `CrmContact.meetings`. See `MyTwinOS/docs/api/crm.md`, *Les meetings Lemcal*. The hook is set in Lemcal → Integrations → Webhooks (all meeting types); it fires on **new** bookings only, so a cancellation reaches the CRM at the next sync.
 
-### 2. Privacy policy
+- [x] `LEMCAL_USER_ID` (the `usr_…` shown as the Zapier username), `LEMCAL_API_KEY`, `LEMCAL_WEBHOOK_SECRET` on `mytwin-backend`.
+- [x] Hook subscribed, test booking recorded and matched to its contact and `booking` submission.
+- [x] Guest mapping checked on a real meeting: no `lead` on a public booking, the guest is the `primary` attendee (MyTwinOS `79fa472`).
+- [ ] Cancel a booking, run `syncCrmMeetings`, check `canceledAt` — the field is not documented.
+- [ ] Show the meetings on the contact page of the admin (`mytwin-health-landing`).
+
+### 2. Lemcal PRO
+
+The booking page redirects to the Lab's home after a booking (*Confirmation redirect URL* on the meeting type, set by hand in Lemcal).
+
+- [ ] Move to the **PRO** plan.
+- [ ] **One meeting type per intent** (twin creation, sandbox, scientific committee, general): `LEMCAL_MEETING_URL` becomes one URL per intent in `lib/booking.ts`, and the meeting's `meetingTypeId` tells the intent without the email match.
+- [ ] Optional: redirect to a `/book/booked` page that leads back to the page of the call (origin kept in `sessionStorage` before leaving), instead of the home.
+- [ ] Optional: add a booking question *"Who is the twin for? Yourself / your patients / your employees"* — it would let a `lab_twin_creation` booking set the contact type.
+
+### 3. Privacy policy
 
 - [ ] `content/legal/privacy-policy.md`: the booking form now sends the first name and email to the MyTwin CRM. Add a "Booking a call" processing in §4 (data, purpose, basis, retention — 3 years after the last contact is the CNIL norm for prospects), Lemcal (lemlist — check where the data is hosted and sign their DPA) in §8, and mention in §9 that the booking page itself loads nothing from Lemcal.
 
-### 3. Lab (this repo)
+### 4. Lab (this repo)
 
 - [ ] **Admin sandbox creation.** The admin UI has no sandbox creation screen, and the listing no longer offers one. `POST /api/sandboxes` still accepts creator roles, so an admin UI (or re-opening the modal to admins on `/sandbox`) is only a front-end change.
 - [ ] Optional: tell which call site converts (home, challenges, leaderboard, sandbox). Lemcal keeps no UTM, so it is CRM-side only: send the origin as `utm_content` with the request.
 
-### 4. Cookies and consent audit (Lab + Health Landing)
+### 5. Cookies and consent audit (Lab + Health Landing)
 
 Lab: no tracker, strictly necessary cookies only, YouTube click-to-load — consistent with its policy. Health Landing (`../mytwin-health-landing`), found during this session:
 - [ ] Contact and demo-request forms: no privacy notice, no link to the policy (what the GDPR requires there is **information**, not consent).
