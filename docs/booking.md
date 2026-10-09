@@ -10,10 +10,10 @@
 
    | Call | Where | Intent (`?for=`) | CRM source | Contact type |
    |---|---|---|---|---|
-   | **Create Your Twin** | home, last section | `twin-creation` | `lab_twin_creation` | `patient` |
+   | **Create Your Twin** | home, last section | `twin-creation` | `lab_twin_creation` | `unknown` |
    | **Create your sandbox** | the night strip at the bottom of `/challenges`, `/leaderboard`, `/sandbox` | `sandbox-project` | `lab_sandbox_project` | `startup` |
    | **Build the benchmark with us** | `/benchmark`, hero and Contribute section | `scientific-committee` | `lab_scientific_committee` | `expert` |
-   | — | `/book` with no or an unknown `?for=` | — | `lab_general` | `patient` |
+   | — | `/book` with no or an unknown `?for=` | — | `lab_general` | `unknown` |
 
    Calls that are not on the home also carry an **origin** (`?from=`): `benchmark`, or the page showing the sandbox strip (`challenges`, `leaderboard`, `sandbox`). It only sets where `/book`'s back link leads ("Back to the benchmark"…); without it, the link goes back to the Lab's home.
 
@@ -32,7 +32,7 @@
 ## Where things live
 
 - `apps/leaderboard-client/src/lib/booking.ts` — `BOOKING_PATH`, the Lemcal URL, the intents and their CRM sources, the origins (`BOOKING_ORIGINS`), `bookingPath()`, `bookingUtm()`, `lemcalBookingUrl()`. Pure; tested in `booking.test.ts`.
-- `apps/leaderboard-client/src/lib/server/crm.ts` — `submitBookingRequest()`, the only call to the CRM. Tested in `crm.test.ts`.
+- `apps/leaderboard-client/src/lib/server/crm.ts` — `submitBookingRequest()`, next to the calls of « Join the Lab » ([`join.md`](./join.md)). Tested in `crm.test.ts`.
 - `apps/leaderboard-client/src/app/book/` — the page and its copy per intent, `actions.ts` (the server action, tested in `actions.test.ts`).
 - `apps/leaderboard-client/src/components/booking/` — `BookingForm.tsx` (client) and `booking-vitrine.css`.
 - The four calls: `components/home/HomeCreateTwin.tsx`, `components/vitrine/CreateSandboxStrip.tsx`, `components/benchmark/BenchmarkVitrine.tsx` (two).
@@ -40,7 +40,7 @@
 
 ## Decisions
 
-- **The CRM never blocks a booking.** `submitBookingRequest` never throws: no endpoint configured, a timeout (5 s), an HTTP or GraphQL error all return `null`, are logged as `[crm:booking]`, and the visitor still goes to Lemcal. A lost CRM row can be found again from the Lemcal meeting (name, email); a lost booking cannot.
+- **The CRM never blocks a booking.** `submitBookingRequest` never throws: no endpoint configured, a timeout (5 s), an HTTP or GraphQL error all return `null`, are logged as `[crm:booking:<source>]`, and the visitor still goes to Lemcal. A lost CRM row can be found again from the Lemcal meeting (name, email); a lost booking cannot.
 - **Two calls on `/benchmark`, one source.** The page speaks to a single audience: the expert (researcher, clinician, builder) who wants to help improve the open-source benchmark. There is no twin submission; a `lab_benchmark_submission` source existed for a few days and was folded into `lab_scientific_committee` (MyTwinOS migration `20261006120000_drop_crm_lab_benchmark_submission`).
 - **One page, intent and origin kept apart.** The `/book` variants differ only by their lede and their back link, so they stay one page. The intent says *why* someone books (lede, CRM source, `utm_campaign`); the origin says *where from* (back link only). They cannot be merged: the sandbox strip is one intent on three pages. `?from=` is read against the closed `BOOKING_ORIGINS` list, never as a URL, so an outside link cannot pick the back link's target. Not `history.back()`: it breaks on a direct visit or a new tab.
 - **A honeypot, not a captcha.** The form carries a `website` field, off-screen and out of the tab order. Filled, the request skips the CRM but the answer is the same — a bot learns nothing. The CRM mutation is public, like every `crmSubmit*`.

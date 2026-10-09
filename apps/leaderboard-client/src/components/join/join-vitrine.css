@@ -1,0 +1,415 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   « Join the Lab » — `/join`, `/join/welcome`, `/join/share`. `/join` et
+   `/join/share` reprennent la grille et la carte de `/book`
+   (`booking-vitrine.css`) ; ici, ce qui leur est propre (les rôles, le
+   consentement, la zone de texte) et toute la page de bienvenue.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Le mot mis en avant d'un titre, dans la serif d'affichage — le registre de
+   l'accueil du Lab. */
+.v-join-em {
+  font-family: var(--v-font-d);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--v-accent);
+}
+
+.v-join-known {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--v-muted);
+}
+
+.v-join-known a,
+.v-join-consent a {
+  color: var(--v-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgb(17 22 26 / 0.25);
+  transition: text-decoration-color 0.3s var(--v-ease);
+}
+
+.v-join-known a:hover,
+.v-join-consent a:hover {
+  text-decoration-color: var(--v-accent);
+}
+
+/* ── Le formulaire de `/join` ───────────────────────────────────────── */
+.v-join-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.v-join-roles legend {
+  margin-bottom: 9px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--v-ink);
+}
+
+.v-join-roles legend span {
+  margin-left: 4px;
+  font-weight: 400;
+  color: var(--v-subtle);
+}
+
+.v-join-role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.v-join-role {
+  cursor: pointer;
+  border: 1px solid var(--v-line);
+  border-radius: 999px;
+  background: var(--v-surface);
+  padding: 7px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--v-muted);
+  transition: border-color 0.2s var(--v-ease), background-color 0.2s var(--v-ease), color 0.2s var(--v-ease);
+}
+
+.v-join-role:hover {
+  border-color: rgb(17 22 26 / 0.25);
+  color: var(--v-ink);
+}
+
+.v-join-role[data-on="true"] {
+  border-color: rgb(63 161 170 / 0.55);
+  background: rgb(63 161 170 / 0.1);
+  color: var(--v-accent-dark);
+}
+
+.v-join-role:focus-visible {
+  outline: 2px solid var(--v-accent);
+  outline-offset: 2px;
+}
+
+/* Désactivé faute d'e-mail, le bouton attend : pas le curseur « en cours » de
+   `/book`, réservé à l'envoi. */
+.v-join-card .v-book-cta:disabled:not([aria-busy="true"]) {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.v-join-consent {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--v-subtle);
+  text-align: center;
+  text-wrap: pretty;
+}
+
+/* ── Le formulaire de `/join/share` ─────────────────────────────────── */
+.v-join-share-grid {
+  align-items: start;
+}
+
+.v-join-textarea {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  border: 1px solid var(--v-line);
+  border-radius: 12px;
+  background: var(--v-surface);
+  padding: 13px 16px;
+  font: inherit;
+  /* 16px : en dessous, Safari iOS zoome la page au focus. */
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--v-ink);
+  outline: none;
+  transition: border-color 0.3s var(--v-ease), box-shadow 0.3s var(--v-ease);
+}
+
+.v-join-textarea::placeholder {
+  color: var(--v-subtle);
+}
+
+/* `!important`, comme `.v-book-field input:focus` : la réécriture du mode
+   clair de `globals.css` passerait devant. */
+.v-join-textarea:focus {
+  border-color: rgb(11 122 100 / 0.5) !important;
+  box-shadow: 0 0 0 3px rgb(63 161 170 / 0.14);
+}
+
+.v-join-check {
+  display: flex;
+  cursor: pointer;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--v-muted);
+}
+
+.v-join-check input {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-top: 2px;
+  cursor: pointer;
+  accent-color: var(--v-accent);
+}
+
+/* ── `/join/welcome` : l'accueil ────────────────────────────────────── */
+.v-join-hero {
+  display: flex;
+  max-width: 760px;
+  flex-direction: column;
+  gap: 16px;
+  padding-block: clamp(16px, 4vw, 48px) clamp(8px, 2vw, 16px);
+}
+
+.v-join-hero-title {
+  font-size: clamp(34px, 5.4vw, 60px);
+  text-wrap: balance;
+}
+
+.v-join-hero-lede {
+  max-width: 620px;
+  font-size: clamp(15px, 1.45vw, 17px);
+}
+
+.v-join-inbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 8px;
+  border: 1px solid rgb(63 161 170 / 0.25);
+  border-radius: 16px;
+  background: rgb(63 161 170 / 0.07);
+  padding: 14px 18px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--v-muted);
+}
+
+.v-join-inbox strong {
+  font-weight: 600;
+  color: var(--v-ink);
+  overflow-wrap: anywhere;
+}
+
+.v-join-inbox svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin-top: 1px;
+  color: var(--v-accent);
+}
+
+.v-join-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: clamp(12px, 3vw, 32px);
+}
+
+.v-join-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v-join-section-title {
+  font-family: var(--v-font-h);
+  font-size: clamp(22px, 2.4vw, 28px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--v-ink);
+}
+
+.v-join-section-sub {
+  font-size: 15px;
+  color: var(--v-muted);
+}
+
+/* Les trois premiers pas */
+.v-join-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.v-join-step {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--v-line);
+  border-radius: 20px;
+  background: var(--v-surface);
+  padding: clamp(20px, 2.4vw, 26px);
+  box-shadow: 0 24px 48px -40px rgb(17 22 26 / 0.35);
+  transition: border-color 0.3s var(--v-ease), background-color 0.3s var(--v-ease);
+}
+
+.v-join-step[data-done="true"] {
+  border-color: rgb(63 161 170 / 0.3);
+  background: linear-gradient(180deg, rgb(63 161 170 / 0.06), var(--v-surface) 70%);
+}
+
+.v-join-step-mark {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  border: 1px solid var(--v-line);
+  border-radius: 999px;
+  font-family: var(--v-font-h);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--v-subtle);
+}
+
+.v-join-step[data-done="true"] .v-join-step-mark {
+  border-color: transparent;
+  background: var(--v-accent);
+  color: #ffffff;
+}
+
+.v-join-step-mark svg {
+  width: 16px;
+  height: 16px;
+}
+
+.v-join-step-title {
+  font-family: var(--v-font-h);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--v-ink);
+}
+
+.v-join-step-text {
+  flex: 1;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-join-step-thanks {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--v-accent-dark);
+}
+
+/* Le bouton d'un pas : la gélule accent de `/book`, ou contourée une fois le
+   pas fait — l'action reste possible, elle n'est plus la prochaine. */
+.v-join-step-cta {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--v-accent);
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #ffffff;
+  transition: transform 0.3s var(--v-ease), box-shadow 0.3s var(--v-ease), border-color 0.3s var(--v-ease);
+}
+
+.v-join-step-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -18px rgb(11 122 100 / 0.9);
+}
+
+.v-join-step-cta[data-quiet="true"] {
+  border-color: var(--v-line);
+  background: var(--v-surface);
+  color: var(--v-ink);
+}
+
+.v-join-step-cta[data-quiet="true"]:hover {
+  border-color: rgb(17 22 26 / 0.25);
+  box-shadow: none;
+}
+
+.v-join-step-cta:focus-visible {
+  outline: 2px solid var(--v-accent);
+  outline-offset: 3px;
+}
+
+.v-join-step-cta svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+/* Qui fait quoi dans le Lab */
+.v-join-audiences {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.v-join-audience {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 20px;
+  background: var(--v-tint);
+  padding: clamp(20px, 2.4vw, 26px);
+}
+
+.v-join-audience-title {
+  font-family: var(--v-font-h);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--v-ink);
+}
+
+.v-join-audience ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.v-join-audience li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--v-muted);
+}
+
+.v-join-audience li::before {
+  content: "";
+  position: absolute;
+  top: 0.62em;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--v-accent);
+}
+
+/* ── Tablette et téléphone : une seule colonne ─────────────────────── */
+@media (max-width: 900px) {
+  .v-join-steps,
+  .v-join-audiences {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

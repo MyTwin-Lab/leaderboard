@@ -8,7 +8,7 @@ The site has two jobs in search: rank its own pages (the `/` landing, the Lab ho
 
 | Path | Indexed | Notes |
 |---|---|---|
-| `/` | ✅ | the Lab home (mission, vision, news, podcast, community, top 3 contributors, challenges, benchmark → `/benchmark`, create your twin → `/book`), behind a full-screen gate: brand-first title, `Organization` + `WebSite` JSON-LD |
+| `/` | ✅ | the Lab home (mission, vision, news, podcast, community → `/join`, top 3 contributors, challenges, benchmark → `/benchmark`, create your twin → `/book`), behind a full-screen gate: brand-first title, `Organization` + `WebSite` JSON-LD |
 | `/home` | — | where the home lived until it took the root; permanent redirect to `/` |
 | `/news`, `/news/<slug>` | ✅ | `CollectionPage` on the index, `NewsArticle` + `BreadcrumbList` on each news, a generated OG image per news; unknown slug → `404` ([`news.md`](./news.md)) |
 | `/about` | ❌ `noindex, follow` | the former Lab landing, parked: out of the navigation and the sitemap, still open at its URL |
@@ -18,6 +18,7 @@ The site has two jobs in search: rank its own pages (the `/` landing, the Lab ho
 | `/vision` | ✅ | the research vision, static; titled on "human digital twin" |
 | `/benchmark` | ✅ | the human digital twin maturity benchmark, static: `WebPage` + `BreadcrumbList` JSON-LD. Not in the navbar — reached from the home "Benchmark" section and the sitemap |
 | `/book` | ❌ `noindex, follow` | the booking page, a conversion step ([`booking.md`](./booking.md)); out of the sitemap |
+| `/join`, `/join/welcome`, `/join/share` | ❌ `noindex, follow` | « Join the Lab », a conversion step ([`join.md`](./join.md)); out of the sitemap |
 | `/terms-of-use`, `/privacy-policy` | ✅ | markdown in `apps/leaderboard-client/content/legal/` |
 | `/contributors/<id>` | ❌ `noindex, follow` | public, but a person's name is not a search result |
 | drafts, validation challenges, archived sandboxes | ❌ `noindex, nofollow` | `unindexedMetadata()` — title not published either |

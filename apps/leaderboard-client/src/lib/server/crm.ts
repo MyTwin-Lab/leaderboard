@@ -1,19 +1,23 @@
 import "server-only";
 
 import type { BookingCrmSource } from "@/lib/booking";
+import type { LabRole } from "@/lib/join";
 
 /**
  * Le CRM de MyTwin (MyTwinOS, package `crm`)
  * ------------------------------------------
- * Une seule porte, la mutation publique `crmSubmitBookingRequest` : le Lab ne
- * lit rien du CRM, il y dépose. `fetch` natif sur l'endpoint GraphQL du
- * backend, `MYTWIN_BACKEND_GRAPHQL_URL` — la même variable que
- * mytwin-health-landing.
+ * Trois portes, toutes des mutations publiques `crmSubmit*` : le Lab ne lit
+ * rien du CRM, il y dépose. `fetch` natif sur l'endpoint GraphQL du backend,
+ * `MYTWIN_BACKEND_GRAPHQL_URL` — la même variable que mytwin-health-landing.
  *
- * Ne lève jamais : un CRM absent, lent ou en erreur rend `null`, et le
- * visiteur part quand même sur Lemcal. Perdre un rendez-vous parce que le
- * backend a eu un raté coûterait plus cher que la ligne CRM manquante, que la
- * réservation Lemcal (nom, e-mail) permet de retrouver.
+ * - `crmSubmitBookingRequest` — `/book`, avant le départ vers Lemcal ;
+ * - `crmSubmitLabJoin` — `/join`, l'inscription au Lab ;
+ * - `crmSubmitStory` — `/join/share`, l'anecdote d'un membre.
+ *
+ * Ne lève jamais : un CRM absent, lent ou en erreur rend `null`, et c'est à
+ * l'appelant de décider. `/book` et `/join` laissent passer le visiteur quand
+ * même : perdre un rendez-vous ou une inscription parce que le backend a eu un
+ * raté coûterait plus cher que la ligne CRM manquante.
  */
 
 export const CRM_TIMEOUT_MS = 5_000;
@@ -26,28 +30,75 @@ const SUBMIT_BOOKING_REQUEST = /* GraphQL */ `
   }
 `;
 
+const SUBMIT_LAB_JOIN = /* GraphQL */ `
+  mutation CrmSubmitLabJoin($input: CrmLabJoinInput!) {
+    crmSubmitLabJoin(input: $input) {
+      submissionUuid
+      isFirstOfKind
+    }
+  }
+`;
+
+const SUBMIT_STORY = /* GraphQL */ `
+  mutation CrmSubmitStory($input: CrmStoryInput!) {
+    crmSubmitStory(input: $input) {
+      submissionUuid
+    }
+  }
+`;
+
+interface CrmUtm {
+  source: string;
+  medium: string;
+  campaign: string;
+}
+
 export interface BookingRequest {
   source: BookingCrmSource;
   firstName: string;
   email: string;
-  utm: { source: string; medium: string; campaign: string };
+  utm: CrmUtm;
 }
 
-interface SubmitBookingRequestResponse {
-  data?: { crmSubmitBookingRequest?: { submissionUuid?: string } };
+export interface LabJoinRequest {
+  email: string;
+  role: LabRole;
+  consentVersion: string;
+  utm: CrmUtm;
+}
+
+export interface LabJoinResult {
+  submissionUuid: string;
+  /** Première inscription de cet e-mail au Lab — `false` pour un membre qui revient. */
+  isFirstOfKind: boolean;
+}
+
+export interface StoryRequest {
+  email: string;
+  content: string;
+  consentVersion: string;
+}
+
+interface CrmOptions {
+  endpoint?: string;
+  fetchImpl?: typeof fetch;
+}
+
+interface CrmResponse<T> {
+  data?: Record<string, T | null | undefined>;
   errors?: { message: string }[];
 }
 
-/** Dépose la demande au CRM ; rend l'uuid de la soumission, ou `null`. */
-export async function submitBookingRequest(
-  request: BookingRequest,
-  {
-    endpoint = process.env.MYTWIN_BACKEND_GRAPHQL_URL,
-    fetchImpl = fetch,
-  }: { endpoint?: string; fetchImpl?: typeof fetch } = {},
-): Promise<string | null> {
+/**
+ * Le chemin commun : POST, délai borné, réponse lue sans confiance. Rend le
+ * champ de la mutation, ou `null` en journalisant sous `[crm:<tag>]`.
+ */
+async function submit<T extends { submissionUuid?: string }>(
+  { tag, query, field, input }: { tag: string; query: string; field: string; input: object },
+  { endpoint = process.env.MYTWIN_BACKEND_GRAPHQL_URL, fetchImpl = fetch }: CrmOptions,
+): Promise<T | null> {
   if (!endpoint) {
-    console.warn("[crm:booking] MYTWIN_BACKEND_GRAPHQL_URL is not set, the request is not recorded");
+    console.warn(`[crm:${tag}] MYTWIN_BACKEND_GRAPHQL_URL is not set, the request is not recorded`);
     return null;
   }
 
@@ -55,18 +106,50 @@ export async function submitBookingRequest(
     const res = await fetchImpl(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: SUBMIT_BOOKING_REQUEST, variables: { input: request } }),
+      body: JSON.stringify({ query, variables: { input } }),
       cache: "no-store",
       signal: AbortSignal.timeout(CRM_TIMEOUT_MS),
     });
-    const payload = (await res.json().catch(() => null)) as SubmitBookingRequestResponse | null;
-    const submissionUuid = payload?.data?.crmSubmitBookingRequest?.submissionUuid;
-    if (submissionUuid) return submissionUuid;
+    const payload = (await res.json().catch(() => null)) as CrmResponse<T> | null;
+    const result = payload?.data?.[field];
+    if (result?.submissionUuid) return result;
 
-    console.error(`[crm:booking] ${request.source}: HTTP ${res.status}`, payload?.errors?.[0]?.message ?? "");
+    console.error(`[crm:${tag}] HTTP ${res.status}`, payload?.errors?.[0]?.message ?? "");
     return null;
   } catch (error) {
-    console.error(`[crm:booking] ${request.source}:`, error instanceof Error ? error.message : error);
+    console.error(`[crm:${tag}]`, error instanceof Error ? error.message : error);
     return null;
   }
+}
+
+/** Dépose la demande de rendez-vous ; rend l'uuid de la soumission, ou `null`. */
+export async function submitBookingRequest(request: BookingRequest, options: CrmOptions = {}): Promise<string | null> {
+  const result = await submit<{ submissionUuid: string }>(
+    {
+      tag: `booking:${request.source}`,
+      query: SUBMIT_BOOKING_REQUEST,
+      field: "crmSubmitBookingRequest",
+      input: request,
+    },
+    options,
+  );
+  return result?.submissionUuid ?? null;
+}
+
+/** Inscrit le visiteur au Lab ; rend la soumission, ou `null`. */
+export async function submitLabJoin(request: LabJoinRequest, options: CrmOptions = {}): Promise<LabJoinResult | null> {
+  return submit<LabJoinResult>({ tag: "join", query: SUBMIT_LAB_JOIN, field: "crmSubmitLabJoin", input: request }, options);
+}
+
+/**
+ * Dépose l'anecdote d'un membre, sous la source `lab_join`. Le CRM la refuse
+ * si l'e-mail n'a pas de fiche — le cas d'une inscription que le CRM a
+ * manquée.
+ */
+export async function submitStory(request: StoryRequest, options: CrmOptions = {}): Promise<boolean> {
+  const result = await submit<{ submissionUuid: string }>(
+    { tag: "story", query: SUBMIT_STORY, field: "crmSubmitStory", input: { ...request, source: "lab_join" } },
+    options,
+  );
+  return result !== null;
 }

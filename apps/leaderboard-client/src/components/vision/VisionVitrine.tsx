@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { vitrineFontVars } from "@/components/vitrine/fonts";
+import { JOIN_PATH } from "@/lib/join";
 
 import "@/components/vitrine/vitrine.css";
 import "./vision-vitrine.css";
@@ -411,8 +412,8 @@ export function VisionVitrine() {
               These capabilities are research goals, developed and evaluated step by step.
             </p>
           </div>
-          <Link href="/challenges" className="v-vi-cta-link">
-            Contribute to the Lab
+          <Link href={JOIN_PATH} className="v-vi-cta-link">
+            Join the Lab
             <ArrowRight />
           </Link>
         </section>

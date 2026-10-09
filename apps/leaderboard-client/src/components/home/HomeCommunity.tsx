@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { COMMUNITY_MEMBERS } from "@/content/community";
+import { JOIN_PATH } from "@/lib/join";
 import { HomeArrow } from "./HomeSection";
 
 /** Deux copies de la liste : la seconde reprend là où la première finit. */
@@ -67,7 +68,7 @@ export function HomeCommunity() {
         </ul>
       </div>
 
-      <a href="/signin" className="v-home-cta">
+      <a href={JOIN_PATH} className="v-home-cta">
         Join the Lab
         <HomeArrow />
       </a>
