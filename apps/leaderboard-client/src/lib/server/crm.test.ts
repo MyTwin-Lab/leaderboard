@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { submitBookingRequest, submitLabJoin, submitStory, type BookingRequest } from "./crm";
+import { submitBookingRequest, submitLabJoin, type BookingRequest } from "./crm";
 
 const REQUEST: BookingRequest = {
   source: "lab_scientific_committee",
@@ -81,26 +81,5 @@ describe("submitLabJoin", () => {
     const fetchImpl = vi.fn(async () => json({ errors: [{ message: "Bad Request Exception" }] }, 400));
 
     await expect(submitLabJoin(JOIN, { endpoint: ENDPOINT, fetchImpl })).resolves.toBeNull();
-  });
-});
-
-describe("submitStory", () => {
-  const STORY = { email: "ada@example.com", content: "My story", consentVersion: "v1" };
-
-  it("files the story under the lab_join source", async () => {
-    const fetchImpl = vi.fn(async () => json({ data: { crmSubmitStory: { submissionUuid: "sub-1" } } }));
-
-    await expect(submitStory(STORY, { endpoint: ENDPOINT, fetchImpl })).resolves.toBe(true);
-
-    const body = JSON.parse(String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-    expect(body.query).toContain("crmSubmitStory(input: $input)");
-    expect(body.variables).toEqual({ input: { ...STORY, source: "lab_join" } });
-  });
-
-  it("returns false when the CRM refuses it", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const fetchImpl = vi.fn(async () => json({ errors: [{ message: "NOT_IN_WAITING_LIST" }] }));
-
-    await expect(submitStory(STORY, { endpoint: ENDPOINT, fetchImpl })).resolves.toBe(false);
   });
 });

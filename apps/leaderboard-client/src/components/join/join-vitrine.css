@@ -1,17 +1,27 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   « Join the Lab » — `/join`, `/join/welcome`, `/join/share`. `/join` et
-   `/join/share` reprennent la grille et la carte de `/book`
-   (`booking-vitrine.css`) ; ici, ce qui leur est propre (les rôles, le
-   consentement, la zone de texte) et toute la page de bienvenue.
+   « Join the Lab » — `/join` et `/join/welcome`. `/join` reprend la carte
+   et les champs de `/book` (`booking-vitrine.css`) ; ici, ce qui lui est
+   propre (la colonne centrée, les rôles, le consentement) et la page de
+   bienvenue.
    ───────────────────────────────────────────────────────────────────────── */
 
-.v-join-known {
-  margin-top: 6px;
-  font-size: 14px;
-  color: var(--v-muted);
+/* ── `/join` : le titre et la carte, en une colonne centrée ────────── */
+.v-join-solo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(24px, 3vw, 36px);
+  padding-block: clamp(16px, 5vw, 64px) clamp(8px, 3vw, 32px);
 }
 
-.v-join-known a,
+.v-join-solo-title {
+  text-align: center;
+}
+
+.v-join-solo .v-join-card {
+  width: min(100%, 520px);
+}
+
 .v-join-consent a {
   color: var(--v-ink);
   text-decoration: underline;
@@ -20,7 +30,6 @@
   transition: text-decoration-color 0.3s var(--v-ease);
 }
 
-.v-join-known a:hover,
 .v-join-consent a:hover {
   text-decoration-color: var(--v-accent);
 }
@@ -92,58 +101,6 @@
   text-wrap: pretty;
 }
 
-/* ── Le formulaire de `/join/share` ─────────────────────────────────── */
-.v-join-share-grid {
-  align-items: start;
-}
-
-.v-join-textarea {
-  width: 100%;
-  min-height: 220px;
-  resize: vertical;
-  border: 1px solid var(--v-line);
-  border-radius: 12px;
-  background: var(--v-surface);
-  padding: 13px 16px;
-  font: inherit;
-  /* 16px : en dessous, Safari iOS zoome la page au focus. */
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--v-ink);
-  outline: none;
-  transition: border-color 0.3s var(--v-ease), box-shadow 0.3s var(--v-ease);
-}
-
-.v-join-textarea::placeholder {
-  color: var(--v-subtle);
-}
-
-/* `!important`, comme `.v-book-field input:focus` : la réécriture du mode
-   clair de `globals.css` passerait devant. */
-.v-join-textarea:focus {
-  border-color: rgb(11 122 100 / 0.5) !important;
-  box-shadow: 0 0 0 3px rgb(63 161 170 / 0.14);
-}
-
-.v-join-check {
-  display: flex;
-  cursor: pointer;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--v-muted);
-}
-
-.v-join-check input {
-  width: 16px;
-  height: 16px;
-  flex: none;
-  margin-top: 2px;
-  cursor: pointer;
-  accent-color: var(--v-accent);
-}
-
 /* ── `/join/welcome` : l'accueil ────────────────────────────────────── */
 .v-join-hero {
   display: flex;
@@ -213,123 +170,6 @@
 }
 
 
-/* Les trois premiers pas */
-.v-join-steps {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.v-join-step {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 10px;
-  border: 1px solid var(--v-line);
-  border-radius: 20px;
-  background: var(--v-surface);
-  padding: clamp(20px, 2.4vw, 26px);
-  box-shadow: 0 24px 48px -40px rgb(17 22 26 / 0.35);
-  transition: border-color 0.3s var(--v-ease), background-color 0.3s var(--v-ease);
-}
-
-.v-join-step[data-done="true"] {
-  border-color: rgb(63 161 170 / 0.3);
-  background: linear-gradient(180deg, rgb(63 161 170 / 0.06), var(--v-surface) 70%);
-}
-
-.v-join-step-mark {
-  display: inline-flex;
-  width: 42px;
-  height: 42px;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 4px;
-  border-radius: 12px;
-  background: rgb(63 161 170 / 0.1);
-  color: var(--v-accent);
-}
-
-.v-join-step[data-done="true"] .v-join-step-mark {
-  background: var(--v-accent);
-  color: #ffffff;
-}
-
-.v-join-step-mark svg {
-  width: 20px;
-  height: 20px;
-}
-
-.v-join-step-title {
-  font-family: var(--v-font-h);
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  color: var(--v-ink);
-}
-
-.v-join-step-text {
-  flex: 1;
-  font-size: 14.5px;
-  line-height: 1.6;
-  color: var(--v-muted);
-  text-wrap: pretty;
-}
-
-.v-join-step-thanks {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--v-accent-dark);
-}
-
-/* Le bouton d'un pas : la gélule accent de `/book`, ou contourée une fois le
-   pas fait — l'action reste possible, elle n'est plus la prochaine. */
-.v-join-step-cta {
-  display: inline-flex;
-  align-self: flex-start;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: var(--v-accent);
-  padding: 11px 18px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #ffffff;
-  transition: transform 0.3s var(--v-ease), box-shadow 0.3s var(--v-ease), border-color 0.3s var(--v-ease);
-}
-
-.v-join-step-cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 26px -18px rgb(11 122 100 / 0.9);
-}
-
-.v-join-step-cta[data-quiet="true"] {
-  border-color: var(--v-line);
-  background: var(--v-surface);
-  color: var(--v-ink);
-}
-
-.v-join-step-cta[data-quiet="true"]:hover {
-  border-color: rgb(17 22 26 / 0.25);
-  box-shadow: none;
-}
-
-.v-join-step-cta:focus-visible {
-  outline: 2px solid var(--v-accent);
-  outline-offset: 3px;
-}
-
-.v-join-step-cta svg {
-  width: 15px;
-  height: 15px;
-  flex: none;
-}
-
 /* Qui fait quoi dans le Lab */
 .v-join-audiences {
   display: grid;
@@ -383,7 +223,6 @@
 
 /* ── Tablette et téléphone : une seule colonne ─────────────────────── */
 @media (max-width: 900px) {
-  .v-join-steps,
   .v-join-audiences {
     grid-template-columns: minmax(0, 1fr);
   }

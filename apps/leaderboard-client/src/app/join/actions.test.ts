@@ -3,8 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LabMember } from "@/lib/server/labMember";
 
 const submitLabJoin = vi.fn();
-const submitStory = vi.fn();
-vi.mock("@/lib/server/crm", () => ({ submitLabJoin, submitStory }));
+vi.mock("@/lib/server/crm", () => ({ submitLabJoin }));
 
 // Le cookie du membre, tenu en mémoire : ce que le navigateur renverrait.
 let cookie: LabMember | null = null;
@@ -15,15 +14,7 @@ vi.mock("@/lib/server/labMember", () => ({
   },
 }));
 
-// `redirect` interrompt l'action en levant, comme dans Next.
-class Redirect extends Error {}
-vi.mock("next/navigation", () => ({
-  redirect: (url: string) => {
-    throw new Redirect(url);
-  },
-}));
-
-const { joinLab, shareAnecdote, markWhatsappJoined } = await import("./actions");
+const { joinLab } = await import("./actions");
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
@@ -33,7 +24,6 @@ function form(fields: Record<string, string>): FormData {
 
 beforeEach(() => {
   submitLabJoin.mockReset();
-  submitStory.mockReset();
   cookie = null;
 });
 
@@ -50,7 +40,7 @@ describe("joinLab", () => {
       consentVersion: "2026-10-lab-news",
       utm: { source: "mytwinlab.care", medium: "join-page", campaign: "join-lab" },
     });
-    expect(cookie).toEqual({ email: "ada@example.com", steps: [] });
+    expect(cookie).toEqual({ email: "ada@example.com" });
   });
 
   it("sends « other » when no role, or an unknown one, is given", async () => {
@@ -62,21 +52,19 @@ describe("joinLab", () => {
     expect(submitLabJoin.mock.calls.map(([request]) => request.role)).toEqual(["other", "other"]);
   });
 
-  it("tells a returning member apart, and keeps the steps of the same email", async () => {
-    cookie = { email: "ada@example.com", steps: ["whatsapp"] };
+  it("tells a returning member apart", async () => {
     submitLabJoin.mockResolvedValue({ submissionUuid: "sub-2", isFirstOfKind: false });
 
     expect(await joinLab(form({ email: "ada@example.com" }))).toEqual({ returning: true });
-    expect(cookie).toEqual({ email: "ada@example.com", steps: ["whatsapp"] });
   });
 
-  it("starts a new email from scratch", async () => {
-    cookie = { email: "ada@example.com", steps: ["whatsapp"] };
+  it("remembers the last email joined on this browser", async () => {
+    cookie = { email: "ada@example.com" };
     submitLabJoin.mockResolvedValue({ submissionUuid: "sub-3", isFirstOfKind: true });
 
     await joinLab(form({ email: "grace@example.com" }));
 
-    expect(cookie).toEqual({ email: "grace@example.com", steps: [] });
+    expect(cookie).toEqual({ email: "grace@example.com" });
   });
 
   it("still welcomes the visitor when the CRM is unavailable", async () => {
@@ -96,61 +84,6 @@ describe("joinLab", () => {
       returning: false,
     });
     expect(submitLabJoin).not.toHaveBeenCalled();
-    expect(cookie).toBeNull();
-  });
-});
-
-describe("shareAnecdote", () => {
-  it("sends the story under the member's email, ticks the step and goes back to the welcome page", async () => {
-    cookie = { email: "ada@example.com", steps: [] };
-    submitStory.mockResolvedValue(true);
-
-    await expect(shareAnecdote({}, form({ content: " My story ", consent: "on" }))).rejects.toThrow(
-      "/join/welcome?shared=1",
-    );
-
-    expect(submitStory).toHaveBeenCalledWith({
-      email: "ada@example.com",
-      content: "My story",
-      consentVersion: "2026-08-anonymous-internal-use",
-    });
-    expect(cookie).toEqual({ email: "ada@example.com", steps: ["anecdote"] });
-  });
-
-  it("sends a visitor without a member cookie back to /join", async () => {
-    await expect(shareAnecdote({}, form({ content: "My story", consent: "on" }))).rejects.toThrow(/^\/join$/);
-    expect(submitStory).not.toHaveBeenCalled();
-  });
-
-  it("asks for a story and for consent", async () => {
-    cookie = { email: "ada@example.com", steps: [] };
-
-    expect(await shareAnecdote({}, form({ content: "  ", consent: "on" }))).toEqual({ error: "empty" });
-    expect(await shareAnecdote({}, form({ content: "My story" }))).toEqual({ error: "consent" });
-    expect(submitStory).not.toHaveBeenCalled();
-  });
-
-  it("stays on the page, step unticked, when the CRM refuses the story", async () => {
-    cookie = { email: "ada@example.com", steps: [] };
-    submitStory.mockResolvedValue(false);
-
-    expect(await shareAnecdote({}, form({ content: "My story", consent: "on" }))).toEqual({ error: "server" });
-    expect(cookie.steps).toEqual([]);
-  });
-});
-
-describe("markWhatsappJoined", () => {
-  it("ticks the step once", async () => {
-    cookie = { email: "ada@example.com", steps: ["anecdote"] };
-
-    await markWhatsappJoined();
-    await markWhatsappJoined();
-
-    expect(cookie).toEqual({ email: "ada@example.com", steps: ["anecdote", "whatsapp"] });
-  });
-
-  it("does nothing without a member", async () => {
-    await markWhatsappJoined();
     expect(cookie).toBeNull();
   });
 });

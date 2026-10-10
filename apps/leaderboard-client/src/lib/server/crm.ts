@@ -6,13 +6,12 @@ import type { LabRole } from "@/lib/join";
 /**
  * Le CRM de MyTwin (MyTwinOS, package `crm`)
  * ------------------------------------------
- * Trois portes, toutes des mutations publiques `crmSubmit*` : le Lab ne lit
+ * Deux portes, deux mutations publiques `crmSubmit*` : le Lab ne lit
  * rien du CRM, il y dépose. `fetch` natif sur l'endpoint GraphQL du backend,
  * `MYTWIN_BACKEND_GRAPHQL_URL` — la même variable que mytwin-health-landing.
  *
  * - `crmSubmitBookingRequest` — `/book`, avant le départ vers Lemcal ;
- * - `crmSubmitLabJoin` — `/join`, l'inscription au Lab ;
- * - `crmSubmitStory` — `/join/share`, l'anecdote d'un membre.
+ * - `crmSubmitLabJoin` — `/join`, l'inscription au Lab.
  *
  * Ne lève jamais : un CRM absent, lent ou en erreur rend `null`, et c'est à
  * l'appelant de décider. `/book` et `/join` laissent passer le visiteur quand
@@ -35,14 +34,6 @@ const SUBMIT_LAB_JOIN = /* GraphQL */ `
     crmSubmitLabJoin(input: $input) {
       submissionUuid
       isFirstOfKind
-    }
-  }
-`;
-
-const SUBMIT_STORY = /* GraphQL */ `
-  mutation CrmSubmitStory($input: CrmStoryInput!) {
-    crmSubmitStory(input: $input) {
-      submissionUuid
     }
   }
 `;
@@ -71,12 +62,6 @@ export interface LabJoinResult {
   submissionUuid: string;
   /** Première inscription de cet e-mail au Lab — `false` pour un membre qui revient. */
   isFirstOfKind: boolean;
-}
-
-export interface StoryRequest {
-  email: string;
-  content: string;
-  consentVersion: string;
 }
 
 interface CrmOptions {
@@ -139,17 +124,4 @@ export async function submitBookingRequest(request: BookingRequest, options: Crm
 /** Inscrit le visiteur au Lab ; rend la soumission, ou `null`. */
 export async function submitLabJoin(request: LabJoinRequest, options: CrmOptions = {}): Promise<LabJoinResult | null> {
   return submit<LabJoinResult>({ tag: "join", query: SUBMIT_LAB_JOIN, field: "crmSubmitLabJoin", input: request }, options);
-}
-
-/**
- * Dépose l'anecdote d'un membre, sous la source `lab_join`. Le CRM la refuse
- * si l'e-mail n'a pas de fiche — le cas d'une inscription que le CRM a
- * manquée.
- */
-export async function submitStory(request: StoryRequest, options: CrmOptions = {}): Promise<boolean> {
-  const result = await submit<{ submissionUuid: string }>(
-    { tag: "story", query: SUBMIT_STORY, field: "crmSubmitStory", input: { ...request, source: "lab_join" } },
-    options,
-  );
-  return result !== null;
 }

@@ -40,7 +40,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`sandbox.md`](./sandbox.md) | Contributor-proposed open challenges, community stars, and promotion into official challenges |
 | [`seo.md`](./seo.md) | What search engines may index, the MyTwin Lab entity linked to mytwin.care, the `/` Lab home and legal pages |
 | [`news.md`](./news.md) | MyTwin Lab News: `/news` pages written in TSX, the template, the registry, structured data |
-| [`join.md`](./join.md) | `/join`: « Join the Lab », an email into the MyTwin CRM (source `lab_join`), then a welcome page whose three first steps remember being done |
+| [`join.md`](./join.md) | `/join`: « Join the Lab », an email into the MyTwin CRM (source `lab_join`), then a welcome page |
 | [`booking.md`](./booking.md) | `/book`: first name and email into the MyTwin CRM, one source per call, then a pre-filled Lemcal slot with Rubens |
 | [`news-playbook.md`](./news-playbook.md) | Editorial playbook for the news: what deserves one, anatomy, YMYL wording, links, checklist, decision log |
 | [`watch.md`](./watch.md) | Searching the health literature on OpenAlex: topics, period, open access, journal impact — behind « Open resources » on the home page |

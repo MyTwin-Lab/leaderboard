@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-import { Blocks, Check, HeartPulse, MessagesSquare, type LucideIcon } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { WhatsappLink } from "@/components/join/WhatsappLink";
 import { BackToLab } from "@/components/vitrine/BackToLab";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
-import { JOIN_PATH, JOIN_SHARE_PATH, JOIN_WELCOME_PATH } from "@/lib/join";
+import { JOIN_PATH, JOIN_WELCOME_PATH } from "@/lib/join";
 import { readLabMember } from "@/lib/server/labMember";
 import { pageMetadata } from "@/lib/seo";
 
@@ -22,10 +19,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-/**
- * Qui fait quoi dans le Lab : des exemples, pas des boutons. Les seules
- * actions de la page sont les trois premiers pas, au-dessus.
- */
+/** Qui fait quoi dans le Lab : des exemples, pas des boutons. */
 const AUDIENCES = [
   {
     title: "Patients and caregivers",
@@ -58,10 +52,6 @@ const AUDIENCES = [
  *
  * Réservée au membre reconnu par son cookie (`lib/server/labMember.ts`) ;
  * sans lui, retour à `/join`. `?back=1` : l'e-mail était déjà inscrit.
- * `?shared=1` : l'anecdote vient d'être envoyée.
- *
- * Les pas cochés vivent dans le cookie : un membre qui revient des semaines
- * plus tard retrouve sa page telle qu'il l'a laissée.
  */
 export default async function JoinWelcomePage({
   searchParams,
@@ -73,9 +63,6 @@ export default async function JoinWelcomePage({
 
   const params = await searchParams;
   const returning = params.back === "1";
-  const justShared = params.shared === "1";
-  const shared = member.steps.includes("anecdote");
-  const onWhatsapp = member.steps.includes("whatsapp");
 
   return (
     <div className={`vitrine v-join ${vitrineFontVars}`}>
@@ -105,54 +92,6 @@ export default async function JoinWelcomePage({
           </div>
         </header>
 
-        <section className="v-join-section" aria-labelledby="join-steps-title">
-          <div className="v-join-section-head">
-            <h2 id="join-steps-title" className="v-join-section-title">
-              Your first steps
-            </h2>
-          </div>
-
-          <ol className="v-join-steps">
-            <li className="v-join-step" data-done={shared}>
-              <StepMark icon={HeartPulse} done={shared} />
-              <h3 className="v-join-step-title">Share your health story</h3>
-              <p className="v-join-step-text">
-                A doubt, a difficult decision, a complex care journey: your experience shows where the twin should help
-                first.
-              </p>
-              {justShared && <p className="v-join-step-thanks">Thank you, your story is with us.</p>}
-              <Link href={JOIN_SHARE_PATH} className="v-join-step-cta" data-quiet={shared}>
-                {shared ? "Share another story" : "Share my health anecdote"}
-                <ArrowIcon />
-              </Link>
-            </li>
-
-            <li className="v-join-step" data-done={onWhatsapp}>
-              <StepMark icon={MessagesSquare} done={onWhatsapp} />
-              <h3 className="v-join-step-title">Join the conversation</h3>
-              <p className="v-join-step-text">
-                Debates, ideas and feedback with patients, clinicians, researchers and developers, on WhatsApp.
-              </p>
-              <WhatsappLink className="v-join-step-cta" quiet={onWhatsapp}>
-                {onWhatsapp ? "Open the community" : "Join the WhatsApp community"}
-                <ExternalIcon />
-              </WhatsappLink>
-            </li>
-
-            <li className="v-join-step">
-              <StepMark icon={Blocks} done={false} />
-              <h3 className="v-join-step-title">Build the twin</h3>
-              <p className="v-join-step-text">
-                Pick an open challenge and contribute. You will only need an account when you take part.
-              </p>
-              <Link href="/challenges" className="v-join-step-cta">
-                Explore the challenges
-                <ArrowIcon />
-              </Link>
-            </li>
-          </ol>
-        </section>
-
         <section className="v-join-section" aria-labelledby="join-audiences-title">
           <div className="v-join-section-head">
             <h2 id="join-audiences-title" className="v-join-section-title">
@@ -175,31 +114,6 @@ export default async function JoinWelcomePage({
         </section>
       </div>
     </div>
-  );
-}
-
-/** L'icône du pas, ou la coche une fois le pas fait. */
-function StepMark({ icon: Icon, done }: { icon: LucideIcon; done: boolean }) {
-  return (
-    <span className="v-join-step-mark" aria-label={done ? "Done" : undefined}>
-      {done ? <Check aria-hidden="true" strokeWidth={2} /> : <Icon aria-hidden="true" strokeWidth={1.75} />}
-    </span>
-  );
-}
-
-function ArrowIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M3 8h10m0 0-4-4m4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ExternalIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M6 3.5H3.5v9h9V10M9 3.5h3.5V7M12.5 3.5 7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
 

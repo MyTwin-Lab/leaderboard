@@ -4,22 +4,18 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { config } from "../../../../../packages/config";
 
-import { isJoinStep, type JoinStep } from "@/lib/join";
-
 /**
  * Le membre du Lab, tel que ce navigateur s'en souvient.
  * ------------------------------------------------------
- * Posé par l'inscription de `/join`, lu par `/join/welcome` et `/join/share`.
- * Il porte l'e-mail — c'est lui qui rattache l'anecdote au membre sans que
- * l'adresse passe jamais dans une URL (historique, journaux, en-tête
- * `Referer`) — et les premiers pas déjà faits, pour qu'un membre qui revient
- * des semaines plus tard retrouve sa page dans l'état où il l'a laissée.
+ * Posé par l'inscription de `/join`, lu par `/join/welcome` : il porte
+ * l'e-mail, que la page d'accueil rappelle, sans que l'adresse passe jamais
+ * dans une URL (historique, journaux, en-tête `Referer`).
  *
  * Un JWT HS256 signé avec le secret des sessions, comme `sb_anon`
  * (`anonVisitor.ts`) : pas de nouvelle variable d'environnement. L'audience
  * `lab-member` l'empêche de passer pour un autre jeton signé du même secret.
- * Signé, parce qu'un cookie en clair laisserait n'importe qui déposer une
- * anecdote au nom de n'importe quel e-mail inscrit.
+ * Signé, pour qu'une page d'accueil ne s'ouvre qu'au navigateur qui s'est
+ * inscrit.
  */
 
 export const LAB_MEMBER_COOKIE_NAME = "lab_member";
@@ -32,7 +28,6 @@ const SECRET = new TextEncoder().encode(config.auth.jwtSecret);
 
 export interface LabMember {
   email: string;
-  steps: JoinStep[];
 }
 
 /**
@@ -47,8 +42,7 @@ export async function readLabMember(): Promise<LabMember | null> {
   try {
     const { payload } = await jwtVerify(token, SECRET, { audience: AUDIENCE });
     if (typeof payload.email !== "string" || payload.email.length === 0) return null;
-    const steps = Array.isArray(payload.steps) ? payload.steps.filter(isJoinStep) : [];
-    return { email: payload.email, steps };
+    return { email: payload.email };
   } catch {
     return null;
   }
@@ -60,7 +54,7 @@ export async function readLabMember(): Promise<LabMember | null> {
  * page n'a rien à en lire.
  */
 export async function writeLabMember(member: LabMember): Promise<void> {
-  const token = await new SignJWT({ email: member.email, steps: [...new Set(member.steps)] })
+  const token = await new SignJWT({ email: member.email })
     .setProtectedHeader({ alg: "HS256" })
     .setAudience(AUDIENCE)
     .setIssuedAt()
