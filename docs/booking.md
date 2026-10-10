@@ -96,8 +96,8 @@ The booking page redirects to the Lab's home after a booking (*Confirmation redi
 Lab: no tracker, strictly necessary cookies only, YouTube click-to-load — consistent with its policy. Health Landing (`../mytwin-health-landing`), found during this session:
 - [ ] Contact and demo-request forms: no privacy notice, no link to the policy (what the GDPR requires there is **information**, not consent).
 - [ ] Waiting list: implied consent only, no consent record sent; the email travels in the `/welcome` query string.
-- [ ] The privacy policy covers the app, not the site: no cookie section, no mention of the forms, the CRM, YouTube or flagcdn.
-- [ ] `flagcdn.com` flags are loaded straight from the visitor's browser (IP to a third party) — self-host them.
+- [x] The privacy policy covers the site: § 13 of `content/legal/privacy-policy.{fr,en}.md` — the forms, the demo request and its Lemcal booking, the anti-abuse IP, the providers, no visitor cookie, YouTube and flagcdn (2026-10-10).
+- [ ] `flagcdn.com` flags are loaded straight from the visitor's browser (IP to a third party) — self-host them, then drop the *Flags* line of the policy's § 13.7.
 - [ ] No legal notice (mentions légales) page; no security headers / CSP.
 - [ ] `waiting-list/lib/graphql.ts` falls back to the **production** backend when `MYTWIN_BACKEND_GRAPHQL_URL` is unset.
 
