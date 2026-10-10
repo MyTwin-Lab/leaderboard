@@ -65,9 +65,7 @@ export function JoinForm() {
       </div>
 
       <fieldset className="v-join-roles">
-        <legend>
-          I am… <span>optional</span>
-        </legend>
+        <legend>I am…</legend>
         <div className="v-join-role-list" role="radiogroup" aria-label="I am">
           {ROLE_OPTIONS.map((option) => (
             <button

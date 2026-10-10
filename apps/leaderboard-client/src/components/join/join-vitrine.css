@@ -53,12 +53,6 @@
   color: var(--v-ink);
 }
 
-.v-join-roles legend span {
-  margin-left: 4px;
-  font-weight: 400;
-  color: var(--v-subtle);
-}
-
 .v-join-role-list {
   display: flex;
   flex-wrap: wrap;
@@ -228,10 +222,6 @@
   color: var(--v-ink);
 }
 
-.v-join-section-sub {
-  font-size: 15px;
-  color: var(--v-muted);
-}
 
 /* Les trois premiers pas */
 .v-join-steps {
@@ -263,29 +253,24 @@
 
 .v-join-step-mark {
   display: inline-flex;
-  width: 34px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
   align-items: center;
   justify-content: center;
   margin-bottom: 4px;
-  border: 1px solid var(--v-line);
-  border-radius: 999px;
-  font-family: var(--v-font-h);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--v-subtle);
+  border-radius: 12px;
+  background: rgb(63 161 170 / 0.1);
+  color: var(--v-accent);
 }
 
 .v-join-step[data-done="true"] .v-join-step-mark {
-  border-color: transparent;
   background: var(--v-accent);
   color: #ffffff;
 }
 
 .v-join-step-mark svg {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
 }
 
 .v-join-step-title {

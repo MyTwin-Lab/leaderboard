@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Blocks, Check, HeartPulse, MessagesSquare, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -82,13 +83,7 @@ export default async function JoinWelcomePage({
         <BackToLab />
 
         <header className="v-join-hero">
-          <span className="v-eyebrow">
-            <span className="v-eyebrow-dot" aria-hidden="true" />
-            {returning ? "Welcome back" : "You're in"}
-          </span>
-          <h1 className="v-title v-join-hero-title">
-            Welcome to the <em className="v-join-em">MyTwin Lab</em> community
-          </h1>
+          <h1 className="v-title v-join-hero-title">Welcome to the MyTwin Lab community</h1>
           <p className="v-lede v-join-hero-lede">
             Together, we are building the world&rsquo;s most advanced human digital twin, in the open and step by step,
             to enable predictive, preventive, personalized and proactive health.
@@ -115,12 +110,11 @@ export default async function JoinWelcomePage({
             <h2 id="join-steps-title" className="v-join-section-title">
               Your first steps
             </h2>
-            <p className="v-join-section-sub">Three ways to make your mark on the Lab, in any order.</p>
           </div>
 
           <ol className="v-join-steps">
             <li className="v-join-step" data-done={shared}>
-              <StepMark index={1} done={shared} />
+              <StepMark icon={HeartPulse} done={shared} />
               <h3 className="v-join-step-title">Share your health story</h3>
               <p className="v-join-step-text">
                 A doubt, a difficult decision, a complex care journey: your experience shows where the twin should help
@@ -134,7 +128,7 @@ export default async function JoinWelcomePage({
             </li>
 
             <li className="v-join-step" data-done={onWhatsapp}>
-              <StepMark index={2} done={onWhatsapp} />
+              <StepMark icon={MessagesSquare} done={onWhatsapp} />
               <h3 className="v-join-step-title">Join the conversation</h3>
               <p className="v-join-step-text">
                 Debates, ideas and feedback with patients, clinicians, researchers and developers, on WhatsApp.
@@ -146,7 +140,7 @@ export default async function JoinWelcomePage({
             </li>
 
             <li className="v-join-step">
-              <StepMark index={3} done={false} />
+              <StepMark icon={Blocks} done={false} />
               <h3 className="v-join-step-title">Build the twin</h3>
               <p className="v-join-step-text">
                 Pick an open challenge and contribute. You will only need an account when you take part.
@@ -164,7 +158,6 @@ export default async function JoinWelcomePage({
             <h2 id="join-audiences-title" className="v-join-section-title">
               Everyone has a place in the Lab
             </h2>
-            <p className="v-join-section-sub">A few examples of what members do, whatever brought them here.</p>
           </div>
 
           <div className="v-join-audiences">
@@ -185,16 +178,11 @@ export default async function JoinWelcomePage({
   );
 }
 
-function StepMark({ index, done }: { index: number; done: boolean }) {
+/** L'icône du pas, ou la coche une fois le pas fait. */
+function StepMark({ icon: Icon, done }: { icon: LucideIcon; done: boolean }) {
   return (
     <span className="v-join-step-mark" aria-label={done ? "Done" : undefined}>
-      {done ? (
-        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="m3.5 8.5 3 3 6-7" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ) : (
-        String(index).padStart(2, "0")
-      )}
+      {done ? <Check aria-hidden="true" strokeWidth={2} /> : <Icon aria-hidden="true" strokeWidth={1.75} />}
     </span>
   );
 }

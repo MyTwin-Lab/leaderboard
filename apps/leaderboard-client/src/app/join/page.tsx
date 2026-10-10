@@ -46,13 +46,7 @@ export default async function JoinPage() {
 
         <div className="v-book-grid">
           <header className="v-book-intro">
-            <span className="v-eyebrow">
-              <span className="v-eyebrow-dot" aria-hidden="true" />
-              MyTwin Lab community
-            </span>
-            <h1 className="v-title">
-              Join the <em className="v-join-em">Lab</em>
-            </h1>
+            <h1 className="v-title">Join the Lab</h1>
             <p className="v-lede">
               Patients, clinicians, researchers and developers, building the world&rsquo;s most advanced human digital
               twin together. Leave your email to follow the mission as it moves forward.
