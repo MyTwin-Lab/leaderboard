@@ -46,13 +46,7 @@ export default async function JoinSharePage() {
 
         <div className="v-book-grid v-join-share-grid">
           <header className="v-book-intro">
-            <span className="v-eyebrow">
-              <span className="v-eyebrow-dot" aria-hidden="true" />
-              Your first step
-            </span>
-            <h1 className="v-title">
-              Share your <em className="v-join-em">health story</em>
-            </h1>
+            <h1 className="v-title">Share your health story</h1>
             <p className="v-lede">
               To build a twin that truly matters, your experience is precious. Tell us about a moment that marked you,
               in your own words.

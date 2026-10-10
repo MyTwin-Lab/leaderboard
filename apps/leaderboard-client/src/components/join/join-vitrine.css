@@ -5,16 +5,6 @@
    consentement, la zone de texte) et toute la page de bienvenue.
    ───────────────────────────────────────────────────────────────────────── */
 
-/* Le mot mis en avant d'un titre, dans la serif d'affichage — le registre de
-   l'accueil du Lab. */
-.v-join-em {
-  font-family: var(--v-font-d);
-  font-style: italic;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  color: var(--v-accent);
-}
-
 .v-join-known {
   margin-top: 6px;
   font-size: 14px;
