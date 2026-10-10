@@ -94,11 +94,14 @@ The booking page redirects to the Lab's home after a booking (*Confirmation redi
 ### 5. Cookies and consent audit (Lab + Health Landing)
 
 Lab: no tracker, strictly necessary cookies only, YouTube click-to-load — consistent with its policy. Health Landing (`../mytwin-health-landing`), found during this session:
-- [ ] Contact and demo-request forms: no privacy notice, no link to the policy (what the GDPR requires there is **information**, not consent).
-- [ ] Waiting list: implied consent only, no consent record sent; the email travels in the `/welcome` query string.
+- [x] Every public form carries a privacy notice and links to the policy (`PrivacyNotice`, 2026-10-10).
+- [x] The waiting-list email no longer travels in the `/welcome` URL: an httpOnly cookie, `mt_waitlist` (2026-10-10).
+- [ ] The welcome email's link still carries `?email=` (MyTwinOS, `SHARE_EXPERIENCE_URL`); the proxy turns it into the cookie. A signed token from the backend would close it, and let the cookie be signed.
+- [ ] Waiting list: implied consent only, no consent record sent.
 - [x] The privacy policy covers the site: § 13 of `content/legal/privacy-policy.{fr,en}.md` — the forms, the demo request and its Lemcal booking, the anti-abuse IP, the providers, no visitor cookie, YouTube and flagcdn (2026-10-10).
 - [ ] `flagcdn.com` flags are loaded straight from the visitor's browser (IP to a third party) — self-host them, then drop the *Flags* line of the policy's § 13.7.
-- [ ] No legal notice (mentions légales) page; no security headers / CSP.
+- [x] Legal notice: the terms of use name the publication director and the host (2026-10-10).
+- [ ] No security headers / CSP — try `Content-Security-Policy-Report-Only` first (YouTube, flagcdn, the Lemcal redirect).
 - [ ] `waiting-list/lib/graphql.ts` falls back to the **production** backend when `MYTWIN_BACKEND_GRAPHQL_URL` is unset.
 
 Related: [`sandbox.md`](./sandbox.md) · [`seo.md`](./seo.md) · [`index.md`](./index.md)
