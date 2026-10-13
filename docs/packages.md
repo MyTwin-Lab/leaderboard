@@ -59,7 +59,6 @@ Variables it validates:
 - `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` / `GOOGLE_OAUTH_REDIRECT_URI` — required (login)
 - Other `GOOGLE_*` — Google Workspace credentials (meetings module)
 - `CRON_SECRET` — secures `/api/cron/tick`
-- `OTEL_*` — observability config (optional)
 - `VALIDATION_ALLOW_PRIVATE_ENDPOINTS` — optional, **local dev only** (see [`validation-challenges.md`](./validation-challenges.md))
 
 > Scaleway has **no** env fallback — GPU compute credentials only ever come from the admin-connected account (see [`compute-power.md`](./compute-power.md)).

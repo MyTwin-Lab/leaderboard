@@ -76,7 +76,7 @@ leaderboard/
 │       │   │   ├── useJoinChallenge.ts  joinGate.ts
 │       │   │   ├── leaderboard.ts  contributor.ts  taskProgress.ts
 │       │   │   ├── themes.ts  color-utils.ts  formatters.ts  utils.ts  url.ts
-│       │   │   ├── signin.ts  routeVisibility.ts  fetchJson.ts  types.ts  validation.ts  otel.ts
+│       │   │   ├── signin.ts  routeVisibility.ts  fetchJson.ts  types.ts  validation.ts
 │       │   │   ├── public/            # payload allowlists for anonymous visitors
 │       │   │   └── server/            # server-only (managerAuth, cronAuth, modules, onboarding,
 │       │   │                          #  home, leaderboard, publicPages, integrations)

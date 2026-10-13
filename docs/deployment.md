@@ -201,18 +201,6 @@ The tick checks the secret with `isCronAuthorized` (`apps/leaderboard-client/src
 
 ---
 
-## Observability
-
-The app is instrumented with OpenTelemetry. Traces are exported to Grafana Cloud if configured:
-
-```env
-OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-eu-west-2.grafana.net/otlp
-OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic <base64-instance_id:api_token>
-OTEL_SERVICE_NAME=leaderboard-api
-```
-
-These are optional — the app runs fine without them.
-
 ## Integrations
 
 Admin connections (GitHub, Kaggle, Slack, OpenAI, Scaleway) are stored in `integration_credentials`, encrypted with `GITHUB_TOKEN_ENCRYPTION_KEY`. `db:apply-schema` copies the existing `app_settings` connections on the first deploy; nothing has to be reconnected.

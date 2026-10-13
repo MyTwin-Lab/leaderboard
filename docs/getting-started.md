@@ -72,11 +72,6 @@ SLACK_BOT_TOKEN=
 
 # Optional — local dev only: lets validation challenges call a private/localhost endpoint
 VALIDATION_ALLOW_PRIVATE_ENDPOINTS=
-
-# Optional — observability (Grafana Cloud)
-OTEL_EXPORTER_OTLP_ENDPOINT=
-OTEL_EXPORTER_OTLP_HEADERS=
-OTEL_SERVICE_NAME=leaderboard-api
 ```
 
 Then copy it for the Next.js app (which reads from `.env.local`):

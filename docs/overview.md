@@ -44,7 +44,6 @@ MyTwin Leaderboard is an internal platform for **MyTwin Lab** that tracks contri
 | **Slack integration** | Slack Web API (channel history, user lookup) — for discussion contribution signals |
 | **GPU compute** | Scaleway Instances API — temporary JupyterLab GPU instances for ML challenges |
 | **Kaggle integration** | Kaggle API (dataset metadata, model version metrics) — for ML challenges |
-| **Observability** | OpenTelemetry → Grafana Cloud |
 | **Testing** | Vitest, Testing Library |
 | **Deployment** | PM2, Next.js production build |
 
