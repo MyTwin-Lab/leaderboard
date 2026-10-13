@@ -11,13 +11,13 @@ This policy explains how **We Are One** processes your personal data when you vi
 - Part of the evaluation of contributions is done by **AI**. You can always ask for a human review.
 - If you join the Lab community, we send you its news by email. You can unsubscribe at any time, from the link in each newsletter.
 - The Lab is **not designed for health data**: never upload data about a patient.
-- You can access, correct or delete your data, and object to some processing, by writing to **contact@my-twin.io**.
+- You can access, correct or delete your data, and object to some processing, by writing to **contact@mytwin.care**.
 
 ## 2. Who is responsible for your data
 
 The data controller is **We Are One**, a French SAS registered with the Trade and Companies Register under number **953 111 960**, whose registered office is located at **10 Rue de Penthièvre, 75008 Paris, France**, represented by Rubens Valcy.
 
-For any question about your data, contact us at **contact@my-twin.io**.
+For any question about your data, contact us at **contact@mytwin.care**.
 
 ## 3. No health data in the Lab
 
@@ -73,7 +73,7 @@ When you click « Join the Lab » and leave your email address.
 
 - **Data:** your email address; if you choose to give it, who you are (patient or caregiver, clinician, researcher, developer, other); the date of your sign-up, the version of the consent text you accepted, and the page that led you there.
 - **Purpose:** sending you the Lab's news by email (new challenges, research progress, community life), starting with a welcome email; knowing who joins the Lab, so that what we send is relevant to you.
-- **Legal basis:** your consent, given by signing up. You can withdraw it at any time, from the unsubscribe link in each newsletter or by writing to contact@my-twin.io; withdrawing it does not affect what was done before.
+- **Legal basis:** your consent, given by signing up. You can withdraw it at any time, from the unsubscribe link in each newsletter or by writing to contact@mytwin.care; withdrawing it does not affect what was done before.
 - **Retention:** news is sent until you unsubscribe. Your contact details are deleted **3 years** after your last contact with us.
 
 Your sign-up is recorded in the contact database that MyTwin uses for all its websites. If you have also contacted MyTwin elsewhere (for example on mytwin.care) with the same email address, we keep a single record of you.
@@ -119,7 +119,7 @@ Part of the evaluation of contributions is automated:
 
 The result is converted into contribution points without prior human review. Contribution points and rankings have **no legal or financial effect**: they have no monetary value and give no right to payment.
 
-You can nonetheless ask for a **human review** of any evaluation concerning you, explain your point of view and contest the result, by writing to contact@my-twin.io.
+You can nonetheless ask for a **human review** of any evaluation concerning you, explain your point of view and contest the result, by writing to contact@mytwin.care.
 
 The content sent to the AI provider for evaluation is the content of the contribution. The email addresses of commit authors and message authors are not sent.
 
@@ -192,7 +192,7 @@ Under the GDPR and the French Data Protection Act, you have the right to:
 - **data portability**, for the data you provided;
 - **define directives** on what happens to your data after your death.
 
-To exercise these rights, write to **contact@my-twin.io**. We answer within **one month**; this period may be extended by two months for complex requests, in which case we will tell you why. We may ask you to prove your identity if there is a reasonable doubt.
+To exercise these rights, write to **contact@mytwin.care**. We answer within **one month**; this period may be extended by two months for complex requests, in which case we will tell you why. We may ask you to prove your identity if there is a reasonable doubt.
 
 If you believe your rights are not respected, you can lodge a complaint with the **CNIL** — Commission Nationale de l'Informatique et des Libertés, 3 Place de Fontenoy, TSA 80715, 75334 Paris Cedex 07, France — [www.cnil.fr](https://www.cnil.fr).
 
