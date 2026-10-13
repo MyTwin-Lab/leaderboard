@@ -1,6 +1,6 @@
 # Privacy Policy - MyTwin Lab
 
-> Last updated: **October 10, 2026**
+> Last updated: **October 13, 2026**
 
 This policy explains how **We Are One** processes your personal data when you visit or take part in **MyTwin Lab** (https://mytwinlab.care), and how you can exercise your rights. It does not cover the MyTwin application, whose own policy is available at [https://mytwin.care/en/privacy-policy](https://mytwin.care/en/privacy-policy).
 
@@ -149,7 +149,7 @@ We rely on the following providers, bound by contractual commitments ensuring th
 - **Kaggle** (United States): dataset and model metadata and metrics.
 - **Scaleway** (France): temporary GPU instances.
 - **Grafana Labs** (European Union region): monitoring and performance traces.
-- **Resend** (United States): sending the welcome email and the Lab's news.
+- **Brevo** (France): sending the welcome email and the Lab's news.
 - **Lemcal**, operated by **lemlist** (France): choosing the slot of a call you book, and its confirmation.
 
 When data is transferred outside the European Union, the transfer relies on the EU-U.S. Data Privacy Framework where the provider is certified under it, or on the Standard Contractual Clauses adopted by the European Commission.
