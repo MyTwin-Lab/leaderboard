@@ -8,6 +8,7 @@ import {
   listExternalRewards,
   profileAggregateOf,
 } from "../../../../../packages/capabilities/economy";
+import { memoize } from "./memo";
 
 export class ProjectNotFoundError extends Error {
   constructor(projectId: string) {
@@ -16,7 +17,17 @@ export class ProjectNotFoundError extends Error {
   }
 }
 
-export async function fetchLeaderboard(
+// Gardé trente secondes en mémoire, par projet et par période : le classement
+// est public, et chaque calcul relit des tables entières. Un projet inconnu
+// lève une erreur, qui n'est pas gardée.
+export const fetchLeaderboard = memoize(
+  30_000,
+  loadLeaderboard,
+  (projectId?: string, timePeriod?: "all" | "month" | "week") =>
+    `${projectId ?? "all"}|${timePeriod ?? "all"}`,
+);
+
+async function loadLeaderboard(
   projectId?: string,
   timePeriod?: "all" | "month" | "week"
 ): Promise<LeaderboardResponse> {

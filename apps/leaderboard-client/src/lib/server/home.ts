@@ -4,6 +4,7 @@ import { repositories } from "@/lib/db";
 import { flowCatalog } from "@/distribution/mytwin.flows";
 import { countsAsContribution, listExternalRewards } from "../../../../../packages/capabilities/economy";
 import { aggregateUsersByContribution, rankEntries } from "@/lib/leaderboard";
+import { memoize } from "./memo";
 import type {
   HomeLeaderboardEntry,
   HomeOverview,
@@ -43,8 +44,13 @@ function sparkFromContributions(reference: Date, contributions: { submitted_at: 
  * Same aggregation idea as /api/challenges/[id]/overview, just server-side
  * since the home page renders fully on the server (no client waterfall to
  * begin with).
+ *
+ * Gardé une minute en mémoire : la page est publique, identique pour tous, et
+ * chaque passage relit des tables entières.
  */
-export async function fetchHomeOverview(): Promise<HomeOverview> {
+export const fetchHomeOverview = memoize(60_000, loadHomeOverview);
+
+async function loadHomeOverview(): Promise<HomeOverview> {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * DAY_MS);
 
