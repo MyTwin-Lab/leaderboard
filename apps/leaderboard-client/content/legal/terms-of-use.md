@@ -1,6 +1,6 @@
 # Terms of Use - MyTwin Lab
 
-> Last updated: **September 14, 2026**
+> Last updated: **October 15, 2026**
 
 These Terms of Use (the "Terms") govern access to and use of **MyTwin Lab**. Please read them carefully: by signing in, you accept them.
 
@@ -9,7 +9,7 @@ These Terms of Use (the "Terms") govern access to and use of **MyTwin Lab**. Ple
 MyTwin Lab, available at **https://mytwinlab.care**, is published by **We Are One**, a French simplified joint-stock company (SAS) registered with the Trade and Companies Register under number **953 111 960**, whose registered office is located at **10 Rue de Penthièvre, 75008 Paris, France**.
 
 - **Legal representative and director of publication:** Rubens Valcy
-- **Contact:** contact@my-twin.io
+- **Contact:** contact@mytwin.care
 - **Hosting provider:** Scalingo SAS, 13 rue Jacques Peirotes, 67000 Strasbourg, France ([scalingo.com](https://scalingo.com))
 
 ## 2. Definitions
@@ -140,7 +140,7 @@ The Lab relies on third-party services (Google, GitHub, Kaggle, Slack, and the p
 
 ### Reporting
 
-Anyone can report content they consider unlawful or contrary to these Terms by writing to **contact@my-twin.io**, with the link to the content, the reasons for the report, and their contact details. We process reports diligently and inform the person who reported the content of the decision taken.
+Anyone can report content they consider unlawful or contrary to these Terms by writing to **contact@mytwin.care**, with the link to the content, the reasons for the report, and their contact details. We process reports diligently and inform the person who reported the content of the decision taken.
 
 ### Measures
 
@@ -150,15 +150,15 @@ Except in urgent cases (for example the presence of health data, a security risk
 
 ### Contesting a decision
 
-A member can contest a moderation decision by writing to **contact@my-twin.io** within six months. The request is reviewed by a person other than the one who took the initial decision, where possible.
+A member can contest a moderation decision by writing to **contact@mytwin.care** within six months. The request is reviewed by a person other than the one who took the initial decision, where possible.
 
 ### Point of contact
 
-The single point of contact for members and for authorities, including under the EU Digital Services Act, is **contact@my-twin.io**. Requests can be written in English or in French.
+The single point of contact for members and for authorities, including under the EU Digital Services Act, is **contact@mytwin.care**. Requests can be written in English or in French.
 
 ## 12. Closing your account
 
-You can close your account at any time by writing to **contact@my-twin.io**. Account closure is carried out as described in the [Privacy Policy](https://mytwinlab.care/privacy-policy).
+You can close your account at any time by writing to **contact@mytwin.care**. Account closure is carried out as described in the [Privacy Policy](https://mytwinlab.care/privacy-policy).
 
 The licenses granted on contributions (§ 8) survive the closure of the account, so that work already integrated into challenges remains usable.
 
@@ -186,7 +186,7 @@ If a provision of these Terms is held invalid, the other provisions remain in fo
 
 For any question, complaint or request concerning the Lab:
 
-> **contact@my-twin.io**
+> **contact@mytwin.care**
 
 > **We Are One – 10 Rue de Penthièvre, 75008 Paris, France**
 
