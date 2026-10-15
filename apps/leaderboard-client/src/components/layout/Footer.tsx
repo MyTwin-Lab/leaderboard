@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MYTWIN } from "@/lib/seo";
+import { LinkedInIcon, YouTubeIcon } from "@/components/ui/SocialIcons";
 import { MyTwinLogo } from "./MyTwinLogo";
 import { ModuleNavLinks } from "./ModuleNavLinks";
 
@@ -21,6 +22,11 @@ const MYTWIN_LINKS = [
 const LEGAL_LINKS = [
   { href: "/terms-of-use", label: "Terms of Use" },
   { href: "/privacy-policy", label: "Privacy Policy" },
+];
+
+const SOCIAL_LINKS = [
+  { href: MYTWIN.linkedin, label: "MyTwin on LinkedIn", Icon: LinkedInIcon },
+  { href: MYTWIN.youtube, label: "MyTwin on YouTube", Icon: YouTubeIcon },
 ];
 
 const linkClass =
@@ -95,9 +101,26 @@ export function Footer() {
           </nav>
         </div>
 
-        <p className="border-t border-white/[0.07] pt-6 text-xs text-white/40">
-          © {new Date().getFullYear()} MyTwin Lab, a MyTwin initiative. All rights reserved.
-        </p>
+        <div className="flex flex-col-reverse gap-4 border-t border-white/[0.07] pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-white/40">
+            © {new Date().getFullYear()} MyTwin Lab, a MyTwin initiative. All rights reserved.
+          </p>
+          <div className="flex items-center gap-4">
+            {SOCIAL_LINKS.map(({ href, label, Icon }) => (
+              <a
+                key={href}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                title={label}
+                className="text-white/40 transition-colors hover:text-brandCP"
+              >
+                <Icon className="h-4 w-4" />
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
     </footer>
   );

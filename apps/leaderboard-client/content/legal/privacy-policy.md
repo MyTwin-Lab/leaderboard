@@ -1,6 +1,6 @@
 # Privacy Policy - MyTwin Lab
 
-> Last updated: **October 13, 2026**
+> Last updated: **October 15, 2026**
 
 This policy explains how **We Are One** processes your personal data when you visit or take part in **MyTwin Lab** (https://mytwinlab.care), and how you can exercise your rights. It does not cover the MyTwin application, whose own policy is available at [https://mytwin.care/en/privacy-policy](https://mytwin.care/en/privacy-policy).
 
@@ -15,7 +15,7 @@ This policy explains how **We Are One** processes your personal data when you vi
 
 ## 2. Who is responsible for your data
 
-The data controller is **We Are One**, a French SAS registered with the Trade and Companies Register under number **953 111 960**, whose registered office is located at **10 Rue de Penthièvre, 75008 Paris, France**, represented by Rubens Valcy.
+The data controller is **We Are One**, a French SAS with a share capital of €1,000, registered with the Paris Trade and Companies Register under number **953 111 960**, whose registered office is located at **10 Rue de Penthièvre, 75008 Paris, France**, represented by Rubens Valcy.
 
 For any question about your data, contact us at **contact@mytwin.care**.
 

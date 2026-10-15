@@ -44,6 +44,14 @@ export const MYTWIN = {
   home: "https://mytwin.care/en",
   clinicians: "https://mytwin.care/en/clinicians",
   contact: "https://mytwin.care/en/contact-us",
+  /**
+   * Les profils de MyTwin, qui couvrent aussi le Lab. Liés dans le footer,
+   * jamais déclarés en `sameAs` ici : mytwin.care les déclare, et le Lab les
+   * atteint par son `parentOrganization`. Les redéclarer dirait que les deux
+   * organisations n'en font qu'une.
+   */
+  linkedin: "https://www.linkedin.com/company/mytwin-digitaltwin",
+  youtube: "https://www.youtube.com/@mytwinhealth",
 } as const;
 
 /**

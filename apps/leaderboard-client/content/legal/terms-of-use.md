@@ -6,7 +6,7 @@ These Terms of Use (the "Terms") govern access to and use of **MyTwin Lab**. Ple
 
 ## 1. Legal notice
 
-MyTwin Lab, available at **https://mytwinlab.care**, is published by **We Are One**, a French simplified joint-stock company (SAS) registered with the Trade and Companies Register under number **953 111 960**, whose registered office is located at **10 Rue de Penthièvre, 75008 Paris, France**.
+MyTwin Lab, available at **https://mytwinlab.care**, is published by **We Are One**, a French simplified joint-stock company (SAS) with a share capital of €1,000, registered with the Paris Trade and Companies Register under number **953 111 960**, whose registered office is located at **10 Rue de Penthièvre, 75008 Paris, France**.
 
 - **Legal representative and director of publication:** Rubens Valcy
 - **Contact:** contact@mytwin.care
