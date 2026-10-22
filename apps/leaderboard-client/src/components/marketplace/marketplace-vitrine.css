@@ -1,0 +1,978 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Le MyTwin Marketplace (`/marketplace`, `/marketplace/<slug>`) et la vision
+   du SDK (`/mytwin-platform-sdk`), au style vitrine.
+
+   Pas de maquette Claude Design : les pages reprennent la grammaire des
+   listings — `.v-main`, `.v-head`, le retour au Lab, les pills, le bandeau
+   nuit — et la matière de leurs cartes : surface blanche, filet `--v-line`,
+   rayon de 20px, accent au survol.
+
+   Scopé sous `.vitrine .v-mk`, préfixé `v-mk-` (catalogue, carte),
+   `v-mkd-` (fiche d'un module) et `v-sdk-` (vision du SDK). Aucun utilitaire
+   Tailwind de couleur : `globals.css` réécrit les blancs en mode clair.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.v-mk {
+  --mk-ring: color-mix(in srgb, var(--v-accent) 45%, transparent);
+  --mk-mint: color-mix(in srgb, var(--v-accent) 9%, transparent);
+  --mk-amber: #8a5a00;
+  --mk-amber-bg: rgb(176 120 20 / 0.1);
+}
+
+@keyframes v-mk-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.v-mk .v-head,
+.v-mkd-head,
+.v-sdk-hero {
+  animation: v-mk-up 0.8s var(--v-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v-mk *,
+  .v-mk *::before,
+  .v-mk *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* L'accroche d'un catalogue est plus longue que celle d'un listing. */
+.v-mk .v-lede {
+  max-width: 44rem;
+}
+
+/* Le petit titre de section, celui de `.v-projects-title`. */
+.v-mk-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+/* ── Le pictogramme d'un module ─────────────────────────────────────── */
+
+.v-mk-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 12px;
+  background: var(--mk-mint);
+  color: var(--v-accent);
+}
+
+.v-mk-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.v-mk-icon[data-size="lg"] {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 16px;
+}
+
+.v-mk-icon[data-size="lg"] svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.v-mk-icon[data-quiet="true"] {
+  background: rgb(17 22 26 / 0.05);
+  color: var(--v-muted);
+}
+
+.v-mk-kicker {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--v-accent);
+}
+
+/* ── Les trois couches de la plateforme ─────────────────────────────── */
+
+.v-mk-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.v-mk-layers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 10px clamp(16px, 2.4vw, 28px);
+}
+
+.v-mk-layer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--v-line);
+  padding-top: 12px;
+}
+
+.v-mk-layer dt {
+  font-family: var(--v-font-h);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.v-mk-layer dd {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+/* ── Le catalogue ───────────────────────────────────────────────────── */
+
+.v-mk-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.v-mk-catalog-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v-mk .v-pill:focus-visible {
+  outline: 2px solid var(--v-accent);
+  outline-offset: 2px;
+}
+
+.v-mk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: clamp(0.875rem, 1.6vw, 1.25rem);
+}
+
+.v-mk-grid-item {
+  display: flex;
+  min-width: 0;
+}
+
+/* ── La carte d'un module ───────────────────────────────────────────── */
+
+.v-mk-card {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid var(--v-line);
+  border-radius: 20px;
+  background: var(--v-surface);
+  padding: clamp(18px, 2vw, 22px);
+  transition: border-color 0.4s var(--v-ease), transform 0.4s var(--v-ease), box-shadow 0.4s var(--v-ease);
+}
+
+.v-mk-card:hover {
+  border-color: var(--mk-ring);
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -28px rgb(17 22 26 / 0.45);
+}
+
+/* Le lien est sur le titre ; c'est son focus qui dessine l'anneau de la carte. */
+.v-mk-card:has(.v-mk-card-link:focus-visible) {
+  outline: 2px solid var(--v-accent);
+  outline-offset: 3px;
+}
+
+.v-mk-card-link:focus-visible {
+  outline: none;
+}
+
+/* Toute la carte est cliquable, sans que la carte soit un `<a>`. */
+.v-mk-card-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.v-mk-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v-mk-card-num {
+  font-family: var(--v-font-h);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--v-subtle);
+}
+
+.v-mk-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v-mk-card-title {
+  font-family: var(--v-font-h);
+  font-size: 1.125rem;
+  line-height: 1.28;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--v-ink);
+  transition: color 0.3s var(--v-ease);
+}
+
+.v-mk-card:hover .v-mk-card-title {
+  color: var(--v-accent);
+}
+
+.v-mk-card-desc {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-mk-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  border-top: 1px solid var(--v-line);
+  padding-top: 12px;
+}
+
+.v-mk-fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.v-mk-fact dt {
+  flex: none;
+  color: var(--v-subtle);
+}
+
+.v-mk-fact dd {
+  min-width: 0;
+  text-align: right;
+  font-weight: 500;
+  color: var(--v-ink);
+}
+
+.v-mk-fact dd[data-missing="true"] {
+  font-weight: 400;
+  color: var(--v-subtle);
+}
+
+/* MyTwin à l'accent, un partenaire à l'encre : les deux propriétés ne se
+   confondent jamais, même d'un coup d'œil. */
+.v-mk-provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.v-mk-provider::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--v-accent);
+}
+
+.v-mk-provider[data-kind="partner"]::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--v-muted);
+}
+
+.v-mk-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.v-mk-card-go,
+.v-mk-card-doc {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--v-accent);
+  transition: gap 0.3s var(--v-ease);
+}
+
+.v-mk-card:hover .v-mk-card-go {
+  gap: 0.7rem;
+}
+
+/* Au-dessus du lien étiré de la carte, pour rester cliquable. */
+.v-mk-card-doc {
+  position: relative;
+  z-index: 1;
+  color: var(--v-muted);
+}
+
+.v-mk-card-doc:hover {
+  color: var(--v-accent);
+}
+
+.v-mk-card-go svg,
+.v-mk-card-doc svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* « More modules coming » : la case « Others » de la plaquette, sans lien. */
+.v-mk-more {
+  display: flex;
+  min-height: 12rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed var(--v-line);
+  border-radius: 20px;
+  padding: 24px;
+  text-align: center;
+}
+
+.v-mk-more-title {
+  font-family: var(--v-font-h);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.v-mk-more-text {
+  max-width: 18rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--v-muted);
+}
+
+.v-mk-strip-sub {
+  font-size: 13px;
+  color: rgb(255 255 255 / 0.62);
+}
+
+.v-mk .v-strip-cta svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.v-mk-status {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding-inline: 10px;
+  border-radius: 999px;
+  border: 1px solid var(--mk-ring);
+  background: var(--mk-mint);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--v-accent-dark);
+}
+
+/* ── La fiche d'un module : l'en-tête ───────────────────────────────── */
+
+.v-mkd-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.v-mkd-id {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.v-mkd-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: 14px;
+  max-width: 56rem;
+  margin-top: 8px;
+}
+
+.v-mkd-fact {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  border-left: 1px solid var(--v-line);
+  padding-left: 14px;
+}
+
+.v-mkd-fact dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+.v-mkd-fact dd {
+  font-family: var(--v-font-h);
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--v-ink);
+}
+
+.v-mkd-fact dd[data-missing="true"] {
+  font-weight: 500;
+  color: var(--v-subtle);
+}
+
+.v-mkd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.v-mkd-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding-inline: 18px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--v-line);
+  background: var(--v-surface);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--v-ink);
+  transition: border-color 0.3s var(--v-ease), color 0.3s var(--v-ease);
+}
+
+.v-mkd-action[data-primary="true"] {
+  border-color: var(--v-ink);
+  background: var(--v-ink);
+  color: #ffffff;
+}
+
+.v-mkd-action:hover {
+  border-color: var(--v-accent);
+  color: var(--v-accent);
+}
+
+.v-mkd-action[data-primary="true"]:hover {
+  background: var(--v-accent);
+  color: #ffffff;
+}
+
+.v-mkd-action svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.v-mkd-pending-note {
+  max-width: 44rem;
+  margin-top: 6px;
+  border-radius: 14px;
+  background: var(--v-tint);
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--v-muted);
+}
+
+/* ── La fiche : sommaire et sections ────────────────────────────────── */
+
+.v-mkd-layout {
+  display: grid;
+  gap: clamp(20px, 3vw, 28px);
+}
+
+@media (min-width: 960px) {
+  .v-mkd-layout {
+    grid-template-columns: 13rem minmax(0, 1fr);
+    gap: 3rem;
+    align-items: start;
+  }
+
+  /* Sous la navbar fixe, que `LabShell` réserve en haut de page. */
+  .v-mkd-toc {
+    position: sticky;
+    top: 7rem;
+  }
+}
+
+.v-mkd-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.v-mkd-toc-title {
+  padding-inline: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+.v-mkd-toc ol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.v-mkd-toc a {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--v-muted);
+  transition: background-color 0.3s var(--v-ease), color 0.3s var(--v-ease);
+}
+
+.v-mkd-toc a:hover {
+  background: rgb(17 22 26 / 0.04);
+  color: var(--v-ink);
+}
+
+/* Sur téléphone et tablette, le sommaire devient une rangée de pastilles. */
+@media (max-width: 959px) {
+  .v-mkd-toc ol {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .v-mkd-toc a {
+    border-radius: 999px;
+    background: rgb(17 22 26 / 0.04);
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .v-mkd-toc-title {
+    padding-inline: 0;
+  }
+}
+
+.v-mkd-num {
+  font-family: var(--v-font-h);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--v-accent);
+}
+
+.v-mkd-sections {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: clamp(2rem, 4vw, 3rem);
+}
+
+.v-mkd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-top: 1px solid var(--v-line);
+  padding-top: 20px;
+  scroll-margin-top: 7rem;
+}
+
+.v-mkd-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.v-mkd-section-head .v-mkd-num {
+  font-size: 14px;
+}
+
+.v-mkd-section-title {
+  font-family: var(--v-font-h);
+  font-size: clamp(1.375rem, 2.2vw, 1.75rem);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.v-mkd-intro {
+  max-width: 46rem;
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--v-ink);
+  text-wrap: pretty;
+}
+
+.v-mkd-rows {
+  overflow: hidden;
+  border: 1px solid var(--v-line);
+  border-radius: 16px;
+  background: var(--v-surface);
+}
+
+.v-mkd-row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 15rem) minmax(0, 1fr);
+  gap: 6px 1.5rem;
+  padding: 14px 18px;
+}
+
+.v-mkd-row + .v-mkd-row {
+  border-top: 1px solid var(--v-line);
+}
+
+@media (max-width: 639px) {
+  .v-mkd-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.v-mkd-row dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: flex-start;
+  gap: 6px 8px;
+  font-family: var(--v-font-h);
+  font-size: 13.5px;
+  line-height: 1.45;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--v-ink);
+}
+
+.v-mkd-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding-inline: 8px;
+  border-radius: 999px;
+  background: var(--mk-mint);
+  font-family: var(--v-font-s);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--v-accent-dark);
+}
+
+.v-mkd-badge[data-maturity="to-confirm"] {
+  background: var(--mk-amber-bg);
+  color: var(--mk-amber);
+}
+
+.v-mkd-row dd {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--v-ink);
+  text-wrap: pretty;
+}
+
+.v-mkd-row dd[data-missing="true"] {
+  font-size: 14px;
+  color: var(--v-subtle);
+}
+
+.v-mkd-row dd ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v-mkd-row dd li {
+  position: relative;
+  padding-left: 16px;
+}
+
+.v-mkd-row dd li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.68em;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--v-accent);
+}
+
+.v-mkd-note {
+  max-width: 46rem;
+  border-left: 2px solid var(--mk-ring);
+  padding-left: 14px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-mkd-refs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.v-mkd-refs-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+.v-mkd-refs ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.v-mkd-refs a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--v-line);
+  border-radius: 999px;
+  background: var(--v-surface);
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--v-ink);
+  transition: border-color 0.3s var(--v-ease), color 0.3s var(--v-ease);
+}
+
+.v-mkd-refs a:hover {
+  border-color: var(--mk-ring);
+  color: var(--v-accent);
+}
+
+.v-mkd-refs svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+
+/* Une section dont rien n'est encore documenté : une mention, pas un tableau. */
+.v-mkd-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px dashed var(--v-line);
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+
+.v-mkd-empty-title {
+  font-family: var(--v-font-h);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--v-muted);
+}
+
+.v-mkd-empty-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--v-subtle);
+}
+
+.v-mkd-updated {
+  font-size: 13px;
+  color: var(--v-subtle);
+}
+
+/* ── La fiche : modules voisins ─────────────────────────────────────── */
+
+.v-mkd-pager {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: clamp(8px, 2vw, 16px);
+}
+
+@media (max-width: 639px) {
+  .v-mkd-pager {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.v-mkd-pager-link {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--v-line);
+  border-radius: 16px;
+  background: var(--v-surface);
+  padding: 14px 18px;
+  transition: border-color 0.3s var(--v-ease), transform 0.3s var(--v-ease);
+}
+
+.v-mkd-pager-link[data-dir="next"] {
+  grid-column: 2;
+  text-align: right;
+}
+
+@media (max-width: 639px) {
+  .v-mkd-pager-link[data-dir="next"] {
+    grid-column: auto;
+  }
+}
+
+.v-mkd-pager-link:hover {
+  border-color: var(--mk-ring);
+  transform: translateY(-2px);
+}
+
+.v-mkd-pager-dir {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--v-subtle);
+}
+
+.v-mkd-pager-name {
+  font-family: var(--v-font-h);
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--v-ink);
+}
+
+.v-mkd-pager-link:hover .v-mkd-pager-name {
+  color: var(--v-accent);
+}
+
+/* ── La vision du SDK ───────────────────────────────────────────────── */
+
+.v-sdk-hero {
+  display: flex;
+  max-width: 48rem;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: clamp(8px, 2vw, 16px);
+}
+
+.v-sdk-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.v-sdk-title {
+  font-size: clamp(34px, 5.2vw, 58px);
+  text-wrap: balance;
+}
+
+.v-sdk-cta {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  margin-top: 8px;
+  padding-inline: 22px 18px;
+  border-radius: 999px;
+  background: var(--v-ink);
+  font-size: 15px;
+  font-weight: 500;
+  color: #ffffff;
+  transition: background-color 0.3s var(--v-ease), transform 0.3s var(--v-ease);
+}
+
+.v-sdk-cta:hover {
+  background: var(--v-accent);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.v-sdk-cta:focus-visible {
+  outline: 2px solid var(--v-accent);
+  outline-offset: 3px;
+}
+
+.v-sdk-cta svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.v-sdk-why {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: clamp(20px, 4vw, 48px);
+  align-items: start;
+  border-top: 1px solid var(--v-line);
+  padding-top: clamp(24px, 3vw, 32px);
+}
+
+.v-sdk-why-text {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.v-sdk-why-text p {
+  max-width: 32rem;
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--v-muted);
+  text-wrap: pretty;
+}
+
+.v-sdk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.v-sdk-list li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--v-line);
+  border-radius: 16px;
+  background: var(--v-surface);
+  padding: 10px 16px 10px 10px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--v-ink);
+}

@@ -35,6 +35,8 @@ const VITRINE_BACKGROUNDS: Record<string, string> = {
   "/benchmark": "#fcfcfc",
   "/news": "#fcfcfc",
   "/watch": "#fcfcfc",
+  "/marketplace": "#fcfcfc",
+  "/mytwin-platform-sdk": "#fcfcfc",
 };
 
 /**
@@ -42,9 +44,10 @@ const VITRINE_BACKGROUNDS: Record<string, string> = {
  * fiche d'un contributeur à son identifiant — `/contributors/me` comprise, qui
  * est la même page avec ses onglets d'admin.
  * `/news` lui-même est dans la table au-dessus — l'index et les articles sont
- * tous deux au style vitrine.
+ * tous deux au style vitrine. De même pour `/marketplace` et la fiche de
+ * chaque module.
  */
-const VITRINE_PREFIXES = ["/news/", "/contributors/"];
+const VITRINE_PREFIXES = ["/news/", "/contributors/", "/marketplace/"];
 
 /** La couleur de fond des maquettes vitrine, la même partout. */
 const VITRINE_BACKGROUND = "#fcfcfc";

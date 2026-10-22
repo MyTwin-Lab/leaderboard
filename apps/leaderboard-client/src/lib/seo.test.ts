@@ -9,6 +9,7 @@ import {
   pageMetadata,
   toMetaDescription,
   unindexedMetadata,
+  unlistedMetadata,
   websiteJsonLd,
 } from "./seo";
 
@@ -93,6 +94,15 @@ describe("unindexedMetadata", () => {
       title: "Sandbox",
       robots: { index: false, follow: false },
     });
+  });
+});
+
+describe("unlistedMetadata", () => {
+  it("keeps a public page out of the indexes, its canonical and links intact", () => {
+    const metadata = unlistedMetadata({ title: "MyTwin Marketplace", path: "/marketplace" });
+    expect(metadata.robots).toEqual({ index: false, follow: true });
+    expect(metadata.alternates).toEqual({ canonical: "/marketplace" });
+    expect(metadata.title).toBe("MyTwin Marketplace");
   });
 });
 

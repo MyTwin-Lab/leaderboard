@@ -44,6 +44,7 @@ Welcome to the technical documentation for the MyTwin Leaderboard monorepo.
 | [`booking.md`](./booking.md) | `/book`: first name and email into the MyTwin CRM, one source per call, then a pre-filled Lemcal slot with Rubens |
 | [`news-playbook.md`](./news-playbook.md) | Editorial playbook for the news: what deserves one, anatomy, YMYL wording, links, checklist, decision log |
 | [`watch.md`](./watch.md) | Searching the health literature on OpenAlex: topics, period, open access, journal impact — behind « Open resources » on the home page |
+| [`marketplace.md`](./marketplace.md) | `/marketplace` and `/mytwin-platform-sdk`: the module registry, the six-section specification, adding a module, pricing data, `noindex` |
 | [`design-system.md`](./design-system.md) | The vitrine design system: tokens, roots, the shared vocabulary of drawers, modals and forms, and the rule against Tailwind colour utilities |
 
 ## Dev & ops

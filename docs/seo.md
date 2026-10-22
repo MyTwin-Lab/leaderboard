@@ -19,6 +19,7 @@ The site has two jobs in search: rank its own pages (the `/` landing, the Lab ho
 | `/benchmark` | ✅ | the human digital twin maturity benchmark, static: `WebPage` + `BreadcrumbList` JSON-LD. Not in the navbar — reached from the home "Benchmark" section and the sitemap |
 | `/book` | ❌ `noindex, follow` | the booking page, a conversion step ([`booking.md`](./booking.md)); out of the sitemap |
 | `/join`, `/join/welcome` | ❌ `noindex, follow` | « Join the Lab », a conversion step ([`join.md`](./join.md)); out of the sitemap |
+| `/marketplace`, `/marketplace/<slug>`, `/mytwin-platform-sdk` | ❌ `noindex, follow` | the module catalog and the SDK vision, open at their URL but linked from nowhere else ([`marketplace.md`](./marketplace.md)); the segment's layout carries the `noindex`, so every module page inherits it; out of the sitemap |
 | `/terms-of-use`, `/privacy-policy` | ✅ | markdown in `apps/leaderboard-client/content/legal/` |
 | `/contributors/<id>` | ❌ `noindex, follow` | public, but a person's name is not a search result |
 | drafts, validation challenges, archived sandboxes | ❌ `noindex, nofollow` | `unindexedMetadata()` — title not published either |

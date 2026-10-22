@@ -181,6 +181,18 @@ export function articleMetadata({
   };
 }
 
+/**
+ * Une page publique, ouverte à son URL, mais tenue hors des index : ses
+ * liens restent suivis. `noindex` n'est pas privé : rien n'en ferme l'accès.
+ * Une telle page reste aussi hors du sitemap.
+ */
+export const UNLISTED_ROBOTS = { index: false, follow: true } as const;
+
+/** Les métadonnées d'une page publique non indexée (`/marketplace`, `/mytwin-platform-sdk`). */
+export function unlistedMetadata(page: Parameters<typeof pageMetadata>[0]): Metadata {
+  return { ...pageMetadata(page), robots: UNLISTED_ROBOTS };
+}
+
 /** Métadonnées d'une page qui ne doit pas être indexée (inconnue, privée, retirée). */
 export function unindexedMetadata(title: string): Metadata {
   return { title, robots: { index: false, follow: false } };
