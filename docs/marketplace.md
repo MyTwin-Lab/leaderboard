@@ -24,9 +24,10 @@ The two pages link to each other, and nothing else on the site links to them: no
 | `src/content/marketplace/spec.ts` | `SPEC_SECTIONS` (the six sections, their numbers, titles and standard fields), `undocumentedSpecification()` |
 | `src/content/marketplace/format.ts` | Labels, `pricingSummary()`, `pricingEntries()`, `isSectionDocumented()`: wording only, no content |
 | `src/components/marketplace/` | `ModuleCard`, `ModuleCatalog` (the only client component: the filter), `ModuleSpecificationView`, `icons.tsx`, `marketplace-vitrine.css` |
+| `public/marketplace/modules/<slug>.webp` | Each module's image; `public/marketplace/more/` holds the four of the "More modules coming" mosaic |
 | `src/app/marketplace/`, `src/app/mytwin-platform-sdk/` | The routes; `marketplace/layout.tsx` carries the segment's `noindex` |
 
-Content and UI stay apart: the registry names an icon by key (`"record"`, `"engine"`…), `components/marketplace/icons.tsx` maps it to a glyph. The catalog page renders the cards on the server and hands them to `ModuleCatalog` already rendered, so the registry never reaches the client bundle.
+The catalog page renders the cards on the server and hands them to `ModuleCatalog` already rendered, so the registry never reaches the client bundle.
 
 ## The module specification (V1)
 
@@ -41,10 +42,16 @@ A section is an optional `intro`, a list of `entries` (`{ label, text?, items?, 
 
 ## Adding or updating a module
 
-1. **A new module without a specification**: add an `undocumentedModule({ slug, name, provider, moduleType, shortDescription, icon })` entry to `MARKETPLACE_MODULES`, at its place in the catalog. It appears in the catalog and at `/marketplace/<slug>`: nothing else to touch. A new icon key goes in `ModuleIcon` (`types.ts`) and in `icons.tsx`.
+1. **A new module without a specification**: add an `undocumentedModule({ slug, name, provider, moduleType, shortDescription })` entry to `MARKETPLACE_MODULES`, at its place in the catalog, and its image at `public/marketplace/modules/<slug>.webp` (square, 800px, like the others). It appears in the catalog and at `/marketplace/<slug>`: nothing else to touch.
 2. **Documenting a module**: replace its `undocumentedModule(...)` entry with a file in `modules/` (copy one of the three existing ones), and fill only what the reference document establishes. Keep "Not documented" lines for what it leaves open.
 3. **Never change a slug** once the URL has circulated: it is the module's address.
 4. Update the registry test (`marketplace.test.ts`), which pins the order and which modules are documented.
+
+## Images
+
+The images are the brochure's ("MyTwin modules"), taken from mytwin.care, where the `/clinic-partner-program` deck uses them (`mytwin-health-landing/public/clinicians/modules/`), and renamed after the module's slug. Same pairing as the deck: the medical record shows `daily-followup` (a doctor in front of records), as it has no image of its own. MyTwin Engine and Dynamic Care Plan are not in the brochure: they take `what-if-scenarios` (branching scenarios, not a score, since the Engine is not a scoring model) and `care-plans`. The "More modules coming" tile shows the deck's four-image mosaic for "Others", so that no single image passes for a specific module. Images are decorative (`alt=""`): the title next to them already says what they show.
+
+## Card descriptions
 
 Each card description comes from the commercial brochure ("MyTwin modules"), word for word, except MyTwin Engine and Dynamic Care Plan, which are not in it: theirs are shortened from the "Public card description" of their reference.
 

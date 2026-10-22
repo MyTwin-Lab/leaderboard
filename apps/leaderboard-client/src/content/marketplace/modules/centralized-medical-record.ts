@@ -19,7 +19,7 @@ export const centralizedMedicalRecord: MarketplaceModule = {
       "Existing MyTwin core technology. Individual ingestion and EHR capabilities vary in maturity and require confirmation.",
   },
   shortDescription: "Exams, reports, health data and recommendations gathered in a single, secure space.",
-  icon: "record",
+  image: "/marketplace/modules/centralized-medical-record.webp",
   specification: {
     overview: {
       intro: [

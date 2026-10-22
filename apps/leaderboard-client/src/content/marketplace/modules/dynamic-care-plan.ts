@@ -22,7 +22,7 @@ export const dynamicCarePlan: MarketplaceModule = {
   // « Public card description » de la fiche, au format des autres cartes.
   shortDescription:
     "Personalized care plans connected to patient data, so clinicians can review signals and adjust follow-up between checkups.",
-  icon: "care-plan",
+  image: "/marketplace/modules/dynamic-care-plan.webp",
   specification: {
     overview: {
       intro: [

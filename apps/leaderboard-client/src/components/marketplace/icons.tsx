@@ -1,41 +1,4 @@
-import {
-  Activity,
-  AudioWaveform,
-  CalendarCheck,
-  FolderHeart,
-  HeartPulse,
-  Mic,
-  PhoneCall,
-  ScanSearch,
-  Watch,
-  Workflow,
-  type LucideIcon,
-} from "lucide-react";
-
-import type { ModuleIcon as ModuleIconName } from "@/content/marketplace/types";
-
-/**
- * Le pictogramme d'un module. Le registre ne nomme qu'une clé
- * (`content/marketplace`) : le contenu ne dépend d'aucune bibliothèque d'UI.
- */
-const ICONS: Record<ModuleIconName, LucideIcon> = {
-  record: FolderHeart,
-  engine: Workflow,
-  "care-plan": CalendarCheck,
-  device: Watch,
-  heart: HeartPulse,
-  metabolic: Activity,
-  mind: AudioWaveform,
-  skin: ScanSearch,
-  prevention: Mic,
-  call: PhoneCall,
-};
-
-export function ModuleIcon({ name, className }: { name: ModuleIconName; className?: string }) {
-  const Icon = ICONS[name];
-  return <Icon className={className} strokeWidth={1.6} aria-hidden="true" />;
-}
-
+/** Les flèches des pages marketplace, au trait des autres vitrines. */
 export function ArrowRightIcon() {
   return (
     <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">

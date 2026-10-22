@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { metadata as marketplaceLayoutMetadata } from "@/app/marketplace/layout";
@@ -37,6 +39,13 @@ describe("the marketplace registry", () => {
       expect(getMarketplaceModule(module.slug)).toBe(module);
     }
     expect(getMarketplaceModule("does-not-exist")).toBeUndefined();
+  });
+
+  it("gives every module an image that exists under public/", () => {
+    for (const module of MARKETPLACE_MODULES) {
+      expect(module.image, module.slug).toBe(`/marketplace/modules/${module.slug}.webp`);
+      expect(existsSync(path.join(__dirname, "../../../public", module.image)), module.image).toBe(true);
+    }
   });
 
   it("keeps the six specification sections on every module", () => {

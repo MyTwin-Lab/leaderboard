@@ -59,7 +59,7 @@
   color: var(--v-subtle);
 }
 
-/* ── Le pictogramme d'un module ─────────────────────────────────────── */
+/* ── Le pictogramme d'une ligne (la liste du SDK) ───────────────────── */
 
 .v-mk-icon {
   display: inline-flex;
@@ -76,17 +76,6 @@
 .v-mk-icon svg {
   width: 1.25rem;
   height: 1.25rem;
-}
-
-.v-mk-icon[data-size="lg"] {
-  width: 3.25rem;
-  height: 3.25rem;
-  border-radius: 16px;
-}
-
-.v-mk-icon[data-size="lg"] svg {
-  width: 1.6rem;
-  height: 1.6rem;
 }
 
 .v-mk-icon[data-quiet="true"] {
@@ -178,11 +167,10 @@
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 14px;
+  overflow: hidden;
   border: 1px solid var(--v-line);
   border-radius: 20px;
   background: var(--v-surface);
-  padding: clamp(18px, 2vw, 22px);
   transition: border-color 0.4s var(--v-ease), transform 0.4s var(--v-ease), box-shadow 0.4s var(--v-ease);
 }
 
@@ -210,19 +198,49 @@
   border-radius: inherit;
 }
 
-.v-mk-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+/* Les visuels de la plaquette sont carrés, centrés sur leur sujet : un
+   bandeau 16:10 les recadre sans le perdre. */
+.v-mk-shot {
+  position: relative;
+  flex: none;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--v-night);
+}
+
+.v-mk-shot-img {
+  object-fit: cover;
+  object-position: 50% 40%;
+  transition: transform 0.6s var(--v-ease);
+}
+
+.v-mk-card:hover .v-mk-shot-img {
+  transform: scale(1.03);
 }
 
 .v-mk-card-num {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding-inline: 9px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.92);
   font-family: var(--v-font-h);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--v-subtle);
+  color: var(--v-ink);
+}
+
+.v-mk-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(16px, 1.8vw, 20px);
 }
 
 .v-mk-card-text {
@@ -353,13 +371,39 @@
 /* « More modules coming » : la case « Others » de la plaquette, sans lien. */
 .v-mk-more {
   display: flex;
-  min-height: 12rem;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px dashed var(--v-line);
+  border-radius: 20px;
+}
+
+/* Même bandeau 16:10 que les cartes, en quatre vignettes. */
+.v-mk-more-shots {
+  display: grid;
+  flex: none;
+  aspect-ratio: 16 / 10;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.v-mk-more-shot {
+  position: relative;
+  overflow: hidden;
+  background: var(--v-night);
+}
+
+.v-mk-more-shot img {
+  object-fit: cover;
+}
+
+.v-mk-more-body {
+  display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px dashed var(--v-line);
-  border-radius: 20px;
   padding: 24px;
   text-align: center;
 }
@@ -410,10 +454,39 @@
   gap: 12px;
 }
 
-.v-mkd-id {
-  display: flex;
+.v-mkd-hero {
+  display: grid;
+  gap: clamp(16px, 3vw, 40px);
   align-items: center;
-  gap: 14px;
+}
+
+.v-mkd-hero-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Sur téléphone, le visuel passe au-dessus du titre, en bandeau. */
+.v-mkd-figure {
+  position: relative;
+  order: -1;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--v-night);
+}
+
+@media (min-width: 900px) {
+  .v-mkd-hero {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+  }
+
+  .v-mkd-figure {
+    order: 0;
+    aspect-ratio: 1;
+    border-radius: 24px;
+  }
 }
 
 .v-mkd-facts {

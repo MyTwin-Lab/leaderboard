@@ -15,13 +15,17 @@ import type { MarketplaceModule } from "./types";
  * « Not documented », jusqu'à ce que leur fiche arrive.
  */
 
-/** Un module encore sans fiche : identité connue, six sections à documenter. */
+/**
+ * Un module encore sans fiche : identité connue, six sections à documenter.
+ * Son visuel est `public/marketplace/modules/<slug>.webp`.
+ */
 function undocumentedModule(
-  module: Omit<MarketplaceModule, "id" | "specification" | "availability"> &
+  module: Omit<MarketplaceModule, "id" | "image" | "specification" | "availability"> &
     Partial<Pick<MarketplaceModule, "availability">>,
 ): MarketplaceModule {
   return {
     id: module.slug,
+    image: `/marketplace/modules/${module.slug}.webp`,
     availability: { stage: "not-documented" },
     specification: undocumentedSpecification(),
     ...module,
@@ -38,7 +42,6 @@ export const MARKETPLACE_MODULES: MarketplaceModule[] = [
     provider: { name: "Terra API", kind: "partner" },
     moduleType: "Partner Integration",
     shortDescription: "Connection to smartwatches, smart rings and other compatible devices.",
-    icon: "device",
   }),
   undocumentedModule({
     slug: "cardiovascular-health-score",
@@ -48,7 +51,6 @@ export const MARKETPLACE_MODULES: MarketplaceModule[] = [
     moduleType: "Partner Module",
     shortDescription:
       "Regular measurement of cardiovascular indicators from a smartphone to track how they evolve between two consultations.",
-    icon: "heart",
   }),
   undocumentedModule({
     slug: "metabolic-health-score",
@@ -57,7 +59,6 @@ export const MARKETPLACE_MODULES: MarketplaceModule[] = [
     moduleType: "Planned Module",
     availability: { stage: "planned", detail: "Not yet developed as a standalone module." },
     shortDescription: "Personalized monitoring of key metabolic indicators and how they change over time.",
-    icon: "metabolic",
   }),
   undocumentedModule({
     slug: "mental-health-assessment",
@@ -66,7 +67,6 @@ export const MARKETPLACE_MODULES: MarketplaceModule[] = [
     moduleType: "Partner Module",
     shortDescription:
       "Voice analysis to track variations associated in particular with stress, anxiety and emotional state.",
-    icon: "mind",
   }),
   undocumentedModule({
     slug: "skin-lesion-monitoring",
@@ -75,7 +75,6 @@ export const MARKETPLACE_MODULES: MarketplaceModule[] = [
     moduleType: "Partner Module",
     shortDescription:
       "Regular analysis of skin lesions and identification of changes that may require a medical opinion.",
-    icon: "skin",
   }),
   undocumentedModule({
     slug: "stroke-and-heart-attack-prevention",
@@ -83,7 +82,6 @@ export const MARKETPLACE_MODULES: MarketplaceModule[] = [
     provider: { name: "e-sensia", kind: "partner" },
     moduleType: "Partner Module",
     shortDescription: "Detection of vocal signals that may warrant further medical evaluation.",
-    icon: "prevention",
   }),
   undocumentedModule({
     slug: "daily-call-from-the-ai-assistant",
@@ -92,7 +90,6 @@ export const MARKETPLACE_MODULES: MarketplaceModule[] = [
     moduleType: "Partner Module",
     shortDescription:
       "Regular conversational support to collect new information from the patient, follow their program and keep them engaged.",
-    icon: "call",
   }),
 ];
 

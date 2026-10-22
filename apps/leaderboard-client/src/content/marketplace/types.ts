@@ -106,19 +106,6 @@ export type ModuleSpecification = {
 
 export type SpecSectionKey = keyof ModuleSpecification;
 
-/** Le pictogramme de la carte et de la fiche, résolu par `components/marketplace/icons.tsx`. */
-export type ModuleIcon =
-  | "record"
-  | "engine"
-  | "care-plan"
-  | "device"
-  | "heart"
-  | "metabolic"
-  | "mind"
-  | "skin"
-  | "prevention"
-  | "call";
-
 export type MarketplaceModule = {
   /** Identifiant stable ; c'est aussi le slug de l'URL. */
   id: string;
@@ -131,7 +118,12 @@ export type MarketplaceModule = {
   platformLayer?: string;
   availability: ModuleAvailability;
   shortDescription: string;
-  icon: ModuleIcon;
+  /**
+   * Le visuel de la carte et de la fiche, sous `public/marketplace/modules/`.
+   * Ceux de la plaquette, repris du deck `/clinic-partner-program` de
+   * mytwin.care (docs/marketplace.md).
+   */
+  image: string;
   specification: ModuleSpecification;
   /** Uniquement une documentation qui existe : jamais de lien vide ou provisoire. */
   documentationUrl?: string;

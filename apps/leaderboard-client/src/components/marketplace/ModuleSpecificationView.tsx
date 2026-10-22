@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -15,7 +16,7 @@ import { MARKETPLACE_PATH, marketplaceModulePath } from "@/lib/paths";
 import { BackToLab } from "@/components/vitrine/BackToLab";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
 
-import { ExternalIcon, ModuleIcon } from "./icons";
+import { ExternalIcon } from "./icons";
 
 import "@/components/vitrine/vitrine.css";
 import "./marketplace-vitrine.css";
@@ -68,16 +69,25 @@ export function ModuleSpecificationView({
         <header className="v-mkd-head">
           <BackToLab href={MARKETPLACE_PATH} label="Back to the Marketplace" />
 
-          <div className="v-mkd-id">
-            <span className="v-mk-icon" data-size="lg">
-              <ModuleIcon name={module.icon} />
-            </span>
-            <span className="v-mk-kicker">
-              Module {number} · {PROVIDER_KIND_LABELS[module.provider.kind]}
-            </span>
+          <div className="v-mkd-hero">
+            <div className="v-mkd-hero-text">
+              <span className="v-mk-kicker">
+                Module {number} · {PROVIDER_KIND_LABELS[module.provider.kind]}
+              </span>
+              <h1 className="v-title">{module.name}</h1>
+              <p className="v-lede">{module.shortDescription}</p>
+            </div>
+            <div className="v-mkd-figure">
+              <Image
+                src={module.image}
+                alt=""
+                fill
+                priority
+                sizes="(min-width: 900px) 20rem, 100vw"
+                className="v-mk-shot-img"
+              />
+            </div>
           </div>
-          <h1 className="v-title">{module.name}</h1>
-          <p className="v-lede">{module.shortDescription}</p>
 
           <dl className="v-mkd-facts">
             {headFacts.map((fact) => (

@@ -1,11 +1,22 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Plus } from "lucide-react";
+import Image from "next/image";
 
 import type { ModuleProvider } from "@/content/marketplace/types";
 
 type Filter = "all" | ModuleProvider["kind"];
+
+/**
+ * La mosaïque de la case « Others » de la plaquette : quatre visuels à la
+ * fois, pour qu'aucun ne passe pour un module précis.
+ */
+const MORE_IMAGES = [
+  "/marketplace/more/surgical-modeling.webp",
+  "/marketplace/more/medication-guidance.webp",
+  "/marketplace/more/care-coordinator.webp",
+  "/marketplace/more/second-opinion.webp",
+];
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "All modules" },
@@ -61,13 +72,19 @@ export function ModuleCatalog({ items }: { items: { slug: string; kind: ModulePr
         {/* « Others » dans la plaquette : pas un module, l'annonce des suivants. */}
         {filter === "all" && (
           <div className="v-mk-more">
-            <span className="v-mk-icon" data-quiet="true">
-              <Plus strokeWidth={1.6} aria-hidden="true" />
-            </span>
-            <p className="v-mk-more-title">More modules coming</p>
-            <p className="v-mk-more-text">
-              The catalog grows as new MyTwin and partner modules are documented.
-            </p>
+            <div className="v-mk-more-shots">
+              {MORE_IMAGES.map((src) => (
+                <div key={src} className="v-mk-more-shot">
+                  <Image src={src} alt="" fill sizes="(min-width: 1152px) 11rem, (min-width: 720px) 25vw, 50vw" />
+                </div>
+              ))}
+            </div>
+            <div className="v-mk-more-body">
+              <p className="v-mk-more-title">More modules coming</p>
+              <p className="v-mk-more-text">
+                The catalog grows as new MyTwin and partner modules are documented.
+              </p>
+            </div>
           </div>
         )}
       </div>

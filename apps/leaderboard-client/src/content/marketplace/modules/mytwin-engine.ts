@@ -22,7 +22,7 @@ export const mytwinEngine: MarketplaceModule = {
   // « Public card description » de la fiche, au format des autres cartes.
   shortDescription:
     "Health models and recommendations, run with traceable inputs, versioned outputs and reproducible execution.",
-  icon: "engine",
+  image: "/marketplace/modules/mytwin-engine.webp",
   specification: {
     overview: {
       intro: [
