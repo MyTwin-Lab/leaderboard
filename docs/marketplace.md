@@ -8,7 +8,7 @@ The Marketplace is a **catalog**, not a shop: no payment, no developer account, 
 
 | Path | What it is |
 |---|---|
-| `/marketplace` | Title and one-line intro, then "Choose your modules": the ten module cards (image, name, description, provider, pricing) and a "More modules coming" tile |
+| `/marketplace` | Title and one-line intro, then "Choose your modules" with a "Modules Pricing Calculator" button (not wired yet), the ten module cards (image, name, description, provider, pricing) and a "More modules coming" tile |
 | `/marketplace/<slug>` | One module's specification: header, six sections, previous / next module. One route for every module (`dynamicParams = false`: an unknown slug is a `404`) |
 
 Nothing else on the site links to it: not the navbar, not the footer, not the home page. A `/mytwin-platform-sdk` vision page existed for a day and was removed (2026-10-23): it said nothing the catalog needed.
@@ -23,7 +23,7 @@ Nothing else on the site links to it: not the navbar, not the footer, not the ho
 | `src/content/marketplace/spec.ts` | `SPEC_SECTIONS` (the six sections, their numbers, titles and standard fields), `undocumentedSpecification()` |
 | `src/content/marketplace/format.ts` | Labels, `pricingSummary()`, `pricingEntries()`, `isSectionDocumented()`: wording only, no content |
 | `src/components/marketplace/` | `ModuleCard`, `ModuleCatalog`, `ModuleSpecificationView` (all server components), `icons.tsx`, `marketplace-vitrine.css` |
-| `public/marketplace/modules/<slug>.webp` | Each module's image; `public/marketplace/more/` holds the four of the "More modules coming" mosaic |
+| `public/marketplace/modules/<slug>.webp` | Each module's image |
 | `src/app/marketplace/` | The routes; `layout.tsx` carries the segment's `noindex` |
 
 The card keeps only the provider and the price; type, availability and integration are in the specification. No JavaScript ships for the catalog: the registry never reaches the client bundle.
@@ -48,7 +48,7 @@ A section is an optional `intro`, a list of `entries` (`{ label, text?, items?, 
 
 ## Images
 
-The images are the brochure's ("MyTwin modules"), taken from mytwin.care, where the `/clinic-partner-program` deck uses them (`mytwin-health-landing/public/clinicians/modules/`), and renamed after the module's slug. Same pairing as the deck: the medical record shows `daily-followup` (a doctor in front of records), as it has no image of its own. MyTwin Engine and Dynamic Care Plan are not in the brochure: they take `what-if-scenarios` (branching scenarios, not a score, since the Engine is not a scoring model) and `care-plans`. The "More modules coming" tile shows the deck's four-image mosaic for "Others", so that no single image passes for a specific module. Images are decorative (`alt=""`): the title next to them already says what they show.
+The images are the brochure's ("MyTwin modules"), taken from mytwin.care, where the `/clinic-partner-program` deck uses them (`mytwin-health-landing/public/clinicians/modules/`), and renamed after the module's slug. Same pairing as the deck: the medical record shows `daily-followup` (a doctor in front of records), as it has no image of its own. MyTwin Engine and Dynamic Care Plan are not in the brochure: they take `what-if-scenarios` (branching scenarios, not a score, since the Engine is not a scoring model) and `care-plans`. The "More modules coming" tile has no image: a dashed frame and a "+", so that it never reads as a module. Images are decorative (`alt=""`): the title next to them already says what they show.
 
 ## Card descriptions
 
@@ -57,7 +57,7 @@ Each card description comes from the commercial brochure ("MyTwin modules"), wor
 ## Documentation and pricing, later
 
 - **Documentation**: set `documentationUrl` on the module only when the page exists. The card then shows a "Documentation" link, and the specification shows a button; until then, neither is rendered. `externalProviderUrl` works the same for a partner's site.
-- **Pricing** is data, not text: `specification.pricing.terms` (`PricingTerms`) holds `model` (`per-patient-per-month`, `per-assessment`, `per-api-call`, `custom`), `billingUnit`, `unitPrice`, `currency`, `volumeTiers`, `setupFee`, `conditions`. The Pricing section's standard lines are generated from it, and the card summary reads it. A future multi-module estimator reads the same terms.
+- **Pricing** is data, not text: `specification.pricing.terms` (`PricingTerms`) holds `model` (`per-patient-per-month`, `per-assessment`, `per-api-call`, `custom`), `billingUnit`, `unitPrice`, `currency`, `volumeTiers`, `setupFee`, `conditions`. The Pricing section's standard lines are generated from it, and the card summary reads it. A future multi-module estimator reads the same terms: the "Modules Pricing Calculator" button, next to "Choose your modules" (`ModuleCatalog`), is already there and does nothing until it is wired to it.
 - A missing price is **never** zero or free: `pricingSummary()` returns `undefined` and the card writes "Not documented"; an amount without a currency is not shown. Publish no price that has not been approved commercially, and never a partner acquisition cost.
 
 ## Content rules
