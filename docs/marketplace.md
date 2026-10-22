@@ -1,18 +1,17 @@
-# MyTwin Marketplace and Platform SDK
+# MyTwin Marketplace
 
-> `/marketplace`, the catalog of reusable MyTwin modules, each with the same six-section specification; `/mytwin-platform-sdk`, the vision of a future unified developer interface. Both are `noindex`, out of the sitemap, and reached only by their URL.
+> `/marketplace`, the catalog of reusable MyTwin modules, each with the same six-section specification. `noindex`, out of the sitemap, reached only by its URL.
 
-The Marketplace is a **catalog**, not a shop: no payment, no developer account, no installation, no API subscription. It serves developers, clinics and MyTwin's commercial teams from the same module pages. The SDK page states an intent: no package, no code sample, no authentication.
+The Marketplace is a **catalog**, not a shop: no payment, no developer account, no installation, no API subscription. It serves developers, clinics and MyTwin's commercial teams from the same module pages.
 
 ## Surface
 
 | Path | What it is |
 |---|---|
-| `/marketplace` | Intro, the three platform layers (Data Hub, Engine, Experience Layer), the catalog of module cards with a MyTwin / Partners filter, a "More modules coming" tile, a strip to the SDK page |
+| `/marketplace` | Title and one-line intro, then "Choose your modules": the ten module cards (image, name, description, provider, pricing) and a "More modules coming" tile |
 | `/marketplace/<slug>` | One module's specification: header, six sections, previous / next module. One route for every module (`dynamicParams = false`: an unknown slug is a `404`) |
-| `/mytwin-platform-sdk` | "Integrate once. Access the MyTwin ecosystem.", status *Coming soon*, CTA to `/marketplace` |
 
-The two pages link to each other, and nothing else on the site links to them: not the navbar, not the footer, not the home page.
+Nothing else on the site links to it: not the navbar, not the footer, not the home page. A `/mytwin-platform-sdk` vision page existed for a day and was removed (2026-10-23): it said nothing the catalog needed.
 
 ## Where it lives
 
@@ -23,11 +22,11 @@ The two pages link to each other, and nothing else on the site links to them: no
 | `src/content/marketplace/types.ts` | `MarketplaceModule`, `ModuleSpecification`, `SpecEntry`, `PricingTerms` |
 | `src/content/marketplace/spec.ts` | `SPEC_SECTIONS` (the six sections, their numbers, titles and standard fields), `undocumentedSpecification()` |
 | `src/content/marketplace/format.ts` | Labels, `pricingSummary()`, `pricingEntries()`, `isSectionDocumented()`: wording only, no content |
-| `src/components/marketplace/` | `ModuleCard`, `ModuleCatalog` (the only client component: the filter), `ModuleSpecificationView`, `icons.tsx`, `marketplace-vitrine.css` |
+| `src/components/marketplace/` | `ModuleCard`, `ModuleCatalog`, `ModuleSpecificationView` (all server components), `icons.tsx`, `marketplace-vitrine.css` |
 | `public/marketplace/modules/<slug>.webp` | Each module's image; `public/marketplace/more/` holds the four of the "More modules coming" mosaic |
-| `src/app/marketplace/`, `src/app/mytwin-platform-sdk/` | The routes; `marketplace/layout.tsx` carries the segment's `noindex` |
+| `src/app/marketplace/` | The routes; `layout.tsx` carries the segment's `noindex` |
 
-The catalog page renders the cards on the server and hands them to `ModuleCatalog` already rendered, so the registry never reaches the client bundle.
+The card keeps only the provider and the price; type, availability and integration are in the specification. No JavaScript ships for the catalog: the registry never reaches the client bundle.
 
 ## The module specification (V1)
 
@@ -73,7 +72,7 @@ The first three modules come from their official references (`Centralized Medica
 
 ## Indexing
 
-`noindex, follow` on all three routes, through the metadata API, so it is in the server-rendered `<meta name="robots">`:
+`noindex, follow` on the catalog and every module page, through the metadata API, so it is in the server-rendered `<meta name="robots">`:
 
 - `src/app/marketplace/layout.tsx` sets `robots: UNLISTED_ROBOTS` for the whole segment, so any module page, current or future, inherits it.
 - Each page also declares it through `unlistedMetadata()` (`lib/seo.ts`): `pageMetadata()` plus `robots`.
@@ -85,12 +84,11 @@ The first three modules come from their official references (`Centralized Medica
 ```bash
 curl -s https://mytwinlab.care/marketplace | grep -o '<meta name="robots"[^>]*>'
 curl -s https://mytwinlab.care/marketplace/mytwin-engine | grep -o '<meta name="robots"[^>]*>'
-curl -s https://mytwinlab.care/mytwin-platform-sdk | grep -o '<meta name="robots"[^>]*>'
 curl -s https://mytwinlab.care/sitemap.xml | grep -c marketplace   # 0
 ```
 
 ## Not built yet
 
-A real SDK, API keys, partner API integrations, a module runtime, a pricing calculator, payment, developer accounts, subscriptions, back-office tools. The pages state none of them as available.
+An SDK, API keys, partner API integrations, a module runtime, a pricing calculator, payment, developer accounts, subscriptions, back-office tools. The pages state none of them as available.
 
 Related: [`seo.md`](./seo.md) · [`design-system.md`](./design-system.md) · [`index.md`](./index.md)

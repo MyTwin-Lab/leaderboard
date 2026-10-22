@@ -44,14 +44,12 @@ export function newsPath(slug: string): string {
   return `${NEWS_PATH}/${slug}`;
 }
 
-/** Le catalogue des modules et la vision du SDK : `noindex`, ouverts à leur URL (docs/marketplace.md). */
+/** Le catalogue des modules : `noindex`, ouvert à son URL (docs/marketplace.md). */
 export const MARKETPLACE_PATH = "/marketplace";
 
 export function marketplaceModulePath(slug: string): string {
   return `${MARKETPLACE_PATH}/${slug}`;
 }
-
-export const PLATFORM_SDK_PATH = "/mytwin-platform-sdk";
 
 /**
  * `path` suivi de la query d'origine, telle que Next la passe à une page

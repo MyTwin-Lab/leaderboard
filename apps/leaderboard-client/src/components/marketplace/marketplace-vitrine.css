@@ -1,15 +1,14 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   Le MyTwin Marketplace (`/marketplace`, `/marketplace/<slug>`) et la vision
-   du SDK (`/mytwin-platform-sdk`), au style vitrine.
+   Le MyTwin Marketplace (`/marketplace`, `/marketplace/<slug>`), au style
+   vitrine.
 
    Pas de maquette Claude Design : les pages reprennent la grammaire des
-   listings — `.v-main`, `.v-head`, le retour au Lab, les pills, le bandeau
-   nuit — et la matière de leurs cartes : surface blanche, filet `--v-line`,
-   rayon de 20px, accent au survol.
+   listings — `.v-main`, `.v-head`, le retour au Lab — et la matière de leurs
+   cartes : surface blanche, filet `--v-line`, rayon de 20px, accent au survol.
 
-   Scopé sous `.vitrine .v-mk`, préfixé `v-mk-` (catalogue, carte),
-   `v-mkd-` (fiche d'un module) et `v-sdk-` (vision du SDK). Aucun utilitaire
-   Tailwind de couleur : `globals.css` réécrit les blancs en mode clair.
+   Scopé sous `.vitrine .v-mk`, préfixé `v-mk-` (catalogue, carte) et `v-mkd-`
+   (fiche d'un module). Aucun utilitaire Tailwind de couleur : `globals.css`
+   réécrit les blancs en mode clair.
    ───────────────────────────────────────────────────────────────────────── */
 
 .v-mk {
@@ -31,8 +30,7 @@
 }
 
 .v-mk .v-head,
-.v-mkd-head,
-.v-sdk-hero {
+.v-mkd-head {
   animation: v-mk-up 0.8s var(--v-ease) both;
 }
 
@@ -59,30 +57,6 @@
   color: var(--v-subtle);
 }
 
-/* ── Le pictogramme d'une ligne (la liste du SDK) ───────────────────── */
-
-.v-mk-icon {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 12px;
-  background: var(--mk-mint);
-  color: var(--v-accent);
-}
-
-.v-mk-icon svg {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.v-mk-icon[data-quiet="true"] {
-  background: rgb(17 22 26 / 0.05);
-  color: var(--v-muted);
-}
-
 .v-mk-kicker {
   font-size: 0.6875rem;
   font-weight: 600;
@@ -91,61 +65,12 @@
   color: var(--v-accent);
 }
 
-/* ── Les trois couches de la plateforme ─────────────────────────────── */
-
-.v-mk-layers {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.v-mk-layers-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-  gap: 10px clamp(16px, 2.4vw, 28px);
-}
-
-.v-mk-layer {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  border-top: 1px solid var(--v-line);
-  padding-top: 12px;
-}
-
-.v-mk-layer dt {
-  font-family: var(--v-font-h);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-}
-
-.v-mk-layer dd {
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--v-muted);
-  text-wrap: pretty;
-}
-
 /* ── Le catalogue ───────────────────────────────────────────────────── */
 
 .v-mk-catalog {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-.v-mk-catalog-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.v-mk .v-pill:focus-visible {
-  outline: 2px solid var(--v-accent);
-  outline-offset: 2px;
 }
 
 .v-mk-grid {
@@ -420,30 +345,6 @@
   font-size: 0.8125rem;
   line-height: 1.55;
   color: var(--v-muted);
-}
-
-.v-mk-strip-sub {
-  font-size: 13px;
-  color: rgb(255 255 255 / 0.62);
-}
-
-.v-mk .v-strip-cta svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-}
-
-.v-mk-status {
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  padding-inline: 10px;
-  border-radius: 999px;
-  border: 1px solid var(--mk-ring);
-  background: var(--mk-mint);
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--v-accent-dark);
 }
 
 /* ── La fiche d'un module : l'en-tête ───────────────────────────────── */
@@ -950,102 +851,4 @@
 
 .v-mkd-pager-link:hover .v-mkd-pager-name {
   color: var(--v-accent);
-}
-
-/* ── La vision du SDK ───────────────────────────────────────────────── */
-
-.v-sdk-hero {
-  display: flex;
-  max-width: 48rem;
-  flex-direction: column;
-  gap: 14px;
-  padding-bottom: clamp(8px, 2vw, 16px);
-}
-
-.v-sdk-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-.v-sdk-title {
-  font-size: clamp(34px, 5.2vw, 58px);
-  text-wrap: balance;
-}
-
-.v-sdk-cta {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 46px;
-  margin-top: 8px;
-  padding-inline: 22px 18px;
-  border-radius: 999px;
-  background: var(--v-ink);
-  font-size: 15px;
-  font-weight: 500;
-  color: #ffffff;
-  transition: background-color 0.3s var(--v-ease), transform 0.3s var(--v-ease);
-}
-
-.v-sdk-cta:hover {
-  background: var(--v-accent);
-  color: #ffffff;
-  transform: translateY(-1px);
-}
-
-.v-sdk-cta:focus-visible {
-  outline: 2px solid var(--v-accent);
-  outline-offset: 3px;
-}
-
-.v-sdk-cta svg {
-  width: 15px;
-  height: 15px;
-  flex: none;
-}
-
-.v-sdk-why {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-  gap: clamp(20px, 4vw, 48px);
-  align-items: start;
-  border-top: 1px solid var(--v-line);
-  padding-top: clamp(24px, 3vw, 32px);
-}
-
-.v-sdk-why-text {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.v-sdk-why-text p {
-  max-width: 32rem;
-  font-size: 15.5px;
-  line-height: 1.7;
-  color: var(--v-muted);
-  text-wrap: pretty;
-}
-
-.v-sdk-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.v-sdk-list li {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  border: 1px solid var(--v-line);
-  border-radius: 16px;
-  background: var(--v-surface);
-  padding: 10px 16px 10px 10px;
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--v-ink);
 }

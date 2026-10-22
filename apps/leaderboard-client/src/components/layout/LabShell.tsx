@@ -36,7 +36,6 @@ const VITRINE_BACKGROUNDS: Record<string, string> = {
   "/news": "#fcfcfc",
   "/watch": "#fcfcfc",
   "/marketplace": "#fcfcfc",
-  "/mytwin-platform-sdk": "#fcfcfc",
 };
 
 /**

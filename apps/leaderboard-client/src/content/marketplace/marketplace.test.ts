@@ -132,10 +132,10 @@ describe("indexing", () => {
     expect(marketplaceLayoutMetadata.robots).toEqual({ index: false, follow: true });
   });
 
-  it("leaves the marketplace and the SDK page out of the sitemap", () => {
+  it("leaves the marketplace out of the sitemap", () => {
     const urls = buildSitemap({ baseUrl: "https://lab.example.com", challenges: [], sandboxes: [], news: [] }).map(
       (entry) => entry.url,
     );
-    expect(urls.some((url) => url.includes("/marketplace") || url.includes("/mytwin-platform-sdk"))).toBe(false);
+    expect(urls.some((url) => url.includes("/marketplace"))).toBe(false);
   });
 });

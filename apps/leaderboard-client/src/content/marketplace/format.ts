@@ -85,12 +85,6 @@ export function pricingEntries(terms: PricingTerms): SpecEntry[] {
   ];
 }
 
-/** Le mode d'intégration, quand la fiche le nomme (ligne « Integration type »). */
-export function integrationSummary(module: MarketplaceModule): string | undefined {
-  const entry = module.specification.integration.entries.find((candidate) => candidate.label === "Integration type");
-  return entry?.text?.trim() || undefined;
-}
-
 /**
  * Les lignes d'une section à afficher. Pricing commence par les lignes tirées
  * de ses conditions, puis celles propres à la fiche.

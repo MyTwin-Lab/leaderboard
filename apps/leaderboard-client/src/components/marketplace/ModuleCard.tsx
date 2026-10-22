@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { AVAILABILITY_LABELS, integrationSummary, pricingSummary } from "@/content/marketplace/format";
+import { pricingSummary } from "@/content/marketplace/format";
 import { NOT_DOCUMENTED } from "@/content/marketplace/spec";
 import type { MarketplaceModule } from "@/content/marketplace/types";
 import { marketplaceModulePath } from "@/lib/paths";
@@ -16,17 +16,11 @@ import { ArrowRightIcon, ExternalIcon } from "./icons";
  * un `<a>`, parce qu'un second lien — la documentation, quand elle existe —
  * ne peut pas s'imbriquer dans le premier.
  *
- * Le visuel est décoratif : le titre dit déjà ce que montre la carte.
+ * Le visuel est décoratif : le titre dit déjà ce que montre la carte. La
+ * carte ne garde que le fournisseur et le prix : le reste est dans la fiche.
  */
 export function ModuleCard({ module, number }: { module: MarketplaceModule; number: string }) {
-  const facts = [
-    {
-      label: "Availability",
-      value: module.availability.stage === "not-documented" ? undefined : AVAILABILITY_LABELS[module.availability.stage],
-    },
-    { label: "Pricing", value: pricingSummary(module.specification.pricing.terms) },
-    { label: "Integration", value: integrationSummary(module) },
-  ];
+  const pricing = pricingSummary(module.specification.pricing.terms);
 
   return (
     <article className="v-mk-card">
@@ -45,7 +39,6 @@ export function ModuleCard({ module, number }: { module: MarketplaceModule; numb
 
       <div className="v-mk-card-body">
         <div className="v-mk-card-text">
-          <span className="v-mk-kicker">{module.moduleType}</span>
           <h3 className="v-mk-card-title">
             <Link href={marketplaceModulePath(module.slug)} className="v-mk-card-link">
               {module.name}
@@ -63,12 +56,10 @@ export function ModuleCard({ module, number }: { module: MarketplaceModule; numb
               </span>
             </dd>
           </div>
-          {facts.map((fact) => (
-            <div key={fact.label} className="v-mk-fact">
-              <dt>{fact.label}</dt>
-              <dd data-missing={fact.value === undefined}>{fact.value ?? NOT_DOCUMENTED}</dd>
-            </div>
-          ))}
+          <div className="v-mk-fact">
+            <dt>Pricing</dt>
+            <dd data-missing={pricing === undefined}>{pricing ?? NOT_DOCUMENTED}</dd>
+          </div>
         </dl>
 
         <div className="v-mk-card-foot">

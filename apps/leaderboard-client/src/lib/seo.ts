@@ -188,7 +188,7 @@ export function articleMetadata({
  */
 export const UNLISTED_ROBOTS = { index: false, follow: true } as const;
 
-/** Les métadonnées d'une page publique non indexée (`/marketplace`, `/mytwin-platform-sdk`). */
+/** Les métadonnées d'une page publique non indexée (`/marketplace` et ses fiches). */
 export function unlistedMetadata(page: Parameters<typeof pageMetadata>[0]): Metadata {
   return { ...pageMetadata(page), robots: UNLISTED_ROBOTS };
 }
