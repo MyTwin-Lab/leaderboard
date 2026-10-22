@@ -51,3 +51,6 @@ PRESENTATION.md
 # au-delà de 100 Mo. Si ce service doit être versionné un jour, ce sera sans le
 # checkpoint, ou derrière Git LFS.
 test-model-api/
+
+# Documents de travail (plans, fiches de référence) : sources, pas documentation.
+docs/temp/*
