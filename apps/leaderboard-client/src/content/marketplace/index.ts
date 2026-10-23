@@ -1,6 +1,5 @@
 import { centralizedMedicalRecord } from "./modules/centralized-medical-record";
-import { dynamicCarePlan } from "./modules/dynamic-care-plan";
-import { mytwinEngine } from "./modules/mytwin-engine";
+import { smartPhysicianAlerts } from "./modules/smart-physician-alerts";
 import { undocumentedSpecification } from "./spec";
 import type { MarketplaceModule } from "./types";
 
@@ -9,7 +8,7 @@ import type { MarketplaceModule } from "./types";
  * catalogue. Une entrée ajoutée ici apparaît dans `/marketplace` et à
  * `/marketplace/<slug>`, sans autre fichier à toucher (docs/marketplace.md).
  *
- * Les trois premiers modules ont une fiche de référence officielle ; les sept
+ * Les deux premiers modules ont une fiche de référence officielle ; les sept
  * suivants n'ont encore que leur nom, leur fournisseur, leur type et la
  * description de la plaquette commerciale. Leurs six sections existent, en
  * « Not documented », jusqu'à ce que leur fiche arrive.
@@ -20,12 +19,13 @@ import type { MarketplaceModule } from "./types";
  * Son visuel est `public/marketplace/modules/<slug>.webp`.
  */
 function undocumentedModule(
-  module: Omit<MarketplaceModule, "id" | "image" | "specification" | "availability"> &
+  module: Omit<MarketplaceModule, "id" | "image" | "evidence" | "specification" | "availability"> &
     Partial<Pick<MarketplaceModule, "availability">>,
 ): MarketplaceModule {
   return {
     id: module.slug,
     image: `/marketplace/modules/${module.slug}.webp`,
+    evidence: {},
     availability: { stage: "not-documented" },
     specification: undocumentedSpecification(),
     ...module,
@@ -34,8 +34,7 @@ function undocumentedModule(
 
 export const MARKETPLACE_MODULES: MarketplaceModule[] = [
   centralizedMedicalRecord,
-  mytwinEngine,
-  dynamicCarePlan,
+  smartPhysicianAlerts,
   undocumentedModule({
     slug: "connected-device-integration",
     name: "Connected Device Integration",

@@ -19,7 +19,7 @@ function CalculatorIcon() {
 }
 
 /** La grille du catalogue : les modules dans l'ordre du registre, puis l'annonce des suivants. */
-export function ModuleCatalog({ modules }: { modules: { module: MarketplaceModule; number: string }[] }) {
+export function ModuleCatalog({ modules }: { modules: MarketplaceModule[] }) {
   return (
     <section className="v-mk-catalog" aria-labelledby="marketplace-catalog">
       <div className="v-mk-catalog-head">
@@ -35,9 +35,9 @@ export function ModuleCatalog({ modules }: { modules: { module: MarketplaceModul
       </div>
 
       <div className="v-mk-grid">
-        {modules.map(({ module, number }) => (
+        {modules.map((module) => (
           <div key={module.slug} className="v-mk-grid-item">
-            <ModuleCard module={module} number={number} />
+            <ModuleCard module={module} />
           </div>
         ))}
 

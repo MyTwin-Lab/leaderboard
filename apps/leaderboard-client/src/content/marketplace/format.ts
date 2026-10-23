@@ -2,6 +2,7 @@ import { NOT_DOCUMENTED, SPEC_SECTIONS } from "./spec";
 import type {
   MarketplaceModule,
   ModuleAvailability,
+  ModuleEvidence,
   ModuleSpecification,
   PricingModel,
   PricingTerms,
@@ -37,7 +38,24 @@ export const PRICING_MODEL_LABELS: Record<PricingModel, string> = {
 };
 
 export function isEntryDocumented(entry: SpecEntry): boolean {
-  return Boolean(entry.text?.trim()) || Boolean(entry.items?.length);
+  return Boolean(entry.text?.trim()) || Boolean(entry.items?.length) || Boolean(entry.links?.length);
+}
+
+/**
+ * Les preuves d'un module en lignes de fiche : affichées dans Compliance &
+ * Trust, et résumées sur la carte.
+ */
+export function evidenceEntries(evidence: ModuleEvidence): SpecEntry[] {
+  return [
+    { label: "Validation level", text: evidence.validationLevel },
+    { label: "Accuracy", text: evidence.accuracy },
+    { label: "Research papers", links: evidence.researchPapers },
+  ];
+}
+
+/** Vrai pour un module qui n'est pas encore disponible : sa carte dit « Coming soon ». */
+export function isComingSoon(module: MarketplaceModule): boolean {
+  return module.availability.stage === "planned";
 }
 
 function formatAmount(amount: number, currency: PricingTerms["currency"]): string | undefined {

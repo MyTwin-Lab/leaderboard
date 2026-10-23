@@ -7,6 +7,9 @@ import { buildSitemap } from "@/lib/seo";
 
 import { MARKETPLACE_MODULES, getMarketplaceModule, moduleNumber } from ".";
 import {
+  evidenceEntries,
+  isComingSoon,
+  isEntryDocumented,
   isSectionDocumented,
   isSpecificationEmpty,
   pricingEntries,
@@ -16,18 +19,17 @@ import {
 import { SPEC_SECTIONS } from "./spec";
 
 describe("the marketplace registry", () => {
-  it("lists the ten initial modules, in the catalog order", () => {
+  it("lists the nine modules, in the catalog order", () => {
     expect(MARKETPLACE_MODULES.map((module) => [moduleNumber(module), module.name, module.provider.name])).toEqual([
       ["01", "Centralized Medical Record", "MyTwin"],
-      ["02", "MyTwin Engine", "MyTwin"],
-      ["03", "Dynamic Care Plan", "MyTwin"],
-      ["04", "Connected Device Integration", "Terra API"],
-      ["05", "Cardiovascular Health Score", "e-sensia / Saphere"],
-      ["06", "Metabolic Health Score", "MyTwin"],
-      ["07", "Mental Health Assessment", "Virtuosis AI"],
-      ["08", "Skin Lesion Monitoring", "Skinive"],
-      ["09", "Stroke and Heart Attack Prevention", "e-sensia"],
-      ["10", "Daily Call from the AI Assistant", "e-sensia"],
+      ["02", "Smart Physician Alerts", "MyTwin"],
+      ["03", "Connected Device Integration", "Terra API"],
+      ["04", "Cardiovascular Health Score", "e-sensia / Saphere"],
+      ["05", "Metabolic Health Score", "MyTwin"],
+      ["06", "Mental Health Assessment", "Virtuosis AI"],
+      ["07", "Skin Lesion Monitoring", "Skinive"],
+      ["08", "Stroke and Heart Attack Prevention", "e-sensia"],
+      ["09", "Daily Call from the AI Assistant", "e-sensia"],
     ]);
   });
 
@@ -65,17 +67,17 @@ describe("the marketplace registry", () => {
     }
   });
 
-  it("documents the first three modules and leaves the seven others undocumented", () => {
+  it("documents the first two modules and leaves the seven others undocumented", () => {
     const documented = MARKETPLACE_MODULES.filter((module) => !isSpecificationEmpty(module)).map((module) => module.slug);
-    expect(documented).toEqual(["centralized-medical-record", "mytwin-engine", "dynamic-care-plan"]);
+    expect(documented).toEqual(["centralized-medical-record", "smart-physician-alerts"]);
 
-    for (const module of MARKETPLACE_MODULES.slice(3)) {
+    for (const module of MARKETPLACE_MODULES.slice(2)) {
       for (const { key } of SPEC_SECTIONS) expect(isSectionDocumented(module.specification, key)).toBe(false);
     }
   });
 
-  it("marks the Metabolic Health Score as planned, and assumes no availability for undocumented partners", () => {
-    expect(getMarketplaceModule("metabolic-health-score")?.availability.stage).toBe("planned");
+  it("marks only the Metabolic Health Score as coming soon, and assumes no availability for undocumented partners", () => {
+    expect(MARKETPLACE_MODULES.filter(isComingSoon).map((module) => module.slug)).toEqual(["metabolic-health-score"]);
     for (const slug of [
       "connected-device-integration",
       "cardiovascular-health-score",
@@ -88,11 +90,23 @@ describe("the marketplace registry", () => {
     }
   });
 
-  it("publishes no price and no documentation link yet", () => {
+  it("publishes no price, accuracy, paper, validation level or documentation link yet", () => {
     for (const module of MARKETPLACE_MODULES) {
       expect(module.specification.pricing.terms, module.slug).toEqual({});
+      expect(module.evidence, module.slug).toEqual({});
       expect(module.documentationUrl, module.slug).toBeUndefined();
     }
+  });
+
+  it("writes every evidence line as not documented while it is empty", () => {
+    expect(evidenceEntries({}).map((entry) => [entry.label, isEntryDocumented(entry)])).toEqual([
+      ["Validation level", false],
+      ["Accuracy", false],
+      ["Research papers", false],
+    ]);
+    expect(
+      isEntryDocumented(evidenceEntries({ researchPapers: [{ label: "A study", url: "https://example.org" }] })[2]),
+    ).toBe(true);
   });
 });
 

@@ -114,6 +114,13 @@
   flex: none;
 }
 
+/* L'estimateur se consulte sur grand écran : pas de bouton sur téléphone. */
+@media (max-width: 767px) {
+  .v-mk-calc {
+    display: none;
+  }
+}
+
 .v-mk-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
@@ -184,21 +191,33 @@
   transform: scale(1.03);
 }
 
-.v-mk-card-num {
+/* « Coming soon » : un module pas encore disponible, sur une carte grisée. */
+.v-mk-soon {
   position: absolute;
   top: 12px;
   left: 12px;
   display: inline-flex;
   align-items: center;
   height: 24px;
-  padding-inline: 9px;
+  padding-inline: 10px;
   border-radius: 999px;
   background: rgb(255 255 255 / 0.92);
-  font-family: var(--v-font-h);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
   color: var(--v-ink);
+}
+
+.v-mk-card[data-soon="true"] {
+  background: #f7f7f6;
+}
+
+.v-mk-card[data-soon="true"] .v-mk-shot-img {
+  filter: grayscale(0.85);
+  opacity: 0.7;
+}
+
+.v-mk-card[data-soon="true"] .v-mk-card-body {
+  opacity: 0.68;
 }
 
 .v-mk-card-body {
@@ -269,6 +288,26 @@
 .v-mk-fact dd[data-missing="true"] {
   font-weight: 400;
   color: var(--v-subtle);
+}
+
+/* Une publication, au-dessus du lien étiré de la carte pour rester cliquable. */
+.v-mk-fact-link {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--v-accent);
+}
+
+.v-mk-fact-link:hover {
+  text-decoration: underline;
+}
+
+.v-mk-fact-link svg {
+  width: 11px;
+  height: 11px;
+  flex: none;
 }
 
 /* MyTwin à l'accent, un partenaire à l'encre : les deux propriétés ne se
@@ -376,6 +415,96 @@
   font-size: 0.8125rem;
   line-height: 1.55;
   color: var(--v-muted);
+}
+
+/* ── Le catalogue sur téléphone ─────────────────────────────────────────
+   Deux colonnes de cartes compactes : texte resserré, description sur trois
+   lignes, et chaque ligne de la carte en deux temps (libellé, valeur), faute
+   de largeur pour les mettre côte à côte. */
+@media (max-width: 767px) {
+  .v-mk-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .v-mk-card,
+  .v-mk-more {
+    border-radius: 16px;
+  }
+
+  .v-mk-shot {
+    aspect-ratio: 4 / 3;
+  }
+
+  .v-mk-soon {
+    top: 8px;
+    left: 8px;
+    height: 20px;
+    padding-inline: 8px;
+    font-size: 10px;
+  }
+
+  .v-mk-card-body {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .v-mk-card-text {
+    gap: 4px;
+  }
+
+  .v-mk-card-title {
+    font-size: 0.9375rem;
+    line-height: 1.25;
+  }
+
+  .v-mk-card-desc {
+    font-size: 0.75rem;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .v-mk-facts {
+    gap: 6px;
+    padding-top: 10px;
+  }
+
+  .v-mk-fact {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .v-mk-fact dt {
+    font-size: 10px;
+  }
+
+  .v-mk-fact dd {
+    text-align: left;
+  }
+
+  .v-mk-card-go {
+    font-size: 0.75rem;
+  }
+
+  .v-mk-more {
+    min-height: 0;
+    padding: 16px 12px;
+  }
+
+  .v-mk-more-title {
+    font-size: 0.875rem;
+  }
+
+  .v-mk-more-text {
+    font-size: 0.75rem;
+  }
 }
 
 /* ── La fiche d'un module : l'en-tête ───────────────────────────────── */
@@ -726,6 +855,23 @@
 .v-mkd-row dd li {
   position: relative;
   padding-left: 16px;
+}
+
+.v-mkd-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--v-accent);
+}
+
+.v-mkd-link:hover {
+  text-decoration: underline;
+}
+
+.v-mkd-link svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
 }
 
 .v-mkd-row dd li::before {

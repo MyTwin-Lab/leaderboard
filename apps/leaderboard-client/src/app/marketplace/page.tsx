@@ -1,7 +1,7 @@
 import { ModuleCatalog } from "@/components/marketplace/ModuleCatalog";
 import { BackToLab } from "@/components/vitrine/BackToLab";
 import { vitrineFontVars } from "@/components/vitrine/fonts";
-import { MARKETPLACE_MODULES, moduleNumber } from "@/content/marketplace";
+import { MARKETPLACE_MODULES } from "@/content/marketplace";
 import { MARKETPLACE_PATH } from "@/lib/paths";
 import { unlistedMetadata } from "@/lib/seo";
 
@@ -23,8 +23,6 @@ export const metadata = unlistedMetadata({
  * Un catalogue, pas une boutique : ni achat, ni compte, ni installation.
  */
 export default function MarketplacePage() {
-  const modules = MARKETPLACE_MODULES.map((module) => ({ module, number: moduleNumber(module) }));
-
   return (
     <div className={`vitrine v-mk ${vitrineFontVars}`}>
       <div className="v-main">
@@ -39,7 +37,7 @@ export default function MarketplacePage() {
           </div>
         </header>
 
-        <ModuleCatalog modules={modules} />
+        <ModuleCatalog modules={MARKETPLACE_MODULES} />
       </div>
     </div>
   );

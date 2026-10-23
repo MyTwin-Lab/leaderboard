@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   AVAILABILITY_LABELS,
   MATURITY_LABELS,
+  evidenceEntries,
   isEntryDocumented,
   isSectionDocumented,
   isSpecificationEmpty,
@@ -184,33 +185,46 @@ export function ModuleSpecificationView({
   );
 }
 
+/**
+ * Ce qu'une section montre du module lui-même, connu même sans fiche :
+ * l'identité dans l'aperçu, les preuves (celles que résume la carte) dans
+ * Compliance & Trust.
+ */
+function identityEntries(module: MarketplaceModule, key: SpecSectionKey): SpecEntry[] {
+  if (key === "complianceAndTrust") return evidenceEntries(module.evidence);
+  if (key !== "overview") return [];
+
+  return [
+    {
+      label: "Provider",
+      text: module.provider.kind === "partner" ? `${module.provider.name}, technology partner` : module.provider.name,
+    },
+    { label: "Platform layer", text: module.platformLayer },
+    {
+      label: "Availability",
+      // Le libellé court est déjà dans l'en-tête ; ici, la nuance de la fiche.
+      text:
+        module.availability.stage === "not-documented"
+          ? undefined
+          : (module.availability.detail ?? AVAILABILITY_LABELS[module.availability.stage]),
+    },
+  ];
+}
+
 function SpecSectionView({ module, sectionKey }: { module: MarketplaceModule; sectionKey: SpecSectionKey }) {
   const spec = module.specification;
   const meta = SPEC_SECTIONS.find((candidate) => candidate.key === sectionKey)!;
   const section = spec[sectionKey];
   const anchor = sectionAnchor(sectionKey);
 
-  // L'aperçu porte toujours l'identité du module, connue même sans fiche.
-  const identityEntries: SpecEntry[] =
-    sectionKey === "overview"
-      ? [
-          {
-            label: "Provider",
-            text: module.provider.kind === "partner" ? `${module.provider.name}, technology partner` : module.provider.name,
-          },
-          { label: "Platform layer", text: module.platformLayer },
-          {
-            label: "Availability",
-            // Le libellé court est déjà dans l'en-tête ; ici, la nuance de la fiche.
-            text:
-              module.availability.stage === "not-documented"
-                ? undefined
-                : (module.availability.detail ?? AVAILABILITY_LABELS[module.availability.stage]),
-          },
-        ]
-      : [];
-  const entries = [...sectionEntries(spec, sectionKey), ...identityEntries];
-  const documented = sectionKey === "overview" || isSectionDocumented(spec, sectionKey);
+  const identity = identityEntries(module, sectionKey);
+  // Les preuves ouvrent Compliance & Trust ; l'identité ferme l'aperçu.
+  const entries =
+    sectionKey === "complianceAndTrust"
+      ? [...identity, ...sectionEntries(spec, sectionKey)]
+      : [...sectionEntries(spec, sectionKey), ...identity];
+  const documented =
+    sectionKey === "overview" || isSectionDocumented(spec, sectionKey) || identity.some(isEntryDocumented);
   const references = sectionKey === "complianceAndTrust" ? spec.complianceAndTrust.references : undefined;
 
   return (
@@ -290,6 +304,18 @@ function SpecRow({ entry }: { entry: SpecEntry }) {
           <ul>
             {entry.items.map((item) => (
               <li key={item}>{item}</li>
+            ))}
+          </ul>
+        )}
+        {entry.links && entry.links.length > 0 && (
+          <ul>
+            {entry.links.map((link) => (
+              <li key={link.url}>
+                <a href={link.url} className="v-mkd-link" target="_blank" rel="noopener noreferrer">
+                  {link.label}
+                  <ExternalIcon />
+                </a>
+              </li>
             ))}
           </ul>
         )}

@@ -1,15 +1,18 @@
 import type { MarketplaceModule } from "../types";
 
 /**
- * Source : « Dynamic Care Plan — Official Module Reference ».
- * Un plan de soins suivi entre deux bilans, sous la main du clinicien : le
- * module ne diagnostique pas, ne prescrit pas et ne promet aucune
- * surveillance d'urgence en continu.
+ * Source : « Dynamic Care Plan — Official Module Reference ». Même module, vu
+ * par son alerte : les signaux qui demandent l'avis du médecin d'abord, le
+ * plan de soins mis à jour ensuite. Le contenu reste celui de la fiche.
+ *
+ * Le nom ne promet pas de « temps réel » : la fiche exclut toute surveillance
+ * d'urgence garantie, 24/7 ou en temps réel. Le module ne diagnostique pas et
+ * ne prescrit pas.
  */
-export const dynamicCarePlan: MarketplaceModule = {
-  id: "dynamic-care-plan",
-  slug: "dynamic-care-plan",
-  name: "Dynamic Care Plan",
+export const smartPhysicianAlerts: MarketplaceModule = {
+  id: "smart-physician-alerts",
+  slug: "smart-physician-alerts",
+  name: "Smart Physician Alerts",
   provider: { name: "MyTwin", kind: "mytwin" },
   moduleType: "Core Care Workflow Module",
   platformLayer: "Experience Layer, powered by Data Hub and Engine",
@@ -18,15 +21,17 @@ export const dynamicCarePlan: MarketplaceModule = {
     detail:
       "Care-plan capabilities are implemented in an initial client experience. The standalone reusable module and its external integration contract require productization.",
   },
-  // Pas de visuel dans la plaquette pour ce module : description tirée de la
-  // « Public card description » de la fiche, au format des autres cartes.
+  evidence: {},
+  // Pas dans la plaquette : description tirée de la fiche, au format des
+  // autres cartes, sur l'angle de l'alerte.
   shortDescription:
-    "Personalized care plans connected to patient data, so clinicians can review signals and adjust follow-up between checkups.",
-  image: "/marketplace/modules/dynamic-care-plan.webp",
+    "Intelligent alerts that bring patient signals to the physician’s review and keep the care plan up to date between checkups.",
+  image: "/marketplace/modules/smart-physician-alerts.webp",
   specification: {
     overview: {
       intro: [
-        "Dynamic Care Plan connects a patient’s longitudinal digital twin to a clinic-managed, personalized health plan.",
+        "Smart Physician Alerts brings the patient signals that call for a physician’s review to the care team, and keeps the patient’s personalized care plan up to date between checkups.",
+        "It connects a patient’s longitudinal digital twin to a clinic-managed, personalized health plan. When new data warrant it, the physician can adjust the plan: a targeted checkup, a coaching program, a follow-up appointment.",
         "A six-month longevity journey might begin with a comprehensive assessment and a clinician-approved plan. Instead of remaining static until the next major checkup, the plan can reflect new measurements, in-app assessments, connected-device data, goals and clinician feedback between visits.",
       ],
       entries: [
@@ -36,27 +41,19 @@ export const dynamicCarePlan: MarketplaceModule = {
         },
         {
           label: "Primary users",
-          text: "Patients following their plan; clinical teams monitoring relevant changes and updating interventions.",
+          text: "Physicians and clinical teams monitoring relevant changes and updating interventions; patients following their plan.",
         },
       ],
     },
     capabilities: {
       entries: [
         {
-          label: "Personalized plan structure",
-          text: "Represent goals, care domains, recommended activities, checkups, educational content, milestones and follow-up tasks. The major plan structure can remain stable while specific actions change.",
-        },
-        {
-          label: "Continuous inputs",
-          text: "Use new authorized observations, assessments, patient-reported activity and Engine outputs to track progress between scheduled checkups. Data availability and update frequency depend on connected sources.",
+          label: "Clinician escalation workflow",
+          text: "Route qualified signals to a designated care team queue for review, with severity, context, timestamps, status, acknowledgement and ownership where implemented. Notifications are not equivalent to guaranteed real-time emergency monitoring.",
         },
         {
           label: "Configurable monitoring",
           text: "Evaluate selected thresholds, trends and rules with MyTwin Engine or associated workflow services. Thresholds must be defined and reviewed for the intended population and use, not treated as universal clinical cutoffs.",
-        },
-        {
-          label: "Clinician escalation workflow",
-          text: "Route qualified signals to a designated care team queue for review, with severity, context, timestamps, status, acknowledgement and ownership where implemented. Notifications are not equivalent to guaranteed real-time emergency monitoring.",
         },
         {
           label: "Plan adjustment and versioning",
@@ -65,6 +62,14 @@ export const dynamicCarePlan: MarketplaceModule = {
         {
           label: "Follow-up opportunities",
           text: "Offer appointments, targeted checkups, coaching and optional programs when clinically appropriate. Commercial offers and upsells should be clearly distinguished from medical recommendations, with transparent choice and consent.",
+        },
+        {
+          label: "Personalized plan structure",
+          text: "Represent goals, care domains, recommended activities, checkups, educational content, milestones and follow-up tasks. The major plan structure can remain stable while specific actions change.",
+        },
+        {
+          label: "Continuous inputs",
+          text: "Use new authorized observations, assessments, patient-reported activity and Engine outputs to track progress between scheduled checkups. Data availability and update frequency depend on connected sources.",
         },
         {
           label: "Outputs",
@@ -138,7 +143,7 @@ export const dynamicCarePlan: MarketplaceModule = {
       entries: [
         {
           label: "Clinical safety boundary",
-          text: "Dynamic Care Plan assists care coordination and follow-up; it does not autonomously diagnose, prescribe, replace clinical decisions or guarantee 24/7 monitoring or emergency response.",
+          text: "Smart Physician Alerts assists care coordination and follow-up; it does not autonomously diagnose, prescribe, replace clinical decisions or guarantee 24/7 monitoring or emergency response.",
         },
         {
           label: "Operational controls to specify",

@@ -8,7 +8,7 @@ The Marketplace is a **catalog**, not a shop: no payment, no developer account, 
 
 | Path | What it is |
 |---|---|
-| `/marketplace` | Title and one-line intro, then "Choose your modules" with a "Modules Pricing Calculator" button (not wired yet), the ten module cards (image, name, description, provider, pricing) and a "More modules coming" tile |
+| `/marketplace` | Title and one-line intro, then "Choose your modules" with a "Modules Pricing Calculator" button (not wired yet), the nine module cards and a "More modules coming" tile. Two columns of compact cards on phones, without the calculator button |
 | `/marketplace/<slug>` | One module's specification: header, six sections, previous / next module. One route for every module (`dynamicParams = false`: an unknown slug is a `404`) |
 
 Nothing else on the site links to it: not the navbar, not the footer, not the home page. A `/mytwin-platform-sdk` vision page existed for a day and was removed (2026-10-23): it said nothing the catalog needed.
@@ -18,7 +18,7 @@ Nothing else on the site links to it: not the navbar, not the footer, not the ho
 | File | Purpose |
 |---|---|
 | `src/content/marketplace/index.ts` | **The registry**: `MARKETPLACE_MODULES`, in catalog order, plus `getMarketplaceModule()` and `moduleNumber()` |
-| `src/content/marketplace/modules/*.ts` | One file per documented module (the first three, from their official references) |
+| `src/content/marketplace/modules/*.ts` | One file per documented module (the first two, from their official references) |
 | `src/content/marketplace/types.ts` | `MarketplaceModule`, `ModuleSpecification`, `SpecEntry`, `PricingTerms` |
 | `src/content/marketplace/spec.ts` | `SPEC_SECTIONS` (the six sections, their numbers, titles and standard fields), `undocumentedSpecification()` |
 | `src/content/marketplace/format.ts` | Labels, `pricingSummary()`, `pricingEntries()`, `isSectionDocumented()`: wording only, no content |
@@ -26,7 +26,13 @@ Nothing else on the site links to it: not the navbar, not the footer, not the ho
 | `public/marketplace/modules/<slug>.webp` | Each module's image |
 | `src/app/marketplace/` | The routes; `layout.tsx` carries the segment's `noindex` |
 
-The card keeps only the provider and the price; type, availability and integration are in the specification. No JavaScript ships for the catalog: the registry never reaches the client bundle.
+A card shows the image, name and description, then five lines in this order: **Provider, Accuracy, Research paper, Validation level, Pricing**. Type, availability and integration are in the specification. A module not available yet (`availability.stage: "planned"`, today the Metabolic Health Score) shows "Coming soon" over a greyed card. No JavaScript ships for the catalog: the registry never reaches the client bundle.
+
+### Evidence: accuracy, research papers, validation level
+
+`module.evidence` (`ModuleEvidence`) holds what the card says about a module's seriousness: `accuracy` (a string, with its metric when there is one: "90%", "90% sensitivity"), `researchPapers` (`{ label, url }[]`), `validationLevel` ("Medical Device", "Wellness Device"…). The specification shows the same three lines at the top of Compliance & Trust. One paper opens from the card; several link to the specification, which lists them.
+
+All empty today, so every card reads "Not documented" on these lines. Fill a field only from a source: an accuracy comes with its study, a validation level with its certificate or classification. Never infer one from a partner's marketing, and never write "Medical Device" for a module that is not certified as one.
 
 ## The module specification (V1)
 
@@ -42,17 +48,17 @@ A section is an optional `intro`, a list of `entries` (`{ label, text?, items?, 
 ## Adding or updating a module
 
 1. **A new module without a specification**: add an `undocumentedModule({ slug, name, provider, moduleType, shortDescription })` entry to `MARKETPLACE_MODULES`, at its place in the catalog, and its image at `public/marketplace/modules/<slug>.webp` (square, 800px, like the others). It appears in the catalog and at `/marketplace/<slug>`: nothing else to touch.
-2. **Documenting a module**: replace its `undocumentedModule(...)` entry with a file in `modules/` (copy one of the three existing ones), and fill only what the reference document establishes. Keep "Not documented" lines for what it leaves open.
+2. **Documenting a module**: replace its `undocumentedModule(...)` entry with a file in `modules/` (copy one of the two existing ones), and fill only what the reference document establishes. Keep "Not documented" lines for what it leaves open.
 3. **Never change a slug** once the URL has circulated: it is the module's address.
 4. Update the registry test (`marketplace.test.ts`), which pins the order and which modules are documented.
 
 ## Images
 
-The images are the brochure's ("MyTwin modules"), taken from mytwin.care, where the `/clinic-partner-program` deck uses them (`mytwin-health-landing/public/clinicians/modules/`), and renamed after the module's slug. Same pairing as the deck: the medical record shows `daily-followup` (a doctor in front of records), as it has no image of its own. MyTwin Engine and Dynamic Care Plan are not in the brochure: they take `what-if-scenarios` (branching scenarios, not a score, since the Engine is not a scoring model) and `care-plans`. The "More modules coming" tile has no image: a dashed frame and a "+", so that it never reads as a module. Images are decorative (`alt=""`): the title next to them already says what they show.
+The images are the brochure's ("MyTwin modules"), taken from mytwin.care, where the `/clinic-partner-program` deck uses them (`mytwin-health-landing/public/clinicians/modules/`), and renamed after the module's slug. Same pairing as the deck: the medical record shows `daily-followup` (a doctor in front of records), as it has no image of its own. Smart Physician Alerts is not in the brochure: it takes `care-plans` (a physician in front of a care trajectory on a tablet). The "More modules coming" tile has no image: a dashed frame and a "+", so that it never reads as a module. Images are decorative (`alt=""`): the title next to them already says what they show.
 
 ## Card descriptions
 
-Each card description comes from the commercial brochure ("MyTwin modules"), word for word, except MyTwin Engine and Dynamic Care Plan, which are not in it: theirs are shortened from the "Public card description" of their reference.
+Each card description comes from the commercial brochure ("MyTwin modules"), word for word, except Smart Physician Alerts, which is not in it: its description is written from its reference, on the alerting angle.
 
 ## Documentation and pricing, later
 
@@ -62,11 +68,11 @@ Each card description comes from the commercial brochure ("MyTwin modules"), wor
 
 ## Content rules
 
-The first three modules come from their official references (`Centralized Medical Record`, `MyTwin Engine`, `Dynamic Care Plan`), kept as written. Their internal instructions ("do not imply…") became "Not documented" lines, and their *must* and *should* stay obligations, not statements of fact. Do not extend a medical or regulatory claim beyond what a reference establishes. Traceability is not certification, and a planned capability gets its `maturity`.
+The first two modules come from their official references (`Centralized Medical Record`, and `Dynamic Care Plan` for Smart Physician Alerts), kept as written. Their internal instructions ("do not imply…") became "Not documented" lines, and their *must* and *should* stay obligations, not statements of fact. Do not extend a medical or regulatory claim beyond what a reference establishes. Traceability is not certification, and a planned capability gets its `maturity`.
 
 - Centralized Medical Record is the patient-facing side of the **Data Hub**, not a document store.
-- MyTwin Engine **orchestrates** models; it is not a scoring model. Scores are separate modules.
-- Dynamic Care Plan supports follow-up under clinician oversight; it does not diagnose, prescribe or guarantee emergency monitoring.
+- **Smart Physician Alerts** is the Dynamic Care Plan reference seen from its alerting side (renamed 2026-10-23): signals that call for a physician's review first, then the care plan kept up to date (a targeted checkup, a coaching program, a follow-up). Same content, capabilities reordered. Its name and copy never promise *real time*: the reference excludes guaranteed real-time, 24/7 or emergency monitoring, and the module does not diagnose or prescribe.
+- **MyTwin Engine** left the catalog on 2026-10-23. The Engine stays a platform layer, and the other modules' specifications still name it.
 - e-sensia acquired the Saphere technology (formerly i-Virtual): module 05 reads "e-sensia / Saphere".
 - "Others" in the brochure is not a module: it is the "More modules coming" tile.
 
@@ -83,7 +89,7 @@ The first three modules come from their official references (`Centralized Medica
 
 ```bash
 curl -s https://mytwinlab.care/marketplace | grep -o '<meta name="robots"[^>]*>'
-curl -s https://mytwinlab.care/marketplace/mytwin-engine | grep -o '<meta name="robots"[^>]*>'
+curl -s https://mytwinlab.care/marketplace/smart-physician-alerts | grep -o '<meta name="robots"[^>]*>'
 curl -s https://mytwinlab.care/sitemap.xml | grep -c marketplace   # 0
 ```
 

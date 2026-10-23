@@ -32,20 +32,36 @@ export type ModuleAvailability = {
  */
 export type SpecMaturity = "planned" | "to-confirm";
 
+export type SpecReference = {
+  label: string;
+  url: string;
+};
+
 /**
- * Une ligne de fiche. Sans `text` ni `items`, elle s'affiche « Not
+ * Une ligne de fiche. Sans `text`, `items` ni `links`, elle s'affiche « Not
  * documented » : c'est ainsi qu'une fiche déclare ce qu'elle ne sait pas.
  */
 export type SpecEntry = {
   label: string;
   text?: string;
   items?: string[];
+  links?: SpecReference[];
   maturity?: SpecMaturity;
 };
 
-export type SpecReference = {
-  label: string;
-  url: string;
+/**
+ * Ce que la carte montre du sérieux d'un module, à côté du fournisseur et du
+ * prix. Rien ici n'est supposé : une performance, une publication ou une
+ * classification n'apparaît que sourcée. Chaque champ absent est « Not
+ * documented ».
+ */
+export type ModuleEvidence = {
+  /** La performance mesurée, avec sa métrique quand il y en a une : « 90% », « 90% sensitivity ». */
+  accuracy?: string;
+  /** Les publications qui fondent le module : études, validations, articles. */
+  researchPapers?: SpecReference[];
+  /** La classification établie : « Medical Device », « Wellness Device »… */
+  validationLevel?: string;
 };
 
 /** Une section de fiche : un texte d'introduction, puis des lignes. */
@@ -117,6 +133,7 @@ export type MarketplaceModule = {
   /** La couche de la MyTwin Platform, quand elle est documentée. */
   platformLayer?: string;
   availability: ModuleAvailability;
+  evidence: ModuleEvidence;
   shortDescription: string;
   /**
    * Le visuel de la carte et de la fiche, sous `public/marketplace/modules/`.
