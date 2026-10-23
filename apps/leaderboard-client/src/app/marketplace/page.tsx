@@ -12,8 +12,7 @@ import "@/components/marketplace/marketplace-vitrine.css";
 // le footer ni l'accueil (docs/marketplace.md).
 export const metadata = unlistedMetadata({
   title: "MyTwin Marketplace",
-  description:
-    "The catalog of reusable health technology modules from MyTwin and its partners, each documented with the same six-section specification.",
+  description: "The catalog of reusable health technology modules from MyTwin and its partners.",
   path: MARKETPLACE_PATH,
 });
 
